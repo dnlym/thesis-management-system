@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    /* === Output Settings === */
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": ".",
+    "outDir": "dist",
+    /* === Type Checking === */
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    /* === Source Maps === */
+    "sourceMap": true,
+    /* === Module Resolution === */
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    /* === Node Environment === */
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src",
+    "prisma/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

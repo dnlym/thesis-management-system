@@ -1,0 +1,94 @@
+import { Request, Response, NextFunction } from "express";
+import { verifyAccessToken } from "../utils/jwt";
+import { UserRole } from "@prisma/client";
+import { ERROR_CODES } from "../constants";
+import { AuthRequest } from "../types";
+
+export { AuthRequest };
+
+/**
+ * Middleware xác thực token
+ */
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: ERROR_CODES.UNAUTHORIZED,
+        message: 'No token provided',
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const payload = verifyAccessToken(token) as any;
+
+    if (!payload) {
+      return res.status(401).json({
+        success: false,
+        error: ERROR_CODES.INVALID_TOKEN,
+        message: 'Invalid or expired token',
+      });
+    }
+
+    const { userId, sub, email, role } = payload;
+    const id = (userId ?? sub) as string | undefined;
+
+    if (!id || !email || !role) {
+      return res.status(401).json({
+        success: false,
+        error: ERROR_CODES.INVALID_TOKEN,
+        message: 'Invalid token payload',
+      });
+    }
+
+    req.user = {
+      id,
+      email,
+      role: role as UserRole,
+    };
+
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      error: ERROR_CODES.UNAUTHORIZED,
+      message: 'Authentication failed',
+    });
+  }
+};
+
+/**
+ * Middleware phân quyền theo role
+ * @param roles danh sách role được phép truy cập
+ */
+export const authorize = (...roles: UserRole[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: ERROR_CODES.UNAUTHORIZED,
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+    console.log(req.user.role);
+    console.log(roles);
+    if (!roles.includes(req.user.role)) {
+      console.log("ko co quyen");
+      return res.status(403).json({
+        success: false,
+        error: ERROR_CODES.FORBIDDEN,
+        message: "Không có quyền truy cập",
+      });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Giữ tên cũ để các file khác không bị ảnh hưởng
+ */
+export const authMiddleware = authenticate;
+export const roleMiddleware = authorize;

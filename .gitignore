@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+dist/
+dist-be/
+build/
+.next/
+out/
+
+# Environment and Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and System Files
+.vscode/
+.idea/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Project Specific
+V2/thesis-be - Copy/node_modules/
+V2/thesis-be - Copy/dist/
+V2/thesis-be - Copy/.env
+V2/thesis-be - Copy/scratch/
+V2/thesis-be - Copy/policy-debug.log
+
+V2/thesis-tapestry-main - Copy/node_modules/
+V2/thesis-tapestry-main - Copy/dist/
+V2/thesis-tapestry-main - Copy/.env
+
+# Prisma
+V2/thesis-be - Copy/prisma/migrations/
+# (We keep schema and seed, but ignore generated client if it was local)

@@ -1,0 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
+import { SemestersApi } from '@/api/semesters';
+
+export const useActiveSemester = () => {
+    return useQuery({
+        queryKey: ['active-semester'],
+        queryFn: () => SemestersApi.getActive(),
+        staleTime: 1000 * 60, // 1 minute
+    });
+};

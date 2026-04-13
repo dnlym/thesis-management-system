@@ -1,0 +1,819 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id                                    String             @id @default(uuid())
+  name                                  String             @db.VarChar(255)
+  code                                  String             @unique @db.VarChar(50)
+  description                           String?
+  active                                Boolean            @default(true)
+  created_at                            DateTime           @default(now())
+  updated_at                            DateTime           @updatedAt
+  topic_viewing_start                   DateTime?
+  topic_viewing_end                     DateTime?
+  topic_registration_start              DateTime?
+  topic_registration_end                DateTime?
+  auto_approve_proposal_on_midterm_pass Boolean            @default(true)
+  max_group_size                        Int                @default(2)
+  min_group_size                        Int                @default(1)
+  required_submission_types_for_review  SubmissionType[]   @default([PROPOSAL, THESIS, SOURCE_CODE])
+  requires_midterm_eval                 Boolean            @default(true)
+  committees                            Committee[]
+  grading_criteria                      GradingCriterion[]
+  Topic                                 Topic[]            @relation("DepartmentTopics")
+  secondary_topics                      Topic[]            @relation("SecondaryDepartmentTopics")
+  User                                  User[]
+
+  @@index([code])
+  @@index([active])
+  @@map("departments")
+}
+
+model Semester {
+  id                       String              @id @default(uuid())
+  name                     String              @db.VarChar(100)
+  code                     String              @unique @db.VarChar(50)
+  current_phase           SemesterPhase       @default(PLANNING)
+  manual_phase_override   SemesterPhase?
+  status                  SemesterStatus      @default(PLANNING)
+  start_date               DateTime
+  end_date                 DateTime
+  proposal_deadline        DateTime
+  thesis_deadline          DateTime
+  defense_start            DateTime?
+  defense_end              DateTime?
+  created_at               DateTime            @default(now())
+  updated_at               DateTime            @updatedAt
+  topic_registration_end   DateTime?
+  topic_registration_start DateTime?
+  topic_viewing_start      DateTime?
+  topic_viewing_end        DateTime?
+  midterm_start            DateTime?
+  midterm_end              DateTime?
+  committees               Committee[]
+  defense_schedules        DefenseSchedule[]
+  groups                   Group[]
+  topic_registrations      TopicRegistration[]
+  topics                   Topic[]
+  workload_limits          UserWorkloadLimit[]
+  registration_extensions  RegistrationExtension[]
+
+  @@index([code])
+  @@index([current_phase])
+  @@map("semesters")
+}
+
+model User {
+  id                      String                     @id @default(uuid())
+  email                   String                     @unique @db.VarChar(255)
+  role                    UserRole
+  active                  Boolean                    @default(true)
+  avatar_url              String?                    @db.VarChar(500)
+  created_at              DateTime                   @default(now())
+  departmentId            String                     @map("department_id")
+  full_name               String                     @db.VarChar(255)
+  joined_at               DateTime                   @default(now())
+  last_login_at           DateTime?
+  last_login_ip           String?                    @db.VarChar(50)
+  password_hash           String                     @db.VarChar(255)
+  phone                   String?                    @db.VarChar(20)
+  student_code            String?                    @unique @db.VarChar(50)
+  updated_at              DateTime                   @updatedAt
+  assigner_assignments    Assignment[]               @relation("AssignerAssignments")
+  reviewer_assignments    Assignment[]               @relation("ReviewerAssignments")
+  audit_logs              AuditLog[]                 @relation("UserAuditLogs")
+  committee_memberships   CommitteeMember[]
+  reviewed_extra_points   ExtraPointRequest[]        @relation("ReviewerExtraPoints")
+  extra_point_requests    ExtraPointRequest[]        @relation("StudentExtraPoints")
+  finalized_scores        FinalScore[]               @relation("ScoreFinalizer")
+  final_scores            FinalScore[]               @relation("StudentFinalScore")
+  grades                  Grade[]                    @relation("GraderGrades")
+  student_grades          Grade[]                    @relation("StudentGrades")
+  invitee_invites         GroupInvite[]              @relation("InviteeGroupInvites")
+  inviter_invites         GroupInvite[]              @relation("InviterGroupInvites")
+  approved_leader_changes GroupLeaderChangeRequest[] @relation("LeaderChangeApprover")
+  leader_change_requests  GroupLeaderChangeRequest[] @relation("LeaderChangeRequester")
+  group_memberships       GroupMember[]              @relation("GroupMemberUser")
+  owned_groups            Group[]                    @relation("GroupLeader")
+  notifications           Notification[]             @relation("UserNotifications")
+  refresh_tokens          RefreshToken[]
+  uploaded_versions       SubmissionVersion[]        @relation("VersionUploader")
+  approved_submissions    Submission[]               @relation("SubmissionApprover")
+  locked_submissions      Submission[]               @relation("SubmissionLocker")
+  updated_configs         SystemConfig[]             @relation("ConfigUpdater")
+  topic_registrations     TopicRegistration[]        @relation("StudentRegistrations")
+  supervised_topics       Topic[]                    @relation("SupervisorTopics")
+  co_supervised_topics    Topic[]                    @relation("CoSupervisorTopics")
+  workload_limits         UserWorkloadLimit[]        @relation("UserWorkload")
+  created_extensions      RegistrationExtension[]    @relation("ExtensionCreator")
+  department              Department                 @relation(fields: [departmentId], references: [id])
+
+  @@index([email])
+  @@index([role])
+  @@index([student_code])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid())
+  token         String    @unique
+  created_at    DateTime  @default(now())
+  created_by_ip String?
+  expires_at    DateTime
+  replaced_by   String?
+  revoked_at    DateTime?
+  user_agent    String?
+  user_id       String
+  user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model Topic {
+  id                   String              @id @default(uuid())
+  title                String              @db.VarChar(500)
+  description          String
+  objectives           String
+  requirements         String
+  normalized_title     String
+  status               TopicStatus         @default(DRAFT)
+  approved_at          DateTime?
+  approved_by          String?
+  created_at           DateTime            @default(now())
+  current_students     Int                 @default(0)
+  departmentId         String              @map("department_id")
+  edit_notes           String?
+  max_students         Int
+  rejection_reason     String?
+  semester_id          String
+  supervisor_id        String
+  co_supervisor_id     String?             @map("co_supervisor_id")
+  secondary_department_id String?          @map("secondary_department_id")
+  is_interdisciplinary Boolean             @default(false)
+  interdisciplinary_status InterdisciplinaryStatus?
+  updated_at           DateTime            @updatedAt
+  code                 String?             @unique @db.VarChar(50)
+  defense_type         DefenseType?        @default(ORAL)
+  assignments          Assignment[]        @relation("TopicAssignments")
+  defense_schedule     DefenseSchedule?    @relation("TopicDefense")
+  extra_point_requests ExtraPointRequest[] @relation("TopicExtraPoints")
+  final_scores         FinalScore[]        @relation("TopicFinalScore")
+  grades               Grade[]             @relation("TopicGrades")
+  group_invites        GroupInvite[]       @relation("TopicGroupInvites")
+  groups               Group[]             @relation("TopicGroups")
+  submissions          Submission[]        @relation("TopicSubmissions")
+  registrations        TopicRegistration[] @relation("TopicRegistrations")
+  versions             TopicVersion[]      @relation("TopicVersions")
+  department           Department          @relation("DepartmentTopics", fields: [departmentId], references: [id])
+  secondary_department Department?         @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
+  semester             Semester            @relation(fields: [semester_id], references: [id])
+  supervisor           User                @relation("SupervisorTopics", fields: [supervisor_id], references: [id], onDelete: Cascade)
+  co_supervisor        User?               @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
+
+  @@index([code])
+  @@index([supervisor_id])
+  @@index([departmentId])
+  @@index([semester_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([normalized_title])
+  @@unique([normalized_title, semester_id, departmentId])
+  @@map("topics")
+}
+
+model TopicVersion {
+  id             String   @id @default(uuid())
+  topic_id       String
+  version_number Int
+  snapshot_data  Json
+  changed_by     String?
+  change_reason  String?
+  created_at     DateTime @default(now())
+  topic          Topic    @relation("TopicVersions", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([topic_id, version_number])
+  @@index([topic_id])
+  @@index([created_at])
+  @@map("topic_versions")
+}
+
+model Group {
+  id                     String                     @id @default(uuid())
+  name                   String                     @db.VarChar(255)
+  topic_id               String?
+  leader_id              String
+  semester_id            String
+  status                 GroupStatus                @default(FORMING)
+  created_at             DateTime                   @default(now())
+  updated_at             DateTime                   @updatedAt
+  leader_change_requests GroupLeaderChangeRequest[] @relation("GroupLeaderChanges")
+  members                GroupMember[]              @relation("GroupMembers")
+  leader                 User                       @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
+  semester               Semester                   @relation(fields: [semester_id], references: [id])
+  topic                  Topic?                     @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
+  submissions            Submission[]               @relation("GroupSubmissions")
+  registrations          TopicRegistration[]        @relation("GroupRegistrations")
+
+  @@index([topic_id])
+  @@index([leader_id])
+  @@index([semester_id])
+  @@index([status])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String            @id @default(uuid())
+  group_id  String
+  user_id   String
+  status    GroupMemberStatus @default(PENDING)
+  joined_at DateTime          @default(now())
+  left_at   DateTime?
+  group     Group             @relation("GroupMembers", fields: [group_id], references: [id], onDelete: Cascade)
+  user      User              @relation("GroupMemberUser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_id, user_id])
+  @@index([group_id])
+  @@index([user_id])
+  @@index([status])
+  @@map("group_members")
+}
+
+model GroupInvite {
+  id           String            @id @default(uuid())
+  topic_id     String
+  inviter_id   String
+  invitee_id   String
+  status       GroupInviteStatus @default(PENDING)
+  created_at   DateTime          @default(now())
+  expires_at   DateTime
+  responded_at DateTime?
+  invitee      User              @relation("InviteeGroupInvites", fields: [invitee_id], references: [id], onDelete: Cascade)
+  inviter      User              @relation("InviterGroupInvites", fields: [inviter_id], references: [id], onDelete: Cascade)
+  topic        Topic             @relation("TopicGroupInvites", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@index([topic_id])
+  @@index([inviter_id])
+  @@index([invitee_id])
+  @@index([status])
+  @@index([expires_at])
+  @@map("group_invites")
+}
+
+model GroupLeaderChangeRequest {
+  id               String             @id @default(uuid())
+  group_id         String
+  current_leader   String
+  new_leader       String
+  reason           String
+  status           ChangeLeaderStatus @default(PENDING)
+  requested_by     String
+  approved_by      String?
+  rejection_reason String?
+  created_at       DateTime           @default(now())
+  responded_at     DateTime?
+  approver         User?              @relation("LeaderChangeApprover", fields: [approved_by], references: [id])
+  group            Group              @relation("GroupLeaderChanges", fields: [group_id], references: [id], onDelete: Cascade)
+  requester        User               @relation("LeaderChangeRequester", fields: [requested_by], references: [id])
+
+  @@index([group_id])
+  @@index([status])
+  @@map("group_leader_change_requests")
+}
+
+model TopicRegistration {
+  id                      String                @id @default(uuid())
+  student_id              String
+  topic_id                String
+  semester_id             String
+  group_id                String?
+  status                  RegistrationStatus    @default(PENDING)
+  student_progress_status StudentProgressStatus @default(NOT_STARTED)
+  rejection_reason        String?
+  registered_at           DateTime              @default(now())
+  confirmed_at            DateTime?
+  midterm_feedback        String?
+  midterm_graded_at       DateTime?
+  midterm_status          MidtermStatus?
+  extra_points_confirmed  Boolean               @default(false)
+  group                   Group?                @relation("GroupRegistrations", fields: [group_id], references: [id])
+  semester                Semester              @relation(fields: [semester_id], references: [id])
+  student                 User                  @relation("StudentRegistrations", fields: [student_id], references: [id], onDelete: Cascade)
+  topic                   Topic                 @relation("TopicRegistrations", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, semester_id])
+  @@index([student_id])
+  @@index([topic_id])
+  @@index([semester_id])
+  @@index([group_id])
+  @@index([status])
+  @@index([student_progress_status])
+  @@map("topic_registrations")
+}
+
+model Submission {
+  id               String              @id @default(uuid())
+  topic_id         String
+  group_id         String
+  type             SubmissionType
+  status           SubmissionStatus    @default(DRAFT)
+  current_version  Int                 @default(0)
+  is_locked        Boolean             @default(false)
+  locked_by        String?
+  locked_at        DateTime?
+  approved_by      String?
+  approved_at      DateTime?
+  rejection_reason String?
+  created_at       DateTime            @default(now())
+  updated_at       DateTime            @updatedAt
+  versions         SubmissionVersion[] @relation("SubmissionVersions")
+  approver         User?               @relation("SubmissionApprover", fields: [approved_by], references: [id])
+  group            Group               @relation("GroupSubmissions", fields: [group_id], references: [id], onDelete: Cascade)
+  locker           User?               @relation("SubmissionLocker", fields: [locked_by], references: [id])
+  topic            Topic               @relation("TopicSubmissions", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([topic_id, group_id, type])
+  @@index([topic_id])
+  @@index([group_id])
+  @@index([status])
+  @@index([is_locked])
+  @@map("submissions")
+}
+
+model SubmissionVersion {
+  id            String     @id @default(uuid())
+  submission_id String
+  version       Int
+  file_url      String     @db.VarChar(500)
+  file_name     String     @db.VarChar(255)
+  file_size     Int
+  mime_type     String     @db.VarChar(100)
+  checksum      String     @db.VarChar(64)
+  uploaded_by   String
+  comments      String?
+  uploaded_at   DateTime   @default(now())
+  submission    Submission @relation("SubmissionVersions", fields: [submission_id], references: [id], onDelete: Cascade)
+  uploader      User       @relation("VersionUploader", fields: [uploaded_by], references: [id])
+
+  @@unique([submission_id, version])
+  @@index([submission_id])
+  @@index([uploaded_at])
+  @@map("submission_versions")
+}
+
+model Assignment {
+  id                   String           @id @default(uuid())
+  topic_id             String
+  reviewer_id          String
+  assignment_type      AssignmentType
+  reviewer_order       Int?
+  committee_role       CommitteeRole?
+  status               AssignmentStatus @default(PENDING)
+  assigned_by          String
+  assigned_at          DateTime         @default(now())
+  deadline_at          DateTime
+  first_reminder_sent  DateTime?
+  second_reminder_sent DateTime?
+  responded_at         DateTime?
+  auto_declined_at     DateTime?
+  decline_reason       String?
+  assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
+  reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
+  topic                Topic            @relation("TopicAssignments", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([topic_id, reviewer_id, assignment_type])
+  @@unique([topic_id, reviewer_order])
+  @@index([topic_id])
+  @@index([reviewer_id])
+  @@index([status])
+  @@index([deadline_at])
+  @@map("assignments")
+}
+
+model GradingCriterion {
+  id            String      @id @default(uuid())
+  name          String      @db.VarChar(255)
+  description   String
+  weight        Float
+  max_score     Float
+  min_score     Float       @default(0)
+  criteria_type String      @db.VarChar(100)
+  order_index   Int         @default(0)
+  active        Boolean     @default(true)
+  created_at    DateTime    @default(now())
+  departmentId  String?     @map("department_id")
+  role          RaterRole   @default(SUPERVISOR)
+  grades        Grade[]     @relation("CriterionGrades")
+  department    Department? @relation(fields: [departmentId], references: [id])
+
+  @@index([active])
+  @@index([role])
+  @@index([order_index])
+  @@index([criteria_type])
+  @@map("grading_criteria")
+}
+
+model Grade {
+  id             String           @id @default(uuid())
+  topic_id       String
+  student_id     String?
+  grader_id      String
+  criterion_id   String
+  rater_role     RaterRole
+  reviewer_order Int?
+  score          Float
+  comments       String?
+  graded_at      DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  criterion      GradingCriterion @relation("CriterionGrades", fields: [criterion_id], references: [id], onDelete: Cascade)
+  grader         User             @relation("GraderGrades", fields: [grader_id], references: [id], onDelete: Cascade)
+  student        User?            @relation("StudentGrades", fields: [student_id], references: [id], onDelete: Cascade)
+  topic          Topic            @relation("TopicGrades", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([topic_id, student_id, grader_id, criterion_id, rater_role, reviewer_order])
+  @@index([topic_id])
+  @@index([student_id])
+  @@index([grader_id])
+  @@index([criterion_id])
+  @@index([rater_role])
+  @@map("grades")
+}
+
+model FinalScore {
+  id                   String    @id @default(uuid())
+  topic_id             String
+  student_id           String    @db.VarChar(36)
+  supervisor_score     Float
+  reviewer_avg_score   Float
+  committee_score      Float
+  computed_score       Float
+  extra_points         Float     @default(0)
+  final_score          Float
+  grade_classification String?   @db.VarChar(10)
+  finalized            Boolean   @default(false)
+  finalized_by         String?
+  finalized_at         DateTime?
+  computed_at          DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  finalizer            User?     @relation("ScoreFinalizer", fields: [finalized_by], references: [id])
+  student              User      @relation("StudentFinalScore", fields: [student_id], references: [id], onDelete: Cascade)
+  topic                Topic     @relation("TopicFinalScore", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@unique([topic_id, student_id])
+  @@index([topic_id])
+  @@index([student_id])
+  @@index([finalized])
+  @@index([grade_classification])
+  @@map("final_scores")
+}
+
+model ExtraPointRequest {
+  id                String           @id @default(uuid())
+  student_id        String
+  topic_id          String
+  reason            String
+  evidence_url      String?          @db.VarChar(500)
+  evidence_versions Json?
+  points_requested  Float
+  status            ExtraPointStatus @default(PENDING)
+  reviewed_by       String?
+  reviewed_at       DateTime?
+  rejection_reason  String?
+  created_at        DateTime         @default(now())
+  reviewer          User?            @relation("ReviewerExtraPoints", fields: [reviewed_by], references: [id])
+  student           User             @relation("StudentExtraPoints", fields: [student_id], references: [id], onDelete: Cascade)
+  topic             Topic            @relation("TopicExtraPoints", fields: [topic_id], references: [id])
+
+  @@unique([student_id, topic_id])
+  @@index([student_id])
+  @@index([topic_id])
+  @@index([status])
+  @@map("extra_point_requests")
+}
+
+model DefenseSchedule {
+  id                  String         @id @default(uuid())
+  topic_id            String         @unique
+  committee_id        String?
+  semester_id         String
+  defense_date        DateTime
+  defense_time        String?        @db.VarChar(20)
+  start_time          DateTime?
+  end_time            DateTime?
+  room                String?        @db.VarChar(100)
+  committee_chair     String?
+  committee_secretary String?
+  notes               String?
+  status              ScheduleStatus @default(PENDING)
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  committee           Committee?     @relation(fields: [committee_id], references: [id])
+  semester            Semester       @relation(fields: [semester_id], references: [id])
+  topic               Topic          @relation("TopicDefense", fields: [topic_id], references: [id], onDelete: Cascade)
+
+  @@index([topic_id])
+  @@index([defense_date])
+  @@index([committee_id])
+  @@index([semester_id])
+  @@map("defense_schedules")
+}
+
+model Committee {
+  id                String            @id @default(uuid())
+  name              String            @db.VarChar(255)
+  semester_id       String
+  room_preference   String?           @db.VarChar(100)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  departmentId      String            @map("department_id")
+  type              CommitteeType     @default(ORAL)
+  members           CommitteeMember[]
+  department        Department        @relation(fields: [departmentId], references: [id])
+  semester          Semester          @relation(fields: [semester_id], references: [id])
+  defense_schedules DefenseSchedule[]
+
+  @@index([semester_id])
+  @@index([departmentId])
+  @@map("committees")
+}
+
+model CommitteeMember {
+  id           String        @id @default(uuid())
+  committee_id String
+  lecturer_id  String
+  semester_id  String
+  role         CommitteeRole
+  created_at   DateTime      @default(now())
+  committee    Committee     @relation(fields: [committee_id], references: [id], onDelete: Cascade)
+  lecturer     User          @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+
+  @@unique([lecturer_id, semester_id])
+  @@index([committee_id])
+  @@index([lecturer_id])
+  @@index([semester_id])
+  @@map("committee_members")
+}
+
+model UserWorkloadLimit {
+  id            String   @id @default(uuid())
+  user_id       String
+  semester_id   String
+  role_type     String   @db.VarChar(50)
+  max_count     Int
+  current_count Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  semester      Semester @relation(fields: [semester_id], references: [id])
+  user          User     @relation("UserWorkload", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, semester_id, role_type])
+  @@index([user_id])
+  @@index([semester_id])
+  @@map("user_workload_limits")
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  type       String   @db.VarChar(100)
+  title      String   @db.VarChar(255)
+  content    String
+  related_id String?
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  user       User     @relation("UserNotifications", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String?
+  action      String   @db.VarChar(100)
+  entity_type String   @db.VarChar(100)
+  entity_id   String
+  old_value   Json?
+  new_value   Json?
+  ip_address  String?  @db.VarChar(50)
+  created_at  DateTime @default(now())
+  user        User?    @relation("UserAuditLogs", fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([entity_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+model SystemConfig {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.VarChar(100)
+  value         String
+  description   String?
+  updated_by_id String
+  updated_at    DateTime @updatedAt
+  updated_by    User     @relation("ConfigUpdater", fields: [updated_by_id], references: [id])
+
+  @@index([name])
+  @@map("system_config")
+}
+
+enum UserRole {
+  STUDENT
+  LECTURER
+  HEAD
+  ADMIN
+}
+
+enum DefenseType {
+  ORAL
+  POSTER
+}
+
+enum TopicStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PENDING_INTERDISCIPLINARY
+  REQUIRE_EDIT
+  APPROVED
+  REJECTED
+  HIDDEN
+  REGISTERED
+  UNDER_REVIEW
+  WAITING_FOR_DEFENSE_ASSIGNMENT
+  WAITING_FOR_DEFENSE
+  DEFENDING
+  COMPLETED
+  FINALIZED
+}
+
+enum RegistrationStatus {
+  PENDING
+  GROUPED
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+enum GroupStatus {
+  FORMING
+  COMPLETE
+  LOCKED
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  AUTO_DECLINED
+  AUTO_ACCEPTED
+}
+
+enum AssignmentType {
+  REVIEWER
+  COMMITTEE
+}
+
+enum CommitteeType {
+  ORAL
+  POSTER
+}
+
+enum CommitteeRole {
+  CHAIR
+  SECRETARY
+  MEMBER
+  MEMBER_1
+  MEMBER_2
+}
+
+enum GroupMemberStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  LEFT
+}
+
+enum GroupInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum ExtraPointStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SemesterPhase {
+  PLANNING
+  PREVIEW
+  REGISTRATION
+  WORK
+  REVIEWING
+  DEFENSE
+  FINAL
+}
+
+enum SemesterStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+}
+
+enum InterdisciplinaryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SubmissionType {
+  PROPOSAL
+  THESIS
+  SOURCE_CODE
+  PRESENTATION
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED_FOR_REVIEW
+  REVISION_REQUIRED
+  FINAL_APPROVED
+  LOCKED
+}
+
+enum RaterRole {
+  SUPERVISOR
+  REVIEWER_1
+  REVIEWER_2
+  REVIEWER_3
+  COMMITTEE_CHAIR
+  COMMITTEE_SECRETARY
+  COMMITTEE_MEMBER
+  COMMITTEE_MEMBER_1
+  COMMITTEE_MEMBER_2
+  ORAL_COMMITTEE
+  POSTER_COMMITTEE
+}
+
+enum ChangeLeaderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum StudentProgressStatus {
+  NOT_STARTED
+  HAS_TOPIC
+  PROPOSAL_SUBMITTED
+  PROPOSAL_APPROVED
+  THESIS_IN_PROGRESS
+  THESIS_SUBMITTED
+  ADVISOR_GRADED
+  REVIEWER_GRADED
+  DEFENSE_SCHEDULED
+  DEFENSE_COMPLETED
+  COUNCIL_GRADED
+  COMPLETED
+}
+
+enum MidtermStatus {
+  PASS
+  FAIL
+}
+
+enum ScheduleStatus {
+  PENDING
+  COMPLETED
+}
+
+model RegistrationExtension {
+  id             String   @id @default(uuid())
+  semester_id    String
+  extended_until DateTime
+  reason         String
+  created_by     String
+  created_at     DateTime @default(now())
+
+  semester       Semester @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  creator        User     @relation("ExtensionCreator", fields: [created_by], references: [id], onDelete: Cascade)
+
+  @@index([semester_id])
+  @@index([created_by])
+  @@map("registration_extensions")
+}
