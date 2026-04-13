@@ -14,7 +14,11 @@ export class RegistrationService {
    * Student registers for a topic individually (no group required)
    * Flow: Student -> Register Topic -> See other students -> Form group
    */
-  async registerTopicIndividual(userId: string, topicId: string) {
+  async registerTopicIndividual(userId: string, topicId: string, accepted: boolean) {
+    if (!accepted) {
+      throw new Error('Bạn phải xác nhận các điều khoản trước khi đăng ký đề tài');
+    }
+
     // 1. Initial validation outside transaction
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.role !== 'STUDENT') {

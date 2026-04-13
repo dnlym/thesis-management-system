@@ -36,7 +36,8 @@ export class RegistrationController {
     try {
       const userId = req.user!.id;
       const topicId = req.params.topicId as string;
-      const registration = await registrationService.registerTopicIndividual(userId, topicId);
+      const { accepted } = req.body;
+      const registration = await registrationService.registerTopicIndividual(userId, topicId, accepted);
       res.json({
         success: true,
         data: registration,

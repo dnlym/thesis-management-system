@@ -51,6 +51,6 @@ export const uploadExtraPointEvidence = multer({
   storage: storage,
   fileFilter: extraPointFileFilter,
   limits: {
-    fileSize: FILE_UPLOAD.MAX_SIZE.EXTRA_POINT_EVIDENCE,
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
 });

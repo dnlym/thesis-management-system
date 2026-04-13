@@ -1,4 +1,4 @@
-﻿import prisma from '../config/database';
+import prisma from '../config/database';
 import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole } from '@prisma/client';
 import { CreateAssignmentRequest, CreateDefenseScheduleRequest } from '../types';
 import { ERROR_CODES } from '../constants';
@@ -753,13 +753,14 @@ export class AssignmentService {
     const topics = await prisma.topic.findMany({
       where: {
         departmentId: user.departmentId,
-        // Has reviewer assignments that are accepted
-        assignments: {
-          some: {
-            assignment_type: AssignmentType.REVIEWER,
-            status: AssignmentStatus.ACCEPTED,
-          },
-        },
+        // Include topics that are in review-related statuses
+        status: {
+          in: [
+            TopicStatus.UNDER_REVIEW,
+            TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT,
+            TopicStatus.COMPLETED
+          ]
+        }
       },
       include: topicForCommitteeAssignmentInclude,
       orderBy: { created_at: 'desc' },

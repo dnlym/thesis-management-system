@@ -19,7 +19,13 @@ export const FILE_UPLOAD = {
     THESIS: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
     SOURCE_CODE: ['application/zip', 'application/x-rar-compressed'],
     PRESENTATION: ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
-    EXTRA_POINT_EVIDENCE: ['application/pdf', 'image/jpeg', 'image/png'],
+    EXTRA_POINT_EVIDENCE: [
+      'application/pdf', 
+      'image/jpeg', 
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ],
   },
   STORAGE_PATH: './uploads',
 };
@@ -40,7 +46,7 @@ export const VALIDATION = {
     REJECTION_MIN: 20,
     EDIT_NOTES_MIN: 20,
     DECLINE_MIN: 30,
-    EXTRA_POINT_MIN: 100,
+    EXTRA_POINT_MIN: 50,
   },
 };
 
