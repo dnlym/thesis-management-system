@@ -32,6 +32,7 @@ const Topics = () => {
   // Registration modal
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Hooks
   const { data: topics, isLoading } = useTopics(filters);
@@ -69,14 +70,20 @@ const Topics = () => {
 
   const handleRegister = (topic: any) => {
     setSelectedTopic(topic);
+    setAcceptedTerms(false);
     setRegisterModalVisible(true);
   };
 
   const confirmRegister = async () => {
     if (!selectedTopic) return;
+    
+    if (!acceptedTerms) {
+      message.error(t('topics.mustAcceptTerms')); 
+      return;
+    }
 
     registerMutation.mutate(
-      selectedTopic.id,
+      { topicId: selectedTopic.id, accepted: acceptedTerms },
       {
         onSuccess: async () => {
           setRegisterModalVisible(false);
@@ -393,6 +400,7 @@ const Topics = () => {
         confirmLoading={registerMutation.isPending}
         okText={t('topics.confirmRegisterButton')}
         cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !acceptedTerms }}
       >
         {selectedTopic && (
           <div className="space-y-4">
@@ -408,8 +416,15 @@ const Topics = () => {
             </div>
 
             <div className="flex items-start space-x-2">
-              <input type="checkbox" id="confirm" className="mt-1" required />
-              <label htmlFor="confirm" className="text-sm">
+              <input 
+                type="checkbox" 
+                id="confirm" 
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-academic-primary focus:ring-academic-primary cursor-pointer" 
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required 
+              />
+              <label htmlFor="confirm" className="text-sm select-none cursor-pointer">
                 {t('topics.understandRequirement')}
               </label>
             </div>

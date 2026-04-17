@@ -11,6 +11,7 @@
     "filter": "Filter",
     "status": "Status",
     "actions": "Actions",
+    "duration": "Duration",
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",

@@ -1,99 +1,104 @@
-# Hệ thống quản lý khóa luận tốt nghiệp
+# Hệ thống quản lý khóa luận tốt nghiệp (Thesis Management System)
 
-Một ứng dụng web frontend hoàn chỉnh được xây dựng bằng React + TypeScript + Vite để quản lý toàn bộ quy trình khóa luận tốt nghiệp.
+Giải pháp toàn diện hỗ trợ quản lý quy trình làm khóa luận tốt nghiệp, từ đề xuất đề tài đến bảo vệ cuối kỳ và thống kê kết quả.
 
-## 🚀 Cài đặt và chạy
+## 🏗 Cấu trúc dự án
+
+Dự án bao gồm 2 phần chính:
+- **Frontend**: Ứng dụng React xây dựng giao diện người dùng.
+- **Backend**: RESTful API Node.js xử lý dữ liệu và logic nghiệp vụ.
+
+---
+
+## 🚀 Hướng dẫn cài đặt
+
+### 1. Backend (BE)
+
+**Yêu cầu**: Node.js, PostgreSQL.
 
 ```bash
-# 1. Cài đặt dependencies
+# Di chuyển vào thư mục backend
+cd thesis-be
+
+# Cài đặt thư viện
 npm install
 
-# 2. Chạy ứng dụng development
-npm run dev
+# Cấu hình môi trường
+# Tạo file .env dựa trên thông số DB của bạn
+# DATABASE_URL="postgresql://user:password@localhost:5432/db_name?schema=public"
 
-# 3. Mở trình duyệt tại http://localhost:5173
+# Đồng bộ Database (Prisma)
+npx prisma generate
+npx prisma migrate dev --name init
+
+# Tạo dữ liệu mẫu (Seed data)
+npm run seed
+
+# Chạy Server Development
+npm run dev
 ```
 
-## 👥 Tài khoản demo
+### 2. Frontend (FE)
+
+```bash
+# Di chuyển vào thư mục frontend
+cd thesis-tapestry-main
+
+# Cài đặt thư viện
+npm install
+
+# Chạy ứng dụng Development
+npm run dev
+```
+Mặc định ứng dụng sẽ chạy tại: `http://localhost:5173`
+
+---
+
+## 👥 Tài khoản demo (Sau khi Seed)
 
 | Vai trò | Email | Mật khẩu | Mô tả |
 |---------|-------|----------|-------|
-| Admin | admin@uni.edu | 123456 | Quản trị viên hệ thống |
-| Trưởng bộ môn | hod@uni.edu | 123456 | Quản lý toàn bộ quy trình |
-| Giảng viên | gv1@uni.edu | 123456 | GVHD/GVPB |
-| Hội đồng | hd1@uni.edu | 123456 | Thành viên hội đồng |
-| Sinh viên | sv1@uni.edu | 123456 | Thực hiện khóa luận |
+| Admin | admin@uni.edu | 123456 | Toàn quyền hệ thống |
+| Trưởng bộ môn | hod@uni.edu | 123456 | Duyệt đề tài, phân công |
+| Giảng viên 1 | gv1@uni.edu | 123456 | GVHD / GVPB |
+| Giảng viên 2 | gv2@uni.edu | 123456 | Hội đồng |
+| Sinh viên | sv1@uni.edu | 123456 | Làm khóa luận |
 
-## ✨ Tính năng chính
+---
 
-### 🎯 Quản lý đề tài
-- Tạo, chỉnh sửa, duyệt đề tài
-- Lịch sử revision với ghi chú
-- Đăng ký đề tài trực tuyến
+## ✨ Tính năng nổi bật (Mới nhất)
 
-### 📊 Theo dõi tiến độ  
-- Timeline các giai đoạn (Đề cương → Chương 1,2,3 → Hoàn thành)
-- Cập nhật tiến độ theo thời gian thực
-- Phản hồi từ GVHD
+### 🛡 Quản lý & Bảo mật
+- **Cô lập dữ liệu theo Bộ môn**: Giảng viên và Sinh viên chỉ thấy dữ liệu thuộc bộ môn của mình.
+- **Phân tách vai trò chấm điểm**: Form chấm điểm hiển thị động theo vai trò (GV hướng dẫn, Phản biện hoặc Hội đồng).
 
-### 📁 Nộp bài & quản lý phiên bản
-- Upload files với drag & drop
-- Quản lý phiên bản và so sánh
-- Hỗ trợ đa định dạng file
+### 🎯 Quy trình học thuật
+- **Đánh giá Giữa kỳ (Midterm)**: Quy trình đánh giá tập trung kèm theo phản hồi chi tiết từ GVHD.
+- **Phân công tự động (Auto-Assignment)**: Trưởng bộ môn có thể phân công trực tiếp GV phản biện và Hội đồng (Tự động chấp nhận).
+- **Hệ thống Điểm cộng NCKH**: Quy trình nộp và duyệt điểm thưởng từ các hoạt động nghiên cứu.
 
-### 🎓 Đánh giá & phân loại bảo vệ
-- Phân công GVHD, GVPB, Hội đồng
-- Chấm điểm theo vai trò với công thức tính toán
-- Poster hoặc Hội đồng bảo vệ
-- Điểm cộng thêm
+### 📢 Tương tác & Thông báo
+- **Hệ thống Thông báo trung tâm**: Tự động gửi thông báo khi có các sự kiện: đăng ký, phê duyệt, được phân công...
+- **Realtime Chat**: Trao đổi trực tiếp trong nhóm đề tài.
 
-### 💬 Trao đổi & thông báo
-- Chat theo đề tài với realtime polling
-- Thông báo hệ thống tự động
-- Upload file đính kèm
-
-### 📅 Quản lý lịch trình
-- Calendar tích hợp
-- Lịch báo cáo thử, phản biện, họp hội đồng
-- Nhắc nhở tự động
-
-### 📈 Báo cáo & thống kê
-- Biểu đồ phân tích với Recharts
-- Thống kê theo GV, trạng thái, thời gian
-- Export báo cáo
-
-### ⚙️ Quản trị hệ thống
-- Quản lý người dùng & phân quyền
-- Cấu hình tiêu chí đánh giá
-- Thiết lập hội đồng & nhóm poster
+---
 
 ## 🛠 Công nghệ sử dụng
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Ant Design + TailwindCSS  
-- **State Management**: Zustand + React Query
-- **Routing**: React Router v6
-- **Charts**: Recharts
-- **i18n**: react-i18next (vi/en)
-- **Auth**: Mock authentication với localStorage
+### Frontend (FE)
+- **Framework**: React 18 + Vite + TypeScript.
+- **UI & Styling**: Ant Design, TailwindCSS, Lucide Icons.
+- **Quản lý trạng thái**: Zustand, TanStack Query (React Query).
+- **Khác**: i18next (Đa ngôn ngữ), DayJS (Xử lý thời gian).
 
-## 📱 Responsive Design
+### Backend (BE)
+- **Framework**: Node.js + Express (v5.1.0).
+- **ORM**: Prisma với PostgreSQL.
+- **Bảo mật**: JWT (Authentication), bcryptjs (Hash mật khẩu), Helmet, Rate Limit.
+- **Validation**: Zod & Express Validator.
+- **Logging**: Winston & Morgan.
 
-Ứng dụng được thiết kế responsive hoàn toàn, hỗ trợ tất cả các thiết bị từ mobile đến desktop với academic design system chuyên nghiệp.
+---
 
-## 🎨 Design System
-
-- Màu chủ đạo: Academic Blue (#3b82f6)
-- Typography: Semantic tokens
-- Status colors: Pending, In Progress, Completed, Defended, Rejected
-- Components: Shadcn/ui + Custom Ant Design theme
-
-## 🔐 Phân quyền
-
-- **Student**: Đăng ký đề tài, cập nhật tiến độ, nộp bài, chat
-- **Lecturer**: Tạo đề tài, đánh giá, chấm điểm GVHD/GVPB  
-- **Head of Dept**: Duyệt đề tài, phân công, báo cáo, quản lý
-- **Council**: Chấm điểm hội đồng, xem lịch trình
-- **Admin**: Toàn quyền quản lý hệ thống
-
-Hệ thống đã sẵn sàng cho demo đầy đủ chức năng! 🎉
+## 🗺 Sitemap & Quy trình
+Chi tiết về cấu trúc trang và luồng nghiệp vụ cho từng vai trò có thể xem tại: [SITEMAP.md](./SITEMAP.md)

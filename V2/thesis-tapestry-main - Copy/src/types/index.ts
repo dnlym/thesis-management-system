@@ -103,7 +103,8 @@ export interface Department {
   updated_at: string;
 }
 
-export type SemesterPhase = 'PLANNING' | 'TOPIC_PROPOSAL' | 'REGISTRATION' | 'IMPLEMENTATION' | 'REVIEWING' | 'DEFENSE' | 'CLOSED' | 'ARCHIVED';
+export type SemesterPhase = 'PREVIEW' | 'REGISTRATION' | 'WORK' | 'REVIEWING' | 'DEFENSE' | 'FINAL';
+export type SemesterStatus = 'PLANNING' | 'ACTIVE' | 'COMPLETED';
 
 export interface Semester {
   id: string;
@@ -121,9 +122,8 @@ export interface Semester {
   thesis_deadline: string;
   defense_start: string;
   defense_end: string;
-  current_phase: SemesterPhase;
-  manual_phase_override?: SemesterPhase | null;
-  calculated_phase?: SemesterPhase;
+  status: SemesterStatus;
+  calculated_phase?: SemesterPhase | null;
   created_at: string;
   updated_at: string;
 }

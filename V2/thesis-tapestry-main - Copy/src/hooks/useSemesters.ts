@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SemestersApi } from '@/api/semesters';
 import type { Semester, CreateSemesterDto, UpdateSemesterDto } from '@/types';
-import { message } from 'antd';
+import { message, notification } from 'antd';
 
 const QUERY_KEY = 'semesters';
 
@@ -47,10 +47,7 @@ export function useCreateSemester() {
             queryClient.invalidateQueries({ queryKey: semesterKeys.lists() });
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
             message.success('Tạo học kỳ thành công');
-        },
-        onError: () => {
-            message.error('Tạo học kỳ thất bại');
-        },
+        }
     });
 }
 
@@ -66,10 +63,7 @@ export function useUpdateSemester() {
             queryClient.invalidateQueries({ queryKey: semesterKeys.detail(variables.id) });
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
             message.success('Cập nhật học kỳ thành công');
-        },
-        onError: () => {
-            message.error('Cập nhật học kỳ thất bại');
-        },
+        }
     });
 }
 
@@ -101,8 +95,35 @@ export function useActivateSemester() {
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
             message.success('Kích hoạt học kỳ thành công');
         },
-        onError: () => {
-            message.error('Kích hoạt học kỳ thất bại');
+        onError: (error: any) => {
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau.';
+            notification.error({
+                message: 'Kích hoạt học kỳ thất bại',
+                description: errorMsg,
+                placement: 'topRight'
+            });
+        },
+    });
+}
+
+// Finalize semester (move to COMPLETED)
+export function useFinalizeSemester() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => SemestersApi.finalize(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: semesterKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: ['active-semester'] });
+            message.success('Tổng kết học kỳ thành công');
+        },
+        onError: (error: any) => {
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau.';
+            notification.error({
+                message: 'Tổng kết học kỳ thất bại',
+                description: errorMsg,
+                placement: 'topRight'
+            });
         },
     });
 }

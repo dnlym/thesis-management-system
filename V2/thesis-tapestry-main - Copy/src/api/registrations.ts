@@ -24,8 +24,8 @@ export const RegistrationsApi = {
      * Student register for a topic individually (no group required)
      * POST /api/registrations/topic/:topicId
      */
-    async registerIndividual(topicId: string) {
-        const res = await api.post<ApiResponse<Registration>>(`/registrations/topic/${topicId}`);
+    async registerIndividual(topicId: string, accepted: boolean) {
+        const res = await api.post<ApiResponse<Registration>>(`/registrations/topic/${topicId}`, { accepted });
         return res.data.data;
     },
 

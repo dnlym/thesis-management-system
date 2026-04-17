@@ -70,7 +70,7 @@ const StudentTopics = () => {
 
     const confirmRegistration = () => {
         if (!selectedTopic) return;
-        registerMutation.mutate(selectedTopic.id, {
+        registerMutation.mutate({ topicId: selectedTopic.id, accepted: true }, {
             onSuccess: () => {
                 toast.success('Đăng ký đề tài thành công!');
                 setIsRegisterDialogOpen(false);

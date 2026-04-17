@@ -29,10 +29,8 @@ const TopicDetailStudent = () => {
 
     // Get active semester
     const { data: semesters } = useSemesters();
-    // Improved logic: Find semester that is not closed or archived
-    const activeSemester = semesters?.find(s => 
-        s.current_phase !== 'CLOSED' && s.current_phase !== 'ARCHIVED'
-    );
+    // Improved logic: Find the active semester
+    const activeSemester = semesters?.find(s => s.status === 'ACTIVE');
 
     // Get my current registration (to check if student already has a topic)
     const { data: myCurrentRegistration } = useQuery({
@@ -69,8 +67,9 @@ const TopicDetailStudent = () => {
 
     // Registration handlers
     const handleRegister = () => {
+        if (!topic) return;
         registerMutation.mutate(
-            topic.id,
+            { topicId: topic.id, accepted: true },
             {
                 onSuccess: () => {
                     setRegisterModalVisible(false);

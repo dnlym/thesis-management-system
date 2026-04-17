@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, DatePicker, Button, Alert, message, Space, Typography, Tag, Divider, Spin, Steps, Tooltip, Badge } from 'antd';
-import { 
-    CalendarOutlined, 
-    InfoCircleOutlined, 
-    SaveOutlined, 
-    RocketOutlined, 
-    CheckCircleOutlined, 
+import {
+    CalendarOutlined,
+    InfoCircleOutlined,
+    SaveOutlined,
+    RocketOutlined,
+    CheckCircleOutlined,
     ClockCircleOutlined,
     EditOutlined,
     UsergroupAddOutlined,
@@ -24,7 +24,7 @@ import { SemestersApi } from '@/api/semesters';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
 import dayjs from 'dayjs';
 import { SemesterPhase, UserRole } from '@/types';
-import { Modal, Form, Input, Table } from 'antd';
+import { Modal, Form, Input, Table, Empty } from 'antd';
 
 const { Title, Text } = Typography;
 
@@ -71,11 +71,6 @@ const PHASE_CONFIG: Record<string, { label: string; sublabel: string; icon: any;
         color: 'success', 
         description: 'Học kỳ đã kết thúc, dữ liệu đã được chốt và lưu trữ.' 
     },
-    // Fallback for legacy backend phases
-    PLANNING: { label: 'Chuẩn bị', sublabel: 'Khởi tạo', icon: <SettingOutlined />, color: 'default', description: 'Học kỳ đang được chuẩn bị.' },
-    TOPIC_PROPOSAL: { label: 'Đề xuất', sublabel: 'Duyệt đề tài', icon: <RocketOutlined />, color: 'blue', description: 'Giai đoạn đề xuất và duyệt đề tài.' },
-    CLOSED: { label: 'Đã đóng', sublabel: 'Kết thúc', icon: <CheckCircleOutlined />, color: 'default', description: 'Học kỳ đã kết thúc.' },
-    ARCHIVED: { label: 'Lưu trữ', sublabel: 'Lưu trữ', icon: <LockOutlined />, color: 'volcano', description: 'Dữ liệu đã được lưu trữ.' },
 };
 
 const PHASES_ORDER: string[] = [
@@ -91,7 +86,7 @@ const getPhaseTimeRange = (phase: any, semester: any) => {
     const format = 'DD/MM/YYYY';
     const start = (d: any) => d ? dayjs(d).format(format) : 'Chưa thiết lập';
     const sPlus = (d: any, days: number) => d ? dayjs(d).add(days, 'day').format(format) : '...';
-    
+
     switch (phase) {
         case 'PREVIEW':
             return `${start(semester.topic_viewing_start)} - ${start(semester.topic_viewing_end)}`;
@@ -135,16 +130,7 @@ const SemesterSettings = () => {
         },
     });
 
-    const overridePhaseMutation = useMutation({
-        mutationFn: (phase: SemesterPhase | null) => SemestersApi.setPhaseOverride(activeSemester!.id, phase),
-        onSuccess: () => {
-            message.success('Cập nhật trạng thái học kỳ thành công');
-            queryClient.invalidateQueries({ queryKey: ['active-semester'] });
-        },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.error || 'Lỗi khi chuyển trạng thái học kỳ');
-        },
-    });
+
 
     const { data: extensions = [], isLoading: loadingExtensions } = useQuery({
         queryKey: ['registration-extensions', activeSemester?.id],
@@ -153,7 +139,7 @@ const SemesterSettings = () => {
     });
 
     const createExtensionMutation = useMutation({
-        mutationFn: (data: { semesterId: string; extendedUntil: string; reason: string }) => 
+        mutationFn: (data: { semesterId: string; extendedUntil: string; reason: string }) =>
             SemestersApi.createRegistrationExtension(data),
         onSuccess: () => {
             message.success('Gia hạn đăng ký thành công');
@@ -178,23 +164,20 @@ const SemesterSettings = () => {
         updateDateMutation.mutate(defenseDate.toISOString());
     };
 
-    const handlePhaseChange = (phase: SemesterPhase) => {
-        overridePhaseMutation.mutate(phase);
-    };
 
-    const handleResetOverride = () => {
-        overridePhaseMutation.mutate(null);
-    };
 
     if (isLoading) return <div className="p-10 text-center"><Spin size="large" /></div>;
 
     if (!activeSemester) return <div className="p-10"><Alert message={t('common.noActiveSemester')} type="warning" /></div>;
 
-    const currentPhase = activeSemester.current_phase;
-    const isLocked = currentPhase === 'CLOSED' || currentPhase === 'ARCHIVED';
+    // Find the current active step based on the phase returned from backend
+    const currentPhase = activeSemester.calculated_phase;
+    const currentStepIndex = currentPhase ? PHASES_ORDER.indexOf(currentPhase) : -1;
 
-    // Calculate effective deadline
-    const originalDeadline = activeSemester.topic_registration_end || activeSemester.proposal_deadline;
+    const isLocked = activeSemester.status === 'COMPLETED';
+
+    // Calculate effective deadline for Registration
+    const originalDeadline = activeSemester.topic_registration_end;
     const latestExtension = extensions.length > 0 ? extensions[0].extended_until : null;
     const effectiveDeadline = latestExtension ? dayjs(latestExtension) : (originalDeadline ? dayjs(originalDeadline) : null);
 
@@ -209,33 +192,11 @@ const SemesterSettings = () => {
         else statusTag = <Tag color="green">ĐANG TRONG HẠN</Tag>;
     }
 
-    const canExtend = !isLocked && (!activeSemester.midterm_start || now.isBefore(dayjs(activeSemester.midterm_start)));
-
-    // Sequential date-based step calculation
-    let currentStepIndex = 0;
-    
-    // Define start boundaries for all 6 phases
-    const phaseStarts = [
-        activeSemester.topic_viewing_start ? dayjs(activeSemester.topic_viewing_start) : null,
-        activeSemester.topic_registration_start ? dayjs(activeSemester.topic_registration_start) : null,
-        activeSemester.topic_registration_end ? dayjs(activeSemester.topic_registration_end).add(1, 'day') : null,
-        activeSemester.proposal_deadline ? dayjs(activeSemester.proposal_deadline).add(1, 'day') : null,
-        activeSemester.defense_start ? dayjs(activeSemester.defense_start) : null,
-        activeSemester.defense_end ? dayjs(activeSemester.defense_end).add(1, 'day') : null,
-    ].filter(Boolean) as dayjs.Dayjs[];
-
-    // Find the current active step based on date
-    for (let i = phaseStarts.length - 1; i >= 0; i--) {
-        if (now.isAfter(phaseStarts[i]) || now.isSame(phaseStarts[i], 'day')) {
-            currentStepIndex = i;
-            break;
-        }
-    }
-
-    // Override if CLOSED or ARCHIVED
-    if (activeSemester.current_phase === 'CLOSED' || activeSemester.current_phase === 'ARCHIVED') {
-        currentStepIndex = 5;
-    }
+    // canExtend: allowed if semester is active and we haven't entered Review/Defense phases
+    const canExtend = activeSemester.status === 'ACTIVE' && 
+                     currentPhase !== 'REVIEWING' && 
+                     currentPhase !== 'DEFENSE' && 
+                     currentPhase !== 'FINAL';
 
     return (
         <div className="p-6 max-w-7xl mx-auto min-h-screen">
@@ -254,80 +215,86 @@ const SemesterSettings = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Left: Phase Status (Non-interactive) */}
                 <div className="lg:col-span-7">
-                    <Card 
+                    <Card
                         className="shadow-xl border-none overflow-hidden rounded-2xl h-full"
                         title={
                             <div className="flex items-center justify-between py-2">
                                 <Space>
-                                    <Badge status="processing" color={PHASE_CONFIG[currentPhase].color} />
+                                    <Badge status="processing" color={currentPhase ? PHASE_CONFIG[currentPhase]?.color : 'default'} />
                                     <span className="text-lg font-semibold text-gray-700">Lộ trình học kỳ (Timeline)</span>
                                 </Space>
                                 <Tag color="blue" className="rounded-full px-3 border-none">TỰ ĐỘNG</Tag>
                             </div>
                         }
                     >
-                        <Steps
-                            direction="vertical"
-                            current={currentStepIndex}
-                            className="semester-steps-readonly px-4"
-                        >
-                            {PHASES_ORDER.map((phase) => (
-                                <Steps.Step
-                                    key={phase}
-                                    title={
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-base font-bold ${PHASES_ORDER[currentStepIndex] === phase ? 'text-blue-600' : 'text-gray-400'}`}>
-                                                {PHASE_CONFIG[phase].label}
-                                            </span>
-                                            {PHASES_ORDER[currentStepIndex] === phase && (
-                                                <div className="flex items-center gap-2">
-                                                    <Tag color={PHASE_CONFIG[phase].color} className="rounded-full text-[10px] border-none">
-                                                        {PHASE_CONFIG[phase].sublabel}
-                                                    </Tag>
-                                                    <Badge status="processing" text="Hiện tại" className="animate-pulse" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    }
-                                    subTitle={
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 font-medium bg-gray-100/50 px-2 py-0.5 rounded-md">
-                                            <ClockCircleOutlined style={{ fontSize: '10px' }} />
-                                            {getPhaseTimeRange(phase, activeSemester)}
-                                        </div>
-                                    }
-                                    description={
-                                        <div className={`mt-1 p-3 rounded-xl transition-all ${PHASES_ORDER[currentStepIndex] === phase ? 'bg-blue-50/50 border border-blue-100 shadow-sm' : 'text-gray-400'}`}>
-                                            {PHASE_CONFIG[phase].description}
-                                            {/* Khoảng thời gian chấm giữa kỳ bên trong WORK phase */}
-                                            {phase === 'WORK' && activeSemester.midterm_start && (
-                                                <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                                                    <span>📍</span>
-                                                    <span>
-                                                        Chấm giữa kỳ:{' '}
-                                                        <b>{dayjs(activeSemester.midterm_start).format('DD/MM/YYYY')}</b>
-                                                        {activeSemester.midterm_end && (
-                                                            <>{' '}→ <b>{dayjs(activeSemester.midterm_end).format('DD/MM/YYYY')}</b></>
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    }
-                                    icon={
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-md ${PHASES_ORDER[currentStepIndex] === phase ? 'bg-blue-600 text-white shadow-blue-200 scale-110' : 'bg-gray-50 border border-gray-100 text-gray-300'}`}>
-                                            {PHASE_CONFIG[phase].icon}
-                                        </div>
-                                    }
-                                />
-                            ))}
-                        </Steps>
+                        {currentStepIndex === -1 ? (
+                            <div className="py-20 text-center">
+                                <Empty description="Học kỳ chưa bắt đầu hoặc đang trong giai đoạn chuẩn bị." />
+                            </div>
+                        ) : (
+                            <Steps
+                                direction="vertical"
+                                current={currentStepIndex}
+                                className="semester-steps-readonly px-4"
+                            >
+                                {PHASES_ORDER.map((phase) => (
+                                    <Steps.Step
+                                        key={phase}
+                                        title={
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-base font-bold ${PHASES_ORDER[currentStepIndex] === phase ? 'text-blue-600' : 'text-gray-400'}`}>
+                                                    {PHASE_CONFIG[phase].label}
+                                                </span>
+                                                {PHASES_ORDER[currentStepIndex] === phase && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Tag color={PHASE_CONFIG[phase].color} className="rounded-full text-[10px] border-none">
+                                                            {PHASE_CONFIG[phase].sublabel}
+                                                        </Tag>
+                                                        <Badge status="processing" text="Hiện tại" className="animate-pulse" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        }
+                                        subTitle={
+                                            <div className="flex items-center gap-1 text-xs text-gray-500 font-medium bg-gray-100/50 px-2 py-0.5 rounded-md">
+                                                <ClockCircleOutlined style={{ fontSize: '10px' }} />
+                                                {getPhaseTimeRange(phase, activeSemester)}
+                                            </div>
+                                        }
+                                        description={
+                                            <div className={`mt-1 p-3 rounded-xl transition-all ${PHASES_ORDER[currentStepIndex] === phase ? 'bg-blue-50/50 border border-blue-100 shadow-sm' : 'text-gray-400'}`}>
+                                                {PHASE_CONFIG[phase].description}
+                                                {/* Khoảng thời gian chấm giữa kỳ bên trong WORK phase */}
+                                                {phase === 'WORK' && activeSemester.midterm_start && (
+                                                    <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                                                        <span>📍</span>
+                                                        <span>
+                                                            Chấm giữa kỳ:{' '}
+                                                            <b>{dayjs(activeSemester.midterm_start).format('DD/MM/YYYY')}</b>
+                                                            {activeSemester.midterm_end && (
+                                                                <>{' '}→ <b>{dayjs(activeSemester.midterm_end).format('DD/MM/YYYY')}</b></>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        }
+                                        icon={
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-md ${PHASES_ORDER[currentStepIndex] === phase ? 'bg-blue-600 text-white shadow-blue-200 scale-110' : 'bg-gray-50 border border-gray-100 text-gray-300'}`}>
+                                                {PHASE_CONFIG[phase].icon}
+                                            </div>
+                                        }
+                                    />
+                                ))}
+                            </Steps>
+                        )}
                     </Card>
                 </div>
 
                 {/* Right: Controls */}
                 <div className="lg:col-span-5 space-y-6">
                     {/* Panel 2: Registration Management (MỚI) */}
-                    <Card 
+                    <Card
                         title={<Space><UsergroupAddOutlined /> <span>Quản lý Đăng ký</span></Space>}
                         className="shadow-lg border-none rounded-2xl overflow-hidden"
                         extra={statusTag}
@@ -345,10 +312,10 @@ const SemesterSettings = () => {
                             </div>
 
                             <Space direction="vertical" style={{ width: '100%' }}>
-                                <Button 
-                                    type="primary" 
-                                    icon={<CalendarOutlined />} 
-                                    block 
+                                <Button
+                                    type="primary"
+                                    icon={<CalendarOutlined />}
+                                    block
                                     size="large"
                                     onClick={() => setIsExtendModalOpen(true)}
                                     disabled={!canExtend}
@@ -356,9 +323,9 @@ const SemesterSettings = () => {
                                 >
                                     Gia hạn Đăng ký
                                 </Button>
-                                <Button 
-                                    icon={<ClockCircleOutlined />} 
-                                    block 
+                                <Button
+                                    icon={<ClockCircleOutlined />}
+                                    block
                                     className="h-12 rounded-xl border-dashed"
                                     onClick={() => setIsHistoryModalOpen(true)}
                                 >
@@ -367,7 +334,7 @@ const SemesterSettings = () => {
                             </Space>
 
                             {!canExtend && activeSemester.midterm_start && (
-                                <Alert 
+                                <Alert
                                     type="error"
                                     message="Không thể gia hạn"
                                     description="Hệ thống đã khóa gia hạn do đã bước vào giai đoạn chuẩn bị chấm điểm giữa kỳ."
@@ -379,16 +346,16 @@ const SemesterSettings = () => {
                     </Card>
 
                     {/* Panel 1: Global Config */}
-                    <Card 
+                    <Card
                         title={<Space><CalendarOutlined /> <span>Cấu hình Thời gian chung</span></Space>}
                         className="shadow-lg border-none rounded-2xl overflow-hidden hover:shadow-xl transition-shadow"
                     >
-                         <div className="space-y-4">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-400 capitalize tracking-wider">
                                     Ngày bảo vệ học kỳ (dự kiến)
                                 </label>
-                                <DatePicker 
+                                <DatePicker
                                     className="w-full h-12 rounded-xl border-gray-200"
                                     format="DD/MM/YYYY"
                                     value={defenseDate}
@@ -397,17 +364,17 @@ const SemesterSettings = () => {
                                     disabledDate={(current) => {
                                         if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
                                         return current && (
-                                            current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) || 
+                                            current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
                                             current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
                                         );
                                     }}
                                 />
                             </div>
-                            <Button 
-                                type="primary" 
-                                size="large" 
+                            <Button
+                                type="primary"
+                                size="large"
                                 block
-                                icon={<SaveOutlined />} 
+                                icon={<SaveOutlined />}
                                 onClick={handleSaveDate}
                                 loading={updateDateMutation.isPending}
                                 disabled={isLocked || !defenseDate}
@@ -418,7 +385,7 @@ const SemesterSettings = () => {
                         </div>
                     </Card>
 
-                    <Alert 
+                    <Alert
                         className="rounded-2xl border-none bg-blue-50/50"
                         icon={<InfoCircleOutlined className="text-blue-400" />}
                         showIcon
@@ -461,9 +428,9 @@ const SemesterSettings = () => {
                         label="Gia hạn đến ngày"
                         rules={[{ required: true, message: 'Vui lòng chọn ngày gia hạn' }]}
                     >
-                        <DatePicker 
-                            showTime 
-                            className="w-full h-10 rounded-lg" 
+                        <DatePicker
+                            showTime
+                            className="w-full h-10 rounded-lg"
                             format="DD/MM/YYYY HH:mm"
                             disabledDate={(current) => current && current < dayjs().startOf('day')}
                         />
@@ -486,7 +453,7 @@ const SemesterSettings = () => {
                 width={700}
                 className="rounded-2xl"
             >
-                <Table 
+                <Table
                     dataSource={extensions}
                     loading={loadingExtensions}
                     rowKey="id"

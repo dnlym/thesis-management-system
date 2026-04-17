@@ -73,6 +73,29 @@ export default function ExtraPointsSubmission() {
 
     const handleFileUpload = async (options: any) => {
         const { file, onSuccess, onError } = options;
+        
+        // 1. Check file size (5MB limit)
+        const isLt5M = file.size / 1024 / 1024 < 5;
+        if (!isLt5M) {
+            message.error('File phải nhỏ hơn 5MB!');
+            onError(new Error('File too large'));
+            return;
+        }
+
+        // 2. Check file type (sync with backend)
+        const allowedTypes = [
+            'application/pdf', 
+            'image/jpeg', 
+            'image/png',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        if (!allowedTypes.includes(file.type)) {
+            message.error('Chỉ hỗ trợ file PDF, Ảnh (JPEG/PNG) hoặc Word (.doc, .docx)');
+            onError(new Error('Invalid file type'));
+            return;
+        }
+
         try {
             setUploading(true);
             const result = await ExtraPointsApi.uploadEvidence(file);
@@ -267,12 +290,18 @@ export default function ExtraPointsSubmission() {
                                 </Select>
                             </Form.Item>
 
-                            <Form.Item 
+                             <Form.Item 
                                 name="achievementTitle" 
                                 label="Tên thành tích / Bài báo / Giải thưởng" 
-                                rules={[{ required: true, min: 10, message: 'Tên thành tích phải ít nhất 10 ký tự' }]}
+                                rules={[
+                                    { required: true, message: 'Vui lòng nhập tên thành tích' },
+                                    { min: 50, message: 'Tên thành tích/Lý do phải ít nhất 50 ký tự' }
+                                ]}
                             >
-                                <Input placeholder="Ví dụ: Giải Nhì NCKH Cấp Trường 2025" />
+                                <Input.TextArea 
+                                    placeholder="Ví dụ: Giải Nhì NCKH Cấp Trường 2025 - Bài báo nghiên cứu về AI trong y tế (Vui lòng mô tả chi tiết để được duyệt)" 
+                                    rows={3} 
+                                />
                             </Form.Item>
 
                             <Form.Item 
@@ -327,7 +356,10 @@ export default function ExtraPointsSubmission() {
                             <Form.Item 
                                 name="commitment" 
                                 valuePropName="checked"
-                                rules={[{ required: true, message: 'Bạn phải cam kết thông tin cung cấp là đúng sự thật' }]}
+                                rules={[{ 
+                                    validator: (_, value) => 
+                                        value ? Promise.resolve() : Promise.reject(new Error('Bạn phải cam kết thông tin cung cấp là đúng sự thật')) 
+                                }]}
                             >
                                 <Checkbox>Tôi cam kết thông tin và minh chứng cung cấp là đúng sự thật.</Checkbox>
                             </Form.Item>

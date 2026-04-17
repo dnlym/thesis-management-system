@@ -8,7 +8,8 @@ import type {
     AssignmentStatus,
     ExtraPointsStatus,
     StudentProgressStatus,
-    SemesterPhase
+    SemesterPhase,
+    SemesterStatus
 } from '@/types';
 
 interface StatusBadgeProps {
@@ -19,7 +20,8 @@ interface StatusBadgeProps {
     | AssignmentStatus
     | ExtraPointsStatus
     | StudentProgressStatus
-    | SemesterPhase;
+    | SemesterPhase
+    | SemesterStatus;
     className?: string;
 }
 
@@ -40,14 +42,18 @@ const topicStatusConfig: Record<TopicStatus, { labelKey: string; color: string }
 };
 
 const semesterPhaseConfig: Record<SemesterPhase, { labelKey: string; color: string }> = {
-    PLANNING: { labelKey: 'status.semester.PLANNING', color: 'default' },
-    TOPIC_PROPOSAL: { labelKey: 'status.semester.TOPIC_PROPOSAL', color: 'blue' },
-    REGISTRATION: { labelKey: 'status.semester.REGISTRATION', color: 'cyan' },
-    IMPLEMENTATION: { labelKey: 'status.semester.IMPLEMENTATION', color: 'processing' },
-    REVIEWING: { labelKey: 'status.semester.REVIEWING', color: 'warning' },
-    DEFENSE: { labelKey: 'status.semester.DEFENSE', color: 'purple' },
-    CLOSED: { labelKey: 'status.semester.CLOSED', color: 'error' },
-    ARCHIVED: { labelKey: 'status.semester.ARCHIVED', color: 'default' },
+    PREVIEW: { labelKey: 'PREVIEW', color: 'default' },
+    REGISTRATION: { labelKey: 'REGISTRATION', color: 'cyan' },
+    WORK: { labelKey: 'WORK', color: 'processing' },
+    REVIEWING: { labelKey: 'REVIEWING', color: 'warning' },
+    DEFENSE: { labelKey: 'DEFENSE', color: 'purple' },
+    FINAL: { labelKey: 'FINAL', color: 'success' },
+};
+
+const semesterStatusConfig: Record<SemesterStatus, { labelKey: string; color: string }> = {
+    PLANNING: { labelKey: 'PLANNING', color: 'default' },
+    ACTIVE: { labelKey: 'ACTIVE', color: 'processing' },
+    COMPLETED: { labelKey: 'COMPLETED', color: 'success' },
 };
 
 const registrationStatusConfig: Record<RegistrationStatus, { labelKey: string; color: string }> = {
@@ -117,6 +123,9 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         }
         if (status in (semesterPhaseConfig as any)) {
             return semesterPhaseConfig[status as SemesterPhase];
+        }
+        if (status in semesterStatusConfig) {
+            return semesterStatusConfig[status as SemesterStatus];
         }
         return { labelKey: '', color: 'default' };
     };

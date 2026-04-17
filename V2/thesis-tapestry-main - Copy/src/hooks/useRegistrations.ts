@@ -48,7 +48,8 @@ export function useRegisterTopic() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (topicId: string) => RegistrationsApi.registerIndividual(topicId),
+        mutationFn: ({ topicId, accepted }: { topicId: string; accepted: boolean }) => 
+            RegistrationsApi.registerIndividual(topicId, accepted),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: registrationKeys.lists() });
             // Invalidate my-topic-registration to show data immediately

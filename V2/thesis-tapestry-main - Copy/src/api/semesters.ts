@@ -56,6 +56,14 @@ export const SemestersApi = {
         return res.data.data;
     },
     /**
+     * Finalize a semester (ADMIN only)
+     * PUT /semesters/:id/finalize
+     */
+    async finalize(id: string) {
+        const res = await api.put<ApiResponse<Semester>>(`/semesters/${id}/finalize`);
+        return res.data.data;
+    },
+    /**
      * Delete semester (ADMIN only)
      * DELETE /semesters/:id
      */
@@ -71,10 +79,7 @@ export const SemestersApi = {
         const res = await api.patch<ApiResponse<Semester>>(`/semesters/${id}/defense-date`, { defense_start: defenseDate });
         return res.data.data;
     },
-    async setPhaseOverride(id: string, phase: string | null) {
-        const res = await api.post<ApiResponse<Semester>>(`/semesters/${id}/phase-override`, { phase });
-        return res.data.data;
-    },
+
 
     /**
      * Create a registration extension
