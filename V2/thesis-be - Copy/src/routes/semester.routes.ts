@@ -88,13 +88,5 @@ router.patch(
   semesterController.updateDefenseDate.bind(semesterController)
 );
 
-router.post(
-  '/:id/phase-override',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
-  validate([
-    param('id').isUUID().withMessage('Invalid semester ID'),
-  ]),
-  semesterController.setPhaseOverride.bind(semesterController)
-);
 
 export default router;

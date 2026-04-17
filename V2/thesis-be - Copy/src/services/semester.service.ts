@@ -18,6 +18,22 @@ function toDate(value: string | Date | undefined | null): Date | undefined {
 }
 
 export class SemesterService {
+  private async checkOverlap(start_date: Date, end_date: Date, excludeId?: string) {
+    const overlapping = await prisma.semester.findFirst({
+      where: {
+        AND: [
+          { start_date: { lt: end_date } },
+          { end_date: { gt: start_date } }
+        ],
+        ...(excludeId ? { id: { not: excludeId } } : {})
+      }
+    });
+
+    if (overlapping) {
+      throw new Error(`Thời gian học kỳ bị chồng lấn với học kỳ: ${overlapping.name} (${overlapping.code})`);
+    }
+  }
+
   async createSemester(userId: string, data: {
     name: string;
     code: string;
@@ -48,43 +64,20 @@ export class SemesterService {
     const midterm_start = toDate(data.midterm_start);
     const midterm_end = toDate(data.midterm_end);
 
-    // Validate phase sequence
-    if (start_date >= end_date) {
-      throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
-    }
+    // Validate timeline integrity
+    this.validateTimelineIntegrity({
+      start_date,
+      end_date,
+      topic_viewing_start,
+      topic_registration_start,
+      topic_registration_end,
+      proposal_deadline,
+      defense_start,
+      defense_end
+    });
 
-    if (proposal_deadline >= thesis_deadline) {
-      throw new Error('Thời hạn nộp khóa luận phải sau hạn nộp đề cương');
-    }
-
-    if (defense_start && defense_end && defense_start >= defense_end) {
-      throw new Error('Ngày kết thúc bảo vệ phải sau ngày bắt đầu bảo vệ');
-    }
-
-    if (topic_registration_start && topic_registration_end && topic_registration_start >= topic_registration_end) {
-      throw new Error('Ngày kết thúc đăng ký phải sau ngày bắt đầu đăng ký');
-    }
-
-    // Validate midterm milestone: must be INSIDE the WORK phase
-    // WORK phase = [topic_registration_end + 1 day, proposal_deadline]
-    if (midterm_start || midterm_end) {
-      const work_start = topic_registration_end
-        ? new Date(topic_registration_end.getTime() + 86400000) // +1 day
-        : start_date;
-      const work_end = proposal_deadline;
-
-      if (midterm_start && midterm_start < work_start) {
-        throw new Error('Ngày bắt đầu chấm giữa kỳ phải nằm trong giai đoạn Thực hiện khóa luận');
-      }
-
-      if (midterm_end && midterm_end > work_end) {
-        throw new Error('Ngày kết thúc chấm giữa kỳ phải nằm trong giai đoạn Thực hiện khóa luận');
-      }
-
-      if (midterm_start && midterm_end && midterm_start > midterm_end) {
-        throw new Error('Ngày kết thúc chấm giữa kỳ phải sau hoặc bằng ngày bắt đầu');
-      }
-    }
+    // Check for semester overlapping
+    await this.checkOverlap(start_date, end_date);
 
     // Check if code already exists
     const existing = await prisma.semester.findUnique({
@@ -167,38 +160,20 @@ export class SemesterService {
     const final_midterm_start = toDate(data.midterm_start);
     const final_midterm_end = toDate(data.midterm_end);
 
-    // Validate phase sequence
-    if (final_start_date >= final_end_date) {
-      throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
-    }
+    // Validate timeline integrity of the final merged result
+    this.validateTimelineIntegrity({
+      start_date: final_start_date,
+      end_date: final_end_date,
+      topic_viewing_start: toDate(data.topic_viewing_start) ?? semester.topic_viewing_start,
+      topic_registration_start: toDate(data.topic_registration_start) ?? semester.topic_registration_start,
+      topic_registration_end: final_topic_registration_end,
+      proposal_deadline: final_proposal_deadline,
+      defense_start: final_defense_start,
+      defense_end: final_defense_end
+    });
 
-    if (final_proposal_deadline >= final_thesis_deadline) {
-      throw new Error('Thời hạn nộp khóa luận phải sau hạn nộp đề cương');
-    }
-
-    if (final_defense_start && final_defense_end && final_defense_start >= final_defense_end) {
-      throw new Error('Ngày kết thúc bảo vệ phải sau ngày bắt đầu bảo vệ');
-    }
-
-    // Validate midterm milestone: must be INSIDE the WORK phase
-    if (final_midterm_start || final_midterm_end) {
-      const work_start = final_topic_registration_end
-        ? new Date(final_topic_registration_end.getTime() + 86400000)
-        : final_start_date;
-      const work_end = final_proposal_deadline;
-
-      if (final_midterm_start && final_midterm_start < work_start) {
-        throw new Error('Ngày bắt đầu chấm giữa kỳ phải nằm trong giai đoạn Thực hiện khóa luận');
-      }
-
-      if (final_midterm_end && final_midterm_end > work_end) {
-        throw new Error('Ngày kết thúc chấm giữa kỳ phải nằm trong giai đoạn Thực hiện khóa luận');
-      }
-
-      if (final_midterm_start && final_midterm_end && final_midterm_start > final_midterm_end) {
-        throw new Error('Ngày kết thúc chấm giữa kỳ phải sau hoặc bằng ngày bắt đầu');
-      }
-    }
+    // Check for semester overlapping
+    await this.checkOverlap(final_start_date, final_end_date, semesterId);
 
     const updateData: any = {
       name: data.name,
@@ -216,13 +191,7 @@ export class SemesterService {
       midterm_end: final_midterm_end,
     };
 
-    if (data.phase) {
-      updateData.current_phase = data.phase;
-    }
 
-    if (data.manualPhaseOverride !== undefined) {
-      updateData.manual_phase_override = data.manualPhaseOverride;
-    }
 
     const updated = await prisma.semester.update({
       where: { id: semesterId },
@@ -309,64 +278,26 @@ export class SemesterService {
     };
   }
 
-  /**
-   * HOD/Admin sets manual phase override
-   */
-  async setManualOverride(userId: string, role: UserRole, semesterId: string, phase: SemesterPhase | null) {
-    const semester = await prisma.semester.findUnique({
-      where: { id: semesterId },
-    });
 
-    if (!semester) {
-      throw new Error(ERROR_CODES.NOT_FOUND);
-    }
-
-    // Validate transition
-    const currentEffectivePhase = SemesterGuard.calculateCurrentPhase(semester);
-    if (phase && !SemesterGuard.canTransition(currentEffectivePhase, phase, role)) {
-      throw new Error('Chuyển đổi giai đoạn không hợp lệ. Bạn chỉ có thể tiến hoặc lùi 1 bước.');
-    }
-
-    const updated = await prisma.semester.update({
-      where: { id: semesterId },
-      data: { manual_phase_override: phase },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'PHASE_OVERRIDE',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        old_value: { 
-          phase: currentEffectivePhase, 
-          override: semester.manual_phase_override 
-        },
-        new_value: { 
-          phase: phase || 'AUTO', 
-          override: phase,
-          performed_by_role: role
-        },
-      },
-    });
-
-    return {
-      ...updated,
-      calculated_phase: SemesterGuard.calculateCurrentPhase(updated)
-    };
-  }
 
   async setActiveSemester(userId: string, role: UserRole, semesterId: string) {
-    // 1. Move status to ACTIVE
-    // 2. Starting a semester usually begins with PREVIEW phase
+    // 1. Ensure absolute exclusivity: Only ONE semester can be ACTIVE at any given time.
+    const currentlyActive = await prisma.semester.findFirst({
+      where: { status: SemesterStatus.ACTIVE },
+    });
+
+    if (currentlyActive && currentlyActive.id !== semesterId) {
+      throw new Error(`Hệ thống đang có học kỳ [${currentlyActive.name}] ở trạng thái Đang Hoạt Động (ACTIVE). Vui lòng Tổng kết (COMPLETED) học kỳ cũ trước khi kích hoạt học kỳ mới!`);
+    }
+
+    // 2. Move status to ACTIVE
     const updated = await prisma.semester.update({
       where: { id: semesterId },
       data: { 
-        status: SemesterStatus.ACTIVE,
-        manual_phase_override: SemesterPhase.PREVIEW 
+        status: SemesterStatus.ACTIVE
       },
     });
+
 
     await prisma.auditLog.create({
       data: {
@@ -405,10 +336,10 @@ export class SemesterService {
     const updated = await prisma.semester.update({
       where: { id: semesterId },
       data: { 
-        status: SemesterStatus.COMPLETED,
-        manual_phase_override: null // Clear override so status dictates FINAL phase
+        status: SemesterStatus.COMPLETED
       },
     });
+
 
     // Create audit log
     await prisma.auditLog.create({
@@ -464,6 +395,78 @@ export class SemesterService {
 
     return updated;
   }
+
+  /**
+   * Validates that the timeline is consistent and non-overlapping.
+   * Preview < Registration < Work < Review < Defense
+   */
+  private validateTimelineIntegrity(data: any) {
+    const {
+      start_date,
+      end_date,
+      topic_viewing_start,
+      topic_registration_start,
+      topic_registration_end,
+      proposal_deadline,
+      thesis_deadline,
+      defense_start,
+      defense_end,
+      midterm_start,
+      midterm_end
+    } = data;
+
+    // 1. Array-based Boundary Lock (Fail-Fast: Prevent NULL bypass)
+    const timeline = [
+      { name: 'Ngày Khai giảng (start_date)', date: start_date },
+      { name: 'Bắt đầu Xem đề tài (topic_viewing_start)', date: topic_viewing_start },
+      { name: 'Bắt đầu Đăng ký (topic_registration_start)', date: topic_registration_start },
+      { name: 'Kết thúc Đăng ký (topic_registration_end)', date: topic_registration_end },
+      { name: 'Hạn nộp Báo cáo / Kết thúc Thực hiện (proposal_deadline)', date: proposal_deadline },
+      { name: 'Hạn chót Phản biện / Reviewing (thesis_deadline)', date: thesis_deadline },
+      { name: 'Bắt đầu Bảo vệ (defense_start)', date: defense_start },
+      { name: 'Kết thúc Bảo vệ (defense_end)', date: defense_end },
+      { name: 'Ngày Bế giảng (end_date)', date: end_date },
+    ];
+
+    // Trích xuất những cột bị NULL
+    const missingFields = timeline.filter(t => !t.date).map(t => t.name);
+    if (missingFields.length > 0) {
+      throw new Error(`Dữ liệu Timeline bị khuyết các mốc bắt buộc: ${missingFields.join(', ')}`);
+    }
+
+    // 2. Strict Sequential Validator (Must dynamically increment or equal over time)
+    for (let i = 0; i < timeline.length - 1; i++) {
+      if (timeline[i].date > timeline[i + 1].date) {
+        throw new Error(`Trật tự thời gian không hợp lệ: Mốc [${timeline[i].name}] phải diễn ra trước hoặc bằng [${timeline[i + 1].name}].`);
+      }
+    }
+
+    // 3. Strict Boundary Anchor Checks (Phase Extreme Ends must perfectly match Global Bounds)
+    if (timeline[1].date.getTime() !== timeline[0].date.getTime()) {
+      throw new Error('Timeline must start from semester start (Giai đoạn Xem đề tài phải bắt đầu cùng ngày Khai giảng học kỳ).');
+    }
+    if (timeline[7].date.getTime() !== timeline[8].date.getTime()) {
+      throw new Error('Timeline must end at semester end (Giai đoạn Bảo vệ phải kết thúc cùng ngày Bế giảng học kỳ).');
+    }
+
+    // 4. Midterm Bounds (Must strictly resolve inside WORK phase)
+    // WORK phase: topic_registration_end -> proposal_deadline
+    if (midterm_start || midterm_end) {
+      if (!midterm_start || !midterm_end) {
+        throw new Error('Ngày chấm giữa kỳ bắt buộc phải có đủ điểm Bắt đầu và Kết thúc.');
+      }
+      if (midterm_start > midterm_end) {
+        throw new Error('Thời gian kết thúc giữa kỳ phải sau hoặc bằng thời gian bắt đầu giữa kỳ.');
+      }
+      if (topic_registration_end && midterm_start < topic_registration_end) {
+        throw new Error('Giai đoạn chấm giữa kỳ phải bắt đầu sau khi sinh viên bắt đầu Thực hiện khóa luận.');
+      }
+      if (proposal_deadline && midterm_end > proposal_deadline) {
+        throw new Error('Giai đoạn chấm giữa kỳ phải kết thúc trước hạn nộp báo cáo (kết thúc giai đoạn Thực hiện).');
+      }
+    }
+  }
 }
+
 
 export default new SemesterService();

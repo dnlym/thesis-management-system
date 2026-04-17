@@ -1,9 +1,9 @@
+import dayjs from '../config/dayjs';
 import prisma from '../config/database';
-import { SemesterPhase, UserRole } from '@prisma/client';
+import { SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 
 // ─── Phase Order (for transition validation only) ────────────────────────────
 export const PHASES_ORDER: SemesterPhase[] = [
-  SemesterPhase.PLANNING,
   SemesterPhase.PREVIEW,
   SemesterPhase.REGISTRATION,
   SemesterPhase.WORK,
@@ -14,7 +14,7 @@ export const PHASES_ORDER: SemesterPhase[] = [
 
 // ─── Timeline Context Object ─────────────────────────────────────────────────
 export interface TimelineContext {
-  phase: SemesterPhase;
+  phase: SemesterPhase | null;
   isMidtermActive: boolean;
   midtermStart: Date | null;
   midtermEnd: Date | null;
@@ -23,47 +23,34 @@ export interface TimelineContext {
 /**
  * SemesterGuard — Pure Context Provider
  * -----------------------------------------------
- * This class is ONLY responsible for:
+ * This class is responsible for:
  *   1. Resolving the current phase from real-time dates (calculateCurrentPhase)
  *   2. Providing the full timeline context (getTimelineContext)
- *   3. Validating phase transitions (canTransition)
- *   4. Getting effective registration deadline (getEffectiveDeadline)
- *
- * ❌ It NO LONGER decides what actions are allowed.
- *    That responsibility belongs to AcademicPolicy (academic-policy.ts).
+ *   3. Validating phase transitions
  */
 export class SemesterGuard {
   /**
    * Calculate the effective phase of a semester based on real-time dates.
-   * Priority: manual_phase_override > date-based > FINAL
+   * Locked to Asia/Ho_Chi_Minh timezone.
    */
-  static calculateCurrentPhase(semester: any): SemesterPhase {
-    // 1. Manual override takes highest priority
-    if (semester.manual_phase_override) {
-      return semester.manual_phase_override as SemesterPhase;
-    }
-
-    // 2. Process-based status takes second priority
-    // If Admin marked as COMPLETED -> Phase is definitively FINAL
-    if (semester.status === 'COMPLETED') {
+  static calculateCurrentPhase(semester: any): SemesterPhase | null {
+    // Priority 1: If Admin marked as COMPLETED -> Phase is definitively FINAL
+    if (semester.status === SemesterStatus.COMPLETED) {
       return SemesterPhase.FINAL;
     }
 
-    const now = new Date();
-
-    // 3. Timeline-based phase calculation
-    
-    // Pre-semester
-    if (semester.start_date && now < new Date(semester.start_date)) {
-      return SemesterPhase.PLANNING;
+    // Priority 2: If the semester is not ACTIVE, it doesn't have an operational phase
+    if (semester.status !== SemesterStatus.ACTIVE) {
+      return null;
     }
 
-    // [1] PREVIEW: topic_viewing_start → topic_viewing_end
+    // Priority 3: Timeline-driven phase calculation
+    const now = dayjs();
+
+    // [1] PREVIEW: topic_viewing_start → topic_registration_start
     if (
       semester.topic_viewing_start &&
-      now >= new Date(semester.topic_viewing_start) &&
-      semester.topic_viewing_end &&
-      now < new Date(semester.topic_viewing_end)
+      now.isBefore(dayjs(semester.topic_registration_start))
     ) {
       return SemesterPhase.PREVIEW;
     }
@@ -71,9 +58,8 @@ export class SemesterGuard {
     // [2] REGISTRATION: topic_registration_start → topic_registration_end
     if (
       semester.topic_registration_start &&
-      now >= new Date(semester.topic_registration_start) &&
-      semester.topic_registration_end &&
-      now < new Date(semester.topic_registration_end)
+      now.isAfter(dayjs(semester.topic_registration_start).subtract(1, 'ms')) &&
+      now.isBefore(dayjs(semester.topic_registration_end))
     ) {
       return SemesterPhase.REGISTRATION;
     }
@@ -81,19 +67,17 @@ export class SemesterGuard {
     // [3] WORK: topic_registration_end → proposal_deadline
     if (
       semester.topic_registration_end &&
-      now >= new Date(semester.topic_registration_end) &&
-      semester.proposal_deadline &&
-      now < new Date(semester.proposal_deadline)
+      now.isAfter(dayjs(semester.topic_registration_end).subtract(1, 'ms')) &&
+      now.isBefore(dayjs(semester.proposal_deadline))
     ) {
       return SemesterPhase.WORK;
     }
 
-    // [4] REVIEWING: proposal_deadline → defense_start (or thesis_deadline)
+    // [4] REVIEWING: proposal_deadline → defense_start
     if (
       semester.proposal_deadline &&
-      now >= new Date(semester.proposal_deadline) &&
-      semester.defense_start &&
-      now < new Date(semester.defense_start)
+      now.isAfter(dayjs(semester.proposal_deadline).subtract(1, 'ms')) &&
+      now.isBefore(dayjs(semester.defense_start))
     ) {
       return SemesterPhase.REVIEWING;
     }
@@ -101,21 +85,14 @@ export class SemesterGuard {
     // [5] DEFENSE: defense_start → defense_end
     if (
       semester.defense_start &&
-      now >= new Date(semester.defense_start) &&
-      semester.defense_end &&
-      now < new Date(semester.defense_end)
+      now.isAfter(dayjs(semester.defense_start).subtract(1, 'ms')) &&
+      now.isBefore(dayjs(semester.defense_end))
     ) {
       return SemesterPhase.DEFENSE;
     }
 
-    // 4. Default / End-of-Timeline
-    // If we passed defense_end but status is not COMPLETED, 
-    // we stay in DEFENSE phase (waiting for Admin to finalize).
-    if (semester.defense_end && now >= new Date(semester.defense_end)) {
-      return SemesterPhase.DEFENSE;
-    }
-
-    return semester.current_phase || SemesterPhase.PLANNING;
+    // Final Fallback: If we passed defense_end, we stay in FINAL phase
+    return SemesterPhase.FINAL;
   }
 
   /**

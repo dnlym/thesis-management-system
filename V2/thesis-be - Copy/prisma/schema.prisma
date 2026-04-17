@@ -40,7 +40,6 @@ model Semester {
   name                     String              @db.VarChar(100)
   code                     String              @unique @db.VarChar(50)
   current_phase           SemesterPhase       @default(PLANNING)
-  manual_phase_override   SemesterPhase?
   status                  SemesterStatus      @default(PLANNING)
   start_date               DateTime
   end_date                 DateTime

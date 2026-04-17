@@ -178,7 +178,7 @@ export class SemesterController {
           message: 'Yêu cầu đăng nhập để lấy thông tin học kỳ.',
         });
       }
-      
+
       // Resolve student registration if applicable
       let registration = null;
       if (user.role === UserRole.STUDENT) {
@@ -314,25 +314,6 @@ export class SemesterController {
         throw new Error('defense_start is required');
       }
       const semester = await semesterService.updateDefenseDate(userId, id, new Date(defense_start));
-      res.json({
-        success: true,
-        data: semester,
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
-  async setPhaseOverride(req: AuthRequest, res: Response) {
-    try {
-      const userId = req.user!.id;
-      const role = req.user!.role;
-      const id = req.params.id as string;
-      const { phase } = req.body; // phase can be null to clear override
-      const semester = await semesterService.setManualOverride(userId, role, id, phase);
       res.json({
         success: true,
         data: semester,
