@@ -250,7 +250,7 @@ export class SemesterService {
 
     for (const sem of semesters) {
       const phase = SemesterGuard.calculateCurrentPhase(sem);
-      if (phase !== SemesterPhase.FINAL) {
+      if (phase) {
         return {
           ...sem,
           calculated_phase: phase
