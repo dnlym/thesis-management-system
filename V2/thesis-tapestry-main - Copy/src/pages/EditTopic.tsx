@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, Form, Input, InputNumber, Button, Spin, message, Alert, Modal } from 'antd';
+import { Card, Form, Input, InputNumber, Button, Spin, Alert, Modal } from 'antd';
+import { notify } from '@/utils/notification';
 import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { useTopic, useUpdateTopic } from '@/hooks/useTopics';
@@ -51,7 +52,7 @@ const EditTopic = () => {
                 },
                 {
                     onSuccess: () => {
-                        message.success('Cập nhật đề tài thành công');
+                        notify.success('Cập nhật đề tài thành công');
                         navigate(`/topics/${id}`);
                     },
                 onError: (error: any) => {

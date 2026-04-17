@@ -4,6 +4,7 @@ import { SubmitExtraPointRequest, ApproveExtraPointRequest, RejectExtraPointRequ
 import { ERROR_CODES, VALIDATION, GRADING, FILE_UPLOAD } from '../constants';
 import notificationService from './notification.service';
 import * as fs from 'fs/promises';
+import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
 
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -45,15 +46,17 @@ export class ExtraPointsService {
       throw new Error('Bạn chưa đăng ký đề tài này');
     }
 
-    // Check if midterm is PASS (required before extra points submission)
-    if (registration.midterm_status !== MidtermStatus.PASS) {
-      throw new Error('Bạn cần đạt điểm giữa kỳ (PASS) trước khi submit điểm cộng NCKH');
-    }
+    // Check academic policy
+    const semester = await prisma.semester.findUnique({ where: { id: registration.semester_id } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!semester || !user) throw new Error('Semester or User not found');
 
-    // Check if already confirmed
+    // Check if already confirmed (Legacy check preserved for integrity)
     if (registration.extra_points_confirmed) {
       throw new Error('Bạn đã xác nhận điểm cộng cho đề tài này');
     }
+
+    AcademicPolicy.enforce(AcademicAction.SUBMIT_EXTRA_POINTS, { id: userId, role: user.role as any }, semester, registration);
 
     // Check if already has a pending or approved request
     const existingRequest = await prisma.extraPointRequest.findFirst({

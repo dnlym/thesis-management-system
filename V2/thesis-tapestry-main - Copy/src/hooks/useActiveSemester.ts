@@ -5,6 +5,7 @@ export const useActiveSemester = () => {
     return useQuery({
         queryKey: ['active-semester'],
         queryFn: () => SemestersApi.getActive(),
-        staleTime: 1000 * 60, // 1 minute
+        staleTime: 60 * 1000, // 60 seconds (rely on BroadcastChannel for instant updates)
+        refetchOnWindowFocus: true,
     });
 };

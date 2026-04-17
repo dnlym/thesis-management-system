@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useRegisterTopic } from '@/hooks/useRegistrations';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { notify } from '@/utils/notification';
 import dayjs from 'dayjs';
 
 const StudentTopics = () => {
@@ -72,12 +72,12 @@ const StudentTopics = () => {
         if (!selectedTopic) return;
         registerMutation.mutate({ topicId: selectedTopic.id, accepted: true }, {
             onSuccess: () => {
-                toast.success('Đăng ký đề tài thành công!');
+                notify.success('Đăng ký đề tài thành công!');
                 setIsRegisterDialogOpen(false);
                 setTimeout(() => navigate('/my-topic'), 500);
             },
             onError: (error: any) => {
-                toast.error(error.response?.data?.error || 'Đăng ký thất bại');
+                notify.error(error.response?.data?.error || 'Đăng ký thất bại');
             }
         });
     };

@@ -4,6 +4,7 @@ import type { ApiResponse, Grade, GradingCriteria, FinalScore, GradeSubmissionFo
 export interface CriteriaFilters {
     criteriaType?: CriteriaType;
     topicId?: string;
+    departmentId?: string;
 }
 
 export const GradingApi = {

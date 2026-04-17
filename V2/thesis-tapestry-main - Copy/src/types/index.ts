@@ -103,7 +103,7 @@ export interface Department {
   updated_at: string;
 }
 
-export type SemesterPhase = 'PREVIEW' | 'REGISTRATION' | 'WORK' | 'REVIEWING' | 'DEFENSE' | 'FINAL';
+export type SemesterPhase = 'PLANNING' | 'PREVIEW' | 'REGISTRATION' | 'WORK' | 'REVIEWING' | 'DEFENSE' | 'FINAL';
 export type SemesterStatus = 'PLANNING' | 'ACTIVE' | 'COMPLETED';
 
 export interface Semester {
@@ -158,6 +158,10 @@ export interface Topic {
   defense_schedule?: DefenseSchedule;
   committee?: Committee;
   students?: User[];
+  is_interdisciplinary?: boolean;
+  co_supervisor_id?: string | null;
+  secondary_department_id?: string | null;
+  interdisciplinary_status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
 }
 
 export interface Group {
@@ -398,6 +402,8 @@ export interface TopicForm {
   departmentId?: string;
   maxStudents: number;
   isDraft?: boolean;
+  isInterdisciplinary?: boolean;
+  coSupervisorId?: string;
 }
 
 export interface SubmissionUploadForm {

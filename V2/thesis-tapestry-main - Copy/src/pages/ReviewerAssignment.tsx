@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, message, DatePicker } from 'antd';
+import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker } from 'antd';
+import { notify } from '@/utils/notification';
 import { UserOutlined, CheckCircleOutlined, PlusOutlined, ClockCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -69,7 +70,7 @@ const ReviewerAssignment = () => {
         mutationFn: (data: { topicId: string; reviewerId: string; reviewerOrder: number; deadlineAt: Date }) =>
             AssignmentsApi.assignReviewer(data),
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
+            notify.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
         },
     });
 
@@ -97,12 +98,12 @@ const ReviewerAssignment = () => {
         const assignedOrders = getAssignedOrders(topic);
 
         if (!sel.reviewer1 && !sel.reviewer2) {
-            message.warning(t('reviewerAssignment.noReviewersSelected'));
+            notify.warning(t('reviewerAssignment.noReviewersSelected'));
             return;
         }
 
         if (sel.reviewer1 && sel.reviewer2 && sel.reviewer1 === sel.reviewer2) {
-            message.warning(t('reviewerAssignment.sameReviewerError'));
+            notify.warning(t('reviewerAssignment.sameReviewerError'));
             return;
         }
 
@@ -129,7 +130,7 @@ const ReviewerAssignment = () => {
                 });
             }
 
-            message.success(t('reviewerAssignment.assignSuccess'));
+            notify.success(t('reviewerAssignment.assignSuccess'));
             // Clear selection for this topic
             setSelections(prev => {
                 const newSel = { ...prev };
@@ -138,7 +139,7 @@ const ReviewerAssignment = () => {
             });
             queryClient.invalidateQueries({ queryKey: ['topics-for-reviewer'] });
         } catch (error: any) {
-            message.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
+            notify.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
         } finally {
             setSubmittingTopicId(null);
         }

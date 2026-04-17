@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Modal, Form, Input, Select, message, Space } from 'antd';
+import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space } from 'antd';
+import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { User } from '@/types';
@@ -132,7 +133,7 @@ const Users = () => {
       title: t('users.deleteConfirmTitle'),
       content: t('users.deleteConfirmContent'),
       onOk() {
-        message.success(t('users.deleteSuccess'));
+        notify.success(t('users.deleteSuccess'));
       },
     });
   };
@@ -140,9 +141,9 @@ const Users = () => {
   const handleModalOk = () => {
     form.validateFields().then(values => {
       if (editingUser) {
-        message.success(t('users.updateSuccess'));
+        notify.success(t('users.updateSuccess'));
       } else {
-        message.success(t('users.createSuccess'));
+        notify.success(t('users.createSuccess'));
       }
       setIsModalVisible(false);
       form.resetFields();

@@ -385,7 +385,8 @@ class GradingController {
     try {
       const role = req.query.criteriaType as RaterRole;
       const topicId = req.query.topicId as string;
-      const criteria = await gradingService.getGradingCriteria(role, topicId);
+      const departmentId = req.query.departmentId as string;
+      const criteria = await gradingService.getGradingCriteria(role, topicId, departmentId);
       res.json({
         success: true,
         data: criteria,

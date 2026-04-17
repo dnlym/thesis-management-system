@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Card, Form, Input, Button, Avatar, message, Space } from 'antd';
+import { Card, Form, Input, Button, Avatar, Space } from 'antd';
+import { notify } from '@/utils/notification';
 import { useAuthStore } from '@/store/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UsersApi } from '@/api/users';
@@ -42,12 +43,12 @@ const Profiles = () => {
           avatar_url: res.data.avatar_url || undefined,
         });
         queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
-        message.success('Cập nhật thông tin cá nhân thành công');
+        notify.success('Cập nhật thông tin cá nhân thành công');
       } else {
-        message.error(res.message || 'Cập nhật thất bại');
+        notify.error(res.message || 'Cập nhật thất bại');
       }
     },
-    onError: () => message.error('Cập nhật thất bại'),
+    onError: () => notify.error('Cập nhật thất bại'),
   });
 
   const onFinish = (values: { full_name: string; email: string; avatar_url?: string }) => {

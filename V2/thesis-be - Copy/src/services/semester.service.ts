@@ -198,12 +198,14 @@ export class SemesterService {
       midterm_end: final_midterm_end,
     };
 
-
+    const oldPhase = SemesterGuard.calculateCurrentPhase(semester);
 
     const updated = await prisma.semester.update({
       where: { id: semesterId },
       data: updateData,
     });
+
+    const newPhase = SemesterGuard.calculateCurrentPhase(updated);
 
     // Create audit log
     await prisma.auditLog.create({
@@ -217,7 +219,11 @@ export class SemesterService {
       },
     });
 
-    return updated;
+    return {
+      ...updated,
+      calculated_phase: newPhase,
+      previous_phase: oldPhase,
+    };
   }
 
   async getSemesters() {
@@ -388,6 +394,8 @@ export class SemesterService {
       },
     });
 
+    const newPhase = SemesterGuard.calculateCurrentPhase(updated);
+
     // Create audit log
     await prisma.auditLog.create({
       data: {
@@ -400,7 +408,10 @@ export class SemesterService {
       },
     });
 
-    return updated;
+    return {
+      ...updated,
+      calculated_phase: newPhase,
+    };
   }
 
   /**

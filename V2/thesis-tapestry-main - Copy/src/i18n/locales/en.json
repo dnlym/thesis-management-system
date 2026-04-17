@@ -146,13 +146,12 @@
     },
     "semester": {
       "PLANNING": "Planning",
-      "TOPIC_PROPOSAL": "Topic Proposal",
+      "PREVIEW": "Topic Proposal & Preview",
       "REGISTRATION": "Registration",
-      "IMPLEMENTATION": "Implementation",
+      "WORK": "Implementation",
       "REVIEWING": "Reviewing",
       "DEFENSE": "Defense",
-      "CLOSED": "Closed",
-      "ARCHIVED": "Archived"
+      "FINAL": "Finalized"
     },
     "registration": {
       "PENDING": "Pending Confirmation",

@@ -10,6 +10,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { semesterBroadcast } from '@/utils/broadcast';
 import { getMenuItems } from '@/routes';
 import { AuthApi } from '@/api/auth';
 import NotificationDropdown from './NotificationDropdown';
@@ -21,7 +23,28 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(false);
+
+  /**
+   * Global Broadcast Listener for Multi-tab Synchronization
+   * Transitions system to near real-time consistency (<1s)
+   */
+  useEffect(() => {
+    const cleanup = semesterBroadcast.setupListener((payload) => {
+      console.log('[Broadcast] Academic phase update detected:', payload);
+      
+      // Broad query invalidation for the entire workflow scope
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey.some((key: any) =>
+            ['semesters', 'active-semester', 'permissions', 'topics', 'topic', 'dashboard'].includes(key)
+          )
+      });
+    });
+
+    return () => cleanup();
+  }, [queryClient]);
   const [siderWidth, setSiderWidth] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
 

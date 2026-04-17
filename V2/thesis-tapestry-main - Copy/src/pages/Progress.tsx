@@ -1,4 +1,5 @@
-import { Card, Steps, Button, Table, Tag, Select, Spin, Alert, Modal, Space, Input, Form, DatePicker, Avatar, Divider, message } from 'antd';
+import { Card, Steps, Button, Table, Tag, Select, Spin, Alert, Modal, Space, Input, Form, DatePicker, Avatar, Divider } from 'antd';
+import { notify } from '@/utils/notification';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleOutlined, ClockCircleOutlined, SyncOutlined, EditOutlined, UserOutlined, SendOutlined, CloseCircleOutlined } from '@ant-design/icons';
@@ -93,14 +94,14 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
     }, {
       onSuccess: () => {
         setFeedback('');
-        message.success(t('progress.approveSuccess'));
+        notify.success(t('progress.approveSuccess'));
       }
     });
   };
 
   const handleRequestChanges = () => {
     if (!feedback.trim()) {
-      message.error(t('progress.revisionRequiredError'));
+      notify.error(t('progress.revisionRequiredError'));
       return;
     }
     updateProgressMutation.mutate({
@@ -110,7 +111,7 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
     }, {
       onSuccess: () => {
         setFeedback('');
-        message.success(t('progress.revisionSuccess'));
+        notify.success(t('progress.revisionSuccess'));
       }
     });
   };

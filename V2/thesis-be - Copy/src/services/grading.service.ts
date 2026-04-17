@@ -34,11 +34,23 @@ export class GradingService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
-    // Check semester phase via SemesterGuard
-    AcademicPolicy.enforce(AcademicAction.GRADE_REVIEWER, { id: userId, role: UserRole.LECTURER }, await prisma.semester.findUnique({ where: { id: topic.semester_id } })); const isPhaseAllowed = true;
-    if (!isPhaseAllowed) {
-      throw new Error('Hiện không phải giai đoạn chấm điểm của học kỳ');
+    // Determine academic action based on role
+    let action = AcademicAction.GRADE_REVIEWER;
+    if (raterRole === RaterRole.SUPERVISOR) {
+      action = AcademicAction.GRADE_SUPERVISOR;
+    } else if (isCommittee(raterRole)) {
+      action = AcademicAction.GRADE_COMMITTEE;
     }
+
+    // Check semester phase via AcademicPolicy
+    const [semester, user] = await Promise.all([
+      prisma.semester.findUnique({ where: { id: topic.semester_id } }),
+      prisma.user.findUnique({ where: { id: userId } })
+    ]);
+
+    if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
+    
+    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester);
 
     // Verify user has permission to grade using helpers
     let hasPermission = false;
@@ -252,6 +264,17 @@ export class GradingService {
       // Filter grades for this student
       const studentGrades = topic.grades.filter(g => g.student_id === studentId);
 
+      // Fetch approved extra points from research evidence (AUTOMATIC)
+      const approvedExtraPoint = await prisma.extraPointRequest.findFirst({
+        where: {
+          topic_id: topicId,
+          student_id: studentId,
+          status: 'APPROVED'
+        },
+        select: { points_requested: true }
+      });
+      const extraPoints = approvedExtraPoint?.points_requested || 0;
+
       // 1. Calculate weighted score for supervisor
       const supervisorGrades = studentGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR);
       const supervisorScore = supervisorGrades.length > 0 ? calculateWeightedScore(supervisorGrades) : 0;
@@ -288,11 +311,9 @@ export class GradingService {
         throw new Error('Detected invalid scores outside of range (0-10)');
       }
 
-      let finalScore = await prisma.finalScore.findUnique({
+      const finalScore = await prisma.finalScore.findUnique({
         where: { topic_id_student_id: { topic_id: topicId, student_id: studentId } },
       });
-
-      const extraPoints = finalScore?.extra_points || 0;
 
       const finalScoreValue = calculateFinalScore({
         supervisor: supervisorScore,
@@ -303,26 +324,24 @@ export class GradingService {
 
       const computedScore = Math.max(finalScoreValue - extraPoints, 0);
 
-
-      // Reuse finalScore fetched above
-
-
       const gradeClassification = this.getGradeClassification(finalScoreValue);
 
+      let resultScore;
       if (finalScore) {
-        finalScore = await prisma.finalScore.update({
+        resultScore = await prisma.finalScore.update({
           where: { topic_id_student_id: { topic_id: topicId, student_id: studentId } },
           data: {
             supervisor_score: supervisorScore,
             reviewer_avg_score: reviewerAvgScore,
             committee_score: committeeAvgScore,
             computed_score: computedScore,
+            extra_points: extraPoints,
             final_score: finalScoreValue,
             grade_classification: gradeClassification,
           },
         });
       } else {
-        finalScore = await prisma.finalScore.create({
+        resultScore = await prisma.finalScore.create({
           data: {
             topic_id: topicId,
             student_id: studentId,
@@ -330,14 +349,14 @@ export class GradingService {
             reviewer_avg_score: reviewerAvgScore,
             committee_score: committeeAvgScore,
             computed_score: computedScore,
-            extra_points: 0,
+            extra_points: extraPoints,
             final_score: finalScoreValue,
             grade_classification: gradeClassification,
           },
         });
       }
 
-      results.push(finalScore);
+      results.push(resultScore);
     }
 
     return results;
@@ -490,12 +509,25 @@ export class GradingService {
   }
 
   async createGradingCriterion(userId: string, data: CreateGradingCriterionRequest) {
+    // 0. Permission & Department check
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    
+    let targetDeptId = data.departmentId || null;
+    
+    if (user.role === UserRole.HEAD) {
+        // HOD must create for their own department unless explicitly allowed otherwise
+        targetDeptId = user.departmentId || null;
+    } else if (user.role !== UserRole.ADMIN) {
+        throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền tạo tiêu chí');
+    }
+
     // 1. Check uniqueness: name + role + departmentId
     const existing = await prisma.gradingCriterion.findFirst({
       where: {
         name: data.name,
         role: data.role,
-        departmentId: data.departmentId || null,
+        departmentId: targetDeptId,
         active: true
       }
     });
@@ -524,7 +556,7 @@ export class GradingService {
         role: data.role,
         order_index: data.orderIndex,
         criteria_type: 'REGULAR',
-        departmentId: data.departmentId || null,
+        departmentId: targetDeptId,
       },
     });
 
@@ -543,8 +575,24 @@ export class GradingService {
   }
 
   async updateGradingCriterion(userId: string, id: string, data: UpdateGradingCriterionRequest) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     const existing = await prisma.gradingCriterion.findUnique({ where: { id } });
     if (!existing) throw new Error('Không tìm thấy tiêu chí');
+
+    // 0. Permission check
+    if (user?.role === UserRole.HEAD && user.departmentId !== existing.departmentId) {
+        throw new Error('Bạn không có quyền chỉnh sửa tiêu chí của bộ môn khác');
+    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
+        throw new Error('Không có quyền thực hiện');
+    }
+
+    // 0.5. Stability Check: Block if grades already exist
+    const hasGrades = await prisma.grade.findFirst({
+        where: { criterion_id: id }
+    });
+    if (hasGrades) {
+        throw new Error('Không thể chỉnh sửa tiêu chí đã được sử dụng để chấm điểm. Vui lòng tạo tiêu chí mới nếu muốn thay đổi quy trình.');
+    }
 
     // 1. If name changes, check uniqueness
     if (data.name && data.name !== existing.name) {
@@ -605,12 +653,28 @@ export class GradingService {
   }
 
   async deleteGradingCriterion(userId: string, id: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     const criterion = await prisma.gradingCriterion.findUnique({
       where: { id },
     });
 
     if (!criterion) {
       throw new Error('Criterion not found');
+    }
+
+    // 0. Permission check
+    if (user?.role === UserRole.HEAD && user.departmentId !== criterion.departmentId) {
+        throw new Error('Bạn không có quyền xóa tiêu chí của bộ môn khác');
+    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
+        throw new Error('Không có quyền thực hiện');
+    }
+
+    // 0.5. Stability Check
+    const hasGrades = await prisma.grade.findFirst({
+        where: { criterion_id: id }
+    });
+    if (hasGrades) {
+        throw new Error('Không thể xóa tiêu chí đã được sử dụng để chấm điểm. Hãy ẩn (deactivate) tiêu chí này thay vì xóa.');
     }
 
     // Soft delete
@@ -635,8 +699,8 @@ export class GradingService {
     return updatedCriterion;
   }
 
-  async getGradingCriteria(role?: RaterRole | 'FINAL', topicId?: string) {
-    let departmentId: string | undefined;
+  async getGradingCriteria(role?: RaterRole | 'FINAL', topicId?: string, explicitDeptId?: string) {
+    let departmentId: string | undefined = explicitDeptId;
 
     if (topicId) {
       const topic = await prisma.topic.findUnique({

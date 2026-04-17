@@ -14,7 +14,6 @@ import {
   Checkbox, 
   Alert, 
   Upload, 
-  message, 
   Spin, 
   Result,
   Space,
@@ -23,6 +22,7 @@ import {
   Row,
   Col
 } from 'antd';
+import { notify } from '@/utils/notification';
 import { 
   UploadOutlined, 
   CheckCircleOutlined, 
@@ -77,7 +77,7 @@ export default function ExtraPointsSubmission() {
         // 1. Check file size (5MB limit)
         const isLt5M = file.size / 1024 / 1024 < 5;
         if (!isLt5M) {
-            message.error('File phải nhỏ hơn 5MB!');
+            notify.error('File phải nhỏ hơn 5MB!');
             onError(new Error('File too large'));
             return;
         }
@@ -91,7 +91,7 @@ export default function ExtraPointsSubmission() {
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ];
         if (!allowedTypes.includes(file.type)) {
-            message.error('Chỉ hỗ trợ file PDF, Ảnh (JPEG/PNG) hoặc Word (.doc, .docx)');
+            notify.error('Chỉ hỗ trợ file PDF, Ảnh (JPEG/PNG) hoặc Word (.doc, .docx)');
             onError(new Error('Invalid file type'));
             return;
         }
@@ -100,10 +100,10 @@ export default function ExtraPointsSubmission() {
             setUploading(true);
             const result = await ExtraPointsApi.uploadEvidence(file);
             form.setFieldsValue({ evidenceUrl: result.url });
-            message.success('Upload minh chứng thành công!');
+            notify.success('Upload minh chứng thành công!');
             onSuccess(result);
         } catch (err: any) {
-            message.error('Upload thất bại: ' + (err.response?.data?.error || err.message));
+            notify.error('Upload thất bại: ' + (err.response?.data?.error || err.message));
             onError(err);
         } finally {
             setUploading(false);
@@ -124,14 +124,14 @@ export default function ExtraPointsSubmission() {
             });
         },
         onSuccess: () => {
-            message.success('Đã gửi yêu cầu điểm cộng NCKH!');
+            notify.success('Đã gửi yêu cầu điểm cộng NCKH!');
             refetchStatus();
             form.resetFields();
             setHasExtraPoints(null);
             setProjectedPoints(0);
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Có lỗi xảy ra');
+            notify.error(error.response?.data?.error || 'Có lỗi xảy ra');
         },
     });
 
@@ -139,11 +139,11 @@ export default function ExtraPointsSubmission() {
     const confirmNoPointsMutation = useMutation({
         mutationFn: () => ExtraPointsApi.confirmNoPoints(myTopic!.topic!.id),
         onSuccess: () => {
-            message.success('Đã xác nhận không có điểm cộng NCKH');
+            notify.success('Đã xác nhận không có điểm cộng NCKH');
             refetchStatus();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Có lỗi xảy ra');
+            notify.error(error.response?.data?.error || 'Có lỗi xảy ra');
         },
     });
 

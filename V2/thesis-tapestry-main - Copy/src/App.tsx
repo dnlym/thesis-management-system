@@ -1,4 +1,4 @@
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from '@/store/auth';
@@ -12,7 +12,7 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
-import { Toaster } from 'sonner';
+import { StaticNotificationHandler } from '@/utils/notification';
 
 const queryClient = new QueryClient();
 
@@ -72,44 +72,46 @@ const App = () => (
         theme={{
           token: {
             colorPrimary: '#3b82f6',
-            borderRadius: 8,
+            borderRadius: 12, // Tăng thêm bo góc cho đồng nhất
           },
         }}
       >
-        <Toaster position="top-right" richColors closeButton />
-        <BrowserRouter future={{ v7_startTransition: true }}>
-          <Suspense fallback={<LoadingSkeleton />}>
-            <Routes>
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/" element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
-                  <Layout />
-                </ProtectedRoute>
-              }>
-                <Route
-                  path="profile"
-                  element={
-                    <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
-                      <Profiles />
-                    </ProtectedRoute>
-                  }
-                />
-                {routes.filter(route => !route.path.startsWith('/auth')).map(route => (
+        <AntdApp>
+          <StaticNotificationHandler />
+          <BrowserRouter future={{ v7_startTransition: true }}>
+            <Suspense fallback={<LoadingSkeleton />}>
+              <Routes>
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={
+                  <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
+                    <Layout />
+                  </ProtectedRoute>
+                }>
                   <Route
-                    key={route.path}
-                    path={route.path.startsWith('/') ? route.path.substring(1) : route.path}
+                    path="profile"
                     element={
-                      <ProtectedRoute allowedRoles={route.meta.roles}>
-                        <route.element />
+                      <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
+                        <Profiles />
                       </ProtectedRoute>
                     }
                   />
-                ))}
-              </Route>
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                  {routes.filter(route => !route.path.startsWith('/auth')).map(route => (
+                    <Route
+                      key={route.path}
+                      path={route.path.startsWith('/') ? route.path.substring(1) : route.path}
+                      element={
+                        <ProtectedRoute allowedRoles={route.meta.roles}>
+                          <route.element />
+                        </ProtectedRoute>
+                      }
+                    />
+                  ))}
+                </Route>
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AntdApp>
       </ConfigProvider>
     </QueryClientProvider>
   </ErrorBoundary>

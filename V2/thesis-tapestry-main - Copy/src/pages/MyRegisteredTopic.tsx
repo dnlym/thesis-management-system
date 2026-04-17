@@ -17,13 +17,13 @@ import {
   Input, 
   Spin, 
   Popconfirm, 
-  message,
   Badge,
   Result,
   Row,
   Col,
   Modal
 } from 'antd';
+import { notify } from '@/utils/notification';
 import { 
   ArrowLeftOutlined, 
   UserOutlined, 
@@ -83,7 +83,7 @@ const MyRegisteredTopic = () => {
             const result = await RegistrationsApi.searchStudentForInvite(topicId, value.trim());
             setSearchResult(result);
         } catch (error: any) {
-            message.error(error.response?.data?.error || 'Không tìm thấy sinh viên');
+            notify.error(error.response?.data?.error || 'Không tìm thấy sinh viên');
         } finally {
             setSearchLoading(false);
         }
@@ -93,13 +93,13 @@ const MyRegisteredTopic = () => {
     const sendInviteMutation = useMutation({
         mutationFn: (studentCode: string) => RegistrationsApi.sendInvite(topicId!, studentCode),
         onSuccess: () => {
-            message.success('Đã gửi lời mời!');
+            notify.success('Đã gửi lời mời!');
             setSearchResult(null);
             refetchInvites();
             queryClient.invalidateQueries({ queryKey: ['students-same-topic', topicId] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Gửi lời mời thất bại');
+            notify.error(error.response?.data?.error || 'Gửi lời mời thất bại');
         },
     });
 
@@ -107,13 +107,13 @@ const MyRegisteredTopic = () => {
     const acceptInviteMutation = useMutation({
         mutationFn: (inviteId: string) => RegistrationsApi.acceptInvite(inviteId),
         onSuccess: () => {
-            message.success('Đã chấp nhận lời mời và tạo nhóm!');
+            notify.success('Đã chấp nhận lời mời và tạo nhóm!');
             queryClient.invalidateQueries({ queryKey: ['my-topic-registration'] });
             queryClient.invalidateQueries({ queryKey: ['students-same-topic', topicId] });
             refetchInvites();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Chấp nhận thất bại');
+            notify.error(error.response?.data?.error || 'Chấp nhận thất bại');
         },
     });
 
@@ -121,11 +121,11 @@ const MyRegisteredTopic = () => {
     const rejectInviteMutation = useMutation({
         mutationFn: (inviteId: string) => RegistrationsApi.rejectInvite(inviteId),
         onSuccess: () => {
-            message.success('Đã từ chối lời mời');
+            notify.success('Đã từ chối lời mời');
             refetchInvites();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Từ chối thất bại');
+            notify.error(error.response?.data?.error || 'Từ chối thất bại');
         },
     });
 
@@ -133,11 +133,11 @@ const MyRegisteredTopic = () => {
     const cancelInviteMutation = useMutation({
         mutationFn: (inviteId: string) => RegistrationsApi.cancelInvite(inviteId),
         onSuccess: () => {
-            message.success('Đã hủy lời mời');
+            notify.success('Đã hủy lời mời');
             refetchInvites();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Hủy thất bại');
+            notify.error(error.response?.data?.error || 'Hủy thất bại');
         },
     });
 
@@ -145,12 +145,12 @@ const MyRegisteredTopic = () => {
     const disbandGroupMutation = useMutation({
         mutationFn: () => RegistrationsApi.disbandGroup(),
         onSuccess: () => {
-            message.success('Đã giải tán nhóm');
+            notify.success('Đã giải tán nhóm');
             queryClient.invalidateQueries({ queryKey: ['my-topic-registration'] });
             queryClient.invalidateQueries({ queryKey: ['students-same-topic', topicId] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Giải tán thất bại');
+            notify.error(error.response?.data?.error || 'Giải tán thất bại');
         },
     });
 
@@ -158,12 +158,12 @@ const MyRegisteredTopic = () => {
     const removeMemberMutation = useMutation({
         mutationFn: (userId: string) => RegistrationsApi.removeMember(myRegistration.group.id, userId),
         onSuccess: () => {
-            message.success('Đã xóa thành viên khỏi nhóm');
+            notify.success('Đã xóa thành viên khỏi nhóm');
             queryClient.invalidateQueries({ queryKey: ['my-topic-registration'] });
             queryClient.invalidateQueries({ queryKey: ['students-same-topic', topicId] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Xóa thành viên thất bại');
+            notify.error(error.response?.data?.error || 'Xóa thành viên thất bại');
         },
     });
 
@@ -171,12 +171,12 @@ const MyRegisteredTopic = () => {
     const changeLeaderMutation = useMutation({
         mutationFn: (reason: string) => RegistrationsApi.changeLeader(myRegistration.group.id, currentUser.id, reason),
         onSuccess: () => {
-            message.success('Đã gửi yêu cầu thay đổi trưởng nhóm');
+            notify.success('Đã gửi yêu cầu thay đổi trưởng nhóm');
             setIsLeaderModalVisible(false);
             setLeaderChangeReason('');
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.error || 'Yêu cầu thất bại');
+            notify.error(error.response?.data?.error || 'Yêu cầu thất bại');
         },
     });
 

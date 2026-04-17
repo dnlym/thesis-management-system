@@ -1,4 +1,5 @@
-import { Form, Input, Button, Card, message } from 'antd';
+import { Form, Input, Button, Card } from 'antd';
+import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
@@ -15,7 +16,7 @@ const Login = () => {
     try {
       const res = await AuthApi.login(values.email, values.password);
       if (!res.success || !res.data) {
-        message.error(t('auth.invalidCredentials'));
+        notify.error(t('auth.invalidCredentials'));
         return;
       }
 
@@ -56,10 +57,10 @@ const Login = () => {
         // Continue with initial user data if profile fetch fails
       }
 
-      message.success(t('auth.loginSuccess'));
+      notify.success(t('auth.loginSuccess'));
       navigate('/dashboard');
     } catch (error) {
-      message.error(t('auth.loginError'));
+      notify.error(t('auth.loginError'));
     }
   };
 

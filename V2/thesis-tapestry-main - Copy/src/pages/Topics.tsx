@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Tag, Space, Modal, Input, Select, Drawer, Row, Col, Spin, Avatar, Popconfirm, message, Tooltip } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Input, Select, Drawer, Row, Col, Spin, Avatar, Popconfirm, Tooltip } from 'antd';
+import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, UserOutlined, DeleteOutlined, StopOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -43,9 +44,9 @@ const Topics = () => {
 
   // Get active semester
   const { data: semesters } = useSemesters();
-  // Improved logic: Find semester that is not closed or archived
+  // Improved logic: Find semester that is not finalized
   const activeSemester = semesters?.find(s => 
-    s.current_phase !== 'CLOSED' && s.current_phase !== 'ARCHIVED'
+    s.calculated_phase !== 'FINAL'
   );
 
   // Get my current registration (to check if student already has a topic)
@@ -78,7 +79,7 @@ const Topics = () => {
     if (!selectedTopic) return;
     
     if (!acceptedTerms) {
-      message.error(t('topics.mustAcceptTerms')); 
+      notify.error(t('topics.mustAcceptTerms')); 
       return;
     }
 

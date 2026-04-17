@@ -181,13 +181,12 @@
     },
     "semester": {
       "PLANNING": "Chuẩn bị",
-      "TOPIC_PROPOSAL": "Đề xuất đề tài",
+      "PREVIEW": "Đề xuất & Công bố đề tài",
       "REGISTRATION": "Đăng ký đề tài",
-      "IMPLEMENTATION": "Thực hiện KLTN",
+      "WORK": "Thực hiện KLTN",
       "REVIEWING": "Phản biện",
       "DEFENSE": "Bảo vệ",
-      "CLOSED": "Đã đóng",
-      "ARCHIVED": "Lưu trữ"
+      "FINAL": "Đã hoàn thành"
     },
     "registration": {
       "PENDING": "Chờ xác nhận",

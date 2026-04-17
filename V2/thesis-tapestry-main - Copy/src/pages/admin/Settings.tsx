@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Tabs, Table, Button, Modal, Form, Input, message, Tag, Spin, Steps, DatePicker, Alert, notification } from 'antd';
+import { Card, Tabs, Table, Button, Modal, Form, Input, Tag, Spin, Steps, DatePicker, Alert } from 'antd';
+import { notify } from '@/utils/notification';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, InfoCircleOutlined, RightOutlined, LeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +15,9 @@ const { TabPane } = Tabs;
 const SEMESTER_PHASES = [
   {
     key: 'preview',
-    label: 'Mở hệ thống',
-    sublabel: 'Xem đề tài',
-    description: 'Sinh viên xem và tìm hiểu các đề tài đã được duyệt trước khi đăng ký.',
+    label: 'Đề xuất & Công bố đề tài',
+    sublabel: 'GV đề xuất & HOD duyệt',
+    description: 'Giảng viên đề xuất đề tài, HOD thực hiện duyệt và sinh viên xem trước danh sách.',
     color: '#6366f1',
     bg: '#eef2ff',
   },
@@ -187,7 +188,7 @@ const AdminSettings = () => {
     const middle = workPhase.start.add(halfDays, 'day');
     setMidtermStart(middle);
     setMidtermEnd(middle.add(3, 'day'));
-    if (!silent) message.success('Đã tự động tính toán và điền dòng thời gian!');
+    if (!silent) notify.success('Đã tự động tính toán và điền dòng thời gian!');
   };
 
   const handleGlobalDateChange = (newStart: dayjs.Dayjs | null, newEnd: dayjs.Dayjs | null) => {
@@ -308,10 +309,9 @@ const AdminSettings = () => {
 
       const onError = (error: any) => {
         const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau.';
-        notification.error({
+        notify.error({
           message: editingSemester ? 'Cập nhật thất bại' : 'Tạo học kỳ thất bại',
           description: errorMsg,
-          placement: 'topRight'
         });
       };
 
@@ -321,21 +321,24 @@ const AdminSettings = () => {
         createSemesterMutation.mutate(dto as unknown as Omit<Semester, "id">, { onSuccess, onError });
       }
     } catch {
-      message.error('Vui lòng nhập đầy đủ các trường bắt buộc trên Form.');
+      notify.error('Vui lòng nhập đầy đủ các trường bắt buộc trên Form.');
     }
   };
 
 
 
   const handleActivateSemester = (id: string) => {
-    Modal.confirm({
-      title: t('settings.activateConfirmTitle'),
-      content: t('settings.activateConfirmContent'),
-      okText: t('common.confirm'),
-      cancelText: t('common.cancel'),
-      onOk: () => activateSemesterMutation.mutate(id),
+    activateSemesterMutation.mutate(id, {
+      onSuccess: () => {
+        notify.success('Đã kích hoạt học kỳ thành công!');
+      },
+      onError: (error: any) => {
+         notify.error(error?.response?.data?.error || 'Kích hoạt thất bại');
+      }
     });
   };
+
+  const handleDeactivateSectorPlaceholder = () => {}; // keep structure if needed
 
   const handleFinalizeSemester = (id: string) => {
     Modal.confirm({

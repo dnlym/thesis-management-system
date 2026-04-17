@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, message, Checkbox } from 'antd';
+import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox } from 'antd';
+import { notify } from '@/utils/notification';
 import { SaveOutlined, ArrowLeftOutlined, UserOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
@@ -10,6 +11,12 @@ import { GradingApi } from '@/api/grading';
 import type { GradeScore, RaterRole } from '@/types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { 
+  canSupervisorGrade, 
+  canReviewerGrade, 
+  canCommitteeGrade, 
+  isSemesterCompleted 
+} from '@/utils/semester-rules';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -105,6 +112,29 @@ const Evaluation = () => {
     return myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
   }, [myGradesData]);
 
+  const { isPhaseValid, phaseError } = useMemo(() => {
+    const sem = selectedTopic?.semester;
+    if (!sem) return { isPhaseValid: true, phaseError: null };
+
+    if (isSemesterCompleted(sem)) {
+      return { isPhaseValid: false, phaseError: 'Học kỳ này đã kết thúc. Bạn chỉ có thể xem lại điểm cũ.' };
+    }
+
+    if (activeTab === 'advisor' && !canSupervisorGrade(sem)) {
+        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Giảng viên hướng dẫn (Yêu cầu giai đoạn: Hoàn tất/FINAL).' };
+    }
+    if (activeTab === 'reviewer' && !canReviewerGrade(sem)) {
+        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Giảng viên phản biện (Yêu cầu giai đoạn: Phản biện).' };
+    }
+    if (activeTab === 'council' && !canCommitteeGrade(sem)) {
+        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Hội đồng (Yêu cầu giai đoạn: Bảo vệ).' };
+    }
+
+    return { isPhaseValid: true, phaseError: null };
+  }, [activeTab, selectedTopic]);
+
+  const isLocked = isConfirmed || !isPhaseValid;
+
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
     const values = form.getFieldsValue();
@@ -176,11 +206,11 @@ const Evaluation = () => {
       });
 
       await Promise.all(submissions.map(sub => submitGradeMutation.mutateAsync(sub)));
-      message.success('Đã gửi phiếu đánh giá thành công!');
+      notify.success('Đã gửi phiếu đánh giá thành công!');
       queryClient.invalidateQueries({ queryKey: ['my-grades', topicId] });
     } catch (error: any) {
       console.error('Submission failed:', error);
-      message.error(error.message || 'Vui lòng kiểm tra lại đầy đủ các cột điểm');
+      notify.error(error.message || 'Vui lòng kiểm tra lại đầy đủ các cột điểm');
     }
   };
 
@@ -223,6 +253,16 @@ const Evaluation = () => {
           />
         )}
 
+        {!isPhaseValid && phaseError && (
+          <Alert
+            message="Không thể chấm điểm"
+            description={phaseError}
+            type="warning"
+            showIcon
+            className="border-l-4 border-l-orange-500"
+          />
+        )}
+
         <Card className="shadow-lg border-t-4 border-t-blue-600">
           <Title level={3} className="text-center mb-1 uppercase">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
           <Text type="secondary" className="block text-center mb-6 italic text-blue-500">BỘ TIÊU CHÍ 10 LEARNING OUTCOMES (LO)</Text>
@@ -256,14 +296,14 @@ const Evaluation = () => {
                     title: `SV ${i + 1}`, key: `sv_${s.id}`, width: 120, align: 'center',
                     render: (_, r) => (
                       <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0">
-                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isConfirmed} />
+                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isLocked} />
                       </Form.Item>
                     )
                   }))
                 },
                 { title: 'Ghi Chú', key: 'note', render: (_, r) => (
                   <Form.Item name={['notes', r.id]} className="mb-0">
-                    <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isConfirmed} />
+                    <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
                   </Form.Item>
                 )}
               ]}
@@ -297,7 +337,7 @@ const Evaluation = () => {
               )}
             />
 
-            {!isConfirmed && (
+            {!isLocked && (
               <div className="flex justify-end gap-3 mt-10 no-print pb-4">
                 <Button size="large" onClick={() => form.resetFields()}>Nhập lại</Button>
                 <Button size="large" type="primary" icon={<CheckCircleOutlined />} onClick={handleSubmit} loading={submitGradeMutation.isPending}>Lưu và Gửi Phiếu Đánh Giá</Button>

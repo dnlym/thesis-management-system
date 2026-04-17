@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Modal, Select, Space, Avatar, Empty, Spin, Alert, message, DatePicker, Divider, TimePicker, Input } from 'antd';
+import { Card, Table, Button, Tag, Modal, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Divider, TimePicker, Input } from 'antd';
+import { notify } from '@/utils/notification';
 import { UserOutlined, TeamOutlined, CrownOutlined, EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -62,12 +63,12 @@ const CommitteeAssignment = () => {
     const assignMutation = useMutation({
         mutationFn: CommitteeApi.assignTopic,
         onSuccess: () => {
-            message.success(t('committeeAssignment.assignSuccess'));
+            notify.success(t('committeeAssignment.assignSuccess'));
             setAssignModalVisible(false);
             queryClient.invalidateQueries({ queryKey: ['topics-for-committee'] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('committeeAssignment.assignError'));
+            notify.error(error?.response?.data?.error || t('committeeAssignment.assignError'));
         },
     });
 
@@ -89,9 +90,9 @@ const CommitteeAssignment = () => {
     const handleAssign = () => {
         if (!selectedTopic || !committeeId || !activeSemester?.defense_start) {
             if (!activeSemester?.defense_start) {
-                message.error(t('committeeAssignment.setDefenseDateFirst', 'Vui lòng thiết lập ngày bảo vệ học kỳ trước'));
+                notify.error(t('committeeAssignment.setDefenseDateFirst', 'Vui lòng thiết lập ngày bảo vệ học kỳ trước'));
             } else {
-                message.warning(t('committeeAssignment.validationError'));
+                notify.warning(t('committeeAssignment.validationError'));
             }
             return;
         }

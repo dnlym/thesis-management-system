@@ -24,9 +24,11 @@ export enum AcademicAction {
   
   // Grading
   GRADE_MIDTERM = 'GRADE_MIDTERM',
+  GRADE_SUPERVISOR = 'GRADE_SUPERVISOR',
   GRADE_REVIEWER = 'GRADE_REVIEWER',
   GRADE_COMMITTEE = 'GRADE_COMMITTEE',
   FINALIZE_SCORE = 'FINALIZE_SCORE',
+  SUBMIT_EXTRA_POINTS = 'SUBMIT_EXTRA_POINTS',
 }
 
 /**
@@ -101,14 +103,15 @@ export class AcademicPolicy {
       case AcademicAction.CREATE_TOPIC:
       case AcademicAction.UPDATE_TOPIC:
       case AcademicAction.DELETE_TOPIC:
-        if (phase !== SemesterPhase.PREVIEW) {
-          return { allowed: false, reason: 'Chỉ được phép quản lý đề tài trong giai đoạn Công bố (PREVIEW).' };
+        // Allowed only during PLANNING (preparation) or PREVIEW (proposal window)
+        if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW) {
+          return { allowed: false, reason: 'Chỉ được phép quản lý đề tài trong giai đoạn Chuẩn bị hoặc Công bố (PREVIEW).' };
         }
         return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
 
       case AcademicAction.APPROVE_TOPIC:
-        if (phase !== SemesterPhase.PREVIEW) {
-          return { allowed: false, reason: 'Chỉ được duyệt đề tài trong giai đoạn Công bố (PREVIEW).' };
+        if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW) {
+          return { allowed: false, reason: 'Chỉ được duyệt đề tài trong giai đoạn Chuẩn bị hoặc Công bố (PREVIEW).' };
         }
         return { allowed: user.role === UserRole.HEAD };
 
@@ -153,7 +156,19 @@ export class AcademicPolicy {
         }
         return { allowed: user.role === UserRole.STUDENT };
 
+      case AcademicAction.SUBMIT_EXTRA_POINTS:
+        if (phase !== SemesterPhase.WORK && phase !== SemesterPhase.REVIEWING) {
+          return { allowed: false, reason: 'Chỉ được nộp minh chứng điểm cộng trong giai đoạn Thực hiện hoặc Phản biện.' };
+        }
+        if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
+          return { allowed: false, reason: 'Bạn cần đạt điểm giữa kỳ (PASS) trước khi nộp minh chứng NCKH.' };
+        }
+        return { allowed: user.role === UserRole.STUDENT };
+
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
+      case AcademicAction.GRADE_SUPERVISOR:
+        return { allowed: phase === SemesterPhase.FINAL && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) };
+
       case AcademicAction.GRADE_REVIEWER:
         return { allowed: phase === SemesterPhase.REVIEWING && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) };
 

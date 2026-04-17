@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, message, Tooltip } from 'antd';
+import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Tooltip } from 'antd';
+import { notify } from '@/utils/notification';
 import { ArrowLeftOutlined, CheckOutlined, UserAddOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useTopic } from '@/hooks/useTopics';
 import { useRegisterTopic } from '@/hooks/useRegistrations';
@@ -145,7 +146,7 @@ const TopicDetailStudent = () => {
                                     type="default"
                                     icon={<StopOutlined />}
                                     disabled
-                                    onClick={() => message.warning(t('topics.alreadyHasOtherTopicTooltip', { title: myCurrentRegistration?.topic?.title || 'khác' }))}
+                                    onClick={() => notify.warning(t('topics.alreadyHasOtherTopicTooltip', { title: myCurrentRegistration?.topic?.title || 'khác' }))}
                                     className="opacity-60"
                                 >
                                     {t('topics.alreadyHasOtherTopic')}

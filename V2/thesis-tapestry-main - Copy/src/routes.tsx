@@ -496,6 +496,7 @@ export const getMenuItems = (userRole: UserRole) => {
           { key: '/committee-assignment', label: 'navigation.committeeAssignment', icon: <CrownOutlined /> },
           { key: '/head/committees', label: 'navigation.committeeManagement', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'navigation.extraPoints', icon: <SafetyCertificateOutlined /> },
+          { key: '/admin/criteria', label: 'navigation.criteria', icon: <SafetyCertificateOutlined /> },
         ],
       },
       {

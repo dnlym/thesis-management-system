@@ -3,8 +3,9 @@ import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, Tabs, Spa
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { notify } from '@/utils/notification';
 import { GradingApi } from '@/api/grading';
+import { useAuthStore } from '@/store/auth';
 import { GradingCriteria, CriteriaType } from '@/types';
 
 const { TabPane } = Tabs;
@@ -13,6 +14,7 @@ const { Option } = Select;
 const Criteria = () => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
+    const { user } = useAuthStore();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form] = Form.useForm();
@@ -20,11 +22,11 @@ const Criteria = () => {
 
     // Fetch criteria
     const { data: criteriaMap, isLoading } = useQuery({
-        queryKey: ['gradingCriteria'],
+        queryKey: ['gradingCriteria', user?.department_id, user?.role],
         queryFn: async () => {
-            const response = await GradingApi.getCriteria();
-            // Group by type if the API returns a flat list, or use as is if it returns a map
-            // Based on backend implementation, it returns a map: Record<string, GradingCriteria[]>
+            const response = await GradingApi.getCriteria({
+                departmentId: user?.role === 'HEAD' ? user?.department_id : undefined
+            });
             return response as unknown as Record<string, GradingCriteria[]>;
         },
     });
@@ -33,13 +35,14 @@ const Criteria = () => {
     const createMutation = useMutation({
         mutationFn: GradingApi.createCriterion,
         onSuccess: () => {
-            toast.success(t('common.createSuccess'));
+            notify.success(t('common.createSuccess'));
             setIsModalVisible(false);
             form.resetFields();
             queryClient.invalidateQueries({ queryKey: ['gradingCriteria'] });
         },
         onError: (error: any) => {
-            toast.error(error.message || t('common.createError'));
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || t('common.createError');
+            notify.error(errorMsg);
         },
     });
 
@@ -48,14 +51,15 @@ const Criteria = () => {
         mutationFn: ({ id, data }: { id: string; data: Partial<GradingCriteria> }) =>
             GradingApi.updateCriterion(id, data),
         onSuccess: () => {
-            toast.success(t('common.updateSuccess'));
+            notify.success(t('common.updateSuccess'));
             setIsModalVisible(false);
             setEditingId(null);
             form.resetFields();
             queryClient.invalidateQueries({ queryKey: ['gradingCriteria'] });
         },
         onError: (error: any) => {
-            toast.error(error.message || t('common.updateError'));
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || t('common.updateError');
+            notify.error(errorMsg);
         },
     });
 
@@ -63,11 +67,12 @@ const Criteria = () => {
     const deleteMutation = useMutation({
         mutationFn: GradingApi.deleteCriterion,
         onSuccess: () => {
-            toast.success(t('common.deleteSuccess'));
+            notify.success(t('common.deleteSuccess'));
             queryClient.invalidateQueries({ queryKey: ['gradingCriteria'] });
         },
         onError: (error: any) => {
-            toast.error(error.message || t('common.deleteError'));
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || t('common.deleteError');
+            notify.error(errorMsg);
         },
     });
 
@@ -132,26 +137,41 @@ const Criteria = () => {
             width: '10%',
         },
         {
+            title: 'Đơn vị',
+            key: 'department',
+            width: '10%',
+            render: (_: any, record: any) => (
+                record.departmentId ? <Tag color="blue">Bộ môn</Tag> : <Tag color="purple">Chung</Tag>
+            )
+        },
+        {
             title: t('common.actions'),
             key: 'actions',
             width: '150px',
-            render: (_: any, record: GradingCriteria) => (
-                <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    />
-                    <Popconfirm
-                        title={t('common.confirmDelete')}
-                        onConfirm={() => handleDelete(record.id)}
-                        okText={t('common.yes')}
-                        cancelText={t('common.no')}
-                    >
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                </Space>
-            ),
+            render: (_: any, record: any) => {
+                const isGlobal = !record.departmentId;
+                const canEdit = user?.role === 'ADMIN' || (user?.role === 'HEAD' && !isGlobal);
+                
+                return (
+                    <Space>
+                        <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEdit(record)}
+                            disabled={!canEdit}
+                        />
+                        <Popconfirm
+                            title={t('common.confirmDelete')}
+                            onConfirm={() => handleDelete(record.id)}
+                            okText={t('common.yes')}
+                            cancelText={t('common.no')}
+                            disabled={!canEdit}
+                        >
+                            <Button type="text" danger icon={<DeleteOutlined />} disabled={!canEdit} />
+                        </Popconfirm>
+                    </Space>
+                );
+            },
         },
     ];
 

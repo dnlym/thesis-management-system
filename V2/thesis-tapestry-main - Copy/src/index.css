@@ -1,11 +1,48 @@
-/* @tailwind base;
+@tailwind base;
 @tailwind components;
-@tailwind utilities; */
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@tailwind utilities;
 
-/* Academic Thesis Management System Design System */
+/* Custom Modern Notifications Style */
+.modern-notification {
+  border-radius: 16px !important;
+  padding: 16px 20px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+}
+
+.modern-notification.success {
+  background-color: rgba(240, 253, 244, 0.9) !important;
+  border-color: #bbf7d0 !important;
+}
+
+.modern-notification.error {
+  background-color: rgba(254, 242, 242, 0.9) !important;
+  border-color: #fecaca !important;
+}
+
+.modern-notification.warning {
+  background-color: rgba(255, 251, 235, 0.9) !important;
+  border-color: #fde68a !important;
+}
+
+.modern-notification .ant-notification-notice-message {
+  font-weight: 700 !important;
+  margin-bottom: 4px !important;
+}
+
+.modern-notification.error .ant-notification-notice-message {
+  color: #991b1b !important;
+}
+
+.modern-notification.success .ant-notification-notice-message {
+  color: #166534 !important;
+}
+
+.modern-notification .ant-notification-notice-close {
+  top: 16px !important;
+  right: 16px !important;
+}
 @layer base {
   :root {
     /* Academic Blue Theme */

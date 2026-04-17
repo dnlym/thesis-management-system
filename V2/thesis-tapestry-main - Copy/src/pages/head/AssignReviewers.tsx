@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Form, Select, Tag, Spin, Descriptions, message } from 'antd';
+import { Card, Table, Button, Modal, Form, Select, Tag, Spin, Descriptions } from 'antd';
+import { notify } from '@/utils/notification';
 import { UserAddOutlined, EyeOutlined, TeamOutlined } from '@ant-design/icons';
 import { StatusBadge } from '@/components/StatusBadge';
 // TODO: Import assignment hooks when created
@@ -58,7 +59,7 @@ const HeadAssignReviewers = () => {
 
             // TODO: Call API
             console.log('Assign reviewers:', values);
-            message.success('Phân công phản biện thành công');
+            notify.success('Phân công phản biện thành công');
 
             setAssignReviewerModalVisible(false);
             form.resetFields();
@@ -73,7 +74,7 @@ const HeadAssignReviewers = () => {
 
             // TODO: Call API
             console.log('Assign committee:', values);
-            message.success('Phân công hội đồng thành công');
+            notify.success('Phân công hội đồng thành công');
 
             setAssignCommitteeModalVisible(false);
             form.resetFields();
@@ -216,12 +217,10 @@ const HeadAssignReviewers = () => {
                         <Select
                             placeholder="Chọn giảng viên phản biện 1"
                             showSearch
-                            filterOption={(input, option) =>
-                                (option?.children as string).toLowerCase().includes(input.toLowerCase())
-                            }
+                            optionFilterProp="label"
                         >
                             {lecturers.map(lec => (
-                                <Option key={lec.id} value={lec.id}>
+                                <Option key={lec.id} value={lec.id} label={lec.name}>
                                     {lec.name} ({lec.department})
                                 </Option>
                             ))}
@@ -246,12 +245,10 @@ const HeadAssignReviewers = () => {
                         <Select
                             placeholder="Chọn giảng viên phản biện 2"
                             showSearch
-                            filterOption={(input, option) =>
-                                (option?.children as string).toLowerCase().includes(input.toLowerCase())
-                            }
+                            optionFilterProp="label"
                         >
                             {lecturers.map(lec => (
-                                <Option key={lec.id} value={lec.id}>
+                                <Option key={lec.id} value={lec.id} label={lec.name}>
                                     {lec.name} ({lec.department})
                                 </Option>
                             ))}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, DatePicker, Button, Alert, message, Space, Typography, Tag, Divider, Spin, Steps, Tooltip, Badge } from 'antd';
+import { Card, DatePicker, Button, Alert, Space, Typography, Tag, Divider, Spin, Steps, Tooltip, Badge } from 'antd';
+import { notify } from '@/utils/notification';
 import {
     CalendarOutlined,
     InfoCircleOutlined,
@@ -30,11 +31,11 @@ const { Title, Text } = Typography;
 
 const PHASE_CONFIG: Record<string, { label: string; sublabel: string; icon: any; color: string; description: string; }> = {
     PREVIEW: { 
-        label: 'Mở hệ thống', 
-        sublabel: 'Xem đề tài',
+        label: 'Đề xuất & Công bố đề tài', 
+        sublabel: 'GV đề xuất & HOD duyệt',
         icon: <EyeOutlined />, 
         color: 'purple', 
-        description: 'Sinh viên xem và tìm hiểu các đề tài đã được duyệt trước khi đăng ký.' 
+        description: 'Giảng viên đề xuất đề tài, HOD thực hiện duyệt và sinh viên xem trước danh sách.' 
     },
     REGISTRATION: { 
         label: 'Đăng ký Đề tài', 
@@ -93,15 +94,13 @@ const getPhaseTimeRange = (phase: any, semester: any) => {
         case 'REGISTRATION':
             return `${start(semester.topic_registration_start)} - ${start(semester.topic_registration_end)}`;
         case 'WORK':
-            // WORK: starts after registration ends, ends at proposal_deadline
-            return `${sPlus(semester.topic_registration_end, 1)} - ${start(semester.proposal_deadline)}`;
+            return `${start(semester.topic_registration_end)} - ${start(semester.proposal_deadline)}`;
         case 'REVIEWING':
-            // REVIEWING: starts after proposal_deadline, ends at thesis_deadline
-            return `${sPlus(semester.proposal_deadline, 1)} - ${start(semester.thesis_deadline)}`;
+            return `${start(semester.proposal_deadline)} - ${start(semester.thesis_deadline)}`;
         case 'DEFENSE':
             return `${start(semester.defense_start)} - ${start(semester.defense_end)}`;
         case 'FINAL':
-            return `${sPlus(semester.defense_end, 1)} - ${start(semester.end_date)}`;
+            return `${start(semester.defense_end)} - ${start(semester.end_date)}`;
         default:
             return '';
     }
@@ -122,11 +121,11 @@ const SemesterSettings = () => {
     const updateDateMutation = useMutation({
         mutationFn: (date: string) => SemestersApi.updateDefenseDate(activeSemester!.id, date),
         onSuccess: () => {
-            message.success(t('semesterSettings.updateSuccess', 'Cập nhật ngày bảo vệ thành công'));
+            notify.success(t('semesterSettings.updateSuccess', 'Cập nhật ngày bảo vệ thành công'));
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('semesterSettings.updateError', 'Lỗi khi cập nhật ngày bảo vệ'));
+            notify.error(error?.response?.data?.error || t('semesterSettings.updateError', 'Lỗi khi cập nhật ngày bảo vệ'));
         },
     });
 
@@ -142,13 +141,13 @@ const SemesterSettings = () => {
         mutationFn: (data: { semesterId: string; extendedUntil: string; reason: string }) =>
             SemestersApi.createRegistrationExtension(data),
         onSuccess: () => {
-            message.success('Gia hạn đăng ký thành công');
+            notify.success('Gia hạn đăng ký thành công');
             setIsExtendModalOpen(false);
             form.resetFields();
             queryClient.invalidateQueries({ queryKey: ['registration-extensions', activeSemester?.id] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || 'Lỗi khi gia hạn đăng ký');
+            notify.error(error?.response?.data?.error || 'Lỗi khi gia hạn đăng ký');
         },
     });
 
@@ -158,7 +157,7 @@ const SemesterSettings = () => {
 
     const handleSaveDate = () => {
         if (!defenseDate) {
-            message.warning(t('semesterSettings.dateRequired', 'Vui lòng chọn ngày bảo vệ'));
+            notify.warning(t('semesterSettings.dateRequired', 'Vui lòng chọn ngày bảo vệ'));
             return;
         }
         updateDateMutation.mutate(defenseDate.toISOString());

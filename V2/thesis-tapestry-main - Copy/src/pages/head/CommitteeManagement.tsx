@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space, message, Divider, Popconfirm } from 'antd';
+import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space, Divider, Popconfirm } from 'antd';
+import { notify } from '@/utils/notification';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -49,35 +50,35 @@ const CommitteeManagement = () => {
     const createMutation = useMutation({
         mutationFn: CommitteeApi.createCommittee,
         onSuccess: () => {
-            message.success(t('committeeManagement.createSuccess'));
+            notify.success(t('committeeManagement.createSuccess'));
             setIsModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['committees'] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('committeeManagement.createError'));
+            notify.error(error?.response?.data?.error || t('committeeManagement.createError'));
         }
     });
 
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => CommitteeApi.updateCommittee(id, data),
         onSuccess: () => {
-            message.success(t('committeeManagement.updateSuccess'));
+            notify.success(t('committeeManagement.updateSuccess'));
             setIsModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['committees'] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('committeeManagement.updateError'));
+            notify.error(error?.response?.data?.error || t('committeeManagement.updateError'));
         }
     });
 
     const deleteMutation = useMutation({
         mutationFn: CommitteeApi.deleteCommittee,
         onSuccess: () => {
-            message.success(t('committeeManagement.deleteSuccess'));
+            notify.success(t('committeeManagement.deleteSuccess'));
             queryClient.invalidateQueries({ queryKey: ['committees'] });
         },
         onError: (error: any) => {
-            message.error(error?.response?.data?.error || t('committeeManagement.deleteError'));
+            notify.error(error?.response?.data?.error || t('committeeManagement.deleteError'));
         }
     });
 
@@ -111,7 +112,7 @@ const CommitteeManagement = () => {
 
     const handleSubmit = async () => {
         if (!semesterId) {
-            message.error(t('semester.selectRequired'));
+            notify.error(t('semester.selectRequired'));
             return;
         }
         const values = await form.validateFields();

@@ -1,4 +1,5 @@
-import { Card, Table, Tag, Button, Modal, Space, Input, message, Tooltip, InputNumber, Tabs, Select, Empty, Row, Col } from 'antd';
+import { Card, Table, Tag, Button, Modal, Space, Input, Tooltip, InputNumber, Tabs, Select, Empty, Row, Col } from 'antd';
+import { notify } from '@/utils/notification';
 import { CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
@@ -31,25 +32,25 @@ export default function ExtraPointRequests() {
     const approveMutation = useMutation({
         mutationFn: (data: { id: string; points: number }) => ExtraPointsApi.approve(data.id, data.points),
         onSuccess: () => {
-            message.success('Đã duyệt yêu cầu điểm cộng');
+            notify.success('Đã duyệt yêu cầu điểm cộng');
             setApproveModalVisible(false);
             setDetailsModalVisible(false);
             setSelectedRequest(null);
             queryClient.invalidateQueries({ queryKey: ['extraPointRequests'] });
         },
-        onError: (error: any) => message.error(error.message || 'Lỗi khi duyệt'),
+        onError: (error: any) => notify.error(error.message || 'Lỗi khi duyệt'),
     });
 
     const rejectMutation = useMutation({
         mutationFn: (data: { id: string; reason: string }) => ExtraPointsApi.reject(data.id, data.reason),
         onSuccess: () => {
-            message.success('Đã từ chối yêu cầu điểm cộng');
+            notify.success('Đã từ chối yêu cầu điểm cộng');
             setRejectModalVisible(false);
             setDetailsModalVisible(false);
             setSelectedRequest(null);
             queryClient.invalidateQueries({ queryKey: ['extraPointRequests'] });
         },
-        onError: (error: any) => message.error(error.message || 'Lỗi khi từ chối'),
+        onError: (error: any) => notify.error(error.message || 'Lỗi khi từ chối'),
     });
 
     const handleOpenApprove = (record: ExtraPoints) => {

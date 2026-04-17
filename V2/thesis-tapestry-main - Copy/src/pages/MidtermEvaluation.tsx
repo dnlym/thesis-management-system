@@ -4,6 +4,8 @@ import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCirc
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useAuthStore } from '@/store/auth';
 import dayjs from 'dayjs';
+import { useMemo } from 'react';
+import { canGradeMidterm } from '@/utils/semester-rules';
 
 const { TextArea } = Input;
 
@@ -55,6 +57,13 @@ const MidtermEvaluation = () => {
     const [gradeModalVisible, setGradeModalVisible] = useState(false);
     const [feedback, setFeedback] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'PASS' | 'FAIL' | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const isPhaseValid = useMemo(() => {
+        if (!registrations || registrations.length === 0) return true;
+        // All registrations for a supervisor usually belong to the same semester
+        return canGradeMidterm(registrations[0].semester);
+    }, [registrations]);
 
     const handleOpenGradeModal = (registration: MidtermRegistration, status: 'PASS' | 'FAIL') => {
         setSelectedRegistration(registration);
@@ -172,6 +181,7 @@ const MidtermEvaluation = () => {
                             icon={<CheckCircleOutlined />}
                             className="bg-green-600 hover:bg-green-700"
                             onClick={() => handleOpenGradeModal(record, 'PASS')}
+                            disabled={!isPhaseValid}
                         >
                             PASS
                         </Button>
@@ -179,6 +189,7 @@ const MidtermEvaluation = () => {
                             danger
                             icon={<CloseCircleOutlined />}
                             onClick={() => handleOpenGradeModal(record, 'FAIL')}
+                            disabled={!isPhaseValid}
                         >
                             FAIL
                         </Button>
@@ -215,6 +226,16 @@ const MidtermEvaluation = () => {
                 <h1 className="text-2xl font-bold text-gray-800">Đánh giá giữa kỳ</h1>
                 <p className="text-gray-500">Đánh giá PASS/FAIL cho các nhóm sinh viên được phân công hướng dẫn</p>
             </div>
+
+            {!isPhaseValid && registrations && registrations.length > 0 && (
+                <Alert
+                    message="Thời gian đánh giá giữa kỳ đã kết thúc hoặc chưa bắt đầu"
+                    description="Bạn hiện chỉ có thể xem lại kết quả đã đánh giá. Việc thay đổi kết quả PASS/FAIL không khả dụng ngoài giai đoạn Midterm."
+                    type="warning"
+                    showIcon
+                    className="mb-6 border-l-4 border-l-orange-500 shadow-sm"
+                />
+            )}
 
             {/* Statistics */}
             <div className="grid grid-cols-3 gap-4 mb-6">
