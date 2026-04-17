@@ -39,7 +39,6 @@ model Semester {
   id                       String              @id @default(uuid())
   name                     String              @db.VarChar(100)
   code                     String              @unique @db.VarChar(50)
-  current_phase           SemesterPhase       @default(PLANNING)
   status                  SemesterStatus      @default(PLANNING)
   start_date               DateTime
   end_date                 DateTime
@@ -64,7 +63,6 @@ model Semester {
   registration_extensions  RegistrationExtension[]
 
   @@index([code])
-  @@index([current_phase])
   @@map("semesters")
 }
 

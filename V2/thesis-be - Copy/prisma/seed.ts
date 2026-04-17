@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TopicStatus, RegistrationStatus, AssignmentStatus, AssignmentType, SubmissionType, SubmissionStatus, GroupMemberStatus, SemesterPhase, StudentProgressStatus } from '@prisma/client';
+import { PrismaClient, UserRole, TopicStatus, RegistrationStatus, AssignmentStatus, AssignmentType, SubmissionType, SubmissionStatus, GroupMemberStatus, SemesterPhase, StudentProgressStatus, SemesterStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -39,23 +39,27 @@ async function main() {
     create: {
       code: 'HK1_2024',
       name: 'Học kỳ 1 năm 2024-2025',
-      current_phase: SemesterPhase.REGISTRATION,
+      status: SemesterStatus.ACTIVE,
       start_date: new Date('2024-09-01'),
       end_date: new Date('2025-01-15'),
-      proposal_deadline: new Date('2024-10-15'),
+      topic_viewing_start: new Date('2024-09-01'),
+      topic_viewing_end: new Date('2024-09-07'),
+      topic_registration_start: new Date('2024-09-08'),
+      topic_registration_end: new Date('2024-09-20'),
+      proposal_deadline: new Date('2024-10-31'),
       thesis_deadline: new Date('2024-12-31'),
       defense_start: new Date('2025-01-05'),
       defense_end: new Date('2025-01-15'),
     },
   });
 
-  // Create 10 more semesters (past and future)
+  // Create 2 more semesters (past and future)
   const extraSemesters = [];
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 2; i++) {
     const year = 2020 + Math.floor(i / 2);
     const term = i % 2 === 0 ? 2 : 1;
     const code = `HK${term}_${year}_${i}`; // Unique code
-    const current_phase: SemesterPhase = i < 8 ? SemesterPhase.FINAL : SemesterPhase.PLANNING;
+    const status: SemesterStatus = i < 8 ? SemesterStatus.COMPLETED : SemesterStatus.PLANNING;
 
     const sem = await prisma.semester.upsert({
       where: { code: code },
@@ -63,10 +67,14 @@ async function main() {
       create: {
         code: code,
         name: `Học kỳ ${term} năm ${year}-${year + 1}`,
-        current_phase: current_phase,
+        status: status,
         start_date: new Date(`${year}-09-01`),
         end_date: new Date(`${year + 1}-01-15`),
-        proposal_deadline: new Date(`${year}-10-15`),
+        topic_viewing_start: new Date(`${year}-09-01`),
+        topic_viewing_end: new Date(`${year}-09-10`),
+        topic_registration_start: new Date(`${year}-09-11`),
+        topic_registration_end: new Date(`${year}-09-30`),
+        proposal_deadline: new Date(`${year}-10-31`),
         thesis_deadline: new Date(`${year}-12-31`),
         defense_start: new Date(`${year + 1}-01-05`),
         defense_end: new Date(`${year + 1}-01-15`),

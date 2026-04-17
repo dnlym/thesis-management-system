@@ -69,11 +69,15 @@ export class SemesterService {
       start_date,
       end_date,
       topic_viewing_start,
+      topic_viewing_end,
       topic_registration_start,
       topic_registration_end,
       proposal_deadline,
+      thesis_deadline,
       defense_start,
-      defense_end
+      defense_end,
+      midterm_start,
+      midterm_end
     });
 
     // Check for semester overlapping
@@ -104,7 +108,6 @@ export class SemesterService {
         topic_registration_end: topic_registration_end,
         midterm_start: midterm_start,
         midterm_end: midterm_end,
-        current_phase: SemesterPhase.PLANNING,
         status: SemesterStatus.PLANNING,
       },
     });
@@ -165,11 +168,15 @@ export class SemesterService {
       start_date: final_start_date,
       end_date: final_end_date,
       topic_viewing_start: toDate(data.topic_viewing_start) ?? semester.topic_viewing_start,
+      topic_viewing_end: toDate(data.topic_viewing_end) ?? semester.topic_viewing_end,
       topic_registration_start: toDate(data.topic_registration_start) ?? semester.topic_registration_start,
       topic_registration_end: final_topic_registration_end,
       proposal_deadline: final_proposal_deadline,
+      thesis_deadline: final_thesis_deadline,
       defense_start: final_defense_start,
-      defense_end: final_defense_end
+      defense_end: final_defense_end,
+      midterm_start: final_midterm_start,
+      midterm_end: final_midterm_end
     });
 
     // Check for semester overlapping
