@@ -331,6 +331,8 @@ export interface FinalScore {
   finalized_at?: string | null;
   created_at: string;
   updated_at: string;
+  topic?: Topic;
+  student?: User;
 }
 
 export interface ExtraPoints {
@@ -452,4 +454,34 @@ export type CreateDepartmentDto = Omit<Department, 'id' | 'createdAt' | 'updated
 export type UpdateDepartmentDto = Partial<CreateDepartmentDto>;
 
 export type CreateSemesterDto = Omit<Semester, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateSemesterDto = Partial<CreateSemesterDto>;
+// Workflow & Permissions
+export interface ActionPermission {
+  allowed: boolean;
+  code: string;
+  reason?: string;
+}
+
+export interface EntityPermissions {
+  grade_midterm: boolean;
+  grade_midterm_code: string;
+  grade_midterm_reason?: string;
+  grade_supervisor: boolean;
+  grade_supervisor_code: string;
+  grade_supervisor_reason?: string;
+  grade_reviewer: boolean;
+  grade_reviewer_code: string;
+  grade_reviewer_reason?: string;
+  grade_committee: boolean;
+  grade_committee_code: string;
+  grade_committee_reason?: string;
+}
+
+export interface MidtermRegistration extends Registration {
+  topic: Topic;
+  student?: User;
+  group?: Group & { members: { user: User }[] };
+  midterm_status: 'PASS' | 'FAIL' | null;
+  midterm_feedback?: string;
+  midterm_graded_at?: string;
+  permissions?: EntityPermissions;
+}

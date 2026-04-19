@@ -32,7 +32,15 @@ const Evaluation = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const topicId = searchParams.get('topicId');
-  const [activeTab, setActiveTab] = useState<string>('advisor');
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || 'advisor');
+
+  useEffect(() => {
+    const type = searchParams.get('type');
+    if (type && ['advisor', 'reviewer', 'council'].includes(type)) {
+      setActiveTab(type);
+    }
+  }, [searchParams]);
+
   const [averages, setAverages] = useState<Record<string, number>>({});
 
   // 1. Dashboard queries
@@ -112,28 +120,19 @@ const Evaluation = () => {
     return myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
   }, [myGradesData]);
 
-  const { isPhaseValid, phaseError } = useMemo(() => {
-    const sem = selectedTopic?.semester;
-    if (!sem) return { isPhaseValid: true, phaseError: null };
+  // Use permissions from backend
+  const permissions = myGradesData?.permissions;
+  
+  const getPermissionForActiveTab = () => {
+    if (!permissions) return { allowed: true, code: 'LOADING' };
+    if (activeTab === 'advisor') return { allowed: permissions.grade_supervisor, code: permissions.grade_supervisor_code, reason: permissions.grade_supervisor_reason };
+    if (activeTab === 'reviewer') return { allowed: permissions.grade_reviewer, code: permissions.grade_reviewer_code, reason: permissions.grade_reviewer_reason };
+    if (activeTab === 'council') return { allowed: permissions.grade_committee, code: permissions.grade_committee_code, reason: permissions.grade_committee_reason };
+    return { allowed: false, code: 'UNKNOWN' };
+  };
 
-    if (isSemesterCompleted(sem)) {
-      return { isPhaseValid: false, phaseError: 'Học kỳ này đã kết thúc. Bạn chỉ có thể xem lại điểm cũ.' };
-    }
-
-    if (activeTab === 'advisor' && !canSupervisorGrade(sem)) {
-        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Giảng viên hướng dẫn (Yêu cầu giai đoạn: Hoàn tất/FINAL).' };
-    }
-    if (activeTab === 'reviewer' && !canReviewerGrade(sem)) {
-        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Giảng viên phản biện (Yêu cầu giai đoạn: Phản biện).' };
-    }
-    if (activeTab === 'council' && !canCommitteeGrade(sem)) {
-        return { isPhaseValid: false, phaseError: 'Hiện tại chưa đến giai đoạn chấm điểm của Hội đồng (Yêu cầu giai đoạn: Bảo vệ).' };
-    }
-
-    return { isPhaseValid: true, phaseError: null };
-  }, [activeTab, selectedTopic]);
-
-  const isLocked = isConfirmed || !isPhaseValid;
+  const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveTab();
+  const isLocked = isConfirmed || !isPhaseAllowed;
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -253,13 +252,13 @@ const Evaluation = () => {
           />
         )}
 
-        {!isPhaseValid && phaseError && (
+        {!isPhaseAllowed && phaseError && (
           <Alert
-            message="Không thể chấm điểm"
+            message="Thông báo về quyền chấm điểm"
             description={phaseError}
-            type="warning"
+            type="info"
             showIcon
-            className="border-l-4 border-l-orange-500"
+            className="border-l-4 border-l-blue-500 shadow-sm"
           />
         )}
 

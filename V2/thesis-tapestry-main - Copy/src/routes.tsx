@@ -53,6 +53,7 @@ const ExtraPointsSubmission = lazy(() => import('@/pages/ExtraPointsSubmission')
 const CommitteeManagement = lazy(() => import('@/pages/head/CommitteeManagement'));
 const CommitteeSchedules = lazy(() => import('@/pages/head/CommitteeSchedules'));
 const SemesterSettings = lazy(() => import('@/pages/head/SemesterSettings'));
+const GradeSummary = lazy(() => import('@/pages/head/GradeSummary'));
 // ------------------------------
 
 export interface RouteConfig {
@@ -319,6 +320,15 @@ export const routes: RouteConfig[] = [
       roles: ['HEAD'],
     },
   },
+  {
+    path: '/head/grade-summary',
+    element: GradeSummary,
+    meta: {
+      title: 'navigation.gradeSummary',
+      icon: BarChartOutlined,
+      roles: ['HEAD'],
+    },
+  },
 
   // Admin routes
   {
@@ -496,6 +506,7 @@ export const getMenuItems = (userRole: UserRole) => {
           { key: '/committee-assignment', label: 'navigation.committeeAssignment', icon: <CrownOutlined /> },
           { key: '/head/committees', label: 'navigation.committeeManagement', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'navigation.extraPoints', icon: <SafetyCertificateOutlined /> },
+          { key: '/head/grade-summary', label: 'navigation.gradeSummary', icon: <BarChartOutlined /> },
           { key: '/admin/criteria', label: 'navigation.criteria', icon: <SafetyCertificateOutlined /> },
         ],
       },

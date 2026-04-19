@@ -31,19 +31,19 @@ export const GradingApi = {
 
     /**
      * Compute final score for a topic
-     * POST /grading/topics/:topicId/compute
+     * POST /grading/:topicId/compute
      */
     async computeFinalScore(topicId: string) {
-        const res = await api.post<ApiResponse<FinalScore>>(`/grading/topics/${topicId}/compute`);
+        const res = await api.post<ApiResponse<FinalScore>>(`/grading/${topicId}/compute`);
         return res.data.data;
     },
 
     /**
      * Finalize grades (HEAD only)
-     * POST /grading/topics/:topicId/finalize
+     * POST /grading/:topicId/finalize
      */
     async finalizeGrades(topicId: string) {
-        const res = await api.post<ApiResponse<FinalScore>>(`/grading/topics/${topicId}/finalize`);
+        const res = await api.post<ApiResponse<FinalScore>>(`/grading/${topicId}/finalize`);
         return res.data.data;
     },
 
@@ -57,7 +57,18 @@ export const GradingApi = {
             reviewerGrades: Grade[];
             councilGrades: Grade[];
             finalScore?: FinalScore;
-        }>>(`/grading/topics/${topicId}/grades`);
+            permissions?: any;
+            topic?: any;
+        }>>(`/grading/${topicId}/grades`);
+        return res.data.data;
+    },
+
+    /**
+     * Get grade summary for all completed topics (HEAD only)
+     * GET /grading/grade-summary
+     */
+    async getGradeSummary() {
+        const res = await api.get<ApiResponse<any[]>>('/grading/grade-summary');
         return res.data.data;
     },
 

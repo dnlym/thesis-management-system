@@ -130,53 +130,77 @@ export class AcademicPolicy {
       // ─── WORK & SUBMISSIONS ───────────────────────────────────────────
       case AcademicAction.SUBMIT_PROPOSAL:
         if (phase !== SemesterPhase.WORK) {
-          return { allowed: false, reason: 'Chỉ được nộp đề cương trong giai đoạn Thực hiện (WORK).' };
+          return { allowed: false, reason: 'Chỉ được nộp đề cương trong giai đoạn Thực hiện (WORK).', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.STUDENT };
+        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
 
       case AcademicAction.SUBMIT_MIDTERM:
-        if (phase !== SemesterPhase.WORK || !timeline.isMidtermActive) {
-          return { allowed: false, reason: 'Hiện không trong khoảng thời gian nộp báo cáo giữa kỳ.' };
+        if (phase !== SemesterPhase.WORK) {
+          return { allowed: false, reason: 'Chỉ được nộp báo cáo giữa kỳ trong giai đoạn Thực hiện (WORK).', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.STUDENT };
+        if (!timeline.isMidtermActive) {
+          return { allowed: false, reason: 'Hiện không trong khoảng thời gian nộp báo cáo giữa kỳ.', code: 'OUT_OF_TIME' };
+        }
+        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_MIDTERM:
-        if (phase !== SemesterPhase.WORK) {
-          return { allowed: false, reason: 'Chỉ được chấm giữa kỳ trong giai đoạn Thực hiện (WORK).' };
+        if (!semester) {
+          return { allowed: false, reason: 'Không tìm thấy dữ liệu học kỳ.', code: 'NO_SEMESTER' };
         }
-        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
+        if (phase !== SemesterPhase.WORK) {
+          return { allowed: false, reason: 'Chỉ được chấm giữa kỳ trong giai đoạn Thực hiện (WORK).', code: 'INVALID_PHASE' };
+        }
+        if (!timeline.isMidtermActive) {
+          return { allowed: false, reason: 'Đã hết thời gian (hoặc chưa tới ngày) đánh giá giữa kỳ.', code: 'OUT_OF_TIME' };
+        }
+        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD, code: 'ALLOWED' };
 
       case AcademicAction.SUBMIT_THESIS:
       case AcademicAction.SUBMIT_SOURCE_CODE:
         if (phase !== SemesterPhase.REVIEWING) {
-          return { allowed: false, reason: 'Chỉ được nộp báo cáo cuối kỳ/source code trong giai đoạn Phản biện.' };
+          return { allowed: false, reason: 'Chỉ được nộp báo cáo cuối kỳ/source code trong giai đoạn Phản biện.', code: 'INVALID_PHASE' };
         }
         if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
           return { allowed: false, reason: 'Bạn chưa đạt điểm giữa kỳ để thực hiện bước này.', code: 'MIDTERM_REQUIRED' };
         }
-        return { allowed: user.role === UserRole.STUDENT };
+        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
 
       case AcademicAction.SUBMIT_EXTRA_POINTS:
         if (phase !== SemesterPhase.WORK && phase !== SemesterPhase.REVIEWING) {
-          return { allowed: false, reason: 'Chỉ được nộp minh chứng điểm cộng trong giai đoạn Thực hiện hoặc Phản biện.' };
+          return { allowed: false, reason: 'Chỉ được nộp minh chứng điểm cộng trong giai đoạn Thực hiện hoặc Phản biện.', code: 'INVALID_PHASE' };
         }
         if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
-          return { allowed: false, reason: 'Bạn cần đạt điểm giữa kỳ (PASS) trước khi nộp minh chứng NCKH.' };
+          return { allowed: false, reason: 'Bạn cần đạt điểm giữa kỳ (PASS) trước khi nộp minh chứng NCKH.', code: 'MIDTERM_REQUIRED' };
         }
-        return { allowed: user.role === UserRole.STUDENT };
+        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
 
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
-        return { allowed: phase === SemesterPhase.FINAL && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) };
+        if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        if (phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'GVHD chỉ được chấm điểm trong giai đoạn Tổng hợp (FINAL).', code: 'INVALID_PHASE' };
+        }
+        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
-        return { allowed: phase === SemesterPhase.REVIEWING && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) };
+        if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        if (phase !== SemesterPhase.REVIEWING) {
+          return { allowed: false, reason: 'GVPB chỉ được chấm điểm trong giai đoạn Phản biện (REVIEWING).', code: 'INVALID_PHASE' };
+        }
+        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_COMMITTEE:
-        return { allowed: phase === SemesterPhase.DEFENSE && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) };
+        if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        if (phase !== SemesterPhase.DEFENSE) {
+          return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm trong giai đoạn Bảo vệ (DEFENSE).', code: 'INVALID_PHASE' };
+        }
+        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.FINALIZE_SCORE:
-        return { allowed: phase === SemesterPhase.DEFENSE && user.role === UserRole.HEAD };
+        if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'Chỉ được chốt điểm trong giai đoạn Bảo vệ hoặc Tổng hợp.', code: 'INVALID_PHASE' };
+        }
+        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
 
       default:
         return { allowed: false, reason: 'Hành động không xác định.' };

@@ -181,13 +181,13 @@ export class TopicService {
 
       // Resolve co-supervisor department IF NOT PROVIDED BUT CO-SUPERVISOR IS
       if (topic.is_interdisciplinary && topic.co_supervisor_id && !topic.secondary_department_id) {
-         const coSupervisor = await prisma.user.findUnique({ where: { id: topic.co_supervisor_id } });
-         if (coSupervisor) {
-           await prisma.topic.update({
-             where: { id: topic.id },
-             data: { secondary_department_id: coSupervisor.departmentId }
-           });
-         }
+        const coSupervisor = await prisma.user.findUnique({ where: { id: topic.co_supervisor_id } });
+        if (coSupervisor) {
+          await prisma.topic.update({
+            where: { id: topic.id },
+            data: { secondary_department_id: coSupervisor.departmentId }
+          });
+        }
       }
 
       // Create initial version
@@ -219,13 +219,13 @@ export class TopicService {
 
       // Notify co-supervisor if interdisciplinary
       if (topic.is_interdisciplinary && topic.co_supervisor_id) {
-         await notificationService.createNotification(
-           topic.co_supervisor_id,
-           'INFO',
-           'Mời hướng dẫn đề tài liên ngành',
-           `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
-           topic.id
-         );
+        await notificationService.createNotification(
+          topic.co_supervisor_id,
+          'INFO',
+          'Mời hướng dẫn đề tài liên ngành',
+          `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
+          topic.id
+        );
       }
 
       return topic;
@@ -271,7 +271,7 @@ export class TopicService {
     const hasRegistrations = topic.registrations.length > 0;
     if (hasRegistrations) {
       if (data.title || data.maxStudents) {
-         throw new Error('Không thể sửa tên hoặc số lượng sinh viên khi đã có sinh viên đăng ký.');
+        throw new Error('Không thể sửa tên hoặc số lượng sinh viên khi đã có sinh viên đăng ký.');
       }
     }
 
@@ -279,11 +279,11 @@ export class TopicService {
     // any edit (title/requirements etc) should put it back to PENDING_APPROVAL
     let statusUpdate: any = {};
     if (([TopicStatus.APPROVED, TopicStatus.PENDING_INTERDISCIPLINARY] as TopicStatus[]).includes(topic.status)) {
-       statusUpdate.status = TopicStatus.PENDING_APPROVAL;
-       // Also reset interdisciplinary status if it was pending
-       if (topic.is_interdisciplinary) {
-         statusUpdate.interdisciplinary_status = 'PENDING';
-       }
+      statusUpdate.status = TopicStatus.PENDING_APPROVAL;
+      // Also reset interdisciplinary status if it was pending
+      if (topic.is_interdisciplinary) {
+        statusUpdate.interdisciplinary_status = 'PENDING';
+      }
     }
 
     // Validate maxStudents is even
@@ -293,7 +293,7 @@ export class TopicService {
 
     // Process data to update
     const updateData: any = { ...data };
-    
+
     // Handle camelCase mapping
     if (data.maxStudents) {
       updateData.max_students = data.maxStudents;
@@ -302,27 +302,27 @@ export class TopicService {
     if (data.coSupervisorId !== undefined) {
       updateData.co_supervisor_id = data.coSupervisorId;
       delete updateData.coSupervisorId;
-      
+
       // If co-supervisor changed, reset status and notify
       if (data.coSupervisorId !== topic.co_supervisor_id) {
         updateData.interdisciplinary_status = 'PENDING';
-        
+
         // Resolve secondary department
         if (data.coSupervisorId) {
-           const coSup = await prisma.user.findUnique({ where: { id: data.coSupervisorId } });
-           updateData.secondary_department_id = coSup?.departmentId || null;
-           
-           // Notify new co-supervisor
-           await notificationService.createNotification(
-             data.coSupervisorId,
-             'INFO',
-             'Mời hướng dẫn đề tài liên ngành (Cập nhật)',
-             `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
-             topic.id
-           );
+          const coSup = await prisma.user.findUnique({ where: { id: data.coSupervisorId } });
+          updateData.secondary_department_id = coSup?.departmentId || null;
+
+          // Notify new co-supervisor
+          await notificationService.createNotification(
+            data.coSupervisorId,
+            'INFO',
+            'Mời hướng dẫn đề tài liên ngành (Cập nhật)',
+            `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
+            topic.id
+          );
         } else {
-           updateData.secondary_department_id = null;
-           updateData.is_interdisciplinary = false;
+          updateData.secondary_department_id = null;
+          updateData.is_interdisciplinary = false;
         }
       }
     }
@@ -727,11 +727,11 @@ export class TopicService {
           OR: [
             { departmentId: user.departmentId }, // Their own department
             {
-               AND: [ // Approved interdisciplinary topics from other departments
-                 { is_interdisciplinary: true },
-                 { secondary_department_id: user.departmentId },
-                 { interdisciplinary_status: 'APPROVED' }
-               ]
+              AND: [ // Approved interdisciplinary topics from other departments
+                { is_interdisciplinary: true },
+                { secondary_department_id: user.departmentId },
+                { interdisciplinary_status: 'APPROVED' }
+              ]
             }
           ]
         });
@@ -1019,7 +1019,7 @@ export class TopicService {
     if (user && user.role === UserRole.STUDENT) {
       // Filter to only show their own registration (if they have one)
       const myRegistration = topic.registrations.filter(r => r.student_id === userId);
-      
+
       // Mask other sensitive relations for students
       const { registrations, groups, final_scores, assignments, ...cleanTopic } = topic as any;
 
@@ -1366,34 +1366,34 @@ export class TopicService {
     });
 
     if (!topic) {
-       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
+      throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
     if (topic.co_supervisor_id !== userId) {
-       throw new Error('Bạn không phải đồng hướng dẫn của đề tài này');
+      throw new Error('Bạn không phải đồng hướng dẫn của đề tài này');
     }
 
     if (topic.interdisciplinary_status !== 'PENDING') {
-       throw new Error('Yêu cầu đã được xử lý hoặc không còn hiệu lực');
+      throw new Error('Yêu cầu đã được xử lý hoặc không còn hiệu lực');
     }
 
     // FALLBACK LOGIC: If REJECTED, the topic reverts to APPROVED (for primary department only)
     // and is_interdisciplinary flag is cleared.
     const isActuallyApproved = status === 'APPROVED';
     const nextInterStatus = status as any;
-    
+
     let nextTopicStatus = topic.status;
     let nextIsInter = topic.is_interdisciplinary;
 
     if (topic.status === TopicStatus.PENDING_INTERDISCIPLINARY) {
-       if (isActuallyApproved) {
-         nextTopicStatus = TopicStatus.APPROVED;
-       } else {
-         // REJECTED by co-supervisor: 
-         // Revert to a standard topic for the primary department since HOD already approved it.
-         nextTopicStatus = TopicStatus.APPROVED;
-         nextIsInter = false;
-       }
+      if (isActuallyApproved) {
+        nextTopicStatus = TopicStatus.APPROVED;
+      } else {
+        // REJECTED by co-supervisor: 
+        // Revert to a standard topic for the primary department since HOD already approved it.
+        nextTopicStatus = TopicStatus.APPROVED;
+        nextIsInter = false;
+      }
     }
 
     const updatedTopic = await prisma.topic.update({
@@ -1422,11 +1422,11 @@ export class TopicService {
 
     // Notify primary supervisor
     await notificationService.createNotification(
-       topic.supervisor_id,
-       'INFO',
-       `Phản hồi lời mời đồng hướng dẫn`,
-       `Giảng viên đồng hướng dẫn đã ${status === 'APPROVED' ? 'CHẤP NHẬN' : 'TỪ CHỐI'} lời mời cho đề tài "${topic.title}".`,
-       topic.id
+      topic.supervisor_id,
+      'INFO',
+      `Phản hồi lời mời đồng hướng dẫn`,
+      `Giảng viên đồng hướng dẫn đã ${status === 'APPROVED' ? 'CHẤP NHẬN' : 'TỪ CHỐI'} lời mời cho đề tài "${topic.title}".`,
+      topic.id
     );
 
     return updatedTopic;

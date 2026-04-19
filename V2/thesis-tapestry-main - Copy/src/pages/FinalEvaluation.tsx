@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, Form, InputNumber, Button, Alert, Table, Tag, Row, Col, Typography, Avatar, Result, Tabs, Divider, Skeleton, Input, Checkbox } from 'antd';
+import { Card, Form, InputNumber, Button, Alert, Table, Tag, Row, Col, Typography, Avatar, Result, Tabs, Divider, Skeleton, Input, Checkbox, Tooltip } from 'antd';
 import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
 import { TopicsApi } from '@/api/topics';
+import { GradingApi } from '@/api/grading';
 import { RaterRole, GradeScore } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -25,12 +26,27 @@ const FinalEvaluation = () => {
     const topicId = searchParams.get('topicId');
     const [activeRole, setActiveRole] = useState<'SUPERVISOR' | 'REVIEWER_1' | 'COMMITTEE'>('SUPERVISOR');
 
-    // Fetch topic details
-    const { data: selectedTopic, isLoading: isLoadingTopic } = useQuery({
-        queryKey: ['topic-for-final-eval', topicId],
-        queryFn: () => TopicsApi.getById(topicId!),
+    // Fetch topic details and permissions from Grading API
+    const { data: gradingContext, isLoading: isLoadingGrading } = useQuery({
+        queryKey: ['grading-context', topicId],
+        queryFn: () => GradingApi.getTopicGrades(topicId!),
         enabled: !!topicId,
     });
+
+    const selectedTopic = (gradingContext as any)?.topic || gradingContext?.finalScore?.topic || (gradingContext as any)?.permissions?.topic;
+    
+    // permissions object from backend
+    const permissions = gradingContext?.permissions;
+
+    const getPermissionForActiveRole = () => {
+        if (!permissions) return { allowed: true, code: 'LOADING' };
+        if (activeRole === 'SUPERVISOR') return { allowed: permissions.grade_supervisor, code: permissions.grade_supervisor_code, reason: permissions.grade_supervisor_reason };
+        if (activeRole === 'REVIEWER_1') return { allowed: permissions.grade_reviewer, code: permissions.grade_reviewer_code, reason: permissions.grade_reviewer_reason };
+        if (activeRole === 'COMMITTEE') return { allowed: permissions.grade_committee, code: permissions.grade_committee_code, reason: permissions.grade_committee_reason };
+        return { allowed: false, code: 'UNKNOWN' };
+    };
+
+    const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveRole();
 
     // Fetch FINAL criteria (10 LOs)
     const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({ 
@@ -137,7 +153,9 @@ const FinalEvaluation = () => {
         }
     };
 
-    if (isLoadingTopic) {
+    const isLocked = !isPhaseAllowed;
+
+    if (isLoadingGrading) {
         return (
             <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
                 <Skeleton active paragraph={{ rows: 10 }} />
@@ -184,7 +202,7 @@ const FinalEvaluation = () => {
                         rules={[{ required: true, message: 'Nhập điểm' }]}
                         className="mb-0"
                     >
-                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" />
+                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isLocked} />
                     </Form.Item>
                 ),
             })),
@@ -195,7 +213,7 @@ const FinalEvaluation = () => {
             width: 200,
             render: (_: any, record: any) => (
                 <Form.Item name={['notes', record.id]} className="mb-0">
-                    <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" />
+                    <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" disabled={isLocked} />
                 </Form.Item>
             ),
         },
@@ -245,6 +263,16 @@ const FinalEvaluation = () => {
                         { key: 'COMMITTEE', label: 'Hội đồng' },
                     ]}
                 />
+
+                {!isPhaseAllowed && phaseError && (
+                    <Alert
+                        message="Thông báo về quyền chấm điểm"
+                        description={phaseError}
+                        type="info"
+                        showIcon
+                        className="mb-8 border-l-4 border-l-blue-500 shadow-sm"
+                    />
+                )}
 
                 {isLoadingCriteria ? (
                     <Skeleton active paragraph={{ rows: 12 }} />
@@ -300,18 +328,21 @@ const FinalEvaluation = () => {
                         />
 
                         <div className="flex justify-end gap-3 mt-10 no-print pb-4">
-                            <Button size="large" icon={<SaveOutlined />} onClick={() => form.resetFields()}>
+                            <Button size="large" icon={<SaveOutlined />} onClick={() => form.resetFields()} disabled={isLocked}>
                                 Nhập lại từ đầu
                             </Button>
-                            <Button
-                                size="large"
-                                type="primary"
-                                icon={<CheckCircleOutlined />}
-                                onClick={handleSubmit}
-                                loading={submitGradeMutation.isPending}
-                            >
-                                Lưu và Gửi Phiếu Đánh Giá Nhóm
-                            </Button>
+                            <Tooltip title={isLocked ? phaseError : ''}>
+                                <Button
+                                    size="large"
+                                    type="primary"
+                                    icon={<CheckCircleOutlined />}
+                                    onClick={handleSubmit}
+                                    loading={submitGradeMutation.isPending}
+                                    disabled={isLocked}
+                                >
+                                    Lưu và Gửi Phiếu Đánh Giá Nhóm
+                                </Button>
+                            </Tooltip>
                         </div>
                     </Form>
                 ) : (

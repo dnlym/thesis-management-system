@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole } from '@prisma/client';
 import { CreateAssignmentRequest, CreateDefenseScheduleRequest } from '../types';
 import { ERROR_CODES } from '../constants';
+import { SemesterGuard } from '../utils/semester-guard';
 import notificationService from './notification.service';
 
 
@@ -101,6 +102,21 @@ export class AssignmentService {
       if (orderExists) {
         throw new Error(`Reviewer ${data.reviewerOrder} already assigned`);
       }
+    }
+
+    // [PRODUCTION GUARD] Check for unique reviewer across all positions
+    const reviewerExists = topic.assignments.find(
+      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER
+    );
+    if (reviewerExists) {
+      throw new Error(ERROR_CODES.REVIEWER_DUPLICATE || 'Giảng viên đã được gán phản biện cho đề tài này');
+    }
+
+    // [DEPARTMENT GUARD] Reviewer must be from the same department as the topic
+    const reviewer = await prisma.user.findUnique({ where: { id: data.reviewerId } });
+    if (!reviewer) throw new Error('Không tìm thấy giảng viên phản biện');
+    if (reviewer.departmentId !== topic.departmentId) {
+      throw new Error('Giảng viên phản biện phải thuộc cùng bộ môn với đề tài');
     }
 
     // Check workload limit
@@ -753,12 +769,14 @@ export class AssignmentService {
     const topics = await prisma.topic.findMany({
       where: {
         departmentId: user.departmentId,
-        // Include topics that are in review-related statuses
+        // Show all topics from reviewer-grading phase through defense completion
         status: {
           in: [
             TopicStatus.UNDER_REVIEW,
             TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT,
-            TopicStatus.COMPLETED
+            TopicStatus.WAITING_FOR_DEFENSE,
+            TopicStatus.DEFENDING,
+            TopicStatus.COMPLETED,
           ]
         }
       },
@@ -766,108 +784,113 @@ export class AssignmentService {
       orderBy: { created_at: 'desc' },
     }) as TopicForCommitteeAssignment[];
 
-    // Filter topics that have reviewer grades completed
-    const processedTopics = topics.filter(topic => {
-      const reviewerAssignments = topic.assignments.filter(
-        a => a.assignment_type === AssignmentType.REVIEWER && a.status === AssignmentStatus.ACCEPTED
-      );
-
-      // Get unique reviewers who have graded
-      const reviewersWhoGraded = new Set(
-        topic.grades
-          .filter(g =>
-            ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
-          )
-          .map(g => g.grader_id)
-      );
-
-      // Ensures ALL assigned reviewers have graded, and there are at least 2 reviewers
-      return reviewerAssignments.length >= 2 && reviewersWhoGraded.size >= reviewerAssignments.length;
-    }).map(topic => {
-      const committeeAssignments = topic.assignments.filter(
-        a => a.assignment_type === AssignmentType.COMMITTEE
-      );
-      const hasCommittee = committeeAssignments.length > 0;
-
-      // Calculate weighted scores based on criteria
-      const calculateWeightedScore = (grades: any[]) => {
-        if (grades.length === 0) return 0;
-        return grades.reduce((sum, grade) => sum + (grade.score * (grade.criterion?.weight || 0)), 0);
-      };
-
-      const advisorGrades = topic.grades.filter(g => g.rater_role === RaterRole.SUPERVISOR);
-      const reviewerGrades = topic.grades.filter(g =>
-        ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
-      );
-      const studentIds = [...new Set(topic.grades.map(g => g.student_id).filter(Boolean))];
-
-      let defenseScore = 0;
-      let totalReviewerScoreOnly = 0;
-
-      if (studentIds.length > 0) {
-        let totalStudentScores = 0;
-        let totalStudentReviewerScores = 0;
-        for (const studentId of studentIds) {
-          const studentAdvisorGrades = advisorGrades.filter(g => g.student_id === studentId);
-          const studentReviewerGrades = reviewerGrades.filter(g => g.student_id === studentId);
-
-          const advScore = studentAdvisorGrades.length > 0 ? calculateWeightedScore(studentAdvisorGrades) : null;
-
-          const distinctReviewers = [...new Set(studentReviewerGrades.map(g => g.grader_id))];
-          const reviewerScores = [];
-          for (const reviewerId of distinctReviewers) {
-            reviewerScores.push(calculateWeightedScore(studentReviewerGrades.filter(g => g.grader_id === reviewerId)));
-          }
-
-          // Final Formula: Average of all available scores (Supervisor + Reviewers)
-          const allStudentScores = [advScore, ...reviewerScores].filter((s): s is number => s !== null);
-          const avgScoreForStudent = allStudentScores.length > 0 ? (allStudentScores.reduce((a, b) => a + b, 0) / allStudentScores.length) : 0;
-
-          // Also track just reviewer average for display
-          const avgReviewerScoreForStudent = reviewerScores.length > 0 ? (reviewerScores.reduce((a, b) => a + b, 0) / reviewerScores.length) : 0;
-
-          totalStudentScores += avgScoreForStudent;
-          totalStudentReviewerScores += avgReviewerScoreForStudent;
-        }
-        defenseScore = totalStudentScores / studentIds.length;
-        totalReviewerScoreOnly = totalStudentReviewerScores / studentIds.length;
-      } else {
-        const advScore = advisorGrades.length > 0 ? calculateWeightedScore(advisorGrades) : null;
-
-        const distinctReviewers = [...new Set(reviewerGrades.map(g => g.grader_id))];
-        const reviewerScores = [];
-        for (const reviewerId of distinctReviewers) {
-          reviewerScores.push(calculateWeightedScore(reviewerGrades.filter(g => g.grader_id === reviewerId)));
-        }
-
-        const allScores = [advScore, ...reviewerScores].filter((s): s is number => s !== null);
-
-        defenseScore = allScores.length > 0 ? allScores.reduce((a, b) => a + b, 0) / allScores.length : 0;
-        totalReviewerScoreOnly = reviewerScores.length > 0 ? (reviewerScores.reduce((a, b) => a + b, 0) / reviewerScores.length) : 0;
-      }
+    const results = topics.map(topic => {
+      const eligibility = this.isEligibleForCommittee(topic);
+      
+      // Standardized Production Log
+      console.log({
+        tag: 'COMMITTEE_ELIGIBILITY',
+        topicId: topic.id,
+        topicCode: topic.code,
+        title: topic.title,
+        assignments: topic.assignments.length,
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+      });
 
       return {
-        ...topic,
-        topicTitle: topic.title,
-        hasCommittee,
-        avgReviewerScore: totalReviewerScoreOnly,
-        defense_score: defenseScore,
-        committeeAssignments,
-        currentSchedule: topic.defense_schedule ? {
-          committee_id: (topic.defense_schedule as any).committee_id,
-          committee_name: (topic.defense_schedule as any).committee?.name,
-          defense_date: topic.defense_schedule.defense_date,
-          start_time: (topic.defense_schedule as any).start_time,
-          end_time: (topic.defense_schedule as any).end_time,
-          room: topic.defense_schedule.room,
-        } : null,
+        topic,
+        eligibility
       };
     });
 
-    processedTopics.sort((a, b) => b.defense_score - a.defense_score);
+    // Return only eligible topics for the assignment list
+    return results
+      .filter(r => r.eligibility.eligible)
+      .map(r => {
+        const topic = r.topic;
+        const committeeAssignments = topic.assignments.filter(
+          a => a.assignment_type === AssignmentType.COMMITTEE
+        );
+        const hasCommittee = committeeAssignments.length > 0;
 
-    return processedTopics;
+        // Calculate per-reviewer weighted score, then average across reviewers
+        const reviewerAssignments = topic.assignments.filter((a: any) =>
+          a.assignment_type === AssignmentType.REVIEWER &&
+          [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED].includes(a.status)
+        );
+        const reviewerIds = [...new Set(reviewerAssignments.map((a: any) => a.reviewer_id))] as string[];
+
+        const reviewerGrades = topic.grades.filter(g =>
+          ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
+        );
+
+        const perReviewerScores = reviewerIds.map((reviewerId: string) => {
+          const grades = reviewerGrades.filter((g: any) => g.grader_id === reviewerId);
+          if (grades.length === 0) return 0;
+          return grades.reduce((sum: number, g: any) => sum + (g.score * (g.criterion?.weight || 0)), 0);
+        });
+
+        const avgReviewerScore = perReviewerScores.length > 0
+          ? Math.round((perReviewerScores.reduce((a, b) => a + b, 0) / perReviewerScores.length) * 100) / 100
+          : null;
+
+        return {
+          ...topic,
+          hasCommittee,
+          avgReviewerScore,
+          currentSchedule: topic.defense_schedule ? {
+            committee_id: topic.defense_schedule.committee_id,
+            defense_date: topic.defense_schedule.defense_date,
+            start_time: (topic.defense_schedule as any).defense_time,
+            room: topic.defense_schedule.room,
+          } : null,
+        } as any;
+      });
   }
+
+  /**
+   * Production-Grade Eligibility Engine Component
+   */
+  private isEligibleForCommittee(topic: any): { eligible: boolean; reason?: string } {
+    // 0. Bypass: Topic already has committee assigned → always show in list (for edit/view)
+    const hasCommittee = topic.assignments.some((a: any) =>
+      a.assignment_type === AssignmentType.COMMITTEE &&
+      [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED].includes(a.status)
+    );
+    if (hasCommittee) {
+      return { eligible: true, reason: 'COMMITTEE_ASSIGNED' };
+    }
+
+    // 1. Filter only accepted reviewer assignments
+    const reviewers = topic.assignments.filter((a: any) =>
+      a.assignment_type === AssignmentType.REVIEWER &&
+      [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED].includes(a.status)
+    );
+
+    // 2. Consistency Guard: Ensure at least 2 unique reviewers
+    const uniqueReviewerIds = new Set(reviewers.map((r: any) => r.reviewer_id));
+    if (uniqueReviewerIds.size < 2) {
+      return { eligible: false, reason: 'NOT_ENOUGH_UNIQUE_REVIEWERS' };
+    }
+
+    // 3. Completion Guard: Check if everyone has submitted grades
+    const reviewersWhoGraded = new Set(
+      topic.grades
+        .filter((g: any) =>
+          ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
+        )
+        .map((g: any) => g.grader_id)
+    );
+
+    const allGraded = reviewers.every((r: any) => reviewersWhoGraded.has(r.reviewer_id));
+    if (!allGraded) {
+      return { eligible: false, reason: 'GRADES_INCOMPLETE' };
+    }
+
+    return { eligible: true };
+  }
+
 
   /**
    * Get available reviewers for a topic (excluding GVHD)
@@ -977,6 +1000,17 @@ export class AssignmentService {
     const uniqueMembers = new Set(allMembers);
     if (uniqueMembers.size !== allMembers.length) {
       throw new Error('ThÃ nh viÃªn há»™i Ä‘á»“ng khÃ´ng Ä‘Æ°á»£c trÃ¹ng láº·p');
+    }
+
+    // [DEPARTMENT GUARD] All committee members must be from the same department as the topic
+    const memberUsers = await prisma.user.findMany({
+      where: { id: { in: allMembers } },
+      select: { id: true, full_name: true, departmentId: true },
+    });
+    const wrongDeptMembers = memberUsers.filter(u => u.departmentId !== topic.departmentId);
+    if (wrongDeptMembers.length > 0) {
+      const names = wrongDeptMembers.map(u => u.full_name).join(', ');
+      throw new Error(`Thành viên hội đồng phải thuộc cùng bộ môn với đề tài: ${names}`);
     }
 
     // Delete existing committee assignments if any

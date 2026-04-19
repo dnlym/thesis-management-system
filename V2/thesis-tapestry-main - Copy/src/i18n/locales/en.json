@@ -82,7 +82,8 @@
     "reviewerCouncil": "Reviewer / Council",
     "guidance": "Guidance",
     "reviewerAssignments": "Topics to Review",
-    "reviewerForm": "Reviewer Form"
+    "reviewerForm": "Reviewer Form",
+    "gradeSummary": "Grade Summary & Finalization"
   },
   "roles": {
     "STUDENT": "Student",

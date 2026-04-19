@@ -67,7 +67,7 @@ class GradingController {
             topic_id: topicId,
             reviewer_id: userId,
             assignment_type: 'REVIEWER',
-            status: { in: ['ACCEPTED', 'PENDING'] },
+            status: { in: ['ACCEPTED', 'AUTO_ACCEPTED', 'PENDING'] },
           },
         });
         if (assignment?.reviewer_order === 1) raterRole = RaterRole.REVIEWER_1;
@@ -216,6 +216,17 @@ class GradingController {
         success: false,
         error: error.message,
       });
+    }
+  }
+
+  async getGradeSummary(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const summary = await gradingService.getGradeSummary(userId);
+      res.json({ success: true, data: summary });
+    } catch (error: any) {
+      const status = error.message?.includes('FORBIDDEN') ? 403 : 400;
+      res.status(status).json({ success: false, error: error.message });
     }
   }
 

@@ -1,47 +1,14 @@
-import { useState } from 'react';
-import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Empty, Spin, Alert } from 'antd';
+import { useState, useMemo } from 'react';
+import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useAuthStore } from '@/store/auth';
+import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useMemo } from 'react';
-import { canGradeMidterm } from '@/utils/semester-rules';
+import { MidtermRegistration } from '@/types';
 
 const { TextArea } = Input;
 
-interface MidtermRegistration {
-    id: string;
-    topic: {
-        id: string;
-        title: string;
-        supervisor_id: string;
-    };
-    group: {
-        id: string;
-        name: string;
-        members: {
-            user: {
-                id: string;
-                full_name: string;
-                student_code: string;
-                email: string;
-                avatar_url?: string;
-            };
-        }[];
-    } | null;
-    student?: {
-        id: string;
-        full_name: string;
-        student_code: string;
-        email: string;
-        avatar_url?: string;
-    };
-    midterm_status: 'PASS' | 'FAIL' | null;
-    midterm_feedback: string | null;
-    midterm_graded_at: string | null;
-    registered_at: string;
-    status: string;
-}
 
 /**
  * Midterm Evaluation Page
@@ -49,7 +16,14 @@ interface MidtermRegistration {
  */
 const MidtermEvaluation = () => {
     const { user } = useAuthStore();
-    const { data: registrations, isLoading, isError } = useMidtermRegistrations();
+    const queryClient = useQueryClient();
+    
+    const { 
+        data: registrations, 
+        isLoading, 
+        isError 
+    } = useMidtermRegistrations();
+
     const updateMidtermMutation = useUpdateMidtermStatus();
 
     // Modal states
@@ -57,13 +31,6 @@ const MidtermEvaluation = () => {
     const [gradeModalVisible, setGradeModalVisible] = useState(false);
     const [feedback, setFeedback] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'PASS' | 'FAIL' | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const isPhaseValid = useMemo(() => {
-        if (!registrations || registrations.length === 0) return true;
-        // All registrations for a supervisor usually belong to the same semester
-        return canGradeMidterm(registrations[0].semester);
-    }, [registrations]);
 
     const handleOpenGradeModal = (registration: MidtermRegistration, status: 'PASS' | 'FAIL') => {
         setSelectedRegistration(registration);
@@ -98,7 +65,12 @@ const MidtermEvaluation = () => {
         return <Tag color="error" icon={<CloseCircleOutlined />}>FAIL</Tag>;
     };
 
-    const columns = [
+    const hasAnyRestrictedPhase = useMemo(() => {
+        if (!registrations) return false;
+        return registrations.some(r => r.permissions && !r.permissions.grade_midterm);
+    }, [registrations]);
+
+    const columns: any[] = [
         {
             title: 'STT',
             key: 'index',
@@ -109,8 +81,13 @@ const MidtermEvaluation = () => {
             title: 'Đề tài',
             dataIndex: ['topic', 'title'],
             key: 'topic',
-            render: (title: string) => (
-                <div className="font-medium text-gray-800">{title}</div>
+            render: (title: string, record: MidtermRegistration) => (
+                <div>
+                   <div className="font-medium text-gray-800">{title}</div>
+                   {!record.topic?.semester && (
+                       <Tag color="warning" className="mt-1">Thiếu thông tin học kỳ</Tag>
+                   )}
+                </div>
             ),
         },
         {
@@ -173,26 +150,34 @@ const MidtermEvaluation = () => {
                     );
                 }
 
+                // Per-record permission from backend
+                const canGrade = record.permissions?.grade_midterm ?? false;
+                const reason = record.permissions?.grade_midterm_reason || 'Không có quyền chấm điểm.';
+
                 // Can grade
                 return (
                     <Space>
-                        <Button
-                            type="primary"
-                            icon={<CheckCircleOutlined />}
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleOpenGradeModal(record, 'PASS')}
-                            disabled={!isPhaseValid}
-                        >
-                            PASS
-                        </Button>
-                        <Button
-                            danger
-                            icon={<CloseCircleOutlined />}
-                            onClick={() => handleOpenGradeModal(record, 'FAIL')}
-                            disabled={!isPhaseValid}
-                        >
-                            FAIL
-                        </Button>
+                        <Tooltip title={!canGrade ? reason : ''}>
+                            <Button
+                                type="primary"
+                                icon={<CheckCircleOutlined />}
+                                className={canGrade ? "bg-green-600 hover:bg-green-700" : ""}
+                                onClick={() => handleOpenGradeModal(record, 'PASS')}
+                                disabled={!canGrade}
+                            >
+                                PASS
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title={!canGrade ? reason : ''}>
+                            <Button
+                                danger
+                                icon={<CloseCircleOutlined />}
+                                onClick={() => handleOpenGradeModal(record, 'FAIL')}
+                                disabled={!canGrade}
+                            >
+                                FAIL
+                            </Button>
+                        </Tooltip>
                     </Space>
                 );
             },
@@ -227,13 +212,13 @@ const MidtermEvaluation = () => {
                 <p className="text-gray-500">Đánh giá PASS/FAIL cho các nhóm sinh viên được phân công hướng dẫn</p>
             </div>
 
-            {!isPhaseValid && registrations && registrations.length > 0 && (
+            {hasAnyRestrictedPhase && (
                 <Alert
-                    message="Thời gian đánh giá giữa kỳ đã kết thúc hoặc chưa bắt đầu"
-                    description="Bạn hiện chỉ có thể xem lại kết quả đã đánh giá. Việc thay đổi kết quả PASS/FAIL không khả dụng ngoài giai đoạn Midterm."
-                    type="warning"
+                    message="Lưu ý về quyền đánh giá"
+                    description="Một số đề tài có thể bị khóa nút đánh giá do nằm ngoài khoảng thời gian quy định hoặc thiếu dữ liệu học kỳ. Rê chuột vào nút bị khóa để xem chi tiết lý do."
+                    type="info"
                     showIcon
-                    className="mb-6 border-l-4 border-l-orange-500 shadow-sm"
+                    className="mb-6 border-l-4 border-l-blue-500 shadow-sm"
                 />
             )}
 

@@ -83,7 +83,8 @@
     "reviewerCouncil": "Phản biện / Hội đồng",
     "guidance": "Hướng dẫn",
     "reviewerAssignments": "Đề tài cần phản biện",
-    "reviewerForm": "Phiếu đánh giá phản biện"
+    "reviewerForm": "Phiếu đánh giá phản biện",
+    "gradeSummary": "Tổng kết & Xác nhận điểm"
   },
   "roles": {
     "STUDENT": "Sinh viên",

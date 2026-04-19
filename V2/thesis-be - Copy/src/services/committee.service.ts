@@ -56,7 +56,21 @@ export class CommitteeService {
         }
       }
 
-      // 2. Check if any lecturer is already in a committee for this semester
+      // 2. [DEPARTMENT GUARD] All members must be from the same department as the committee
+      if (data.departmentId) {
+        const memberIds = data.members.map((m: any) => m.lecturerId);
+        const memberUsers = await tx.user.findMany({
+          where: { id: { in: memberIds } },
+          select: { id: true, full_name: true, departmentId: true },
+        });
+        const wrongDept = memberUsers.filter((u: any) => u.departmentId !== data.departmentId);
+        if (wrongDept.length > 0) {
+          const names = wrongDept.map((u: any) => u.full_name).join(', ');
+          throw new Error(`Giảng viên không thuộc bộ môn này: ${names}`);
+        }
+      }
+
+      // 3. Check if any lecturer is already in a committee for this semester
       const lecturerIds = data.members.map((m: any) => m.lecturerId);
       const existingMemberships = await tx.committeeMember.findMany({
         where: {
@@ -148,6 +162,20 @@ export class CommitteeService {
         if (existingMemberships.length > 0) {
           const names = existingMemberships.map((m: any) => m.lecturer.full_name).join(', ');
           throw new Error(`Giảng viên đã thuộc hội đồng khác: ${names}`);
+        }
+
+        // [DEPARTMENT GUARD] All new members must be from same department as committee
+        if (committee.departmentId) {
+          const newMemberIds = data.members.map((m: any) => m.lecturerId);
+          const newMemberUsers = await tx.user.findMany({
+            where: { id: { in: newMemberIds } },
+            select: { id: true, full_name: true, departmentId: true },
+          });
+          const wrongDept = newMemberUsers.filter((u: any) => u.departmentId !== committee.departmentId);
+          if (wrongDept.length > 0) {
+            const names = wrongDept.map((u: any) => u.full_name).join(', ');
+            throw new Error(`Giảng viên không thuộc bộ môn này: ${names}`);
+          }
         }
 
         // Create new members
@@ -257,6 +285,11 @@ export class CommitteeService {
         include: { members: { include: { lecturer: true } } }
       });
       if (!committee) throw new Error('Không tìm thấy hội đồng');
+
+      // [DEPARTMENT GUARD] Committee must belong to the same department as the topic
+      if (committee.departmentId && topic.departmentId && committee.departmentId !== topic.departmentId) {
+        throw new Error('Hội đồng không thuộc cùng bộ môn với đề tài. Vui lòng chọn hội đồng đúng bộ môn.');
+      }
 
       // 2. Validate Rule: Supervisor NOT in committee
       const isSupervisorInCommittee = committee.members.some(m => m.lecturer_id === topic.supervisor_id);
