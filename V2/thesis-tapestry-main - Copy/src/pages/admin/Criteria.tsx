@@ -95,12 +95,13 @@ const Criteria = () => {
 
     const handleOk = () => {
         form.validateFields().then((values) => {
-            // Map frontend types to backend types
-            let backendType = values.criteriaType;
-            if (values.criteriaType === 'ADVISOR') backendType = 'SUPERVISOR';
-            if (values.criteriaType === 'COUNCIL') backendType = 'COMMITTEE';
+            // Map frontend types to valid backend RaterRole enums
+            let backendRole = values.criteriaType;
+            if (values.criteriaType === 'ADVISOR') backendRole = 'SUPERVISOR';
+            if (values.criteriaType === 'REVIEWER') backendRole = 'REVIEWER_1';
+            if (values.criteriaType === 'COUNCIL') backendRole = 'COMMITTEE_MEMBER';
 
-            const payload = { ...values, criteriaType: backendType };
+            const payload = { ...values, role: backendRole };
 
             if (editingId) {
                 updateMutation.mutate({ id: editingId, data: payload });
@@ -112,46 +113,32 @@ const Criteria = () => {
 
     const columns = [
         {
-            title: t('common.name'),
+            title: 'STT',
+            key: 'stt',
+            width: '80px',
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
+            title: 'LO',
             dataIndex: 'name',
             key: 'name',
-            width: '30%',
+            width: '60%',
         },
         {
-            title: t('common.description'),
-            dataIndex: 'description',
-            key: 'description',
-            ellipsis: true,
-        },
-        {
-            title: t('criteria.weight'),
+            title: 'TRỌNG SỐ',
             dataIndex: 'weight',
             key: 'weight',
-            width: '10%',
+            width: '120px',
             render: (weight: number) => <Tag color="blue">{weight}</Tag>,
         },
         {
-            title: t('criteria.maxScore'),
-            dataIndex: 'maxScore',
-            key: 'maxScore',
-            width: '10%',
-        },
-        {
-            title: 'Đơn vị',
-            key: 'department',
-            width: '10%',
-            render: (_: any, record: any) => (
-                record.departmentId ? <Tag color="blue">Bộ môn</Tag> : <Tag color="purple">Chung</Tag>
-            )
-        },
-        {
-            title: t('common.actions'),
+            title: 'THAO TÁC',
             key: 'actions',
-            width: '150px',
+            width: '120px',
             render: (_: any, record: any) => {
                 const isGlobal = !record.departmentId;
                 const canEdit = user?.role === 'ADMIN' || (user?.role === 'HEAD' && !isGlobal);
-                
+
                 return (
                     <Space>
                         <Button
@@ -177,15 +164,12 @@ const Criteria = () => {
 
     const getCriteriaList = (type: CriteriaType) => {
         if (!criteriaMap) return [];
-        // The backend returns a map where keys are criteria types
-        // We need to handle potential case sensitivity or mapping issues
-        // Assuming backend returns keys like 'SUPERVISOR', 'REVIEWER', 'COMMITTEE'
-        // But frontend types are 'ADVISOR', 'REVIEWER', 'COUNCIL'
 
         let backendKey = type as string;
         if (type === 'ADVISOR') backendKey = 'SUPERVISOR';
         if (type === 'COUNCIL') backendKey = 'COMMITTEE';
 
+        // The backend now returns keys grouped by RoleGroup (SUPERVISOR, REVIEWER, COMMITTEE)
         return criteriaMap[backendKey] || [];
     };
 
