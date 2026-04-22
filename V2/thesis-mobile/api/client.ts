@@ -15,7 +15,12 @@ export const api = axios.create({
 // Attach Authorization header if token exists
 api.interceptors.request.use((config) => {
     // API Call Logging
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+    const method = config.method?.toUpperCase();
+    const url = config.url;
+    const data = config.data ? JSON.stringify(config.data).substring(0, 500) : 'None';
+
+    console.log(`\n[🚀 API Request] ${method} ${url}`);
+    if (config.data) console.log(`[Payload]: ${data}${data.length >= 500 ? '...' : ''}`);
 
     const { token } = useAuthStore.getState();
     if (token) {
@@ -47,12 +52,23 @@ function onRefreshed(newToken: string | null) {
 
 api.interceptors.response.use(
     (response) => {
-        console.log(`[API Response] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+        console.log(`[✅ API Success] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
         return response;
     },
     async (error) => {
-        const originalRequest = error.config;
         const status = error?.response?.status;
+        const method = error?.config?.method?.toUpperCase();
+        const url = error?.config?.url;
+        const errorData = error?.response?.data;
+
+        console.error(`\n[❌ API Error] ${status || 'Network Error'} ${method} ${url}`);
+        if (errorData) {
+            console.error('[Error Details]:', JSON.stringify(errorData, null, 2));
+        } else {
+            console.error('[Error Message]:', error.message);
+        }
+
+        const originalRequest = error.config;
 
         if (status === 401 && !originalRequest._retry) {
             // Don't attempt to refresh if the failed request was a login attempt

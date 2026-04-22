@@ -28,9 +28,23 @@ export function useTopics(filters?: TopicFilters & { includeAll?: boolean }) {
             return response;
         },
         placeholderData: (previousData) => previousData as any,
-        // Only run the query if we have a semester filter OR we are specifically including all
-        // This prevents "flickering" or loading current semester topics prematurely
-        enabled: isAuthenticated && !!(filters?.semesterId || filters?.includeAll || !filters),
+        // Only run the query if we have a filter OR specific intent
+        enabled: isAuthenticated,
+    });
+}
+
+/**
+ * Get topics where current user is supervisor
+ */
+export function useSupervisedTopics() {
+    const { user, isAuthenticated } = useAuthStore();
+    return useQuery({
+        queryKey: topicKeys.list({ supervisorId: user?.id }),
+        queryFn: async () => {
+            const response = await TopicsApi.getAll({ supervisorId: user?.id, size: 50 });
+            return response.topics;
+        },
+        enabled: isAuthenticated && !!user?.id,
     });
 }
 

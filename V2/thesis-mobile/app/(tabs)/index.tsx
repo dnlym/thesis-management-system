@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAssignments } from '@/hooks/useAssignments';
+import { useSupervisedTopics } from '@/hooks/useTopics';
 
 const BLUE = '#2563eb';
 
@@ -18,36 +19,52 @@ export default function DashboardScreen() {
   // Fetch actual data
   const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
   const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments({ status: 'ALL' } as any);
+  const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchStats(), refetchAssignments()]);
+    await Promise.all([refetchStats(), refetchAssignments(), refetchSupervised()]);
     setRefreshing(false);
-  }, [refetchStats, refetchAssignments]);
+  }, [refetchStats, refetchAssignments, refetchSupervised]);
 
   const d = new Date();
   const TODAY = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-  const isLoading = isStatsLoading || isAssignmentsLoading;
+  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading;
 
   // Derive stats
-  const assignedTopics = assignments || [];
-  const totalGroups = assignedTopics.length;
-  // Temporary: we assume topics without scores or "NOT_STARTED" equivalent
-  const notStarted = assignedTopics.filter(a => a.status === 'PENDING').length;
+  const assignedList = assignments || [];
+  const supervisedList = supervisedTopics || [];
 
-  // Group assignments by session or date if possible, here we'll just mock 1 session holding all for now
-  const sessions = assignedTopics.length > 0 ? [
+  // Combine all topics the user needs to interact with
+  // We filter supervised to only show those that might need grading soon (optional, or just show all for now)
+  const combinedTopics = [
+    ...assignedList.map(a => ({
+      id: a.topic_id,
+      groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
+      status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
+      statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : a.status === 'ACCEPTED' ? 'Đã nhận' : 'Đã chấm',
+      statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
+      role: a.assignment_type === 'REVIEWER' ? 'GVPB' : 'HĐBV'
+    })),
+    ...supervisedList.map(t => ({
+      id: t.id,
+      groupName: t.code || t.title || 'Supervised Topic',
+      status: 'ADVISOR',
+      statusLabel: 'Chấm HD',
+      statusColor: BLUE,
+      role: 'GVHD'
+    }))
+  ];
+
+  const totalGroups = combinedTopics.length;
+  const notStarted = assignedList.filter(a => a.status === 'PENDING').length;
+
+  // Group assignments by session or date
+  const sessions = combinedTopics.length > 0 ? [
     {
       id: 's1',
-      name: 'Danh sách hội đồng được giao',
-      topics: assignedTopics.map(a => ({
-        id: a.topic_id,
-        groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
-        status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
-        statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : a.status === 'ACCEPTED' ? 'Đã chấp nhận' : 'Khác',
-        statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
-        role: a.assignment_type === 'REVIEWER' ? 'GVPB' : 'HĐBV'
-      }))
+      name: 'Danh sách đề tài & Hội đồng',
+      topics: combinedTopics
     }
   ] : [];
 
