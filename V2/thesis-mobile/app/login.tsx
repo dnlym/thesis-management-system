@@ -2,34 +2,33 @@ import React from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, ScrollView,
-    StyleSheet, SafeAreaView
+    StyleSheet, SafeAreaView, Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '@/store/auth';
+import { useAuth } from '@/hooks/useAuth';
 import { Eye, EyeOff, Lock, User, GraduationCap, Shield } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { login } = useAuthStore();
+    const { login, isLoggingIn } = useAuth();
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [showPassword, setShowPassword] = React.useState(false);
     const [rememberMe, setRememberMe] = React.useState(false);
-    const [isLoading, setIsLoading] = React.useState(false);
 
     const handleLogin = async () => {
-        setIsLoading(true);
-        setTimeout(() => {
-            login(
-                { id: '1', full_name: 'TS. Nguyễn Văn A', email: email || 'lecturer@edu.vn', role: 'LECTURER' },
-                'dummy-token',
-                'dummy-refresh-token'
-            );
-            setIsLoading(false);
-            router.replace('/(tabs)');
-        }, 1500);
+        if (!email || !password) {
+            Alert.alert('Thiếu thông tin', 'Vui lòng nhập tài khoản và mật khẩu.');
+            return;
+        }
+
+        login({ email, password }, {
+            onSuccess: () => {
+                router.replace('/(tabs)');
+            }
+        });
     };
 
     return (
@@ -96,12 +95,12 @@ export default function LoginScreen() {
 
                             {/* Login button */}
                             <TouchableOpacity
-                                style={[styles.loginBtn, isLoading && { opacity: 0.7 }]}
+                                style={[styles.loginBtn, isLoggingIn && { opacity: 0.7 }]}
                                 onPress={handleLogin}
-                                disabled={isLoading}
+                                disabled={isLoggingIn}
                             >
                                 <Text style={styles.loginBtnText}>
-                                    {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+                                    {isLoggingIn ? 'Đang xử lý...' : 'Đăng nhập'}
                                 </Text>
                             </TouchableOpacity>
 

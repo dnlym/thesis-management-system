@@ -1,30 +1,45 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, SafeAreaView
+    StyleSheet, SafeAreaView, ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTopic } from '@/hooks/useTopics';
 
 const BLUE = '#2563eb';
-
-const TOPIC = {
-    name: 'Nhóm AI-02',
-    session: 'Hội đồng 1 – 08:00, 22/05/2025',
-    room: 'Phòng A.101',
-    title: 'Ứng dụng trí tuệ nhân tạo trong giáo dục',
-    roleCode: 'GVPB',
-    roleLabel: 'Giảng viên phản biện',
-};
-
-const STUDENTS = [
-    { id: 'SV001', name: 'Nguyễn Văn A' },
-    { id: 'SV002', name: 'Trần Thị B' },
-    { id: 'SV003', name: 'Lê Văn C' },
-];
 
 export default function TopicDetailScreen() {
     const { topicId } = useLocalSearchParams();
     const router = useRouter();
+
+    const { data: topic, isLoading } = useTopic(topicId as string);
+
+    if (isLoading || !topic) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={BLUE} />
+            </SafeAreaView>
+        );
+    }
+
+    const students = topic.students || [];
+
+    // Formatting session string if defense schedule exists
+    let sessionString = 'Chưa sắp lịch bảo vệ';
+    let roomString = 'Chưa có phòng';
+
+    if (topic.defense_schedule) {
+        const ds = topic.defense_schedule;
+        const formattedDate = ds.defense_date ? new Date(ds.defense_date).toLocaleDateString() : '';
+        const time = ds.defense_time || ds.start_time || '';
+        sessionString = `Hội đồng ${ds.committee?.name || ''} – ${time}, ${formattedDate}`;
+        roomString = ds.room || ds.committee?.room_preference || 'Chưa xếp phòng';
+    }
+
+    // Role mapping mock logic - Ideally cross checked with assignments/user role
+    // For now we display role assigned for this specific context, defaulting to GVPB
+    const roleCode = topic.defense_schedule ? 'HĐBV' : 'GVPB';
+    const roleLabel = roleCode === 'HĐBV' ? 'Thành viên Hội đồng' : 'Giảng viên phản biện';
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -34,36 +49,38 @@ export default function TopicDetailScreen() {
                     <Text style={styles.backArrow}>‹</Text>
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>{TOPIC.name}</Text>
-                    <Text style={styles.headerSub}>{TOPIC.session}</Text>
+                    <Text style={styles.headerTitle}>{topic.code || 'Nhóm Đề Tài'}</Text>
+                    <Text style={styles.headerSub}>{sessionString}</Text>
                 </View>
                 <View style={styles.roleBadge}>
-                    <Text style={styles.roleBadgeText}>{TOPIC.roleCode}</Text>
+                    <Text style={styles.roleBadgeText}>{roleCode}</Text>
                 </View>
             </View>
 
             <ScrollView style={{ flex: 1 }}>
                 {/* Room */}
                 <View style={styles.infoCard}>
-                    <Text style={styles.infoLabel}>📍 {TOPIC.room}</Text>
+                    <Text style={styles.infoLabel}>📍 {roomString}</Text>
                 </View>
 
                 {/* Students */}
                 <View style={[styles.section]}>
-                    <Text style={styles.sectionTitle}>Sinh viên ({STUDENTS.length})</Text>
+                    <Text style={styles.sectionTitle}>Sinh viên ({students.length})</Text>
                     <View style={styles.listCard}>
-                        {STUDENTS.map((sv, i) => (
+                        {students.length === 0 ? (
+                            <Text style={{ padding: 14, color: '#9ca3af', fontSize: 13 }}>Chưa có sinh viên</Text>
+                        ) : students.map((sv: any, i: number) => (
                             <TouchableOpacity
                                 key={sv.id}
-                                style={[styles.studentRow, i < STUDENTS.length - 1 && styles.rowBorder]}
+                                style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                 onPress={() => router.push(`/topic/${topicId}/grading/${sv.id}` as any)}
                             >
                                 <View style={styles.avatar}>
-                                    <Text style={styles.avatarText}>{sv.name.charAt(0)}</Text>
+                                    <Text style={styles.avatarText}>{sv.full_name?.charAt(0) || 'S'}</Text>
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={styles.studentName}>{sv.name}</Text>
-                                    <Text style={styles.studentId}>{sv.id}</Text>
+                                    <Text style={styles.studentName}>{sv.full_name}</Text>
+                                    <Text style={styles.studentId}>{sv.student_code || sv.id}</Text>
                                 </View>
                                 <Text style={styles.chevron}>›</Text>
                             </TouchableOpacity>
@@ -75,7 +92,7 @@ export default function TopicDetailScreen() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Thông tin đề tài</Text>
                     <View style={styles.listCard}>
-                        <Text style={styles.topicTitle}>{TOPIC.title}</Text>
+                        <Text style={styles.topicTitle}>{topic.title}</Text>
                     </View>
                 </View>
 
@@ -85,9 +102,9 @@ export default function TopicDetailScreen() {
                     <View style={styles.listCard}>
                         <View style={styles.roleRow}>
                             <View style={styles.roleBadge}>
-                                <Text style={styles.roleBadgeText}>{TOPIC.roleCode}</Text>
+                                <Text style={styles.roleBadgeText}>{roleCode}</Text>
                             </View>
-                            <Text style={styles.roleLabel}>{TOPIC.roleLabel}</Text>
+                            <Text style={styles.roleLabel}>{roleLabel}</Text>
                         </View>
                     </View>
                 </View>
@@ -96,14 +113,16 @@ export default function TopicDetailScreen() {
             </ScrollView>
 
             {/* CTA */}
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    style={styles.ctaBtn}
-                    onPress={() => router.push(`/topic/${topicId}/grading/SV001` as any)}
-                >
-                    <Text style={styles.ctaBtnText}>Bắt đầu nhập điểm</Text>
-                </TouchableOpacity>
-            </View>
+            {students.length > 0 && (
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={styles.ctaBtn}
+                        onPress={() => router.push(`/topic/${topicId}/grading/${students[0].id}` as any)}
+                    >
+                        <Text style={styles.ctaBtnText}>Bắt đầu nhập điểm</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </SafeAreaView>
     );
 }

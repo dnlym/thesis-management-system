@@ -4,6 +4,9 @@ import { useAuthStore } from '@/store/auth';
 // Base URL: adjust via Expo env if available; fallback to backend localhost:3000
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+console.log('[API Diagnostic] BASE_URL:', BASE_URL);
+console.log('[API Diagnostic] EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL);
+
 export const api = axios.create({
     baseURL: `${BASE_URL}/api`,
     withCredentials: true,
@@ -11,6 +14,9 @@ export const api = axios.create({
 
 // Attach Authorization header if token exists
 api.interceptors.request.use((config) => {
+    // API Call Logging
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+
     const { token } = useAuthStore.getState();
     if (token) {
         const headers: any = config.headers;
@@ -40,7 +46,10 @@ function onRefreshed(newToken: string | null) {
 }
 
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        console.log(`[API Response] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+        return response;
+    },
     async (error) => {
         const originalRequest = error.config;
         const status = error?.response?.status;

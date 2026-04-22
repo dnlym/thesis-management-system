@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AssignmentsApi, type AssignmentFilters } from '@/api/assignments';
 import type { ReviewerAssignmentForm, DefenseScheduleForm } from '@/types';
 import { Alert } from 'react-native';
+import { useAuthStore } from '@/store/auth';
 
 /**
  * Query key factory for assignments
@@ -16,12 +17,14 @@ export const assignmentKeys = {
  * Get list of assignments with filters
  */
 export function useAssignments(filters?: AssignmentFilters) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: assignmentKeys.list(filters),
         queryFn: async () => {
             const response = await AssignmentsApi.getAll(filters);
             return response;
         },
+        enabled: isAuthenticated,
     });
 }
 

@@ -1,64 +1,84 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    TextInput, StyleSheet, SafeAreaView, Alert
+    TextInput, StyleSheet, SafeAreaView, Alert, ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OfflineStorage } from '@/api/offline';
 import { useAuthStore } from '@/store/auth';
-import { GradingApi } from '@/api/grading';
+import { useTopic } from '@/hooks/useTopics';
+import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
 
 const BLUE = '#2563eb';
-
-const CRITERIA = [
-    { id: 'PB1', name: 'Nội dung đề tài', weight: 20 },
-    { id: 'PB2', name: 'Phương pháp nghiên cứu', weight: 20 },
-    { id: 'PB3', name: 'Kết quả & thảo luận', weight: 30 },
-    { id: 'PB4', name: 'Hình thức báo cáo', weight: 15 },
-    { id: 'PB5', name: 'Trả lời câu hỏi (phản biện)', weight: 15 },
-];
-
-const STUDENTS = [
-    { id: 'SV001', name: 'Nguyễn Văn A' },
-    { id: 'SV002', name: 'Trần Thị B' },
-    { id: 'SV003', name: 'Lê Văn C' },
-];
 
 export default function GradingScreen() {
     const { topicId, studentId } = useLocalSearchParams();
     const router = useRouter();
     const { user } = useAuthStore();
 
-    const initialIdx = STUDENTS.findIndex(s => s.id === studentId);
+    // Data fetching
+    const { data: topic, isLoading: isLoadingTopic } = useTopic(topicId as string);
+    const assignmentType = topic?.defense_schedule ? 'COUNCIL' : 'REVIEWER';
+
+    // Fetch generic criteria based on assignment type (REVIEW or COUNCIL)
+    const { data: criteriaRes, isLoading: isLoadingCriteria } = useGradingCriteria({
+        criteriaType: assignmentType === 'COUNCIL' ? 'COUNCIL' : 'REVIEWER'
+    });
+
+    const { mutate: submitGrade, isPending: isSubmittingAPI } = useSubmitGrade();
+
+    const students = topic?.students || [];
+    const criteria = criteriaRes || [];
+
+    const initialIdx = students.findIndex((s: any) => s.id === studentId);
     const [idx, setIdx] = React.useState(initialIdx >= 0 ? initialIdx : 0);
     const [allScores, setAllScores] = React.useState<Record<string, Record<string, string>>>({});
     const [allComments, setAllComments] = React.useState<Record<string, string>>({});
     const [groupComment, setGroupComment] = React.useState('');
     const [showSummary, setShowSummary] = React.useState(false);
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [submitted, setSubmitted] = React.useState(false);
 
-    const currentStudent = STUDENTS[idx];
+    if (isLoadingTopic || isLoadingCriteria) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={BLUE} />
+            </SafeAreaView>
+        );
+    }
+
+    if (students.length === 0) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: '#9ca3af' }}>Đề tài không có sinh viên.</Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: BLUE }}>Quay lại</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    const currentStudent = students[idx];
     const scores = allScores[currentStudent.id] || {};
     const comment = allComments[currentStudent.id] || '';
-    const isLast = idx === STUDENTS.length - 1;
+    const isLast = idx === students.length - 1;
 
     const calcTotal = (svId: string) => {
         const s = allScores[svId] || {};
-        return CRITERIA.reduce((acc, c) => acc + (parseFloat(s[c.id] || '0') || 0) * c.weight / 100, 0);
+        return criteria.reduce((acc: number, c: any) => acc + (parseFloat(s[c.id] || '0') || 0) * (c.weight / 100), 0);
     };
 
     const totalScore = calcTotal(currentStudent.id);
 
     const handleScore = (cId: string, val: string) => {
         const cleaned = val.replace(/[^0-9.]/g, '');
+        // Validate <= 10 if needed, but here we just accept strings
         setAllScores(prev => ({ ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: cleaned } }));
     };
 
     const handleSaveDraft = async () => {
         if (user && topicId) {
-            await OfflineStorage.saveDraft(user.id, topicId as string, 'REVIEWER', currentStudent.id, { scores, comment });
-            Alert.alert('Đã lưu nháp!');
+            await OfflineStorage.saveDraft(user.id, topicId as string, assignmentType, currentStudent.id, { scores, comment });
+            Alert.alert('Thành công', 'Đã lưu nháp vào thiết bị!');
         }
     };
 
@@ -68,16 +88,30 @@ export default function GradingScreen() {
     };
 
     const handleSubmit = async () => {
-        setIsSubmitting(true);
-        setTimeout(() => {
-            setIsSubmitting(false);
-            setSubmitted(true);
-        }, 1500);
+        const raterRole: 'COMMITTEE' | 'REVIEWER' = assignmentType === 'COUNCIL' ? 'COMMITTEE' : 'REVIEWER';
+        const gradePayload = {
+            topic_id: topicId as string,
+            student_id: currentStudent.id,
+            rater_role: raterRole,
+            scores: criteria.map((c: any) => ({
+                criterion_id: c.id,
+                score: parseFloat(allScores[currentStudent.id]?.[c.id] || '0'),
+                comment: allComments[currentStudent.id] || ''
+            }))
+        };
+
+        submitGrade(gradePayload, {
+            onSuccess: () => {
+                setSubmitted(true);
+            }
+        });
     };
+
+    const roleCode = assignmentType === 'COUNCIL' ? 'HĐBV' : 'GVPB';
 
     // ── Summary screen ──────────────────────────────────────────
     if (showSummary) {
-        const avg = (STUDENTS.reduce((a, s) => a + calcTotal(s.id), 0) / STUDENTS.length).toFixed(2);
+        const avg = students.length > 0 ? (students.reduce((a: number, s: any) => a + calcTotal(s.id), 0) / students.length).toFixed(2) : '0';
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
                 <View style={styles.header}>
@@ -85,21 +119,21 @@ export default function GradingScreen() {
                         <Text style={styles.backArrow}>‹</Text>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Nhóm AI-02</Text>
-                        <Text style={styles.headerSub}>Hội đồng 1 – 08:00</Text>
+                        <Text style={styles.headerTitle}>{topic?.code || 'Nhóm'}</Text>
+                        <Text style={styles.headerSub}>{topic?.defense_schedule ? `Hội đồng ${topic.defense_schedule.committee?.name || ''}` : 'Chấm phản biện'}</Text>
                     </View>
-                    <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>GVPB</Text></View>
+                    <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>{roleCode}</Text></View>
                 </View>
 
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
                     <Text style={styles.sectionTitle}>Tổng điểm theo sinh viên</Text>
                     <View style={styles.card}>
-                        {STUDENTS.map((sv, i) => (
-                            <View key={sv.id} style={[styles.svRow, i < STUDENTS.length - 1 && styles.rowBorder]}>
+                        {students.map((sv: any, i: number) => (
+                            <View key={sv.id} style={[styles.svRow, i < students.length - 1 && styles.rowBorder]}>
                                 <View style={styles.svNum}><Text style={styles.svNumText}>{i + 1}</Text></View>
                                 <View style={{ flex: 1, marginLeft: 10 }}>
-                                    <Text style={styles.svName}>{sv.name}</Text>
-                                    <Text style={styles.svId}>{sv.id}</Text>
+                                    <Text style={styles.svName}>{sv.full_name}</Text>
+                                    <Text style={styles.svId}>{sv.student_code || sv.id}</Text>
                                 </View>
                                 <Text style={styles.svScore}>{calcTotal(sv.id).toFixed(2)}</Text>
                                 <Text style={styles.svScoreMax}>/10</Text>
@@ -107,13 +141,13 @@ export default function GradingScreen() {
                         ))}
                     </View>
 
-                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Tổng quan điểm GVPB</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Tổng quan điểm</Text>
                     <View style={styles.card}>
                         <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Trung bình nhóm (tạm tính)</Text><Text style={styles.summaryVal}>{avg}</Text></View>
-                        <View style={[styles.summaryRow, styles.rowBorder, { flexDirection: 'row-reverse' }]}><Text style={styles.summaryVal}>{Object.keys(allScores).length} / {STUDENTS.length}</Text><Text style={styles.summaryLabel}>Số sinh viên đã nhập</Text></View>
+                        <View style={[styles.summaryRow, styles.rowBorder, { flexDirection: 'row-reverse' }]}><Text style={styles.summaryVal}>{Object.keys(allScores).length} / {students.length}</Text><Text style={styles.summaryLabel}>Số sinh viên đã nhập</Text></View>
                     </View>
 
-                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Nhận xét chung cho nhóm (không bắt buộc)</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Nhận xét toàn đội (không bắt buộc)</Text>
                     <View style={styles.card}>
                         <TextInput
                             style={styles.commentInput}
@@ -123,24 +157,25 @@ export default function GradingScreen() {
                             multiline
                         />
                     </View>
+                    <View style={{ height: 20 }} />
                 </ScrollView>
 
                 <View style={styles.footer}>
                     {submitted ? (
                         <View style={styles.submittedBox}>
-                            <Text style={styles.submittedTitle}>✓ ĐÃ NỘP</Text>
+                            <Text style={styles.submittedTitle}>✓ ĐÃ NỘP HỒ SƠ CHẤM</Text>
                             <Text style={styles.submittedSub}>Không thể chỉnh sửa</Text>
                         </View>
                     ) : (
                         <>
                             <TouchableOpacity
-                                style={[styles.ctaBtn, isSubmitting && { opacity: 0.6 }]}
+                                style={[styles.ctaBtn, isSubmittingAPI && { opacity: 0.6 }]}
                                 onPress={handleSubmit}
-                                disabled={isSubmitting}
+                                disabled={isSubmittingAPI}
                             >
-                                <Text style={styles.ctaBtnText}>{isSubmitting ? 'Đang nộp...' : 'Nộp điểm (GVPB)'}</Text>
+                                <Text style={styles.ctaBtnText}>{isSubmittingAPI ? 'Đang nộp...' : `Nộp điểm (${roleCode})`}</Text>
                             </TouchableOpacity>
-                            <Text style={styles.ctaNote}>Sau khi nộp, bạn sẽ không thể chỉnh sửa.</Text>
+                            <Text style={styles.ctaNote}>Hệ thống sẽ đồng bộ khi có mạng. Sau khi nộp, bạn sẽ không thể chỉnh sửa.</Text>
                         </>
                     )}
                 </View>
@@ -157,25 +192,25 @@ export default function GradingScreen() {
                     <Text style={styles.backArrow}>‹</Text>
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>Nhóm AI-02</Text>
-                    <Text style={styles.headerSub}>Hội đồng 1 – 08:00</Text>
+                    <Text style={styles.headerTitle}>{topic?.code || 'Nhóm đề tài'}</Text>
+                    <Text style={styles.headerSub}>{topic?.defense_schedule ? `Hội đồng ${topic.defense_schedule.committee?.name || ''}` : 'Chấp phản biện'}</Text>
                 </View>
-                <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>GVPB</Text></View>
+                <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>{roleCode}</Text></View>
             </View>
 
             {/* Student switcher */}
             <View style={styles.switcherContainer}>
                 <View style={styles.switcherRow}>
-                    {STUDENTS.map((sv, i) => (
+                    {students.map((sv: any, i: number) => (
                         <TouchableOpacity key={sv.id} onPress={() => setIdx(i)} style={[styles.switcherTab, i === idx && styles.switcherTabActive]}>
-                            <Text style={[styles.switcherText, i === idx && styles.switcherTextActive]}>{sv.id}</Text>
+                            <Text style={[styles.switcherText, i === idx && styles.switcherTextActive]}>{sv.full_name?.split(' ').pop() || sv.id}</Text>
                         </TouchableOpacity>
                     ))}
                     <View style={{ flex: 1 }} />
-                    <Text style={styles.switcherCounter}>Sinh viên: {idx + 1}/{STUDENTS.length}</Text>
+                    <Text style={styles.switcherCounter}>Sinh viên: {idx + 1}/{students.length}</Text>
                 </View>
                 <View style={styles.switcherHint}>
-                    <Text style={styles.switcherHintText}>Tiêu chí đánh giá (GVPB)</Text>
+                    <Text style={styles.switcherHintText}>Tiêu chí đánh giá ({roleCode})</Text>
                     <Text style={styles.switcherHintSub}>(Nhập điểm theo thang 0 – 10)</Text>
                 </View>
             </View>
@@ -190,14 +225,14 @@ export default function GradingScreen() {
                         <Text style={[styles.tableHeaderText, { width: 64, textAlign: 'center' }]}>Điểm</Text>
                     </View>
 
-                    {CRITERIA.map((c, i) => {
+                    {criteria.map((c: any, i: number) => {
                         const val = scores[c.id] || '';
                         const num = parseFloat(val);
                         const isLow = !isNaN(num) && num < 5;
                         return (
-                            <View key={c.id} style={[styles.tableRow, i < CRITERIA.length - 1 && styles.rowBorder]}>
+                            <View key={c.id} style={[styles.tableRow, i < criteria.length - 1 && styles.rowBorder]}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.criteriaCode}>{c.id}</Text>
+                                    <Text style={styles.criteriaCode}>{c.code || `TC0${i + 1}`}</Text>
                                     <Text style={styles.criteriaName}>{c.name}</Text>
                                 </View>
                                 <Text style={styles.criteriaWeight}>{c.weight}%</Text>
@@ -213,6 +248,11 @@ export default function GradingScreen() {
                             </View>
                         );
                     })}
+                    {criteria.length === 0 && (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Text style={{ color: '#9ca3af' }}>Không tìm thấy tiêu chí đánh giá cho vai trò này.</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Total */}
@@ -233,7 +273,7 @@ export default function GradingScreen() {
                     <View style={styles.commentInputWrap}>
                         <TextInput
                             style={{ flex: 1, fontSize: 13, color: '#374151' }}
-                            placeholder="Nhập nhận xét..."
+                            placeholder="Nhập nhận xét chi tiết..."
                             value={comment}
                             onChangeText={v => setAllComments(prev => ({ ...prev, [currentStudent.id]: v }))}
                             multiline

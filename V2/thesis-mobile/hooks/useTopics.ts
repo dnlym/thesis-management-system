@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TopicsApi, type TopicFilters } from '@/api/topics';
 import type { TopicForm } from '@/types';
 import { Alert } from 'react-native';
+import { useAuthStore } from '@/store/auth';
 
 /**
  * Query key factory for topics
@@ -19,6 +20,7 @@ export const topicKeys = {
  * Get list of topics with filters
  */
 export function useTopics(filters?: TopicFilters & { includeAll?: boolean }) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: topicKeys.list(filters),
         queryFn: async () => {
@@ -28,7 +30,7 @@ export function useTopics(filters?: TopicFilters & { includeAll?: boolean }) {
         placeholderData: (previousData) => previousData as any,
         // Only run the query if we have a semester filter OR we are specifically including all
         // This prevents "flickering" or loading current semester topics prematurely
-        enabled: !!(filters?.semesterId || filters?.includeAll || !filters),
+        enabled: isAuthenticated && !!(filters?.semesterId || filters?.includeAll || !filters),
     });
 }
 
@@ -56,12 +58,14 @@ export function useCloneTopic() {
  * Get topic statistics (counts by status)
  */
 export function useTopicStats() {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: topicKeys.stats(),
         queryFn: async () => {
             const response = await TopicsApi.getStats();
             return response;
         },
+        enabled: isAuthenticated,
     });
 }
 
@@ -69,13 +73,14 @@ export function useTopicStats() {
  * Get topic detail by ID
  */
 export function useTopic(id: string | undefined) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: topicKeys.detail(id!),
         queryFn: async () => {
             const response = await TopicsApi.getById(id!);
             return response;
         },
-        enabled: !!id,
+        enabled: isAuthenticated && !!id,
     });
 }
 
@@ -265,12 +270,13 @@ export function useUnhideTopic() {
  * Get topic approval history
  */
 export function useTopicHistory(id: string | undefined) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: [...topicKeys.detail(id!), 'history'],
         queryFn: async () => {
             const response = await TopicsApi.getHistory(id!);
             return response;
         },
-        enabled: !!id,
+        enabled: isAuthenticated && !!id,
     });
 }

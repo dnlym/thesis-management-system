@@ -1,34 +1,29 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView
+  StyleSheet, SafeAreaView, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAssignments } from '@/hooks/useAssignments';
 
 const BLUE = '#2563eb';
 
 const FILTERS = [
   { key: 'ALL', label: 'Tất cả' },
-  { key: 'NOT_STARTED', label: 'Chưa chấm' },
-  { key: 'DRAFT', label: 'Nháp' },
-  { key: 'SUBMITTED', label: 'Đã nộp' },
-];
-
-const ALL_TOPICS = [
-  { id: '2', groupName: 'Nhóm AI-02', session: 'Hội đồng 1 – 08:00', role: 'GVPB', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c' },
-  { id: '4', groupName: 'Nhóm AI-04', session: 'Hội đồng 1 – 08:00', role: 'GVPB', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c' },
-  { id: '5', groupName: 'Nhóm SE-01', session: 'Hội đồng 2 – 13:30', role: 'GVPB', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c' },
-  { id: '7', groupName: 'Nhóm AI-07', session: 'Hội đồng 3 – 08:00', role: 'GVPB', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c' },
-  { id: '8', groupName: 'Nhóm SE-05', session: 'Hội đồng 3 – 08:00', role: 'GVPB', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c' },
-  { id: '3', groupName: 'Nhóm AI-03', session: 'Hội đồng 1 – 08:00', role: 'GVPB', status: 'DRAFT', statusLabel: 'Nháp', statusColor: '#ca8a04' },
-  { id: '1', groupName: 'Nhóm AI-01', session: 'Hội đồng 1 – 08:00', role: 'GVPB', status: 'SUBMITTED', statusLabel: 'Đã nộp', statusColor: '#16a34a' },
-  { id: '6', groupName: 'Nhóm SE-02', session: 'Hội đồng 2 – 13:30', role: 'GVPB', status: 'SUBMITTED', statusLabel: 'Đã nộp', statusColor: '#16a34a' },
+  { key: 'PENDING', label: 'Chưa chấm' },
+  { key: 'ACCEPTED', label: 'Đã chấp nhận' },
+  { key: 'DECLINED', label: 'Từ chối' },
 ];
 
 export default function AssignedScreen() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = React.useState('ALL');
-  const filtered = activeFilter === 'ALL' ? ALL_TOPICS : ALL_TOPICS.filter(t => t.status === activeFilter);
+
+  const { data: assignments, isLoading, refetch, isRefetching } = useAssignments(
+    activeFilter !== 'ALL' ? { status: activeFilter } : undefined
+  );
+
+  const filtered = assignments || [];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -56,30 +51,37 @@ export default function AssignedScreen() {
       </View>
 
       {/* List */}
-      <ScrollView style={{ flex: 1, backgroundColor: '#f8fafc' }} contentContainerStyle={{ padding: 16 }}>
-        {filtered.map((topic, i) => (
-          <TouchableOpacity
-            key={topic.id}
-            style={styles.card}
-            onPress={() => router.push(`/topic/${topic.id}` as any)}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardGroup}>{topic.groupName}</Text>
-              <Text style={styles.cardSession}>{topic.session}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>{topic.role}</Text>
-              </View>
-              <Text style={[styles.statusText, { color: topic.statusColor }]}>{topic.statusLabel}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-        {filtered.length === 0 && (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: '#f8fafc' }}
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={BLUE} />}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 40 }} />
+        ) : filtered.length === 0 ? (
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <Text style={{ color: '#9ca3af' }}>Không có nhóm nào</Text>
           </View>
-        )}
+        ) : filtered.map((topic: any, i: number) => (
+          <TouchableOpacity
+            key={topic.id}
+            style={styles.card}
+            onPress={() => router.push(`/topic/${topic.topic_id}` as any)}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardGroup}>{topic.topic?.code || topic.topic?.title || 'Unknown'}</Text>
+              <Text style={styles.cardSession}>Được giao lúc: {new Date(topic.assigned_at).toLocaleDateString()}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleBadgeText}>{topic.assignment_type === 'REVIEWER' ? 'GVPB' : 'HĐBV'}</Text>
+              </View>
+              <Text style={[styles.statusText, { color: topic.status === 'PENDING' ? '#ea580c' : '#16a34a' }]}>
+                {topic.status === 'PENDING' ? 'Mới' : topic.status === 'ACCEPTED' ? 'Đã nhận' : 'Khác'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );

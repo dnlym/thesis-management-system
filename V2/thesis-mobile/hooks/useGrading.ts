@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GradingApi, type CriteriaFilters } from '@/api/grading';
 import type { GradeSubmissionForm } from '@/types';
 import { Alert } from 'react-native';
+import { useAuthStore } from '@/store/auth';
 
 /**
  * Query key factory for grading
@@ -16,13 +17,14 @@ export const gradingKeys = {
  * Get grades for a topic
  */
 export function useTopicGrades(topicId: string | undefined) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: gradingKeys.topicGrades(topicId!),
         queryFn: async () => {
             const response = await GradingApi.getTopicGrades(topicId!);
             return response;
         },
-        enabled: !!topicId,
+        enabled: isAuthenticated && !!topicId,
     });
 }
 
@@ -30,12 +32,14 @@ export function useTopicGrades(topicId: string | undefined) {
  * Get grading criteria with filters
  */
 export function useGradingCriteria(filters?: CriteriaFilters) {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: gradingKeys.criteria(filters),
         queryFn: async () => {
             const response = await GradingApi.getCriteria(filters);
             return response;
         },
+        enabled: isAuthenticated,
     });
 }
 
@@ -115,12 +119,14 @@ export function useCreateCriterion() {
  * Get registrations for midterm grading (SUPERVISOR only)
  */
 export function useMidtermRegistrations() {
+    const { isAuthenticated } = useAuthStore();
     return useQuery({
         queryKey: [...gradingKeys.all, 'midterm'],
         queryFn: async () => {
             const response = await GradingApi.getMidtermRegistrations();
             return response;
         },
+        enabled: isAuthenticated,
     });
 }
 

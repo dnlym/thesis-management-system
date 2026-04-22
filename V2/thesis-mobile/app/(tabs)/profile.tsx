@@ -5,17 +5,23 @@ import {
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Settings, Info, User, ChevronRight } from 'lucide-react-native';
+import { ActivityIndicator } from 'react-native';
 
 const BLUE = '#2563eb';
 
 export default function ProfileScreen() {
-    const { user, logout } = useAuthStore();
+    const { user } = useAuthStore();
+    const { logout, isLoggingOut } = useAuth();
     const router = useRouter();
 
     const handleLogout = () => {
-        logout();
-        router.replace('/login');
+        logout(undefined, {
+            onSuccess: () => {
+                router.replace('/login');
+            }
+        });
     };
 
     const MENU_ITEMS = [
@@ -61,9 +67,19 @@ export default function ProfileScreen() {
                 {/* Logout */}
                 <View style={[styles.section, { marginTop: 8 }]}>
                     <View style={styles.card}>
-                        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-                            <LogOut size={20} color="#ef4444" />
-                            <Text style={[styles.menuLabel, { color: '#ef4444' }]}>Đăng xuất</Text>
+                        <TouchableOpacity
+                            style={[styles.menuItem, isLoggingOut && { opacity: 0.5 }]}
+                            onPress={handleLogout}
+                            disabled={isLoggingOut}
+                        >
+                            {isLoggingOut ? (
+                                <ActivityIndicator size="small" color="#ef4444" style={{ marginRight: 12 }} />
+                            ) : (
+                                <LogOut size={20} color="#ef4444" />
+                            )}
+                            <Text style={[styles.menuLabel, { color: '#ef4444' }]}>
+                                {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

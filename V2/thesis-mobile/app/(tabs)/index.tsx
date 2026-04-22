@@ -1,42 +1,55 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, RefreshControl, SafeAreaView
+  StyleSheet, RefreshControl, SafeAreaView, ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
+import { useDashboardStats } from '@/hooks/useDashboard';
+import { useAssignments } from '@/hooks/useAssignments';
 
-const TODAY = '22/05/2025';
 const BLUE = '#2563eb';
-
-const MOCK_SESSIONS = [
-  {
-    id: 's1',
-    name: 'Hội đồng 1 – 08:00',
-    topics: [
-      { id: '1', groupName: 'Nhóm AI-01', status: 'SUBMITTED', statusLabel: 'Đã nộp', statusColor: '#16a34a', role: 'GVPB' },
-      { id: '2', groupName: 'Nhóm AI-02', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c', role: 'GVPB' },
-      { id: '3', groupName: 'Nhóm AI-03', status: 'DRAFT', statusLabel: 'Nháp', statusColor: '#ca8a04', role: 'GVPB' },
-      { id: '4', groupName: 'Nhóm AI-04', status: 'SUBMITTED', statusLabel: 'Đã nộp', statusColor: '#16a34a', role: 'GVPB' },
-    ]
-  },
-  {
-    id: 's2',
-    name: 'Hội đồng 2 – 13:30',
-    topics: [
-      { id: '5', groupName: 'Nhóm SE-01', status: 'NOT_STARTED', statusLabel: 'Chưa chấm', statusColor: '#ea580c', role: 'GVPB' },
-      { id: '6', groupName: 'Nhóm SE-02', status: 'SUBMITTED', statusLabel: 'Đã nộp', statusColor: '#16a34a', role: 'GVPB' },
-    ]
-  },
-];
-
-const totalGroups = MOCK_SESSIONS.reduce((s, x) => s + x.topics.length, 0);
-const notStarted = MOCK_SESSIONS.reduce((s, x) => s + x.topics.filter(t => t.status === 'NOT_STARTED').length, 0);
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // Fetch actual data
+  const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
+  const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments({ status: 'ALL' } as any);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchStats(), refetchAssignments()]);
+    setRefreshing(false);
+  }, [refetchStats, refetchAssignments]);
+
+  const d = new Date();
+  const TODAY = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+  const isLoading = isStatsLoading || isAssignmentsLoading;
+
+  // Derive stats
+  const assignedTopics = assignments || [];
+  const totalGroups = assignedTopics.length;
+  // Temporary: we assume topics without scores or "NOT_STARTED" equivalent
+  const notStarted = assignedTopics.filter(a => a.status === 'PENDING').length;
+
+  // Group assignments by session or date if possible, here we'll just mock 1 session holding all for now
+  const sessions = assignedTopics.length > 0 ? [
+    {
+      id: 's1',
+      name: 'Danh sách hội đồng được giao',
+      topics: assignedTopics.map(a => ({
+        id: a.topic_id,
+        groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
+        status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
+        statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : a.status === 'ACCEPTED' ? 'Đã chấp nhận' : 'Khác',
+        statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
+        role: a.assignment_type === 'REVIEWER' ? 'GVPB' : 'HĐBV'
+      }))
+    }
+  ] : [];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
@@ -60,7 +73,7 @@ export default function DashboardScreen() {
           </View>
           <View style={[styles.statsCol, styles.statsBorder]}>
             <Text style={styles.statsLabel}>Ca chấm</Text>
-            <Text style={styles.statsValue}>{MOCK_SESSIONS.length}</Text>
+            <Text style={styles.statsValue}>{sessions.length}</Text>
           </View>
           <View style={[styles.statsCol, styles.statsBorder]}>
             <Text style={styles.statsLabel}>Nhóm</Text>
@@ -76,7 +89,13 @@ export default function DashboardScreen() {
         <View style={styles.body}>
           <Text style={styles.sectionTitle}>Ca chấm hôm nay</Text>
 
-          {MOCK_SESSIONS.map(session => (
+          {isLoading ? (
+            <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 20 }} />
+          ) : sessions.length === 0 ? (
+            <View style={{ alignItems: 'center', marginTop: 30 }}>
+              <Text style={{ color: '#9ca3af' }}>Không có ca chấm nào</Text>
+            </View>
+          ) : sessions.map(session => (
             <View key={session.id} style={{ marginBottom: 20 }}>
               {/* Session header */}
               <View style={styles.sessionRow}>
