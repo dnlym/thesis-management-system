@@ -62,7 +62,9 @@ export type ExtraPointsStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN
 export type RaterRole =
     | 'SUPERVISOR'
     | 'REVIEWER'
-    | 'COMMITTEE';
+    | 'COMMITTEE'
+    | 'ADVISOR'
+    | 'COUNCIL_MEMBER';
 
 // Criteria Types
 export type CriteriaType = 'ADVISOR' | 'REVIEWER' | 'COUNCIL' | 'FINAL';

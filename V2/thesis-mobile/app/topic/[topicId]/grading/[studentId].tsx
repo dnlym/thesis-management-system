@@ -54,15 +54,48 @@ export default function GradingScreen() {
     const [focusedId, setFocusedId] = React.useState<string | null>(null);
     const inputRefs = React.useRef<Record<string, any>>({});
 
-    // Initial draft restoration
+    // Initial draft restoration AND check for existing submissions
     React.useEffect(() => {
-        const restoreDrafts = async () => {
+        const restoreAndCheck = async () => {
             if (!user || !topic || students.length === 0) {
                 if (students.length === 0 && !isLoadingTopic) setIsRestoring(false);
                 return;
             }
 
             try {
+                // 1. Fetch official grades from backend first to check if already submitted
+                // This prevents users from overwriting official grades with local drafts
+                const myGrades = await GradingApi.getMyGrades(topicId as string, raterRoleInput);
+
+                if (myGrades && myGrades.students && myGrades.students.length > 0) {
+                    const restoredScores: Record<string, Record<string, string>> = {};
+                    const restoredComments: Record<string, string> = {};
+                    let anySubmitted = false;
+
+                    for (const sGrade of myGrades.students) {
+                        if (sGrade.status === 'SUBMITTED') {
+                            anySubmitted = true;
+                            // Map existing grades to scores state
+                            const sScores: Record<string, string> = {};
+                            sGrade.grades.forEach((g: any) => {
+                                sScores[g.criterionId] = g.score.toString();
+                            });
+                            restoredScores[sGrade.studentId] = sScores;
+                            restoredComments[sGrade.studentId] = sGrade.generalComment || '';
+                        }
+                    }
+
+                    if (anySubmitted) {
+                        setAllScores(restoredScores);
+                        setAllComments(restoredComments);
+                        setSubmitted(true);
+                        // If fully submitted, we don't need to restore drafts
+                        setIsRestoring(false);
+                        return;
+                    }
+                }
+
+                // 2. Fallback: Restore draft from OfflineStorage if no official grades submitted
                 const restoredScores: Record<string, Record<string, string>> = {};
                 const restoredComments: Record<string, string> = {};
 
@@ -81,14 +114,14 @@ export default function GradingScreen() {
                     setAllComments(restoredComments);
                 }
             } catch (err) {
-                console.error('Failed to restore drafts:', err);
+                console.error('Failed to restore drafts or fetch grades:', err);
             } finally {
                 setIsRestoring(false);
             }
         };
 
         if (topic && !isLoadingTopic) {
-            restoreDrafts();
+            restoreAndCheck();
         }
     }, [topic, isLoadingTopic]);
 
@@ -144,6 +177,8 @@ export default function GradingScreen() {
         if (!isNaN(num) && num > max) {
             finalized = max.toString();
         }
+
+        if (submitted) return; // Prevent editing after submission
 
         setAllScores(prev => ({ ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } }));
     };
@@ -403,6 +438,7 @@ export default function GradingScreen() {
                                         value={val}
                                         onChangeText={v => handleScore(c.id, v, c.max_score)}
                                         maxLength={4}
+                                        editable={!submitted}
                                     />
                                     <Text style={styles.maxScoreLabel}>/{c.max_score || 10}</Text>
                                 </View>
@@ -438,6 +474,7 @@ export default function GradingScreen() {
                             value={comment}
                             onChangeText={v => setAllComments(prev => ({ ...prev, [currentStudent.id]: v }))}
                             multiline
+                            editable={!submitted}
                         />
                     </View>
                 </View>
@@ -447,7 +484,11 @@ export default function GradingScreen() {
 
             {/* Action buttons */}
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
+                <TouchableOpacity
+                    style={[styles.draftBtn, submitted && { opacity: 0.5 }]}
+                    onPress={handleSaveDraft}
+                    disabled={submitted}
+                >
                     <Text style={styles.draftBtnText}>Lưu nháp</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>

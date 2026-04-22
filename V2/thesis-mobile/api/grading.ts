@@ -28,7 +28,6 @@ export const GradingApi = {
             })),
         };
         const res = await api.post<ApiResponse<Grade>>('/grading/submit', payload);
-        console.log(res.data.data);
         return res.data.data;
     },
 
