@@ -509,7 +509,40 @@ class GradingController {
     try {
       const userId = req.user!.id;
       const topicId = req.params.topicId as string;
-      const { raterRole } = req.query;
+      let { raterRole } = req.query;
+
+      // Map generic frontend role names to exact Prisma RaterRole enum values
+      if (raterRole === 'ADVISOR') {
+        raterRole = RaterRole.SUPERVISOR;
+      } else if (raterRole === 'REVIEWER') {
+        const assignment = await prisma.assignment.findFirst({
+          where: {
+            topic_id: topicId,
+            reviewer_id: userId,
+            assignment_type: 'REVIEWER',
+            status: { in: ['ACCEPTED', 'AUTO_ACCEPTED', 'PENDING'] },
+          },
+        });
+        if (assignment?.reviewer_order === 1) raterRole = RaterRole.REVIEWER_1;
+        else if (assignment?.reviewer_order === 2) raterRole = RaterRole.REVIEWER_2;
+        else if (assignment?.reviewer_order === 3) raterRole = RaterRole.REVIEWER_3;
+        else raterRole = RaterRole.REVIEWER_1;
+      } else if (raterRole === 'COUNCIL_MEMBER') {
+        const assignment = await prisma.assignment.findFirst({
+          where: {
+            topic_id: topicId,
+            reviewer_id: userId,
+            assignment_type: 'COMMITTEE',
+            status: { in: ['AUTO_ACCEPTED', 'ACCEPTED', 'PENDING'] },
+          },
+        });
+        if (assignment?.committee_role === 'CHAIR') raterRole = RaterRole.COMMITTEE_CHAIR;
+        else if (assignment?.committee_role === 'SECRETARY') raterRole = RaterRole.COMMITTEE_SECRETARY;
+        else if (assignment?.committee_role === 'MEMBER_1') raterRole = RaterRole.COMMITTEE_MEMBER_1;
+        else if (assignment?.committee_role === 'MEMBER_2') raterRole = RaterRole.COMMITTEE_MEMBER_2;
+        else raterRole = RaterRole.COMMITTEE_MEMBER;
+      }
+
       const result = await gradingService.getMyGrades(userId, topicId, raterRole as RaterRole);
       res.json({
         success: true,
