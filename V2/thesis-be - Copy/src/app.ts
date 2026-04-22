@@ -7,6 +7,7 @@ import routes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
 import { errorHandler } from './middleware/error.middleware';
+import { apiLogger } from './middleware/logger.middleware';
 import path from 'path';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(morgan('dev'));
+app.use(apiLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
