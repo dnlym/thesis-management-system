@@ -18,7 +18,7 @@ export default function DashboardScreen() {
 
   // Fetch actual data
   const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
-  const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments({ status: 'ALL' } as any);
+  const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments();
   const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
 
   const handleRefresh = React.useCallback(async () => {
