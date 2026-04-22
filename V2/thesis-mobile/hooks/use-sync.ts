@@ -11,32 +11,37 @@ export const useSync = () => {
     const sync = React.useCallback(async () => {
         if (!isAuthenticated) return;
 
-        const queue = await OfflineStorage.getQueue();
-        if (queue.length === 0) {
-            setStatus('SUCCESS');
-            setPendingCount(0);
-            return;
-        }
-
-        setPendingCount(queue.length);
-        setStatus('SYNCING');
-
-        let errorOccurred = false;
-
-        for (const item of queue) {
-            try {
-                await GradingApi.submitGrade(item.data);
-                OfflineStorage.removeFromQueue(item.id);
-            } catch (err) {
-                console.error('Failed to sync item:', item.id, err);
-                errorOccurred = true;
+        try {
+            const queue = await OfflineStorage.getQueue();
+            if (queue.length === 0) {
+                setStatus('SUCCESS');
+                setPendingCount(0);
+                return;
             }
-        }
 
-        const remainingQueue = await OfflineStorage.getQueue();
-        const remaining = remainingQueue.length;
-        setPendingCount(remaining);
-        setStatus(errorOccurred ? 'ERROR' : remaining === 0 ? 'SUCCESS' : 'PENDING');
+            setPendingCount(queue.length);
+            setStatus('SYNCING');
+
+            let errorOccurred = false;
+
+            for (const item of queue) {
+                try {
+                    await GradingApi.submitGrade(item.data);
+                    await OfflineStorage.removeFromQueue(item.id);
+                } catch (err) {
+                    console.error('Failed to sync item:', item.id, err);
+                    errorOccurred = true;
+                }
+            }
+
+            const remainingQueue = await OfflineStorage.getQueue();
+            const remaining = remainingQueue.length;
+            setPendingCount(remaining);
+            setStatus(errorOccurred ? 'ERROR' : remaining === 0 ? 'SUCCESS' : 'PENDING');
+        } catch (err) {
+            console.error('Storage access error during sync:', err);
+            setStatus('ERROR');
+        }
     }, [isAuthenticated]);
 
     React.useEffect(() => {
