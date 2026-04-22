@@ -427,12 +427,12 @@ export class AssignmentService {
     // Send notifications to all committee members and students
     const registrations = await prisma.topicRegistration.findMany({
       where: { topic_id: data.topicId, status: 'CONFIRMED' },
-      include: { 
-        group: { include: { members: { where: { status: 'ACCEPTED' } } } } 
+      include: {
+        group: { include: { members: { where: { status: 'ACCEPTED' } } } }
       }
     });
 
-    const studentIds = registrations.flatMap(reg => 
+    const studentIds = registrations.flatMap(reg =>
       reg.group_id ? reg.group?.members.map(m => m.user_id) || [] : [reg.student_id]
     );
 
@@ -547,7 +547,7 @@ export class AssignmentService {
     if (filters?.assignmentType) {
       where.assignment_type = filters.assignmentType;
     }
-    if (filters?.status) {
+    if (filters?.status && (filters.status as string) !== 'ALL') {
       where.status = filters.status;
     }
 
@@ -790,7 +790,7 @@ export class AssignmentService {
         throw new Error('Không thể gán hội đồng cho đề tài đã kết thúc');
       }
       const eligibility = this.isEligibleForCommittee(topic);
-      
+
       // Standardized Production Log
       console.log({
         tag: 'COMMITTEE_ELIGIBILITY',
