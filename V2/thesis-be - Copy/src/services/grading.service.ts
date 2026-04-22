@@ -50,7 +50,7 @@ export class GradingService {
     ]);
 
     if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
-    
+
     AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester);
 
     // Verify user has permission to grade using helpers
@@ -69,7 +69,7 @@ export class GradingService {
 
     // [PRODUCTION GUARD] Dependency Chain
     if (isReviewer(raterRole)) {
-      const hasSupervisor = (topic as any).grades.some((g: any) => 
+      const hasSupervisor = (topic as any).grades.some((g: any) =>
         g.rater_role === RaterRole.SUPERVISOR && g.student_id === (data.studentId || null)
       );
       if (!hasSupervisor) {
@@ -536,7 +536,7 @@ export class GradingService {
       const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
       const reviewerAssignments = topic.assignments.filter(a => a.assignment_type === AssignmentType.REVIEWER);
       const totalReviewersRequired = (topic as any).reviewer_required_count || reviewerAssignments.length;
-      
+
       const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
       const reviewerGradedCount = reviewerGraderIds.length;
 
@@ -556,8 +556,8 @@ export class GradingService {
           const rScores = rGraderIdsForStudent.map(gid => calculateWeightedScore(rGrades.filter(g => g.grader_id === gid)));
           const reviewer_avg_score = rScores.length > 0 ? rScores.reduce((a, b) => a + b, 0) / rScores.length : null;
 
-          const preDefenseScore = (supervisor_score !== null && reviewer_avg_score !== null) 
-            ? roundScore((supervisor_score + reviewer_avg_score) / 2) 
+          const preDefenseScore = (supervisor_score !== null && reviewer_avg_score !== null)
+            ? roundScore((supervisor_score + reviewer_avg_score) / 2)
             : null;
 
           const ep = extraPoints.find(e => e.topic_id === topic.id && e.student_id === reg.student_id);
@@ -610,14 +610,14 @@ export class GradingService {
     // 0. Permission & Department check
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    
+
     let targetDeptId = data.departmentId || null;
-    
+
     if (user.role === UserRole.HEAD) {
-        // HOD must create for their own department unless explicitly allowed otherwise
-        targetDeptId = user.departmentId || null;
+      // HOD must create for their own department unless explicitly allowed otherwise
+      targetDeptId = user.departmentId || null;
     } else if (user.role !== UserRole.ADMIN) {
-        throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền tạo tiêu chí');
+      throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền tạo tiêu chí');
     }
 
     // 1. Check uniqueness: name + role + departmentId
@@ -679,17 +679,17 @@ export class GradingService {
 
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== existing.departmentId) {
-        throw new Error('Bạn không có quyền chỉnh sửa tiêu chí của bộ môn khác');
+      throw new Error('Bạn không có quyền chỉnh sửa tiêu chí của bộ môn khác');
     } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
-        throw new Error('Không có quyền thực hiện');
+      throw new Error('Không có quyền thực hiện');
     }
 
     // 0.5. Stability Check: Block if grades already exist
     const hasGrades = await prisma.grade.findFirst({
-        where: { criterion_id: id }
+      where: { criterion_id: id }
     });
     if (hasGrades) {
-        throw new Error('Không thể chỉnh sửa tiêu chí đã được sử dụng để chấm điểm. Vui lòng tạo tiêu chí mới nếu muốn thay đổi quy trình.');
+      throw new Error('Không thể chỉnh sửa tiêu chí đã được sử dụng để chấm điểm. Vui lòng tạo tiêu chí mới nếu muốn thay đổi quy trình.');
     }
 
     // 1. If name changes, check uniqueness
@@ -762,17 +762,17 @@ export class GradingService {
 
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== criterion.departmentId) {
-        throw new Error('Bạn không có quyền xóa tiêu chí của bộ môn khác');
+      throw new Error('Bạn không có quyền xóa tiêu chí của bộ môn khác');
     } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
-        throw new Error('Không có quyền thực hiện');
+      throw new Error('Không có quyền thực hiện');
     }
 
     // 0.5. Stability Check
     const hasGrades = await prisma.grade.findFirst({
-        where: { criterion_id: id }
+      where: { criterion_id: id }
     });
     if (hasGrades) {
-        throw new Error('Không thể xóa tiêu chí đã được sử dụng để chấm điểm. Hãy ẩn (deactivate) tiêu chí này thay vì xóa.');
+      throw new Error('Không thể xóa tiêu chí đã được sử dụng để chấm điểm. Hãy ẩn (deactivate) tiêu chí này thay vì xóa.');
     }
 
     // Soft delete
@@ -797,7 +797,7 @@ export class GradingService {
     return updatedCriterion;
   }
 
-  async getGradingCriteria(role?: RaterRole | 'FINAL', topicId?: string, explicitDeptId?: string) {
+  async getGradingCriteria(roleFilter?: RaterRole | 'FINAL', topicId?: string, explicitDeptId?: string): Promise<any> {
     let departmentId: string | undefined = explicitDeptId;
 
     if (topicId) {
@@ -809,18 +809,32 @@ export class GradingService {
     }
 
     const where: any = { active: true };
-
-    // Ensure we only get either the specific department criteria or the global ones, never both at once.
     where.departmentId = departmentId || null;
 
-    // Role handling
-    if (role === 'FINAL') {
+    if (roleFilter === 'FINAL') {
       where.criteria_type = 'FINAL';
-    } else if (role) {
-      where.role = role as RaterRole;
+    } else if (roleFilter) {
+      // Map requested role (specific or generic) to its group
+      let group: string | undefined = undefined;
+
+      // Explicit generic mapping
+      const rf = roleFilter as string;
+      if (rf === 'REVIEWER') group = RoleGroup.REVIEWER;
+      else if (rf === 'SUPERVISOR' || rf === 'ADVISOR') group = RoleGroup.SUPERVISOR;
+      else if (rf === 'COMMITTEE' || rf === 'COUNCIL' || rf === 'COUNCIL_MEMBER') group = RoleGroup.COMMITTEE;
+      else {
+        // Look up by specific RaterRole
+        group = ROLE_GROUP_MAP[roleFilter as RaterRole];
+      }
+
+      if (group) {
+        where.role = { in: getRolesByGroup(group as RoleGroup) };
+      } else {
+        where.role = roleFilter;
+      }
     }
 
-    let criteria = await prisma.gradingCriterion.findMany({
+    const criteria = await prisma.gradingCriterion.findMany({
       where,
       orderBy: [
         { role: 'asc' },
@@ -828,50 +842,47 @@ export class GradingService {
       ],
     });
 
-    // Fallback logic for FINAL or if no department criteria found
-    if (criteria.length === 0) {
-      // If we were looking for department criteria, fallback to global
-      if (departmentId) {
-        const globalWhere: any = { active: true, departmentId: null };
-        if (role && role !== 'FINAL') globalWhere.role = role;
-
-        criteria = await prisma.gradingCriterion.findMany({
-          where: globalWhere,
-          orderBy: [{ role: 'asc' }, { order_index: 'asc' }],
-        });
+    // If a specific role or type (like FINAL) was requested, we return a flat list
+    // but filtered to the first role found in the result to ensure 10 items instead of many sets
+    if (roleFilter) {
+      if (criteria.length === 0 && departmentId) {
+        return this.getGradingCriteria(roleFilter, undefined, undefined);
       }
 
-      // If still empty and role is FINAL, return all active criteria for the department (or global) 
-      // focusing on LOs (which are usually SUPERVISOR role by default in seed)
-      if (criteria.length === 0 && (role === 'FINAL' || !role)) {
-        criteria = await prisma.gradingCriterion.findMany({
-          where: {
-            active: true,
-            departmentId: departmentId || null,
-            role: RaterRole.SUPERVISOR // Assuming LOs are stored under SUPERVISOR as per seed
-          },
-          orderBy: { order_index: 'asc' },
-        });
-      }
+      const groupByRole = criteria.reduce((acc, c) => {
+        if (!acc[c.role]) acc[c.role] = [];
+        acc[c.role].push(c);
+        return acc;
+      }, {} as Record<string, typeof criteria>);
+
+      const firstRoleFound = Object.keys(groupByRole)[0];
+      return firstRoleFound ? groupByRole[firstRoleFound] : [];
     }
 
-    // Group by rater role
-    const grouped = criteria.reduce((acc, criterion) => {
-      if (!acc[criterion.role]) {
-        acc[criterion.role] = [];
+    // Grouping logic for general (HOD) view: Pivot specific RaterRoles into generic RoleGroups
+    const grouped = criteria.reduce((acc: any, criterion) => {
+      const group = ROLE_GROUP_MAP[criterion.role] || criterion.role;
+      if (!acc[group]) {
+        acc[group] = [];
       }
-      acc[criterion.role].push(criterion);
+      // Strategy: Take the first role's criteria we encounter in that group and stick with them.
+      const existingRoleInGroup = acc[group][0]?.role;
+      if (!existingRoleInGroup || existingRoleInGroup === criterion.role) {
+        acc[group].push(criterion);
+      }
       return acc;
     }, {} as Record<string, typeof criteria>);
 
-    // If role was FINAL, we want to return the grouped object or just the main set
-    // The frontend expects { FINAL: [...] } or just the array if it's FINAL
-    if (role === 'FINAL') {
-      // Return the criteria as a 'FINAL' group for the frontend's useMemo logic
-      const firstRole = Object.keys(grouped)[0];
-      if (firstRole) {
-        return { FINAL: grouped[firstRole] };
-      }
+
+    // Fallback logic for department -> global (for grouped view)
+    if (Object.keys(grouped).length === 0 && departmentId) {
+      return this.getGradingCriteria(roleFilter, undefined, undefined);
+    }
+
+    // Role handling for FINAL output
+    if (roleFilter === 'FINAL') {
+      const firstGroup = Object.keys(grouped)[0];
+      if (firstGroup) return { FINAL: grouped[firstGroup] };
     }
 
     return grouped;
@@ -886,34 +897,68 @@ export class GradingService {
   }
 
   private async getPriorityCriteria(role: RaterRole, departmentId: string) {
-    // 0. Priority: Attempt to fetch the standardized 'FINAL' evaluation criteria (10 LOs)
-    // Business rule: According to user, all roles use the same set for Final Evaluation.
+    // 1. Role Group lookup (Reviewer/Committee/Supervisor)
+    const roleGroup = ROLE_GROUP_MAP[role];
+    const rolesInGroup = getRolesByGroup(roleGroup);
+
+    // 0. Final Evaluation Priority - MUST filter by role group and department
     const finalCriteria = await prisma.gradingCriterion.findMany({
-      where: { criteria_type: 'FINAL', active: true },
+      where: {
+        criteria_type: 'FINAL',
+        active: true,
+        role: { in: rolesInGroup },
+        departmentId: departmentId || null
+      },
       orderBy: { order_index: 'asc' },
     });
-
     if (finalCriteria.length > 0) return finalCriteria;
 
-    // 1. Fallback: Try department-specific criteria
-    const deptCriteria = await prisma.gradingCriterion.findMany({
-      where: { role, departmentId, active: true },
-      orderBy: { order_index: 'asc' },
-    });
-
-    if (deptCriteria.length > 0) return deptCriteria;
-
-    // 2. Fallback: Try global criteria
-    const globalCriteria = await prisma.gradingCriterion.findMany({
-      where: { role, departmentId: null, active: true },
-      orderBy: { order_index: 'asc' },
-    });
-
-    if (globalCriteria.length === 0) {
-      throw new Error(`Không tìm thấy tiêu chí chấm điểm cho vai trò ${role}`);
+    // Fallback: Global final criteria for this role group
+    if (departmentId) {
+      const globalFinalCriteria = await prisma.gradingCriterion.findMany({
+        where: {
+          criteria_type: 'FINAL',
+          active: true,
+          role: { in: rolesInGroup },
+          departmentId: null
+        },
+        orderBy: { order_index: 'asc' },
+      });
+      if (globalFinalCriteria.length > 0) return globalFinalCriteria;
     }
 
-    return globalCriteria;
+    // Try department-specific group criteria
+    const deptCriteria = await prisma.gradingCriterion.findMany({
+      where: {
+        role: { in: rolesInGroup },
+        departmentId,
+        active: true
+      },
+      orderBy: { order_index: 'asc' },
+    });
+
+    if (deptCriteria.length > 0) {
+      // Return the set for the FIRST encountered role in that group
+      const targetRole = deptCriteria[0].role;
+      return deptCriteria.filter(c => c.role === targetRole);
+    }
+
+    // 2. Fallback: Global group criteria
+    const globalCriteria = await prisma.gradingCriterion.findMany({
+      where: {
+        role: { in: rolesInGroup },
+        departmentId: null,
+        active: true
+      },
+      orderBy: { order_index: 'asc' },
+    });
+
+    if (globalCriteria.length > 0) {
+      const targetRole = globalCriteria[0].role;
+      return globalCriteria.filter(c => c.role === targetRole);
+    }
+
+    throw new Error(`Không tìm thấy tiêu chí chấm điểm cho vai trò ${role}`);
   }
 
   private validateCriteriaWeights(criteria: any[]) {
