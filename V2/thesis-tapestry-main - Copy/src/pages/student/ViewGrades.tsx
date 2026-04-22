@@ -1,7 +1,6 @@
 import { Card, Spin, Empty, Descriptions, Timeline, Tag } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, TrophyOutlined } from '@ant-design/icons';
 import { GradeBreakdown } from '@/components/GradeBreakdown';
-import { StatusBadge } from '@/components/StatusBadge';
 import { useTopicGrades } from '@/hooks/useGrading';
 import { useAuthStore } from '@/store/auth';
 
@@ -121,7 +120,7 @@ const StudentViewGrades = () => {
                         <div className="text-center">
                             <div className="text-sm text-gray-600 mb-1">Điểm GVHD</div>
                             <div className="text-2xl font-bold text-blue-600">
-                                {finalScore.advisorScore?.toFixed(2) || 'N/A'}
+                                {finalScore.advisor_score?.toFixed(2) || 'N/A'}
                             </div>
                             <div className="text-xs text-gray-500">Trọng số 40%</div>
                         </div>
@@ -131,7 +130,7 @@ const StudentViewGrades = () => {
                         <div className="text-center">
                             <div className="text-sm text-gray-600 mb-1">Điểm GVPB</div>
                             <div className="text-2xl font-bold text-green-600">
-                                {finalScore.avgReviewerScore?.toFixed(2) || 'N/A'}
+                                {finalScore.avg_reviewer_score?.toFixed(2) || 'N/A'}
                             </div>
                             <div className="text-xs text-gray-500">Trọng số 40%</div>
                         </div>
@@ -141,7 +140,7 @@ const StudentViewGrades = () => {
                         <div className="text-center">
                             <div className="text-sm text-gray-600 mb-1">Điểm HĐ</div>
                             <div className="text-2xl font-bold text-purple-600">
-                                {finalScore.avgCouncilScore?.toFixed(2) || 'N/A'}
+                                {finalScore.avg_council_score?.toFixed(2) || 'N/A'}
                             </div>
                             <div className="text-xs text-gray-500">Trọng số 20%</div>
                         </div>
@@ -151,7 +150,7 @@ const StudentViewGrades = () => {
                         <div className="text-center">
                             <div className="text-sm text-gray-600 mb-1">Điểm cộng</div>
                             <div className="text-2xl font-bold text-orange-600">
-                                {finalScore.extraPoints ? `+${finalScore.extraPoints.toFixed(2)}` : '0'}
+                                {finalScore.extra_points ? `+${finalScore.extra_points.toFixed(2)}` : '0'}
                             </div>
                             <div className="text-xs text-gray-500">Thành tích</div>
                         </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Table, Button, Modal, Input, Tag, Spin, Descriptions, InputNumber } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
-import { StatusBadge } from '@/components/StatusBadge';
+import { ExtraPointsStatusBadge } from '@/components/StatusBadge';
 import {
     useExtraPoints,
     useApproveExtraPoints,
@@ -112,7 +112,7 @@ const HeadManageExtraPoints = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <ExtraPointsStatusBadge status={status} />,
         },
         {
             title: 'Thao tác',
@@ -287,7 +287,7 @@ const HeadManageExtraPoints = () => {
                                     : 'Chưa xác định'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Trạng thái">
-                                <StatusBadge status={selectedRequest.status} />
+                                <ExtraPointsStatusBadge status={selectedRequest.status} />
                             </Descriptions.Item>
                             <Descriptions.Item label="Ngày gửi">
                                 {new Date(selectedRequest.createdAt).toLocaleString('vi-VN')}

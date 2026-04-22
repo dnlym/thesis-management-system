@@ -18,7 +18,9 @@ export const GradingApi = {
         const payload = {
             topicId: data.topic_id,
             studentId: data.student_id,  // For per-student grading
-            raterRole: data.rater_role,  // ADVISOR, REVIEWER, COUNCIL_MEMBER
+            raterRole: data.rater_role,  // SUPERVISOR, REVIEWER, COMMITTEE
+            reviewerOrder: data.reviewer_order,
+            committeeRole: data.committee_role,
             grades: data.scores.map(s => ({
                 criterionId: s.criterion_id,
                 score: s.score,
@@ -64,11 +66,17 @@ export const GradingApi = {
     },
 
     /**
-     * Get grade summary for all completed topics (HEAD only)
+     * Get grade summary for all topics categorized for HOD dashboard
      * GET /grading/grade-summary
      */
     async getGradeSummary() {
-        const res = await api.get<ApiResponse<any[]>>('/grading/grade-summary');
+        const res = await api.get<ApiResponse<{
+            allTopics: any[];
+            missingSupervisor: any[];
+            missingReviewer: any[];
+            ready: any[];
+            finalized: any[];
+        }>>('/grading/grade-summary');
         return res.data.data;
     },
 
@@ -76,9 +84,9 @@ export const GradingApi = {
      * Get current user's grades for a topic (for read-only confirmed state)
      * GET /grading/:topicId/my-grades
      */
-    async getMyGrades(topicId: string, raterRole?: RaterRole) {
+    async getMyGrades(topicId: string, raterRole?: RaterRole, reviewerOrder?: number, committeeRole?: string) {
         const res = await api.get<ApiResponse<any>>(`/grading/${topicId}/my-grades`, {
-            params: { raterRole }
+            params: { raterRole, reviewerOrder, committeeRole }
         });
         return res.data.data;
     },

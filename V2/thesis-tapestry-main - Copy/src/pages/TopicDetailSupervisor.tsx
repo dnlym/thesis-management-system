@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Button, Spin, Space, Result, Modal, Select } from 'antd';
+import { Card, Descriptions, Button, Spin, Space, Result, Modal, Select, Tag } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, SendOutlined, UserAddOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useTopic, useSubmitForApproval } from '@/hooks/useTopics';
 import { useRegisterForStudent } from '@/hooks/useRegistrations';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import TopicHistoryModal from '@/components/TopicHistoryModal';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
@@ -92,8 +92,8 @@ const TopicDetailSupervisor = () => {
 
     // Permission Checks
     const isOwner = user?.id === topic.supervisor_id;
-    const canEdit = isOwner && ['DRAFT', 'REQUIRE_EDIT'].includes(topic.status);
-    const canSubmitForApproval = isOwner && ['DRAFT', 'REQUIRE_EDIT'].includes(topic.status);
+    const canEdit = isOwner && ['DRAFT', 'REQUIRES_REVISION'].includes(topic.status);
+    const canSubmitForApproval = isOwner && ['DRAFT', 'REQUIRES_REVISION'].includes(topic.status);
     const isFull = (topic.current_students || 0) >= (topic.max_students || 0);
     const canRegisterForStudent = isOwner && topic.status === 'APPROVED' && !isFull;
 
@@ -153,8 +153,8 @@ const TopicDetailSupervisor = () => {
 
             <h1 className="text-2xl font-bold text-primary mb-6">{topic.title}</h1>
 
-            {/* Show edit notes if REQUIRE_EDIT */}
-            {topic.status === 'REQUIRE_EDIT' && topic.edit_notes && (
+            {/* Show edit notes if REQUIRES_REVISION */}
+            {topic.status === 'REQUIRES_REVISION' && topic.edit_notes && (
                 <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <h4 className="font-semibold text-yellow-800">{t('topics.editNotesFromHead')}</h4>
                     <p className="text-yellow-700 mt-1 whitespace-pre-wrap">{topic.edit_notes}</p>
@@ -164,7 +164,14 @@ const TopicDetailSupervisor = () => {
             <Card className="shadow-soft">
                 <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
                     <Descriptions.Item label={t('common.status')} span={2}>
-                        <StatusBadge status={topic.status} />
+                        <Space>
+                            <TopicStatusBadge status={topic.status} />
+                            {topic.source_topic && (
+                                <Tag color="orange" icon={<HistoryOutlined />}>
+                                    Tái sử dụng từ {topic.source_topic.semester?.name} ({topic.source_topic.code})
+                                </Tag>
+                            )}
+                        </Space>
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.supervisor')}>

@@ -18,12 +18,36 @@ export const topicKeys = {
 /**
  * Get list of topics with filters
  */
-export function useTopics(filters?: TopicFilters) {
+export function useTopics(filters?: TopicFilters & { includeAll?: boolean }) {
     return useQuery({
         queryKey: topicKeys.list(filters),
         queryFn: async () => {
             const response = await TopicsApi.getAll(filters);
             return response;
+        },
+        placeholderData: (previousData) => previousData,
+        // Only run the query if we have a semester filter OR we are specifically including all
+        // This prevents "flickering" or loading current semester topics prematurely
+        enabled: !!(filters?.semesterId || filters?.includeAll || !filters),
+    });
+}
+
+/**
+ * Clone topic mutation
+ */
+export function useCloneTopic() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ topicId, semesterId }: { topicId: string; semesterId: string }) =>
+            TopicsApi.clone(topicId, semesterId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: topicKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: topicKeys.stats() });
+            toast.success('Sao chép đề tài thành công');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Sao chép đề tài thất bại');
         },
     });
 }

@@ -173,11 +173,10 @@ export class RegistrationService {
 
       // Dept check
       const isPrimaryDept = student.departmentId === topic.departmentId;
-      const isSecondaryDept = topic.is_interdisciplinary && 
-                             topic.secondary_department_id === student.departmentId && 
-                             (topic.interdisciplinary_status === 'APPROVED' || topic.status === TopicStatus.PENDING_INTERDISCIPLINARY);
+      const meetsInterdisciplinary = !topic.is_interdisciplinary || 
+                             topic.interdisciplinary_status === 'APPROVED';
 
-      if (!isPrimaryDept && !isSecondaryDept) {
+      if (!isPrimaryDept || !meetsInterdisciplinary) {
         throw new Error('Sinh viên chỉ được đăng ký đề tài thuộc đúng chuyên ngành.');
       }
 
@@ -212,6 +211,7 @@ export class RegistrationService {
       const updateData: any = { current_students: newCount };
       if (newCount >= topic.max_students) {
         updateData.status = TopicStatus.REGISTERED;
+        updateData.progress_stage = 'WORKING';
       }
 
       await tx.topic.update({
@@ -450,7 +450,10 @@ export class RegistrationService {
     if (topic_current && topic_current.current_students >= topic_current.max_students) {
       await prisma.topic.update({
         where: { id: topicId },
-        data: { status: TopicStatus.REGISTERED },
+        data: { 
+          status: TopicStatus.REGISTERED,
+          progress_stage: 'WORKING'
+        },
       });
     }
 

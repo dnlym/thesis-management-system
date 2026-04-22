@@ -15,7 +15,7 @@ const Dashboard = () => {
     // Determine stats based on role
     const displayStats = {
         totalTopics: stats?.totalTopics || stats?.supervisedTopicsCount || 0,
-        inProgress: stats?.pendingApprovalTopics || stats?.pendingSubmissionsCount || 0,
+        inProgress: stats?.pendingApprovalTopics || 0,
         completed: stats?.completedTheses || 0, // Need to add this to backend if needed
         defended: 0 // Need to add to backend
     };

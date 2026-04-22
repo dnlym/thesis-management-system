@@ -5,7 +5,7 @@ import { CalendarOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 import { useTopics } from '@/hooks/useTopics';
 import { useUsers } from '@/hooks/useUsers';
 import { useCreateDefenseSchedule } from '@/hooks/useAssignments';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import dayjs from 'dayjs';
 import type { TopicStatus } from '@/types';
 
@@ -69,7 +69,7 @@ const Council = () => {
             title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
-            render: (status: TopicStatus) => <StatusBadge status={status} />,
+            render: (status: any) => <TopicStatusBadge status={status} />,
         },
         {
             title: t('common.actions'),

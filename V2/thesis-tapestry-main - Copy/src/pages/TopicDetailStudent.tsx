@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Tooltip } from 'antd';
 import { notify } from '@/utils/notification';
-import { ArrowLeftOutlined, CheckOutlined, UserAddOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckOutlined, UserAddOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, StopOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useTopic } from '@/hooks/useTopics';
 import { useRegisterTopic } from '@/hooks/useRegistrations';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
 import { useSemesters } from '@/hooks/useSemesters';
@@ -182,7 +182,14 @@ const TopicDetailStudent = () => {
             <Card className="shadow-soft">
                 <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
                     <Descriptions.Item label={t('common.status')} span={2}>
-                        <StatusBadge status={topic.status} />
+                        <Space>
+                            <TopicStatusBadge status={topic.status} />
+                            {topic.source_topic && (
+                                <Tag color="orange" icon={<HistoryOutlined />}>
+                                    Tái sử dụng từ {topic.source_topic.semester?.name} ({topic.source_topic.code})
+                                </Tag>
+                            )}
+                        </Space>
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.supervisor')}>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Button, Table, Modal, Input, Form, Spin, Tag, Descriptions } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { FileUpload } from '@/components/FileUpload';
-import { StatusBadge } from '@/components/StatusBadge';
+import { ExtraPointsStatusBadge } from '@/components/StatusBadge';
 import {
     useExtraPoints,
     useCreateExtraPointsRequest,
@@ -75,8 +75,8 @@ const StudentExtraPoints = () => {
     const columns = [
         {
             title: 'Mô tả thành tích',
-            dataIndex: 'description',
-            key: 'description',
+            dataIndex: 'reason',
+            key: 'reason',
             ellipsis: true,
             render: (text: string) => (
                 <div className="max-w-md">
@@ -86,8 +86,8 @@ const StudentExtraPoints = () => {
         },
         {
             title: 'Điểm đề nghị',
-            dataIndex: 'requestedPoints',
-            key: 'requestedPoints',
+            dataIndex: 'points_requested',
+            key: 'points_requested',
             width: 120,
             render: (points: number) => (
                 points ? `+${points.toFixed(2)}` : 'Chưa xác định'
@@ -95,8 +95,8 @@ const StudentExtraPoints = () => {
         },
         {
             title: 'Điểm được duyệt',
-            dataIndex: 'approvedPoints',
-            key: 'approvedPoints',
+            dataIndex: 'approved_points',
+            key: 'approved_points',
             width: 130,
             render: (points: number | null) => (
                 points !== null ? (
@@ -111,12 +111,12 @@ const StudentExtraPoints = () => {
             dataIndex: 'status',
             key: 'status',
             width: 130,
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <ExtraPointsStatusBadge status={status} />,
         },
         {
             title: 'Ngày gửi',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
+            dataIndex: 'created_at',
+            key: 'created_at',
             width: 120,
             render: (date: string) => new Date(date).toLocaleDateString('vi-VN'),
         },
@@ -285,45 +285,45 @@ const StudentExtraPoints = () => {
                     <div className="space-y-4">
                         <Descriptions bordered column={1}>
                             <Descriptions.Item label="Trạng thái">
-                                <StatusBadge status={selectedRequest.status} />
+                                <ExtraPointsStatusBadge status={selectedRequest.status} />
                             </Descriptions.Item>
                             <Descriptions.Item label="Mô tả thành tích">
-                                {selectedRequest.description}
+                                {selectedRequest.reason}
                             </Descriptions.Item>
                             <Descriptions.Item label="Điểm đề nghị">
-                                {selectedRequest.requestedPoints
-                                    ? `+${selectedRequest.requestedPoints.toFixed(2)}`
+                                {selectedRequest.points_requested
+                                    ? `+${selectedRequest.points_requested.toFixed(2)}`
                                     : 'Chưa xác định'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Điểm được duyệt">
-                                {selectedRequest.approvedPoints !== null
+                                {selectedRequest.approved_points !== null
                                     ? <span className="font-semibold text-green-600">
-                                        +{selectedRequest.approvedPoints.toFixed(2)}
+                                        +{selectedRequest.approved_points.toFixed(2)}
                                     </span>
                                     : <span className="text-gray-400">Chưa duyệt</span>}
                             </Descriptions.Item>
                             <Descriptions.Item label="Ngày gửi">
-                                {new Date(selectedRequest.createdAt).toLocaleString('vi-VN')}
+                                {new Date(selectedRequest.created_at).toLocaleString('vi-VN')}
                             </Descriptions.Item>
-                            {selectedRequest.reviewedAt && (
+                            {selectedRequest.reviewed_at && (
                                 <Descriptions.Item label="Ngày xét duyệt">
-                                    {new Date(selectedRequest.reviewedAt).toLocaleString('vi-VN')}
+                                    {new Date(selectedRequest.reviewed_at).toLocaleString('vi-VN')}
                                 </Descriptions.Item>
                             )}
                         </Descriptions>
 
-                        {selectedRequest.rejectionReason && (
+                        {selectedRequest.rejection_reason && (
                             <div className="bg-red-50 border border-red-200 rounded p-4">
                                 <h4 className="font-semibold text-red-900 mb-2">Lý do từ chối:</h4>
-                                <p className="text-red-800">{selectedRequest.rejectionReason}</p>
+                                <p className="text-red-800">{selectedRequest.rejection_reason}</p>
                             </div>
                         )}
 
-                        {selectedRequest.proofUrl && (
+                        {selectedRequest.evidence_url && (
                             <div>
                                 <h4 className="font-medium mb-2">Minh chứng:</h4>
                                 <a
-                                    href={selectedRequest.proofUrl}
+                                    href={selectedRequest.evidence_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-600 hover:underline"

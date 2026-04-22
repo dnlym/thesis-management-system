@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { TopicStatus, ProgressStage } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import topicService from '../services/topic.service';
 
@@ -141,12 +142,12 @@ export class TopicController {
    *     summary: Request topic edits (HEAD only)
    *     tags: [Topic]
    */
-  async requireEdit(req: AuthRequest, res: Response) {
+  async requestRevision(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
       const topicId = req.params.topicId as string;
       const { notes } = req.body;
-      const result = await topicService.requireEdit(userId, { topicId, editNotes: notes });
+      const result = await topicService.requestRevision(userId, { topicId, editNotes: notes });
       res.json({
         success: true,
         data: result,
@@ -176,7 +177,10 @@ export class TopicController {
         departmentId: req.query.departmentId as string,
         search: req.query.search as string,
         supervisorId: req.query.supervisorId as string,
+        includeAll: req.query.includeAll === 'true',
         midtermStatus: req.query.midtermStatus as 'PASS' | 'FAIL' | undefined,
+        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        limit: req.query.size ? parseInt(req.query.size as string) : undefined,
       };
       const topics = await topicService.getTopics(userId, filters);
       res.json({
@@ -184,9 +188,37 @@ export class TopicController {
         data: topics,
       });
     } catch (error: any) {
-      res.status(400).json({
+      res.status(error.statusCode || 400).json({
         success: false,
-        error: error.message,
+        error: error.error || 'BAD_REQUEST',
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Clone a topic into the active semester
+   */
+  async cloneTopic(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const topicId = req.params.topicId as string;
+      const { semesterId } = req.body;
+
+      if (!semesterId) {
+        throw new Error('Semester ID is required for cloning');
+      }
+
+      const topic = await topicService.cloneTopic(userId, topicId, semesterId);
+      res.status(201).json({
+        success: true,
+        data: topic,
+        message: 'Sao chép đề tài thành công',
+      });
+    } catch (error: any) {
+      res.status(error.statusCode || 400).json({
+        success: false,
+        error: error.error || 'BAD_REQUEST',
         message: error.message,
       });
     }
@@ -335,6 +367,33 @@ export class TopicController {
       res.json({
         success: true,
         data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+        message: error.message,
+      });
+    }
+  }
+  /**
+   * Finalize the defense eligibility and type (HOD only)
+   */
+  async finalizeDefensePivot(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const topicId = req.params.topicId as string;
+      const { isEligible, defenseType } = req.body;
+
+      const topic = await topicService.finalizeDefensePivot(userId, topicId, {
+        isEligible,
+        defenseType,
+      });
+
+      res.json({
+        success: true,
+        data: topic,
+        message: isEligible ? 'Đã duyệt đủ điều kiện bảo vệ' : 'Đã chốt đề tài không đủ điều kiện bảo vệ',
       });
     } catch (error: any) {
       res.status(400).json({

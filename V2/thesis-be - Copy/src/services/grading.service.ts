@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus } from '@prisma/client';
+import { RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus, ProgressStage } from '@prisma/client';
 import { isSupervisor, isReviewer as isReviewerPermission, isCommitteeMember } from '../utils/permission.utils';
 import { SemesterGuard } from '../utils/semester-guard';
 import { SubmitGradeRequest, CreateGradingCriterionRequest, UpdateGradingCriterionRequest } from '../types';
@@ -27,6 +27,7 @@ export class GradingService {
       include: {
         assignments: true,
         registrations: true,
+        grades: true,
       },
     });
 
@@ -66,8 +67,24 @@ export class GradingService {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
+    // [PRODUCTION GUARD] Dependency Chain
+    if (isReviewer(raterRole)) {
+      const hasSupervisor = (topic as any).grades.some((g: any) => 
+        g.rater_role === RaterRole.SUPERVISOR && g.student_id === (data.studentId || null)
+      );
+      if (!hasSupervisor) {
+        throw new Error('GVHD chưa chấm điểm cho sinh viên này. Không thể chấm phản biện.');
+      }
+    }
+
+    if (isCommittee(raterRole)) {
+      if (!(topic as any).is_eligible_for_defense) {
+        throw new Error('Đề tài chưa được duyệt đủ điều kiện bảo vệ hoặc chưa có quyết định từ Trưởng bộ môn.');
+      }
+    }
+
     // Get defense type from topic
-    const defenseType = topic.defense_type || 'ORAL';
+    const defenseType = (topic as any).defense_type || 'ORAL';
 
     // Validate rater role against defense type
     if (defenseType === 'ORAL' && raterRole === RaterRole.POSTER_COMMITTEE) {
@@ -168,17 +185,17 @@ export class GradingService {
             },
           });
 
-          // [PRODUCTION GUARD] Idempotent status transition
-          if (topic.status !== TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT) {
+          // [PRODUCTION GUARD] Idempotent status transition to READY_FOR_DEFENSE stage
+          if (topic.progress_stage !== ProgressStage.READY_FOR_DEFENSE) {
             await prisma.topic.update({
               where: { id: data.topicId },
               data: {
-                status: TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT,
+                progress_stage: ProgressStage.READY_FOR_DEFENSE,
               },
             });
-            logger.info('TOPIC_STATUS_TRANSITION', {
+            logger.info('TOPIC_PROGRESS_TRANSITION', {
               topicId: data.topicId,
-              to: TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT,
+              to: ProgressStage.READY_FOR_DEFENSE,
               trigger: 'ALL_REVIEWERS_GRADED'
             });
           }
@@ -194,12 +211,13 @@ export class GradingService {
             },
           });
 
-          // [PRODUCTION GUARD] Idempotent status transition
+          // [PRODUCTION GUARD] Idempotent status transition to COMPLETED
           if (topic.status !== TopicStatus.COMPLETED) {
             await prisma.topic.update({
               where: { id: data.topicId },
               data: {
                 status: TopicStatus.COMPLETED,
+                progress_stage: ProgressStage.DONE,
               },
             });
           }
@@ -442,6 +460,7 @@ export class GradingService {
       where: { id: topicId },
       data: {
         status: TopicStatus.FINALIZED,
+        progress_stage: ProgressStage.DONE,
       },
     });
 
@@ -487,9 +506,7 @@ export class GradingService {
         departmentId: user.departmentId,
         status: {
           in: [
-            TopicStatus.UNDER_REVIEW,
-            TopicStatus.WAITING_FOR_DEFENSE,
-            TopicStatus.DEFENDING,
+            TopicStatus.REGISTERED,
             TopicStatus.COMPLETED,
             TopicStatus.FINALIZED,
           ],
@@ -503,82 +520,59 @@ export class GradingService {
             student: { select: { id: true, full_name: true, student_code: true, avatar_url: true } },
           },
         },
-        grades: {
-          include: { criterion: true },
-        },
-        assignments: true,
+        grades: { include: { criterion: true } },
+        assignments: { where: { assignment_type: AssignmentType.REVIEWER } },
         final_scores: true,
       },
       orderBy: { updated_at: 'desc' },
     });
 
-    // Fetch all extra point requests for these topics to avoid N+1 in map
     const topicIds = topics.map(t => t.id);
     const extraPoints = await prisma.extraPointRequest.findMany({
       where: { topic_id: { in: topicIds }, status: 'APPROVED' },
     });
 
-    return topics.map(topic => {
+    const summaryData = topics.map(topic => {
       const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
-      const reviewerGradedIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
+      const reviewerAssignments = topic.assignments.filter(a => a.assignment_type === AssignmentType.REVIEWER);
+      const totalReviewersRequired = (topic as any).reviewer_required_count || reviewerAssignments.length;
+      
+      const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
+      const reviewerGradedCount = reviewerGraderIds.length;
+
+      const isReviewerComplete = reviewerGradedCount >= totalReviewersRequired && totalReviewersRequired > 0;
       const committeeGradedIds = [...new Set(topic.grades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
-      const isFinalized = topic.status === TopicStatus.FINALIZED;
-      const hasFinalScore = topic.final_scores.length > 0;
 
       const students = topic.registrations.map(reg => {
         let fs = topic.final_scores.find(s => s.student_id === reg.student_id);
 
-        // If no pre-computed final score, calculate "live" averages
         if (!fs) {
           const studentGrades = topic.grades.filter(g => g.student_id === reg.student_id);
-          
-          // Supervisor
           const sGrades = studentGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR);
           const supervisor_score = sGrades.length > 0 ? calculateWeightedScore(sGrades) : null;
 
-          // Reviewer Avg
           const rGrades = studentGrades.filter(g => isReviewer(g.rater_role));
-          const rGraderIds = [...new Set(rGrades.map(g => g.grader_id))];
-          const rScores = rGraderIds.map(gid => calculateWeightedScore(rGrades.filter(g => g.grader_id === gid)));
+          const rGraderIdsForStudent = [...new Set(rGrades.map(g => g.grader_id))];
+          const rScores = rGraderIdsForStudent.map(gid => calculateWeightedScore(rGrades.filter(g => g.grader_id === gid)));
           const reviewer_avg_score = rScores.length > 0 ? rScores.reduce((a, b) => a + b, 0) / rScores.length : null;
 
-          // Committee Avg
-          const cGrades = studentGrades.filter(g => isCommittee(g.rater_role));
-          const cGraderIds = [...new Set(cGrades.map(g => g.grader_id))];
-          const cScores = cGraderIds.map(gid => calculateWeightedScore(cGrades.filter(g => g.grader_id === gid)));
-          const committee_score = cScores.length > 0 ? cScores.reduce((a, b) => a + b, 0) / cScores.length : null;
+          const preDefenseScore = (supervisor_score !== null && reviewer_avg_score !== null) 
+            ? roundScore((supervisor_score + reviewer_avg_score) / 2) 
+            : null;
 
-          // Extra points
           const ep = extraPoints.find(e => e.topic_id === topic.id && e.student_id === reg.student_id);
-          const extra_points = ep?.points_requested || 0;
-
-          // Predicted Final Score
-          let final_score = null;
-          let grade_classification = null;
-          if (supervisor_score !== null && reviewer_avg_score !== null && committee_score !== null) {
-            final_score = roundScore(((supervisor_score + reviewer_avg_score + committee_score) / 3) + extra_points);
-            grade_classification = this.getGradeClassification(final_score);
-          }
-
-          // Mock a FinalScore object for the frontend
           fs = {
             id: `temp-${reg.student_id}`,
-            topic_id: topic.id,
             student_id: reg.student_id,
             supervisor_score,
             reviewer_avg_score,
-            committee_score,
-            extra_points,
-            final_score,
-            grade_classification,
+            pre_defense_score: preDefenseScore,
+            extra_points: ep?.points_requested || 0,
             finalized: false,
           } as any;
         }
 
-        return {
-          ...reg.student,
-          finalScore: fs,
-        };
+        return { ...reg.student, finalScore: fs };
       });
 
       return {
@@ -587,19 +581,29 @@ export class GradingService {
         title: topic.title,
         status: topic.status,
         defense_type: topic.defense_type,
+        is_eligible_for_defense: (topic as any).is_eligible_for_defense,
         supervisor: topic.supervisor,
-        semester: topic.semester,
         students,
         gradingStatus: {
           supervisorGraded,
-          reviewerCount: reviewerGradedIds.length,
+          reviewerGradedCount,
+          totalReviewersRequired,
+          isReviewerComplete,
           committeeCount: committeeGradedIds.length,
-          isComplete: supervisorGraded && reviewerGradedIds.length >= 2 && committeeGradedIds.length >= 1,
-          isFinalized,
-          hasFinalScore,
+          isReadyForDecision: supervisorGraded && isReviewerComplete,
+          isFinalized: topic.status === TopicStatus.FINALIZED,
         },
       };
     });
+
+    // Categorize for HOD Dashboard
+    return {
+      allTopics: summaryData,
+      missingSupervisor: summaryData.filter(d => !d.gradingStatus.supervisorGraded),
+      missingReviewer: summaryData.filter(d => d.gradingStatus.supervisorGraded && !d.gradingStatus.isReviewerComplete),
+      ready: summaryData.filter(d => d.gradingStatus.isReadyForDecision && d.is_eligible_for_defense === null),
+      finalized: summaryData.filter(d => d.is_eligible_for_defense !== null),
+    };
   }
 
   async createGradingCriterion(userId: string, data: CreateGradingCriterionRequest) {
@@ -1075,20 +1079,12 @@ export class GradingService {
           midterm_graded_at: new Date(),
           midterm_feedback: feedback || null,
           // Update progress status if PASS
-          student_progress_status: status === MidtermStatus.PASS
-            ? StudentProgressStatus.PROPOSAL_APPROVED
-            : undefined, // Keep existing if not PASS
+          student_progress_status: StudentProgressStatus.HAS_TOPIC,
         },
       });
     } else {
       // Single student registration (no group)
-      // Get department config for auto-approval
-      const student = await prisma.user.findUnique({
-        where: { id: (registration as any).student_id },
-        include: { department: true }
-      });
 
-      const shouldAutoApprove = student?.department.auto_approve_proposal_on_midterm_pass ?? true;
 
       await prisma.topicRegistration.update({
         where: { id: registrationId },
@@ -1096,9 +1092,7 @@ export class GradingService {
           midterm_status: status,
           midterm_feedback: feedback,
           midterm_graded_at: new Date(),
-          student_progress_status: status === MidtermStatus.PASS
-            ? (shouldAutoApprove ? StudentProgressStatus.PROPOSAL_APPROVED : undefined)
-            : StudentProgressStatus.HAS_TOPIC, // Revert if FAIL
+          student_progress_status: StudentProgressStatus.HAS_TOPIC,
         },
       });
     }

@@ -5,7 +5,8 @@ import {
   ScheduleStatus,
   AssignmentType,
   AssignmentStatus,
-  TopicStatus
+  TopicStatus,
+  ProgressStage
 } from '@prisma/client';
 import {
   CreateCommitteeRequest,
@@ -388,7 +389,7 @@ export class CommitteeService {
       // 6. Update Topic Status
       await tx.topic.update({
         where: { id: data.topicId },
-        data: { status: TopicStatus.WAITING_FOR_DEFENSE }
+        data: { progress_stage: ProgressStage.READY_FOR_DEFENSE }
       });
 
       // 7. Send Notifications to committee members and students

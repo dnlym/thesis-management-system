@@ -15,6 +15,7 @@ import { ERROR_CODES, VALIDATION } from '../constants';
 import notificationService from './notification.service';
 import semesterService from './semester.service';
 import { normalizeTitle } from '../utils/string';
+import { ApiError } from '../utils/errors';
 import { Prisma } from '@prisma/client';
 
 
@@ -40,39 +41,61 @@ export class TopicService {
    * Format: DT-{semester_code}-{sequence_number}
    * Example: DT-HK1-2025-001
    */
-  private async generateTopicCode(semesterId: string): Promise<string> {
-    // Get semester info
-    const semester = await prisma.semester.findUnique({
-      where: { id: semesterId }
-    });
+  private async generateTopicCode(semesterId: string, departmentId: string): Promise<string> {
+    // Get semester and department info
+    const [semester, department] = await Promise.all([
+      prisma.semester.findUnique({ where: { id: semesterId } }),
+      prisma.department.findUnique({ where: { id: departmentId } })
+    ]);
 
-    if (!semester) {
-      throw new Error('Semester not found');
+    if (!semester || !department) {
+      throw new Error('Semester or Department not found');
     }
 
-    // Count existing topics in this semester
-    const topicCount = await prisma.topic.count({
-      where: { semester_id: semesterId }
-    });
+    // Extract year and term from semester code (e.g., HK2_2023_2024)
+    const semesterCodeParts = semester.code.split(/[-_]/);
+    const term = semesterCodeParts[0] || 'HK';
+    const year = semesterCodeParts[1] || new Date().getFullYear().toString();
+    const deptCode = department.code;
 
-    // Generate next sequence number (padded to 3 digits)
-    const sequence = String(topicCount + 1).padStart(3, '0');
+    const prefix = `${deptCode}-${year}-${term}-`;
 
-    // Generate code: DT-{semester_code}-{sequence}
-    const code = `DT-${semester.code}-${sequence}`;
+    // Attempt to generate unique code with retry logic to handle race conditions
+    let attempts = 0;
+    while (attempts < 5) {
+      // Find the topic with the highest sequence number for this department and semester
+      const latestTopic = await prisma.topic.findFirst({
+        where: {
+          semester_id: semesterId,
+          departmentId: departmentId,
+          code: { startsWith: prefix }
+        },
+        orderBy: { code: 'desc' },
+        select: { code: true }
+      });
 
-    // Double check uniqueness (in case of race conditions)
-    const existingWithCode = await prisma.topic.findUnique({
-      where: { code }
-    });
+      let nextSeq = 1;
+      if (latestTopic && latestTopic.code) {
+        const parts = latestTopic.code.split('-');
+        const lastSeqStr = parts[parts.length - 1];
+        const lastSeq = parseInt(lastSeqStr);
+        if (!isNaN(lastSeq)) {
+          nextSeq = lastSeq + 1;
+        }
+      }
 
-    if (existingWithCode) {
-      // If code exists (race condition), increment and try again
-      const newSequence = String(topicCount + 2).padStart(3, '0');
-      return `DT-${semester.code}-${newSequence}`;
+      const code = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+
+      // Final check for uniqueness within same semester (scoped unique)
+      const existing = await prisma.topic.findFirst({
+        where: { code, semester_id: semesterId }
+      });
+
+      if (!existing) return code;
+      attempts++;
     }
 
-    return code;
+    throw new Error('Không thể tạo mã đề tài duy nhất sau nhiều lần thử');
   }
 
   async createTopic(userId: string, data: CreateTopicRequest) {
@@ -143,7 +166,7 @@ export class TopicService {
     const topicDepartmentId = user.departmentId;
 
     // Generate unique topic code for this semester
-    const topicCode = await this.generateTopicCode(data.semesterId);
+    const topicCode = await this.generateTopicCode(data.semesterId, topicDepartmentId);
 
     // Get department config
     const department = await prisma.department.findUnique({
@@ -275,10 +298,9 @@ export class TopicService {
       }
     }
 
-    // RE-APPROVAL LOGIC: If topic was already APPROVED or PENDING_INTERDISCIPLINARY, 
-    // any edit (title/requirements etc) should put it back to PENDING_APPROVAL
+    // RE-APPROVAL LOGIC: If topic was already APPROVED, skip interdisciplinary reset
     let statusUpdate: any = {};
-    if (([TopicStatus.APPROVED, TopicStatus.PENDING_INTERDISCIPLINARY] as TopicStatus[]).includes(topic.status)) {
+    if (topic.status === TopicStatus.APPROVED) {
       statusUpdate.status = TopicStatus.PENDING_APPROVAL;
       // Also reset interdisciplinary status if it was pending
       if (topic.is_interdisciplinary) {
@@ -403,8 +425,8 @@ export class TopicService {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
-    if (!([TopicStatus.DRAFT, TopicStatus.REQUIRE_EDIT] as TopicStatus[]).includes(topic.status)) {
-      throw new Error(ERROR_CODES.INVALID_TOPIC_STATUS);
+    if (!([TopicStatus.DRAFT, TopicStatus.REQUIRES_REVISION] as TopicStatus[]).includes(topic.status)) {
+      throw new Error('Chỉ có thể cập nhật đề tài ở trạng thái nháp hoặc yêu cầu chỉnh sửa');
     }
 
     const updatedTopic = await prisma.topic.update({
@@ -469,12 +491,8 @@ export class TopicService {
     }
 
     // REFINED APPROVAL FLOW: 
-    // If interdisciplinary, transition to PENDING_INTERDISCIPLINARY
-    // Otherwise, transition to APPROVED
+    // Transition directly to APPROVED (Interdisciplinary handled via flag)
     let nextStatus: TopicStatus = TopicStatus.APPROVED;
-    if (topic.is_interdisciplinary && topic.interdisciplinary_status === 'PENDING') {
-      nextStatus = TopicStatus.PENDING_INTERDISCIPLINARY;
-    }
 
     const updatedTopic = await prisma.topic.update({
       where: { id: topicId },
@@ -592,7 +610,7 @@ export class TopicService {
 
   }
 
-  async requireEdit(userId: string, data: RequireEditRequest) {
+  async requestRevision(userId: string, data: RequireEditRequest) {
     if (data.editNotes.length < VALIDATION.REASON.EDIT_NOTES_MIN) {
       throw new Error(`Edit notes must be at least ${VALIDATION.REASON.EDIT_NOTES_MIN} characters`);
     }
@@ -615,7 +633,7 @@ export class TopicService {
     const updatedTopic = await prisma.topic.update({
       where: { id: data.topicId },
       data: {
-        status: TopicStatus.REQUIRE_EDIT,
+        status: TopicStatus.REQUIRES_REVISION,
         edit_notes: data.editNotes,
       },
     });
@@ -632,7 +650,7 @@ export class TopicService {
         version_number: (latestVersion?.version_number || 0) + 1,
         snapshot_data: updatedTopic,
         changed_by: userId,
-        change_reason: `Require edit by HEAD: ${data.editNotes}`,
+        change_reason: `Requires revision by HEAD: ${data.editNotes}`,
       },
     });
 
@@ -640,7 +658,7 @@ export class TopicService {
     await prisma.auditLog.create({
       data: {
         user_id: userId,
-        action: 'REQUIRE_EDIT',
+        action: 'REQUEST_REVISION',
         entity_type: 'Topic',
         entity_id: data.topicId,
         old_value: topic,
@@ -764,16 +782,16 @@ export class TopicService {
           {
             AND: [
               { departmentId: user.departmentId },
-              { status: { notIn: [TopicStatus.DRAFT, TopicStatus.HIDDEN] } }
+              { status: { notIn: [TopicStatus.DRAFT] } }
             ]
           }
         ]
       });
     } else if (user.role === UserRole.ADMIN) {
-      // ADMIN sees all but DRAFT/HIDDEN only if they are the owner
+      // ADMIN sees all but DRAFT/HIDDEN logic is handled by visibility flag for others
       andConditions.push({
         OR: [
-          { status: { notIn: [TopicStatus.DRAFT, TopicStatus.HIDDEN] } },
+          { status: { notIn: [TopicStatus.DRAFT] } },
           { supervisor_id: userId },
         ]
       });
@@ -781,31 +799,54 @@ export class TopicService {
 
     // Apply filters
     if (filter.status) {
-      where.status = filter.status;
+      if (Array.isArray(filter.status)) {
+        where.status = { in: filter.status };
+      } else {
+        where.status = filter.status;
+      }
     }
 
     // Role-based status constraints & logic
     if (user.role === UserRole.STUDENT) {
       const allowedStatuses: TopicStatus[] = [TopicStatus.APPROVED, TopicStatus.REGISTERED];
+      
+      // Mandatory visibility filter for students
+      andConditions.push({ is_visible: true });
 
       // If student filters for a specific status, ensure it's allowed
       if (filter.status && allowedStatuses.includes(filter.status as TopicStatus)) {
-        // If they filter specifically for APPROVED, we expand to show both for better UX
         if (filter.status === TopicStatus.APPROVED) {
           where.status = { in: allowedStatuses };
         }
-        // If they filtered for REGISTERED, where.status is already correct
       } else {
-        // Default or invalid status filter: show all allowed
         where.status = { in: allowedStatuses };
       }
+    } else if (user.role === UserRole.LECTURER && userId !== filter.supervisorId) {
+      // Lecturers only see visible topics of others
+      andConditions.push({
+        OR: [
+          { supervisor_id: userId },
+          { is_visible: true }
+        ]
+      });
     }
     if (filter.supervisorId) {
       where.supervisor_id = filter.supervisorId;
     }
-    if (filter.semesterId) {
+
+    // Semester filtering logic
+    if (filter.includeAll) {
+      // Don't filter by semester
+    } else if (filter.semesterId) {
       where.semester_id = filter.semesterId;
+    } else {
+      // Default: show only active semester topics
+      const activeSemester = await semesterService.getActiveSemester();
+      if (activeSemester) {
+        where.semester_id = activeSemester.id;
+      }
     }
+
     if (filter.search) {
       where.OR = [
         { title: { contains: filter.search, mode: 'insensitive' } },
@@ -957,6 +998,19 @@ export class TopicService {
         },
         semester: true,
         department: true,
+        secondary_department: true,
+        co_supervisor: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+          }
+        },
+        source_topic: {
+          include: {
+            semester: true
+          }
+        },
         registrations: {
           include: {
             student: {
@@ -1018,7 +1072,7 @@ export class TopicService {
     // Hide registrations from students - they can only see their own registration
     if (user && user.role === UserRole.STUDENT) {
       // Filter to only show their own registration (if they have one)
-      const myRegistration = topic.registrations.filter(r => r.student_id === userId);
+      const myRegistration = (topic as any).registrations.filter((r: any) => r.student_id === userId);
 
       // Mask other sensitive relations for students
       const { registrations, groups, final_scores, assignments, ...cleanTopic } = topic as any;
@@ -1075,7 +1129,7 @@ export class TopicService {
     }
 
     // Check if topic can be deleted
-    if (!([TopicStatus.DRAFT, TopicStatus.REJECTED, TopicStatus.REQUIRE_EDIT] as TopicStatus[]).includes(topic.status)) {
+    if (!([TopicStatus.DRAFT, TopicStatus.REJECTED, TopicStatus.REQUIRES_REVISION] as TopicStatus[]).includes(topic.status)) {
       throw new Error('Cannot delete topic in current status');
     }
 
@@ -1208,27 +1262,15 @@ export class TopicService {
       throw new Error('Bạn không có quyền ẩn đề tài này');
     }
 
-    // Cannot hide topics that are in progress
-    const protectedStatuses: TopicStatus[] = [
-      TopicStatus.REGISTERED,
-      TopicStatus.UNDER_REVIEW,
-      TopicStatus.DEFENDING,
-      TopicStatus.COMPLETED,
-      TopicStatus.FINALIZED,
-    ];
-
-    if (protectedStatuses.includes(topic.status as TopicStatus)) {
+    // Cannot hide topics that are already registered or completed
+    if (topic.status === TopicStatus.REGISTERED || topic.status === TopicStatus.COMPLETED || topic.status === TopicStatus.FINALIZED) {
       throw new Error('Không thể ẩn đề tài đang được thực hiện hoặc đã hoàn thành');
     }
-
-    // Store previous status before hiding
-    const previousStatus = topic.status;
 
     const updatedTopic = await prisma.topic.update({
       where: { id: topicId },
       data: {
-        status: TopicStatus.HIDDEN,
-        edit_notes: `Previous status: ${previousStatus}`, // Store to restore later
+        is_visible: false,
       },
     });
 
@@ -1239,8 +1281,8 @@ export class TopicService {
         action: 'HIDE_TOPIC',
         entity_type: 'Topic',
         entity_id: topicId,
-        old_value: { status: previousStatus },
-        new_value: { status: TopicStatus.HIDDEN },
+        old_value: { is_visible: true },
+        new_value: { is_visible: false },
       },
     });
 
@@ -1269,25 +1311,14 @@ export class TopicService {
       throw new Error('Bạn không có quyền hiện đề tài này');
     }
 
-    if (topic.status !== TopicStatus.HIDDEN) {
+    if (topic.is_visible) {
       throw new Error('Đề tài này không bị ẩn');
-    }
-
-    // Restore previous status from edit_notes if available, otherwise default to APPROVED
-    let restoredStatus: TopicStatus = TopicStatus.APPROVED;
-    if (topic.edit_notes?.startsWith('Previous status:')) {
-      const prevStatusStr = topic.edit_notes.replace('Previous status:', '').trim();
-      const validStatuses = Object.values(TopicStatus) as string[];
-      if (validStatuses.includes(prevStatusStr)) {
-        restoredStatus = prevStatusStr as TopicStatus;
-      }
     }
 
     const updatedTopic = await prisma.topic.update({
       where: { id: topicId },
       data: {
-        status: restoredStatus,
-        edit_notes: null, // Clear the previous status note
+        is_visible: true,
       },
     });
 
@@ -1298,8 +1329,8 @@ export class TopicService {
         action: 'UNHIDE_TOPIC',
         entity_type: 'Topic',
         entity_id: topicId,
-        old_value: { status: TopicStatus.HIDDEN },
-        new_value: { status: restoredStatus },
+        old_value: { is_visible: false },
+        new_value: { is_visible: true },
       },
     });
 
@@ -1317,11 +1348,13 @@ export class TopicService {
 
     if (user.role === UserRole.HEAD) {
       baseWhere.departmentId = user.departmentId;
-      // Head doesn't see DRAFT/HIDDEN topics of others
-      baseWhere.status = { notIn: [TopicStatus.DRAFT, TopicStatus.HIDDEN] };
+      // Head doesn't see DRAFT topics of others
+      baseWhere.status = { notIn: [TopicStatus.DRAFT] };
+      baseWhere.is_visible = true;
     } else if (user.role === UserRole.ADMIN) {
-      // Admin sees everything except personal drafts/hidden of others (simplified)
-      baseWhere.status = { notIn: [TopicStatus.DRAFT, TopicStatus.HIDDEN] };
+      // Admin sees everything except personal drafts (simplified)
+      baseWhere.status = { notIn: [TopicStatus.DRAFT] };
+      baseWhere.is_visible = true;
     } else {
       // LECTURER stats only for their own topics
       baseWhere.supervisor_id = userId;
@@ -1336,7 +1369,7 @@ export class TopicService {
 
     const statuses = [
       TopicStatus.PENDING_APPROVAL,
-      TopicStatus.REQUIRE_EDIT,
+      TopicStatus.REQUIRES_REVISION,
       TopicStatus.APPROVED,
       TopicStatus.REJECTED
     ];
@@ -1385,7 +1418,8 @@ export class TopicService {
     let nextTopicStatus = topic.status;
     let nextIsInter = topic.is_interdisciplinary;
 
-    if (topic.status === TopicStatus.PENDING_INTERDISCIPLINARY) {
+    // Simplified check
+    if (topic.is_interdisciplinary && topic.interdisciplinary_status === 'PENDING') {
       if (isActuallyApproved) {
         nextTopicStatus = TopicStatus.APPROVED;
       } else {
@@ -1430,6 +1464,164 @@ export class TopicService {
     );
 
     return updatedTopic;
+  }
+
+  /**
+   * Clone an existing topic into a new active semester.
+   * Only the supervisor of the original topic can clone it.
+   */
+  async cloneTopic(userId: string, topicId: string, newSemesterId: string) {
+    const oldTopic = await prisma.topic.findUnique({
+      where: { id: topicId },
+      include: { semester: true }
+    });
+
+    if (!oldTopic) {
+      throw new ApiError(404, 'NOT_FOUND', 'Đề tài không tồn tại');
+    }
+
+    // 1. Security Check: Only supervisor can clone their own topic
+    if (oldTopic.supervisor_id !== userId) {
+      throw new ApiError(403, 'FORBIDDEN', 'Bạn không có quyền sao chép đề tài của giảng viên khác');
+    }
+
+    // 2. Semester Status Guard: Must clone into an ACTIVE semester
+    const targetSemester = await prisma.semester.findUnique({ 
+      where: { id: newSemesterId } 
+    });
+    
+    if (!targetSemester || targetSemester.status !== 'ACTIVE') {
+      throw new ApiError(400, 'INVALID_SEMESTER', 'Chỉ có thể sao chép đề tài vào học kỳ đang ở trạng thái Hoạt động (ACTIVE)');
+    }
+
+    // 3. Prevention: Cannot clone within same semester
+    if (oldTopic.semester_id === newSemesterId) {
+      throw new ApiError(400, 'SAME_SEMESTER', 'Đề tài này đã tồn tại trong học kỳ hiện tại');
+    }
+
+    // 4. Transaction for atomicity
+    return await prisma.$transaction(async (tx) => {
+      // Generate new topic code for target semester
+      const topicCount = await tx.topic.count({ where: { semester_id: newSemesterId } });
+      const sequence = String(topicCount + 1).padStart(3, '0');
+      const newCode = `DT-${targetSemester.code}-${sequence}`;
+
+      const newTopic = await tx.topic.create({
+        data: {
+          code: newCode,
+          title: oldTopic.title,
+          normalized_title: oldTopic.normalized_title,
+          description: oldTopic.description,
+          objectives: oldTopic.objectives,
+          requirements: oldTopic.requirements,
+          max_students: oldTopic.max_students,
+          status: TopicStatus.DRAFT, // Cloned topics always start as DRAFT
+          departmentId: oldTopic.departmentId,
+          semester_id: newSemesterId,
+          supervisor_id: userId,
+          source_topic_id: oldTopic.id,
+          is_interdisciplinary: oldTopic.is_interdisciplinary,
+          co_supervisor_id: oldTopic.co_supervisor_id,
+          secondary_department_id: oldTopic.secondary_department_id,
+        }
+      });
+
+      // Create initial version for history tracking
+      await tx.topicVersion.create({
+        data: {
+          topic_id: newTopic.id,
+          version_number: 1,
+          snapshot_data: newTopic as any,
+          changed_by: userId,
+          change_reason: `Được sao chép từ đề tài ${oldTopic.code} (Học kỳ: ${oldTopic.semester.name})`,
+        }
+      });
+
+      // Create audit log
+      await tx.auditLog.create({
+        data: {
+          user_id: userId,
+          action: 'CLONE',
+          entity_type: 'Topic',
+          entity_id: newTopic.id,
+          new_value: { 
+            source_topic_id: oldTopic.id,
+            semester_id: newSemesterId 
+          },
+        },
+      });
+
+      return newTopic;
+    });
+  }
+  /**
+   * Finalize the defense eligibility and type (HOD only)
+   * This is the "Pivot" point after Supervisor and Reviewers have graded.
+   */
+  async finalizeDefensePivot(userId: string, topicId: string, data: { isEligible: boolean; defenseType?: any }) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== UserRole.HEAD) {
+      throw new ApiError(403, ERROR_CODES.FORBIDDEN, 'Chỉ Trưởng bộ môn mới có quyền thực hiện rà soát và quyết định hình thức bảo vệ.');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      const topic = await tx.topic.findUnique({
+        where: { id: topicId },
+        include: {
+          assignments: { where: { assignment_type: 'REVIEWER' } },
+          grades: true,
+          semester: true,
+        },
+      });
+
+      if (!topic) throw new ApiError(404, ERROR_CODES.TOPIC_NOT_FOUND, 'Không tìm thấy đề tài yêu cầu.');
+
+      // Lock check: once decided, cannot change easily without reset
+      if ((topic as any).is_eligible_for_defense !== null) {
+        throw new ApiError(400, ERROR_CODES.VALIDATION_ERROR, 'Quyết định xét bảo vệ của đề tài này đã được chốt trước đó.');
+      }
+
+      // Phase check via AcademicPolicy
+      AcademicPolicy.enforce(AcademicAction.ASSIGN_DEFENSE_PIVOT, user, topic.semester, { topic });
+
+      // Dependency check: Supervisor must have graded
+      const hasSupervisor = topic.grades.some((g) => g.rater_role === 'SUPERVISOR');
+      if (!hasSupervisor) {
+        throw new ApiError(400, ERROR_CODES.VALIDATION_ERROR, 'GVHD chưa chấm điểm, không thể chốt kết quả xét bảo vệ.');
+      }
+
+      // Dependency check: All assigned reviewers must have graded
+      const totalReviewersRequired = (topic as any).reviewer_required_count || topic.assignments.length;
+      const gradedReviewerIds = [...new Set(topic.grades.filter((g) => g.rater_role.startsWith('REVIEWER')).map((g) => g.grader_id))];
+
+      if (gradedReviewerIds.length < totalReviewersRequired) {
+        throw new ApiError(400, ERROR_CODES.VALIDATION_ERROR, `Chưa đủ điểm phản biện (${gradedReviewerIds.length}/${totalReviewersRequired}). Vui lòng đợi giảng viên phản biện chấm xong.`);
+      }
+
+      // Update topic
+      const updatedTopic = await tx.topic.update({
+        where: { id: topicId },
+        data: {
+          is_eligible_for_defense: data.isEligible,
+          defense_type: data.isEligible ? (data.defenseType || 'ORAL') : null,
+          progress_stage: data.isEligible ? 'READY_FOR_DEFENSE' : 'DONE', // If fail, move to DONE/COMPLETED
+          status: data.isEligible ? TopicStatus.REGISTERED : TopicStatus.COMPLETED,
+        } as any,
+      });
+
+      // Audit log
+      await tx.auditLog.create({
+        data: {
+          user_id: userId,
+          action: 'FINALIZE_DEFENSE_PIVOT',
+          entity_type: 'Topic',
+          entity_id: topicId,
+          new_value: { is_eligible: data.isEligible, defense_type: data.defenseType },
+        },
+      });
+
+      return updatedTopic;
+    });
   }
 }
 

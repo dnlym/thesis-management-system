@@ -30,8 +30,8 @@ const EditTopic = () => {
         }
     }, [topic, form]);
 
-    // Check if topic can be edited (only DRAFT or REQUIRE_EDIT status)
-    const canEdit = topic && (topic.status === 'DRAFT' || topic.status === 'REQUIRE_EDIT');
+    // Check if topic can be edited (only DRAFT or REQUIRES_REVISION status)
+    const canEdit = topic && (topic.status === 'DRAFT' || topic.status === 'REQUIRES_REVISION');
 
     const handleSubmit = async () => {
         try {
@@ -55,14 +55,14 @@ const EditTopic = () => {
                         notify.success('Cập nhật đề tài thành công');
                         navigate(`/topics/${id}`);
                     },
-                onError: (error: any) => {
-                    const errorMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Lỗi khi cập nhật đề tài';
-                    Modal.error({
-                        title: 'Lỗi cập nhật',
-                        content: errorMsg,
-                        okText: 'Đóng',
-                    });
-                }
+                    onError: (error: any) => {
+                        const errorMsg = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Lỗi khi cập nhật đề tài';
+                        Modal.error({
+                            title: 'Lỗi cập nhật',
+                            content: errorMsg,
+                            okText: 'Đóng',
+                        });
+                    }
                 }
             );
         } catch (error) {
@@ -125,7 +125,7 @@ const EditTopic = () => {
                 </div>
             </div>
 
-            {topic.status === 'REQUIRE_EDIT' && (
+            {topic.status === 'REQUIRES_REVISION' && (
                 <Alert
                     type="info"
                     message="Yêu cầu chỉnh sửa từ Trưởng bộ môn"

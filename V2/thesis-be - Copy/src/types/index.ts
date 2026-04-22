@@ -2,7 +2,7 @@
 export * from './auth.types';
 export * from './topic.types';
 export * from './group.types';
-export * from './submission.types';
+
 export * from './assignment.types';
 export * from './grading.types';
 export * from './committee.types';

@@ -1,16 +1,14 @@
-import { PrismaClient, UserRole, TopicStatus, RegistrationStatus, AssignmentStatus, AssignmentType, SubmissionType, SubmissionStatus, GroupMemberStatus, SemesterPhase, StudentProgressStatus, SemesterStatus } from '@prisma/client';
+import { PrismaClient, UserRole, TopicStatus, RegistrationStatus, AssignmentStatus, AssignmentType, StudentProgressStatus, SemesterStatus, ProgressStage } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Bắt đầu seed dữ liệu...');
+  console.log('🌱 Bắt đầu nạp dữ liệu mới (IS Focus)...');
 
-  // 0. Database is cleared by prisma migrate reset
+  const commonPassword = await bcrypt.hash('Password@123', 10);
 
-  // ============================================
-  // 1️⃣ DEPARTMENTS
-  // ============================================
+  // 1. DEPARTMENTS
   console.log('📚 Tạo bộ môn...');
   const departments = [
     { code: 'SE', name: 'Kỹ thuật phần mềm', description: 'Bộ môn Kỹ thuật phần mềm' },
@@ -29,124 +27,31 @@ async function main() {
     });
   }
 
-  // ============================================
-  // 2️⃣ SEMESTERS
-  // ============================================
+  // 2. SEMESTERS
   console.log('📅 Tạo học kỳ...');
-  const currentSemester = await prisma.semester.upsert({
-    where: { code: 'HK1_2024' },
-    update: {},
+  const semester = await prisma.semester.upsert({
+    where: { code: 'HK2_2023_2024' },
+    update: { status: SemesterStatus.ACTIVE },
     create: {
-      code: 'HK1_2024',
-      name: 'Học kỳ 1 năm 2024-2025',
+      code: 'HK2_2023_2024',
+      name: 'Học kỳ 2 năm 2023-2024',
       status: SemesterStatus.ACTIVE,
-      start_date: new Date('2026-01-01'),
-      end_date: new Date('2026-07-15'),
-      topic_viewing_start: new Date('2026-01-01'),
-      topic_viewing_end: new Date('2026-01-07'),
-      topic_registration_start: new Date('2026-01-08'),
-      topic_registration_end: new Date('2026-01-20'),
-      proposal_deadline: new Date('2026-03-31'),
-      thesis_deadline: new Date('2026-06-30'),
-      defense_start: new Date('2026-07-05'),
-      defense_end: new Date('2026-07-15'),
+      start_date: new Date('2024-01-01'),
+      end_date: new Date('2024-07-15'),
+      topic_viewing_start: new Date('2024-01-01'),
+      topic_viewing_end: new Date('2024-01-15'),
+      topic_registration_start: new Date('2024-01-16'),
+      topic_registration_end: new Date('2024-01-30'),
+      proposal_deadline: new Date('2024-03-31'),
+      thesis_deadline: new Date('2024-06-30'),
+      defense_start: new Date('2024-07-05'),
+      defense_end: new Date('2024-07-15'),
     },
   });
 
-  // Create 2 more semesters (past and future)
-  const extraSemesters = [];
-  for (let i = 1; i <= 2; i++) {
-    const year = 2020 + Math.floor(i / 2);
-    const term = i % 2 === 0 ? 2 : 1;
-    const code = `HK${term}_${year}_${i}`; // Unique code
-    const status: SemesterStatus = i < 8 ? SemesterStatus.COMPLETED : SemesterStatus.PLANNING;
-
-    const sem = await prisma.semester.upsert({
-      where: { code: code },
-      update: {},
-      create: {
-        code: code,
-        name: `Học kỳ ${term} năm ${year}-${year + 1}`,
-        status: status,
-        start_date: new Date(`${year}-09-01`),
-        end_date: new Date(`${year + 1}-01-15`),
-        topic_viewing_start: new Date(`${year}-09-01`),
-        topic_viewing_end: new Date(`${year}-09-10`),
-        topic_registration_start: new Date(`${year}-09-11`),
-        topic_registration_end: new Date(`${year}-09-30`),
-        proposal_deadline: new Date(`${year}-10-31`),
-        thesis_deadline: new Date(`${year}-12-31`),
-        defense_start: new Date(`${year + 1}-01-05`),
-        defense_end: new Date(`${year + 1}-01-15`),
-      },
-    });
-    extraSemesters.push(sem);
-  }
-
-  // ============================================
-  // 3️⃣ USERS
-  // ============================================
-  console.log('👥 Tạo người dùng...');
-  const commonPassword = await bcrypt.hash('Password@123', 10); 
-
-  // Admin & Head (Real faculty as Head)
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@university.edu.vn' },
-    update: {},
-    create: {
-      email: 'admin@university.edu.vn',
-      password_hash: commonPassword,
-      full_name: 'Quản trị viên hệ thống',
-      role: 'ADMIN',
-      departmentId: deptMap['IT'].id,
-    },
-  });
-
-  const head = await prisma.user.upsert({
-    where: { email: 'ts.ngo.huu.dung@university.edu.vn' },
-    update: {},
-    create: {
-      email: 'ts.ngo.huu.dung@university.edu.vn',
-      password_hash: commonPassword,
-      full_name: 'TS. Ngô Hữu Dũng (Trưởng bộ môn)',
-      role: 'HEAD',
-      departmentId: deptMap['IS'].id,
-    },
-  });
-
-  // Real Lecturer Names
+  // 3. LECTURERS (IS Focus first)
+  console.log('👥 Tạo giảng viên...');
   const facultyData = [
-    {
-      deptCode: 'SE',
-      names: [
-        "ThS. Phạm Quảng Tri", "TS. Tôn Long Phước", "TS. Nguyễn Thị Hạnh",
-        "ThS. Bùi Đình Tiền", "ThS. Châu Thị Bảo Hà", "TS. Nguyễn Minh Hải",
-        "ThS. Nguyễn Thị Hoàng Khánh", "ThS. Nguyễn Thị Hồng Lương", "TS. Nguyễn Trọng Tiến",
-        "ThS. Nguyễn Văn Thắng", "TS. Nguyễn Vũ Lâm", "TS. Nguyễn Đình Quyền",
-        "ThS. Phạm Thanh Hùng", "ThS. Trần Thế Trung", "ThS. Trần Thị Anh Thi",
-        "ThS. Đặng Thị Thu Hà", "ThS. Đặng Văn Thuận"
-      ]
-    },
-    {
-      deptCode: 'CS',
-      names: [
-        "TS. Lê Nhật Duy", "TS. Hồ Đắc Quán", "TS. Phạm Thị Thiết",
-        "TS. Phạm Văn Chung", "PGS.TS Huỳnh Tường Nguyên", "TS. Đặng Thị Phúc",
-        "ThS. Bùi Công Danh", "ThS. Giảng Thanh Trọn", "TS. Lê Thị Vĩnh Thanh",
-        "ThS. Lê Vũ Hạo", "TS. Lê Đình Long", "ThS. Nguyễn Ngọc Lễ",
-        "TS. Nguyễn Thanh Chuyên", "TS. Nguyễn Tiến Thịnh", "ThS. Võ Quang Hoàng Khang",
-        "TS. Võ Đăng Khoa", "TS. Đoàn Văn Thắng"
-      ]
-    },
-    {
-      deptCode: 'IT',
-      names: [
-        "TS. Tạ Duy Công Chiến", "TS. Trần Thị Minh Khoa", "ThS. Hoàng Đình Hạnh",
-        "TS. Lê Thị Thủy", "ThS. Võ Công Minh", "ThS. Nguyễn Thành Thái",
-        "ThS. Nguyễn Văn Quang", "ThS. Nguyễn Xuân Lô", "ThS. Phạm Thái Khanh",
-        "ThS. Trương Bá Phúc", "TS. Đặng Thanh Bình", "ThS. Đỗ Hà Phương"
-      ]
-    },
     {
       deptCode: 'IS',
       names: [
@@ -158,222 +63,197 @@ async function main() {
         "ThS. Phan Thị Bảo Trân", "ThS. Võ Ngọc Tấn Phước"
       ]
     },
-    {
-      deptCode: 'DA',
-      names: [
-        "GS.TS. Huỳnh Trung Hiếu", "TS. Lê Trọng Ngọc", "TS. Bùi Thanh Hùng",
-        "ThS. Nguyễn Hữu Tình", "TS. Huỳnh Công Bằng", "PGS.TS Nguyễn Hòa",
-        "TS. Nguyễn Hữu Vũ", "TS. Nguyễn Lê Linh", "TS. Nguyễn Minh Hạnh",
-        "TS. Phan Hồng Tín", "ThS. Trần Nhật Hoàng Anh", "KS. Trần Tấn Thành",
-        "TS. Trịnh Thanh Sơn", "ThS. Trương Vĩnh Linh", "TS. Vũ Đức Thịnh"
-      ]
-    }
+    { deptCode: 'SE', names: ["TS. Nguyễn Minh Hải", "ThS. Phạm Quảng Tri"] },
+    { deptCode: 'CS', names: ["TS. Lê Nhật Duy", "TS. Hồ Đắc Quán"] },
+    { deptCode: 'IT', names: ["TS. Tạ Duy Công Chiến", "TS. Trần Thị Minh Khoa"] },
+    { deptCode: 'DA', names: ["GS.TS. Huỳnh Trung Hiếu", "TS. Bùi Thanh Hùng"] }
   ];
 
-  const lecturers = [];
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@university.edu.vn' },
+    update: {},
+    create: {
+      email: 'admin@university.edu.vn', password_hash: commonPassword,
+      full_name: 'Quản trị viên hệ thống', role: UserRole.ADMIN,
+      departmentId: deptMap['IS'].id
+    }
+  });
+
+  const isLecturers = [];
+  const otherLecturers: Record<string, any[]> = { SE: [], CS: [], IT: [], DA: [] };
+
   for (const dept of facultyData) {
     for (const name of dept.names) {
-      // Fix: First remove trailing dots from prefixes (ThS. -> ThS, TS. -> TS) 
-      // Then replace space with dot.
-      const emailName = name
-        .replace(/\./g, '') // Remove all existing dots first
-        .toLowerCase()
-        .replace(/\s+/g, '.')
+      const email = name.toLowerCase()
+        .replace(/\./g, '').replace(/\s+/g, '.')
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[đĐ]/g, 'd');
-
-      const email = `${emailName}@university.edu.vn`;
-
-      // Skip if it's the head (already created)
-      if (email === head.email) {
-        lecturers.push(head);
-        continue;
-      }
-
+        .replace(/[đĐ]/g, 'd') + '@university.edu.vn';
+      
       const user = await prisma.user.upsert({
-        where: { email: email },
+        where: { email },
         update: { full_name: name, departmentId: deptMap[dept.deptCode].id },
         create: {
-          email: email,
-          password_hash: commonPassword,
-          full_name: name,
-          role: 'LECTURER',
-          departmentId: deptMap[dept.deptCode].id,
-          active: true,
-        },
-      });
-      lecturers.push(user);
-    }
-  }
-
-  // Generate 50 Students (grouped by dept to facilitate clean grouping)
-  const students = [];
-  const deptList = Object.values(deptMap);
-  const studentsByDept: Record<string, any[]> = {};
-  
-  for (let i = 1; i <= 50; i++) {
-    const dept = deptList[i % deptList.length];
-    if (!studentsByDept[dept.id]) studentsByDept[dept.id] = [];
-    
-    const email = `student${i}.${dept.code}@student.edu.vn`;
-    const user = await prisma.user.upsert({
-      where: { email: email },
-      update: {},
-      create: {
-        email: email,
-        password_hash: commonPassword,
-        full_name: `Sinh viên ${i}`,
-        role: 'STUDENT',
-        student_code: `SV2024${dept.code}${i.toString().padStart(3, '0')}`,
-        departmentId: dept.id,
-        active: true,
-      },
-    });
-    students.push(user);
-    studentsByDept[dept.id].push(user);
-  }
-
-  // ============================================
-  // 4️⃣ TOPICS
-  // ============================================
-  console.log('📖 Tạo đề tài...');
-  const topics = [];
-
-  // Helper for title normalization in seed
-  const normalizeTitle = (title: string) => {
-    return title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s+#-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
-  // Create 20 topics
-  for (let i = 1; i <= 20; i++) {
-    const supervisor = lecturers[i % lecturers.length];
-    const title = `Đề tài nghiên cứu số ${i}: Ứng dụng công nghệ mới`;
-    const topic = await prisma.topic.create({
-      data: { 
-        code: `DT-${currentSemester.code}-${i.toString().padStart(3, '0')}`,
-        title: title,
-        normalized_title: normalizeTitle(title),
-        description: `Mô tả chi tiết cho đề tài số ${i}. Nghiên cứu về các vấn đề cấp thiết hiện nay.`,
-        objectives: `Mục tiêu của đề tài ${i} là giải quyết vấn đề X, Y, Z.`,
-        requirements: `Sinh viên cần có kiến thức về lập trình, cơ sở dữ liệu và thuật toán.`,
-        max_students: 2,
-        current_students: 0, // Will update later
-        status: i % 3 === 0 ? TopicStatus.REGISTERED : (i % 3 === 1 ? TopicStatus.APPROVED : TopicStatus.DRAFT),
-        supervisor_id: supervisor.id,
-        departmentId: supervisor.departmentId,
-        semester_id: currentSemester.id,
-        approved_at: new Date(),
-        approved_by: head.id,
-      },
-    });
-    topics.push(topic);
-  }
-
-  // ============================================
-  // 5️⃣ REGISTRATIONS & GROUPS (Topic First Flow)
-  // ============================================
-  console.log('👨‍👩‍👦 Tạo đăng ký và lập nhóm...');
-
-  const activeTopics = topics.filter(t => t.status === TopicStatus.APPROVED || t.status === TopicStatus.REGISTERED);
-  let groupCount = 0;
-
-  // For each department, register students into its topics
-  const topicsWithSlots = activeTopics.map(t => ({ ...t, slots_left: t.max_students }));
-
-  for (const deptId in studentsByDept) {
-    const deptStudents = [...studentsByDept[deptId]];
-    const deptTopics = topicsWithSlots.filter(t => t.departmentId === deptId);
-
-    if (deptTopics.length === 0) continue;
-
-    let studentIndex = 0;
-    for (const topic of deptTopics) {
-      // While this topic has slots AND we have students left in this dept
-      while (topic.slots_left > 0 && studentIndex < deptStudents.length) {
-        const student = deptStudents[studentIndex];
-        
-        await prisma.topicRegistration.create({
-          data: {
-            student_id: student.id,
-            topic_id: topic.id,
-            semester_id: currentSemester.id,
-            status: RegistrationStatus.CONFIRMED,
-            student_progress_status: StudentProgressStatus.HAS_TOPIC,
-            confirmed_at: new Date(),
-          },
-        });
-
-        // Update topic count and slots
-        await prisma.topic.update({
-          where: { id: topic.id },
-          data: { current_students: { increment: 1 } }
-        });
-
-        topic.slots_left--;
-        studentIndex++;
-      }
-    }
-  }
-
-  // ============================================
-  // 6️⃣ ASSIGNMENTS
-  // ============================================
-  console.log('📋 Tạo phân công...');
-
-  for (let i = 0; i < topics.length; i++) {
-    const topic = topics[i];
-    // Assign 2 reviewers for each topic from the lecturers array (offset to avoid supervisor being reviewer)
-    const r1 = lecturers[(i + 5) % lecturers.length];
-    const r2 = lecturers[(i + 6) % lecturers.length];
-
-    await prisma.assignment.createMany({
-      data: [
-        {
-          topic_id: topic.id,
-          reviewer_id: r1.id,
-          assignment_type: 'REVIEWER',
-          reviewer_order: 1,
-          status: 'ACCEPTED',
-          assigned_by: head.id,
-          deadline_at: new Date('2024-12-31'),
-        },
-        {
-          topic_id: topic.id,
-          reviewer_id: r2.id,
-          assignment_type: 'REVIEWER',
-          reviewer_order: 2,
-          status: 'PENDING',
-          assigned_by: head.id,
-          deadline_at: new Date('2024-12-31'),
+          email, password_hash: commonPassword,
+          full_name: name, role: dept.names.indexOf(name) === 2 && dept.deptCode === 'IS' ? UserRole.HEAD : UserRole.LECTURER,
+          departmentId: deptMap[dept.deptCode].id, active: true
         }
-      ],
-      skipDuplicates: true
-    });
+      });
+      if (dept.deptCode === 'IS') isLecturers.push(user);
+      else otherLecturers[dept.deptCode].push(user);
+    }
   }
 
-  // ============================================
-  // 7️⃣ GRADING CRITERIA
-  // ============================================
-  console.log('📊 Tạo tiêu chí đánh giá...');
+  // 4. PASSED STUDENT DATA (Transcribed from chat)
+  console.log('🎓 Tạo sinh viên và đề tài từ danh sách...');
+  const rawData = [
+    { masv: "22653531", hoDem: "Nguyễn Trần", ten: "Thành", lop: "DHHTTT18BT", nhóm: "Làm một mình", deTai: "Xây dựng hệ thống thi trực tuyến tích hợp AI nhận diện khuôn mặt chống gian lận" },
+    { masv: "21077161", hoDem: "Nguyễn Thanh", ten: "Phới", lop: "DHHTTT17A", nhóm: "Làm một mình", deTai: "Tìm hiểu hệ thống Odoo và ứng dụng vào quá trình tạo và quản lý 1 hệ thống thông tin quản lý cụ thể." },
+    { masv: "21105841", hoDem: "Đào Hoa Anh", ten: "Thư", lop: "DHHTTT17B", nhóm: "Làm một mình", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
+    { masv: "21128931", hoDem: "Cao Bình", ten: "Uy", lop: "DHHTTT17B", nhóm: "Làm một mình", deTai: "Hệ thống quản lý rạp chiếu phim" },
+    { masv: "21079291", hoDem: "Lê Minh", ten: "Khánh", lop: "DHHTTT17AT", nhóm: "Làm một mình", deTai: "Xây dựng ứng dụng website đặt và quản lý tour du lịch" },
+    { masv: "21014621", hoDem: "Lư Minh", ten: "Thuận", lop: "DHHTTT17A", nhóm: "1653", deTai: "Xây dựng website quản lý sản xuất cho nhà máy" },
+    { masv: "21078301", hoDem: "Nguyễn Thị Diệu", ten: "Thu", lop: "DHHTTT17A", nhóm: "1653", deTai: "Xây dựng website quản lý sản xuất cho nhà máy" },
+    { masv: "22684591", hoDem: "Trần Thị Thanh", ten: "Thảo", lop: "DHHTTT18ATT", nhóm: "1655", deTai: "Nền tảng Lakehouse đa khách hàng tích hợp thu thập và phân tích dữ liệu CDC từ nhiều nguồn cơ sở dữ liệu quan hệ" },
+    { masv: "22637851", hoDem: "Nguyễn Thị Ngọc", ten: "Bích", lop: "DHHTTT18ATT", nhóm: "1655", deTai: "Nền tảng Lakehouse đa khách hàng tích hợp thu thập và phân tích dữ liệu CDC từ nhiều nguồn cơ sở dữ liệu quan hệ" },
+    { masv: "21028331", hoDem: "Huỳnh Thanh", ten: "Hoàng", lop: "DHHTTT17A", nhóm: "1659", deTai: "Tìm hiểu và ứng dụng công nghệ mới trong xây dựng hệ thống quản lý rạp chiếu phim" },
+    { masv: "21083181", hoDem: "Trương Huỳnh Kim", ten: "Yến", lop: "DHHTTT17B", nhóm: "1659", deTai: "Tìm hiểu và ứng dụng công nghệ mới trong xây dựng hệ thống quản lý rạp chiếu phim" },
+    { masv: "21092831", hoDem: "Mã Đan", ten: "Ly", lop: "DHHTTT17BT", nhóm: "1660", deTai: "Xây dựng hệ thống quản lý quá trình đăng ký và thực hiện Khóa luận tốt nghiệp tại trường Đại học Công nghiệp Thành phố Hồ Chí Minh" },
+    { masv: "21023301", hoDem: "Nguyễn Thanh", ten: "Kha", lop: "DHHTTT17AT", nhóm: "1660", deTai: "Xây dựng hệ thống quản lý quá trình đăng ký và thực hiện Khóa luận tốt nghiệp tại trường Đại học Công nghiệp Thành phố Hồ Chí Minh" },
+    { masv: "21005841", hoDem: "Lê Đỗ Trung", ten: "Kiên", lop: "DHHTTT17A", nhóm: "1661", deTai: "Xây dựng ứng dụng quản lý giao hàng ..." },
+    { masv: "21011671", hoDem: "Lý Thạch Phúc", ten: "Lộc", lop: "DHHTTT17A", nhóm: "1661", deTai: "Xây dựng ứng dụng quản lý giao hàng ..." },
+    { masv: "21027161", hoDem: "Lê Văn", ten: "Vinh", lop: "DHHTTT17A", nhóm: "1662", deTai: "Xây dựng website bán quần áo thời trang" },
+    { masv: "21004365", hoDem: "Nguyễn Bá", ten: "Điền", lop: "DHHTTT17A", nhóm: "1662", deTai: "Xây dựng website bán quần áo thời trang" },
+    { masv: "18032061", hoDem: "Trương Văn Thanh", ten: "Lâm", lop: "DHHTTT14", nhóm: "1665", deTai: "Xây dựng hệ thống thương mại điện tử tích hợp chăm sóc khách hàng" },
+    { masv: "21024151", hoDem: "Võ Duy", ten: "Anh", lop: "DHHTTT17AT", nhóm: "1665", deTai: "Xây dựng hệ thống thương mại điện tử tích hợp chăm sóc khách hàng" },
+    { masv: "21083761", hoDem: "Nguyễn Đức", ten: "Mạnh", lop: "DHHTTT17BT", nhóm: "1670", deTai: "Hệ thống đặt sân bóng đá và quản lý lịch thi đấu" },
+    { masv: "21096461", hoDem: "Lương Tấn", ten: "Thành", lop: "DHHTTT17BT", nhóm: "1670", deTai: "Hệ thống đặt sân bóng đá và quản lý lịch thi đấu" },
+    { masv: "21041641", hoDem: "Nguyễn Nhường", ten: "Em", lop: "DHHTTT17A", nhóm: "1674", deTai: "Xây dựng hệ thống điểm danh sinh viên tự động bằng nhận diện khuôn mặt sử dụng học sâu ..." },
+    { masv: "21034871", hoDem: "Huỳnh Ngọc", ten: "Phú", lop: "DHHTTT17A", nhóm: "1674", deTai: "Xây dựng hệ thống điểm danh sinh viên tự động bằng nhận diện khuôn mặt sử dụng học sâu ..." },
+    { masv: "21029471", hoDem: "Nguyễn Nhựt", ten: "Huỳnh", lop: "DHHTTT17A", nhóm: "1678", deTai: "Nghiên cứu các kỹ thuật bảo mật web, áp dụng xây dựng hệ thống web app (sinh viên tự chọn tên hệ thống)" },
+    { masv: "21036841", hoDem: "Nguyễn Anh", ten: "Kiệt", lop: "DHHTTT17A", nhóm: "1678", deTai: "Nghiên cứu các kỹ thuật bảo mật web, áp dụng xây dựng hệ thống web app (sinh viên tự chọn tên hệ thống)" },
+    { masv: "21074041", hoDem: "Trần Minh", ten: "Mính", lop: "DHHTTT17B", nhóm: "1680", deTai: "Tìm hiểu các công nghệ mới và xây dựng hệ thống quản lý nhà hàng" },
+    { masv: "21076111", hoDem: "Dương Tuấn", ten: "Kiệt", lop: "DHHTTT17B", nhóm: "1680", deTai: "Tìm hiểu các công nghệ mới và xây dựng hệ thống quản lý nhà hàng" },
+    { masv: "21099691", hoDem: "Đỗ Duy", ten: "Kha", lop: "DHHTTT17BT", nhóm: "1695", deTai: "Xây dựng Website quản lý giao hàng" },
+    { masv: "21105371", hoDem: "Nguyễn Trần Bảo", ten: "Yến", lop: "DHHTTT17CT", nhóm: "1695", deTai: "Xây dựng Website quản lý giao hàng" },
+    { masv: "21029771", hoDem: "Đồng Tuấn", ten: "Anh", lop: "DHHTTT17AT", nhóm: "1697", deTai: "Triển khai hệ thống ERP trong doanh nghiệp" },
+    { masv: "21012641", hoDem: "Phan Ngô Ngọc", ten: "Tín", lop: "DHHTTT17AT", nhóm: "1697", deTai: "Triển khai hệ thống ERP trong doanh nghiệp" },
+    { masv: "21004421", hoDem: "Trần Minh", ten: "Trí", lop: "DHHTTT17AT", nhóm: "1700", deTai: "Chatbot tư vấn và bán điện thoại" },
+    { masv: "21078891", hoDem: "Trần Hồ Hải", ten: "Phong", lop: "DHHTTT17AT", nhóm: "1700", deTai: "Chatbot tư vấn và bán điện thoại" },
+    { masv: "21117241", hoDem: "Vũ Phạm Anh", ten: "Thư", lop: "DHHTTT17CT", nhóm: "1702", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
+    { masv: "21128631", hoDem: "Phan Nguyễn Văn", ten: "Phúc", lop: "DHHTTT17AT", nhóm: "1702", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
+    { masv: "21003231", hoDem: "Võ Văn", ten: "Nhí", lop: "DHHTTT17A", nhóm: "1704", deTai: "Phân tích dữ liệu ứng dụng trong bài toán dự đoán." },
+    { masv: "21066721", hoDem: "Đoàn Thị Mai", ten: "Linh", lop: "DHHTTT17B", nhóm: "1704", deTai: "Phân tích dữ liệu ứng dụng trong bài toán dự đoán." },
+    { masv: "21139231", hoDem: "Võ Hoàng Nhã", ten: "Quyên", lop: "DHHTTT17AT", nhóm: "1708", deTai: "Xây dựng hệ thống quản lý trung tâm tin học." },
+    { masv: "21120491", hoDem: "Nguyễn Võ Tú", ten: "Uyên", lop: "DHHTTT17CT", nhóm: "1708", deTai: "Xây dựng hệ thống quản lý trung tâm tin học." },
+    { masv: "21080031", hoDem: "Lê Hoàng", Nhớ: "Nhớ", lop: "DHHTTT17A", nhóm: "1713", deTai: "Nền tảng thương mại điện tử cho mua bán hàng hóa tự do giữa người tiêu dùng" },
+    { masv: "21101221", hoDem: "Phùng Nguyên", ten: "Tân", lop: "DHHTTT17CT", nhóm: "1713", deTai: "Nền tảng thương mại điện tử cho mua bán hàng hóa tự do giữa người tiêu dùng" },
+    { masv: "22640841", hoDem: "Trần Quốc", ten: "Sáng", lop: "DHHTTT18A", nhóm: "1716", deTai: "Thiết kế và xây dựng hệ thống đặt xe dịch vụ thời gian thực theo hướng kiến trúc vi dịch vụ" },
+    { masv: "21131061", hoDem: "Dương Đức", ten: "Quý", lop: "DHHTTT17CT", nhóm: "1716", deTai: "Thiết kế và xây dựng hệ thống đặt xe dịch vụ thời gian thực theo hướng kiến trúc vi dịch vụ" },
+    { masv: "21011611", hoDem: "Nguyễn Tấn", ten: "Phúc", lop: "DHHTTT17A", nhóm: "1717", deTai: "Xây dựng ứng dụng Thương mại điện tử tích hợp tính năng giao hàng" },
+    { masv: "21009881", hoDem: "Lê Đạt", ten: "Thành", lop: "DHHTTT17A", nhóm: "1717", deTai: "Xây dựng ứng dụng Thương mại điện tử tích hợp tính năng giao hàng" },
+    { masv: "21060901", hoDem: "Mai Hoàng", ten: "Lân", lop: "DHHTTT17BT", nhóm: "1720", deTai: "Tìm hiểu các công nghệ mới và Xây dựng hệ thống quản lý du lịch" },
+    { masv: "21087771", hoDem: "Phạm Quốc", ten: "Đại", lop: "DHHTTT17BT", nhóm: "1720", deTai: "Tìm hiểu các công nghệ mới và Xây dựng hệ thống quản lý du lịch" },
+    { masv: "21123091", hoDem: "Ân Hiền Bảo", ten: "Phúc", lop: "DHHTTT17B", nhóm: "1727", deTai: "Hệ thống quản lý kho thông minh tích hợp AI" },
+    { masv: "21064111", hoDem: "Dương Thái", ten: "Bảo", lop: "DHHTTT17B", nhóm: "1727", deTai: "Hệ thống quản lý kho thông minh tích hợp AI" }
+  ];
 
-  // Descriptive LOs (LO1-LO10) for Final Grading
+  // Grouping the data by topic title
+  const topicsByTitle: Record<string, any[]> = {};
+  rawData.forEach(row => {
+    if (!topicsByTitle[row.deTai]) topicsByTitle[row.deTai] = [];
+    topicsByTitle[row.deTai].push(row);
+  });
+
+  const topicEntries = Object.entries(topicsByTitle);
+  for (let i = 0; i < topicEntries.length; i++) {
+    const [title, members] = topicEntries[i];
+    const supervisor = isLecturers[i % isLecturers.length];
+
+    const topic = await prisma.topic.create({
+      data: {
+        code: `IS-2023-HK2-${(i + 1).toString().padStart(3, '0')}`,
+        title,
+        normalized_title: title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, '').trim(),
+        description: `Mô tả cho đề tài: ${title}`,
+        objectives: "Mục tiêu nghiên cứu và hiện thực hệ thống.",
+        requirements: "Có kiến thức về lập trình và chuyên ngành.",
+        max_students: members.length > 1 ? 2 : 1,
+        current_students: members.length,
+        status: TopicStatus.REGISTERED,
+        progress_stage: ProgressStage.WORKING,
+        supervisor_id: supervisor.id,
+        departmentId: deptMap['IS'].id,
+        semester_id: semester.id,
+        approved_at: new Date(),
+        approved_by: isLecturers[2].id, // TS. Ngô Hữu Dũng as HOD
+      }
+    });
+
+    // Create students and registrations
+    for (const m of members) {
+      const studentEmail = `${m.masv}@student.edu.vn`;
+      const studentUser = await prisma.user.upsert({
+        where: { email: studentEmail },
+        update: {},
+        create: {
+          email: studentEmail, password_hash: commonPassword,
+          full_name: `${m.hoDem} ${m.ten}`, role: UserRole.STUDENT,
+          student_code: m.masv, departmentId: deptMap['IS'].id, active: true
+        }
+      });
+
+      await prisma.topicRegistration.create({
+        data: {
+          student_id: studentUser.id,
+          topic_id: topic.id,
+          semester_id: semester.id,
+          status: RegistrationStatus.CONFIRMED,
+          student_progress_status: StudentProgressStatus.HAS_TOPIC,
+          confirmed_at: new Date(),
+        }
+      });
+    }
+  }
+
+  // 5. CROSS-DEPT SAMPLE DATA
+  console.log('📑 Tạo đề tài mẫu cho các bộ môn khác...');
+  const deptCodes = ['SE', 'CS', 'IT', 'DA'];
+  for (const code of deptCodes) {
+    const deptsLecturers = otherLecturers[code];
+    for (let j = 1; j <= 3; j++) {
+      const supervisor = deptsLecturers[j % deptsLecturers.length];
+      const title = `Đề tài mẫu ${code} số ${j}`;
+      await prisma.topic.create({
+        data: {
+          code: `${code}-2023-HK2-${j.toString().padStart(3, '0')}`,
+          title,
+          normalized_title: title.toLowerCase(),
+          description: `Mô tả mẫu cho ${code}`,
+          objectives: `Mục tiêu mẫu cho bộ môn ${code}`,
+          requirements: `Yêu cầu mẫu cho bộ môn ${code}`,
+          max_students: 2,
+          status: TopicStatus.APPROVED,
+          supervisor_id: supervisor.id,
+          departmentId: deptMap[code].id,
+          semester_id: semester.id,
+        }
+      });
+    }
+  }
+
+  // 6. GRADING CRITERIA (LO1-LO10)
+  console.log('📊 Tạo tiêu chí đánh giá...');
   const loCriteria = [
-    { name: "Phân tích vấn đề và mô hình hóa được yêu cầu của đề tài.", weight: 0.1 },
-    { name: "Áp dụng các nguyên tắc, phương pháp chuyên môn để xác định được giải pháp cho đề tài.", weight: 0.1 },
-    { name: "Thiết kế được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.", weight: 0.1 },
-    { name: "Hiện thực được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.", weight: 0.15 },
-    { name: "Đánh giá được một hệ thống, quy trình đáp ứng yêu cầu của đề tài.", weight: 0.15 },
-    { name: "Thuyết trình hiệu quả trong các lĩnh vực chuyên môn của đề tài.", weight: 0.1 },
-    { name: "Phỏng vấn theo những lĩnh vực khác nhau để thu thập yêu cầu của khách hàng.", weight: 0.1 },
-    { name: "Viết được báo cáo khóa luận tốt nghiệp", weight: 0.1 },
-    { name: "Chứng tỏ được khả năng làm việc hiệu quả với các thành viên trong nhóm", weight: 0.05 },
-    { name: "Khả năng hỗ trợ triển khai và vận hành hệ thống thông tin", weight: 0.05 },
+    { name: "Phân tích vấn đề (LO1)", weight: 0.1 },
+    { name: "Giải pháp kỹ thuật (LO2)", weight: 0.1 },
+    { name: "Thiết kế hệ thống (LO3)", weight: 0.1 },
+    { name: "Hiện thực mã nguồn (LO4)", weight: 0.15 },
+    { name: "Đánh giá & Thử nghiệm (LO5)", weight: 0.15 },
+    { name: "Thuyết trình & Phản biện (LO6)", weight: 0.1 },
+    { name: "Thu thập yêu cầu (LO7)", weight: 0.1 },
+    { name: "Báo cáo khóa luận (LO8)", weight: 0.1 },
+    { name: "Làm việc nhóm (LO9)", weight: 0.05 },
+    { name: "Vận hành hệ thống (LO10)", weight: 0.05 },
   ];
 
   for (let i = 0; i < loCriteria.length; i++) {
@@ -381,7 +261,7 @@ async function main() {
     await prisma.gradingCriterion.create({
       data: {
         name: lo.name,
-        description: `Đánh giá: ${lo.name}`,
+        description: `Tiêu chí ${lo.name}`,
         weight: lo.weight,
         max_score: 10,
         min_score: 0,
@@ -393,73 +273,9 @@ async function main() {
     });
   }
 
-  // ============================================
-  // 8️⃣ SUBMISSIONS
-  // ============================================
-  console.log('📄 Tạo submissions...');
-
-  const allActiveGroups = await prisma.group.findMany({
-    where: { topic_id: { not: null } }
-  });
-
-  for (let i = 0; i < allActiveGroups.length; i++) {
-    const group = allActiveGroups[i];
-
-    const submission = await prisma.submission.create({
-      data: {
-        topic_id: group.topic_id!,
-        group_id: group.id,
-        type: 'PROPOSAL',
-        status: 'SUBMITTED',
-        current_version: 1,
-      }
-    });
-
-    await prisma.submissionVersion.create({
-      data: {
-        submission_id: submission.id,
-        version: 1,
-        file_url: `/uploads/file_${i}.pdf`,
-        file_name: `Báo cáo tiến độ - ${group.name}.pdf`,
-        file_size: 1024 * 1024,
-        mime_type: 'application/pdf',
-        checksum: 'dummy_checksum',
-        uploaded_by: group.leader_id,
-      }
-    });
-  }
-
-  // ============================================
-  // 9️⃣ DEFENSE SCHEDULES
-  // ============================================
-  console.log('📅 Tạo lịch bảo vệ...');
-
-  for (let i = 0; i < topics.length; i++) {
-    // Only schedule for some topics
-    if (i < 12) {
-      await prisma.defenseSchedule.create({
-        data: {
-          topic_id: topics[i].id,
-          semester_id: currentSemester.id,
-          defense_date: new Date('2025-01-10'),
-          defense_time: `${8 + (i % 8)}:00 - ${9 + (i % 8)}:00`,
-          room: `Phòng ${100 + (i % 5)}`,
-          committee_chair: lecturers[10]?.id,
-          committee_secretary: lecturers[11]?.id,
-          notes: 'Chuẩn bị máy chiếu',
-        }
-      });
-    }
-  }
-
-  console.log('✅ Seed dữ liệu hoàn tất!');
+  console.log('✅ Nạp dữ liệu hoàn tất!');
 }
 
 main()
-  .catch((err) => {
-    console.error('❌ Lỗi khi seed:', err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });

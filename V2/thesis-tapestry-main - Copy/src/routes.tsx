@@ -23,7 +23,7 @@ const Topics = lazy(() => import('@/pages/Topics'));
 const TopicDetail = lazy(() => import('@/pages/TopicDetail'));
 const EditTopic = lazy(() => import('@/pages/EditTopic'));
 const Progress = lazy(() => import('@/pages/Progress'));
-const Submissions = lazy(() => import('@/pages/Submissions'));
+
 const Evaluation = lazy(() => import('@/pages/Evaluation'));
 const MidtermEvaluation = lazy(() => import('@/pages/MidtermEvaluation'));
 const FinalEvaluation = lazy(() => import('@/pages/FinalEvaluation'));
@@ -43,7 +43,7 @@ const Profiles = lazy(() => import('@/pages/Profiles'));
 const MyRegisteredTopic = lazy(() => import('@/pages/MyRegisteredTopic'));
 const SupervisorCreateTopic = lazy(() => import('@/pages/supervisor/CreateTopic'));
 const ManageRegistrations = lazy(() => import('@/pages/supervisor/ManageRegistrations'));
-const ReviewSubmissions = lazy(() => import('@/pages/supervisor/ReviewSubmissions'));
+
 const Assignments = lazy(() => import('@/pages/reviewer/Assignments'));
 const ApproveTopics = lazy(() => import('@/pages/head/ApproveTopics'));
 const ReviewerAssignment = lazy(() => import('@/pages/ReviewerAssignment'));
@@ -132,16 +132,7 @@ export const routes: RouteConfig[] = [
       hideInMenu: true,
     },
   },
-  {
-    path: '/supervisor/submissions',
-    element: ReviewSubmissions,
-    meta: {
-      title: 'navigation.submissions',
-      icon: UploadOutlined,
-      roles: ['LECTURER'],
-      hideInMenu: true,
-    },
-  },
+
   {
     path: '/reviewer/assignments',
     element: Assignments,
@@ -191,15 +182,7 @@ export const routes: RouteConfig[] = [
     },
   },
   // ... (các routes khác giữ nguyên)
-  {
-    path: '/submissions',
-    element: Submissions,
-    meta: {
-      title: 'navigation.submissions',
-      icon: UploadOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD'],
-    },
-  },
+
   {
     path: '/midterm-evaluation',
     element: MidtermEvaluation,
@@ -427,11 +410,7 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <ClockCircleOutlined />,
         label: 'navigation.progress',
       },
-      {
-        key: '/submissions',
-        icon: <UploadOutlined />,
-        label: 'navigation.submissions',
-      },
+
       {
         key: '/schedule',
         icon: <CalendarOutlined />,
@@ -461,7 +440,7 @@ export const getMenuItems = (userRole: UserRole) => {
           { key: '/topics', label: 'navigation.topics', icon: <BookOutlined /> },
           { key: '/supervisor/registrations', label: 'navigation.registrations', icon: <TeamOutlined /> },
           { key: '/progress', label: 'navigation.progress', icon: <ClockCircleOutlined /> },
-          { key: '/supervisor/submissions', label: 'navigation.submissions', icon: <UploadOutlined /> },
+
           { key: '/midterm-evaluation', label: 'navigation.midtermEvaluation', icon: <CheckCircleOutlined /> },
           { key: '/evaluation', label: 'navigation.finalEvaluation', icon: <CheckCircleOutlined /> },
         ],
@@ -501,11 +480,13 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <TeamOutlined />,
         label: 'navigation.management',
         children: [
+          { key: '/topics', label: 'navigation.topics', icon: <BookOutlined /> },
           { key: '/head/approve-topics', label: 'navigation.approveTopics', icon: <CheckCircleOutlined /> },
           { key: '/reviewer-assignment', label: 'navigation.reviewerAssignment', icon: <TeamOutlined /> },
           { key: '/committee-assignment', label: 'navigation.committeeAssignment', icon: <CrownOutlined /> },
           { key: '/head/committees', label: 'navigation.committeeManagement', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'navigation.extraPoints', icon: <SafetyCertificateOutlined /> },
+          { key: '/evaluation', label: 'navigation.evaluation', icon: <CheckCircleOutlined /> },
           { key: '/head/grade-summary', label: 'navigation.gradeSummary', icon: <BarChartOutlined /> },
           { key: '/admin/criteria', label: 'navigation.criteria', icon: <SafetyCertificateOutlined /> },
         ],

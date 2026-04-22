@@ -49,6 +49,7 @@ export interface TopicFilter {
   departmentId?: string;
   semesterId?: string;
   search?: string;
+  includeAll?: boolean;
   page?: number;
   limit?: number;
   midtermStatus?: 'PASS' | 'FAIL'; // Filter by registration midterm status

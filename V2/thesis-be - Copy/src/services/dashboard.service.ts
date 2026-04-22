@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { UserRole, TopicStatus, RegistrationStatus, SubmissionStatus, SemesterPhase, AssignmentStatus } from '@prisma/client';
+import { UserRole, TopicStatus, RegistrationStatus, SemesterPhase, AssignmentStatus } from '@prisma/client';
 import semesterService from './semester.service';
 
 export class DashboardService {
@@ -57,12 +57,7 @@ export class DashboardService {
             }
         });
 
-        const pendingSubmissionsCount = await prisma.submission.count({
-            where: {
-                topic: { supervisor_id: userId },
-                status: { in: [SubmissionStatus.SUBMITTED, SubmissionStatus.REVISION_REQUIRED] }
-            }
-        });
+
 
         // Reviewer assignments
         const reviewAssignmentsCount = await prisma.assignment.count({
@@ -77,7 +72,7 @@ export class DashboardService {
             role: UserRole.LECTURER,
             supervisedTopicsCount,
             pendingRegistrationsCount,
-            pendingSubmissionsCount,
+
             reviewAssignmentsCount
         };
     }
@@ -98,18 +93,24 @@ export class DashboardService {
         // 1. Topic Status Distribution
         const topics = await prisma.topic.findMany({
             where,
-            select: { status: true }
+            select: { status: true, progress_stage: true }
         });
 
         const statusMap: Record<string, number> = {};
-        topics.forEach(t => { statusMap[t.status] = (statusMap[t.status] || 0) + 1; });
+        const progressMap: Record<string, number> = {};
+        topics.forEach(t => { 
+            statusMap[t.status] = (statusMap[t.status] || 0) + 1;
+            if (t.status === TopicStatus.REGISTERED) {
+                progressMap[t.progress_stage] = (progressMap[t.progress_stage] || 0) + 1;
+            }
+        });
 
         const topicStatus = [
-            { name: 'Chờ duyệt', value: statusMap[TopicStatus.PENDING_APPROVAL] || 0, color: '#FCD34D' }, // Amber
-            { name: 'Đang thực hiện', value: (statusMap[TopicStatus.REGISTERED] || 0) + (statusMap[TopicStatus.UNDER_REVIEW] || 0), color: '#60A5FA' }, // Blue
-            { name: 'Sẵn sàng bảo vệ', value: statusMap[TopicStatus.WAITING_FOR_DEFENSE] || 0, color: '#818CF8' }, // Indigo
+            { name: 'Chờ duyệt', value: (statusMap[TopicStatus.PENDING_APPROVAL] || 0) + (statusMap[TopicStatus.REQUIRES_REVISION] || 0), color: '#FCD34D' }, // Amber
+            { name: 'Đang thực hiện', value: (progressMap['WORKING'] || 0) + (progressMap['REVIEWING'] || 0), color: '#60A5FA' }, // Blue
+            { name: 'Sẵn sàng bảo vệ', value: (progressMap['READY_FOR_DEFENSE'] || 0), color: '#818CF8' }, // Indigo
             { name: 'Hoàn thành', value: (statusMap[TopicStatus.COMPLETED] || 0) + (statusMap[TopicStatus.FINALIZED] || 0), color: '#34D399' }, // Emerald
-            { name: 'Đã bảo vệ', value: (statusMap[TopicStatus.DEFENDING] || 0), color: '#A78BFA' }, // Violet
+            { name: 'Đang bảo vệ', value: (progressMap['DEFENDING'] || 0), color: '#A78BFA' }, // Violet
             { name: 'Từ chối', value: statusMap[TopicStatus.REJECTED] || 0, color: '#F87171' } // Red
         ];
 
@@ -245,7 +246,8 @@ export class DashboardService {
             where: {
                 departmentId: departmentId,
                 semester_id: activeSemester?.id,
-                status: { in: [TopicStatus.DEFENDING, TopicStatus.WAITING_FOR_DEFENSE] } // Or check DefenseSchedule
+                status: TopicStatus.REGISTERED,
+                progress_stage: { in: ['READY_FOR_DEFENSE', 'DEFENDING'] } 
             }
         });
 
@@ -298,7 +300,8 @@ export class DashboardService {
         const defendedCount = await prisma.topic.count({
             where: {
                 semester_id: activeSemester?.id,
-                status: { in: [TopicStatus.DEFENDING, TopicStatus.WAITING_FOR_DEFENSE] }
+                status: TopicStatus.REGISTERED,
+                progress_stage: { in: ['READY_FOR_DEFENSE', 'DEFENDING'] }
             }
         });
 

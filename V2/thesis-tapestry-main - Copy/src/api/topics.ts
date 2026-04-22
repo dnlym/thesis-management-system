@@ -26,8 +26,17 @@ export const TopicsApi = {
      * Get list of topics with filters
      * GET /topics
      */
-    async getAll(filters?: TopicFilters) {
+    async getAll(filters?: TopicFilters & { includeAll?: boolean }) {
         const res = await api.get<ApiResponse<{ topics: Topic[], pagination: any }>>('/topics', { params: filters });
+        return res.data.data;
+    },
+
+    /**
+     * Clone a topic into a new semester
+     * POST /topics/:id/clone
+     */
+    async clone(topicId: string, semesterId: string) {
+        const res = await api.post<ApiResponse<Topic>>(`/topics/${topicId}/clone`, { semesterId });
         return res.data.data;
     },
 
@@ -128,5 +137,13 @@ export const TopicsApi = {
     async getStats() {
         const res = await api.get<ApiResponse<Record<string, number>>>('/topics/stats');
         return res.data.data;
+    },
+    /**
+     * Finalize defense eligibility and type (HEAD only)
+     * POST /topics/:id/finalize-defense-pivot
+     */
+    async finalizeDefensePivot(id: string, data: { isEligible: boolean; defenseType?: string }) {
+        const res = await api.post<ApiResponse<Topic>>(`/topics/${id}/finalize-defense-pivot`, data);
+        return res.data;
     },
 };

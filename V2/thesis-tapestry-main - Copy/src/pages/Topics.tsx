@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Tag, Space, Modal, Input, Select, Drawer, Row, Col, Spin, Avatar, Popconfirm, Tooltip } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Input, Select, Row, Col, Spin, Avatar, Popconfirm, Tooltip, Badge, Empty, Flex } from 'antd';
 import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
-import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, UserOutlined, DeleteOutlined, StopOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, UserOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/store/auth';
 import { useTopics, useApproveTopic, useHideTopic, useUnhideTopic } from '@/hooks/useTopics';
 import { useRegisterTopic } from '@/hooks/useRegistrations';
-import { StatusBadge } from '@/components/StatusBadge';
-import { useSemesters } from '@/hooks/useSemesters';
+import { TopicStatusBadge } from '@/components/StatusBadge';
+import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
 
 import { RegistrationsApi } from '@/api/registrations';
 import type { TopicStatus } from '@/types';
@@ -18,36 +19,61 @@ import type { TopicStatus } from '@/types';
 const { Search } = Input;
 const { Option } = Select;
 
+const STATUS_OPTIONS = [
+  { value: 'ALL', label: 'Tất cả trạng thái' },
+  { value: 'DRAFT', label: 'Bản nháp' },
+  { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
+  { value: 'REQUIRES_REVISION', label: 'Yêu cầu chỉnh sửa' },
+  { value: 'APPROVED', label: 'Đã duyệt' },
+  { value: 'REGISTERED', label: 'Đã cá nhân/nhóm ĐK' },
+  { value: 'COMPLETED', label: 'Hoàn thành' },
+  { value: 'FINALIZED', label: 'Đã chốt điểm' },
+];
+
 const Topics = () => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Filters state
-  const [filters, setFilters] = useState<{
-    status?: TopicStatus;
-    search?: string;
-  }>({});
-  const [showFilters, setShowFilters] = useState(false);
+  // Hooks & State
+  const { data: semesters } = useSemesters();
+  const { data: activeSemesterData, isLoading: isLoadingActive } = useActiveSemester();
 
-  // Registration modal
+  const [searchValue, setSearchValue] = useState('');
+  const debouncedSearch = useDebounce(searchValue, 300);
+
+  const [filters, setFilters] = useState<any>({
+    page: 1,
+    size: 10,
+    semesterId: undefined,
+    status: undefined,
+    search: undefined,
+  });
+
+  // Registration modal state
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  // Hooks
-  const { data: topics, isLoading } = useTopics(filters);
+  // Sync active semester once on load
+  const [hasInit, setHasInit] = useState(false);
+  if (!hasInit && activeSemesterData?.id) {
+    setFilters((prev: any) => ({ ...prev, semesterId: activeSemesterData.id }));
+    setHasInit(true);
+  }
+
+  // Handle debounced search sync
+  const [prevDebouncedSearch, setPrevDebouncedSearch] = useState('');
+  if (debouncedSearch !== prevDebouncedSearch) {
+    setFilters((prev: any) => ({ ...prev, search: debouncedSearch || undefined, page: 1 }));
+    setPrevDebouncedSearch(debouncedSearch);
+  }
+
+  const { data: topics, isLoading, isFetching } = useTopics(filters);
   const registerMutation = useRegisterTopic();
   const approveMutation = useApproveTopic();
   const hideMutation = useHideTopic();
   const unhideMutation = useUnhideTopic();
-
-  // Get active semester
-  const { data: semesters } = useSemesters();
-  // Improved logic: Find semester that is not finalized
-  const activeSemester = semesters?.find(s => 
-    s.calculated_phase !== 'FINAL'
-  );
 
   // Get my current registration (to check if student already has a topic)
   const { data: myCurrentRegistration } = useQuery({
@@ -61,12 +87,31 @@ const Topics = () => {
     myCurrentRegistration.status !== 'REJECTED' &&
     myCurrentRegistration.status !== 'CANCELLED');
 
-  const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value || undefined }));
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(e.target.value);
   };
 
-  const handleFilterChange = (key: string, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value || undefined }));
+  const handleSemesterChange = (value: string) => {
+    setFilters((prev: any) => ({ ...prev, semesterId: value, page: 1 }));
+  };
+
+  const handleStatusChange = (value: string | undefined) => {
+    setFilters((prev: any) => ({ 
+      ...prev, 
+      status: (value === 'ALL' || !value) ? undefined : value, 
+      page: 1 
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setSearchValue('');
+    setFilters((prev: any) => ({
+      ...prev,
+      search: undefined,
+      status: undefined,
+      page: 1,
+      // semesterId stays locked
+    }));
   };
 
   const handleRegister = (topic: any) => {
@@ -114,6 +159,23 @@ const Topics = () => {
 
   const columns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      render: (_: any, __: any, index: number) => {
+        const page = filters.page || 1;
+        const size = filters.size || 10;
+        return (page - 1) * size + index + 1;
+      },
+    },
+    {
+      title: 'Mã ĐT',
+      dataIndex: 'code',
+      key: 'code',
+      width: 140,
+      render: (code: string) => <Tag color="blue" className="font-mono">{code || 'N/A'}</Tag>,
+    },
+    {
       title: t('topics.topicTitle'),
       dataIndex: 'title',
       key: 'title',
@@ -153,9 +215,15 @@ const Topics = () => {
     },
     {
       title: t('common.status'),
-      dataIndex: 'status',
       key: 'status',
-      render: (status: TopicStatus) => <StatusBadge status={status} />,
+      render: (_, record: any) => (
+        <TopicStatusBadge 
+          status={record.status} 
+          progressStage={record.progress_stage}
+          isVisible={record.is_visible}
+          isLocked={record.is_locked}
+        />
+      ),
     },
     {
       title: t('topics.createdAt'),
@@ -206,9 +274,9 @@ const Topics = () => {
             )}
 
             {/* Hide/Unhide Action - Supervisor can hide their own topics */}
-            {user?.role === 'LECTURER' && record.supervisor?.id === user?.id && (
+            {(record.supervisor_id === user?.id || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
               <>
-                {record.status === 'HIDDEN' ? (
+                {!record.is_visible ? (
                   <Tooltip title={t('topics.unhideTooltip')}>
                     <Button
                       type="text"
@@ -232,7 +300,7 @@ const Topics = () => {
                         icon={<EyeInvisibleOutlined />}
                         loading={hideMutation.isPending}
                         className="text-orange-500 hover:text-orange-600"
-                        disabled={['REGISTERED', 'DEFENDING', 'COMPLETED', 'FINALIZED'].includes(record.status)}
+                        disabled={['REGISTERED', 'COMPLETED', 'FINALIZED'].includes(record.status)}
                       />
                     </Popconfirm>
                   </Tooltip>
@@ -307,6 +375,8 @@ const Topics = () => {
     },
   ];
 
+  const isFiltering = filters.status || filters.search;
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -326,67 +396,97 @@ const Topics = () => {
         )}
       </div>
 
-      {/* Filters and Search */}
-      <Card className="shadow-soft mb-4">
-        <Row gutter={16}>
-          <Col xs={24} md={12} lg={8}>
-            <Search
-              placeholder={t('topics.searchPlaceholder')}
-              allowClear
-              onSearch={handleSearch}
-              className="mb-2"
-            />
-          </Col>
-          <Col xs={24} md={12} lg={8}>
-            <Select
-              placeholder={t('topics.filterStatus')}
-              allowClear
-              onChange={(value) => handleFilterChange('status', value)}
-              style={{ width: '100%' }}
-              className="mb-2"
+      {/* Inline Filter Bar */}
+      <Card className="shadow-sm mb-4 bg-gray-50/50">
+        <Flex gap="middle" wrap="wrap" align="center">
+          <Input.Search
+            placeholder="Tìm kiếm đề tài..."
+            value={searchValue}
+            onChange={handleSearch}
+            allowClear
+            className="max-w-md flex-1"
+            disabled={!filters.semesterId}
+          />
+          
+          <Select
+            placeholder="Chọn học kỳ"
+            style={{ width: 450 }}
+            value={filters.semesterId}
+            onChange={handleSemesterChange}
+            loading={isLoadingActive}
+            allowClear={false}
+          >
+            {semesters?.map(s => (
+              <Option key={s.id} value={s.id}>
+                <Space>
+                  {s.id === activeSemesterData?.id && <Badge color="green" />}
+                  {s.name}
+                  {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
+                </Space>
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            placeholder="Lọc trạng thái"
+            style={{ width: 200 }}
+            value={filters.status}
+            onChange={handleStatusChange}
+            options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
+            allowClear
+          />
+
+          {(isFiltering) && (
+            <Button 
+              type="link" 
+              icon={<ReloadOutlined />} 
+              onClick={handleClearFilters}
+              className="px-0"
             >
-              <Option value="APPROVED">{t('status.topic.APPROVED')}</Option>
-              <Option value="PENDING_APPROVAL">{t('status.topic.PENDING_APPROVAL')}</Option>
-              <Option value="DRAFT">{t('status.topic.DRAFT')}</Option>
-              <Option value="REGISTERED">{t('status.topic.REGISTERED')}</Option>
-              <Option value="UNDER_REVIEW">{t('status.topic.UNDER_REVIEW')}</Option>
-              <Option value="COMPLETED">{t('status.topic.COMPLETED')}</Option>
-            </Select>
-          </Col>
-          <Col xs={24} md={24} lg={8}>
-            <Button
-              icon={<FilterOutlined />}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              {showFilters ? t('topics.hideFilters') : t('topics.showFilters')}
+              Xóa bộ lọc
             </Button>
-          </Col>
-        </Row>
+          )}
+        </Flex>
       </Card>
 
       {/* Topics Table */}
-      <Card className="shadow-soft">
-        <Spin spinning={isLoading}>
-          <Table
-            columns={columns}
-            dataSource={topics?.topics || []}
-            rowKey="id"
-            pagination={{
-              current: topics?.pagination?.page || 1,
-              pageSize: topics?.pagination?.limit || 10,
-              total: topics?.pagination?.total || 0,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
-              onChange: (page, pageSize) => {
-                setFilters(prev => ({ ...prev, page, size: pageSize }));
-              }
-            }}
-            locale={{
-              emptyText: t('topics.emptyTopics'),
-            }}
-          />
-        </Spin>
+      <Card className="shadow-sm">
+        <Table
+          columns={columns}
+          dataSource={topics?.topics || []}
+          rowKey="id"
+          loading={isLoading || isFetching}
+          pagination={{
+            current: topics?.pagination?.page || 1,
+            pageSize: topics?.pagination?.limit || 10,
+            total: topics?.pagination?.total || 0,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+            onChange: (page, pageSize) => {
+              setFilters((prev: any) => ({ ...prev, page, size: pageSize }));
+            }
+          }}
+          locale={{
+            emptyText: isFiltering ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Không tìm thấy kết quả phù hợp"
+              >
+                <Button type="primary" onClick={handleClearFilters}>Xóa bộ lọc</Button>
+              </Empty>
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Chưa có đề tài trong học kỳ này"
+              >
+                {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
+                  <Button type="primary" onClick={() => navigate('/supervisor/create-topic')}>+ Tạo đề tài</Button>
+                )}
+              </Empty>
+            ),
+          }}
+        />
       </Card>
 
       {/* Registration Modal */}
@@ -432,61 +532,6 @@ const Topics = () => {
           </div>
         )}
       </Modal>
-
-
-      {/* Advanced Filters Drawer */}
-      <Drawer
-        title={t('topics.advancedFilters')}
-        placement="right"
-        onClose={() => setShowFilters(false)}
-        open={showFilters}
-      >
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <div>
-            <label className="block mb-2 font-medium">{t('topics.semester')}</label>
-            <Select
-              placeholder="Chọn học kỳ"
-              style={{ width: '100%' }}
-              allowClear
-            >
-              <Option value="1">HK1 2024-2025</Option>
-              <Option value="2">HK2 2023-2024</Option>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium">{t('topics.department')}</label>
-            <Select
-              placeholder="Chọn bộ môn"
-              style={{ width: '100%' }}
-              allowClear
-            >
-              <Option value="1">Công nghệ thông tin</Option>
-              <Option value="2">Khoa học máy tính</Option>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block mb-2 font-medium">{t('topics.numStudents')}</label>
-            <Select
-              placeholder="Chọn số nhóm"
-              style={{ width: '100%' }}
-              allowClear
-            >
-              <Option value="1">1 nhóm</Option>
-              <Option value="2">2 nhóm</Option>
-            </Select>
-          </div>
-
-          <Button
-            type="primary"
-            block
-            onClick={() => setShowFilters(false)}
-          >
-            {t('topics.applyFilters')}
-          </Button>
-        </Space>
-      </Drawer>
     </div>
   );
 };

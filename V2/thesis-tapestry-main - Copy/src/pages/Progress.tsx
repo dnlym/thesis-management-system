@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircleOutlined, ClockCircleOutlined, SyncOutlined, EditOutlined, UserOutlined, SendOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
 import { useRegistrations, useUpdateProgress, useRegistrationLogs } from '@/hooks/useRegistrations';
-import { StatusBadge } from '@/components/StatusBadge';
+import { StudentProgressBadge } from '@/components/StatusBadge';
 import type { StudentProgressStatus } from '@/types';
 import dayjs from 'dayjs';
 
@@ -164,7 +164,7 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
           </div>
 
           <div className="mt-4">
-            <p><strong>{t('progress.currentStatus')}:</strong> <StatusBadge status={currentStatus} /></p>
+            <p><strong>{t('progress.currentStatus')}:</strong> <StudentProgressBadge status={currentStatus} /></p>
           </div>
         </Card>
 
@@ -275,12 +275,12 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
               key: 'detail',
               render: (_, record: any) => {
                 const newValue = record.new_value as any;
-                return (
-                  <div>
-                    {newValue?.status && <div>{t('common.status')}: <StatusBadge status={newValue.status} /></div>}
-                    {newValue?.feedback && <div className="text-gray-500 italic">"{newValue.feedback}"</div>}
-                  </div>
-                );
+                  return (
+                    <div>
+                      {newValue?.status && <div>{t('common.status')}: <StudentProgressBadge status={newValue.status} /></div>}
+                      {newValue?.feedback && <div className="text-gray-500 italic">"{newValue.feedback}"</div>}
+                    </div>
+                  );
               }
             },
           ]}
@@ -326,7 +326,7 @@ const Progress = () => {
       title: t('common.status'),
       dataIndex: 'studentProgressStatus',
       key: 'status',
-      render: (status: string) => <StatusBadge status={status as any} />,
+      render: (status: string) => <StudentProgressBadge status={status as any} />,
     },
     {
       title: t('common.actions'),

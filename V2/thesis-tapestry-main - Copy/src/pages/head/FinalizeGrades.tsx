@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, Table, Button, Modal, Tag, Spin, Descriptions } from 'antd';
 import { CheckCircleOutlined, EyeOutlined, LockOutlined } from '@ant-design/icons';
 import { GradeBreakdown } from '@/components/GradeBreakdown';
-import { StatusBadge } from '@/components/StatusBadge';
 import { useTopicGrades, useFinalizeGrades, useComputeFinalScore } from '@/hooks/useGrading';
 
 const HeadFinalizeGrades = () => {
@@ -18,6 +17,7 @@ const HeadFinalizeGrades = () => {
             studentName: 'Nguyễn Văn A',
             hasAllGrades: true,
             isFinalized: false,
+            scores: [8.0, 9.0, 8.5],
             computedScore: 8.5,
         },
         {
@@ -26,6 +26,7 @@ const HeadFinalizeGrades = () => {
             studentName: 'Trần Thị B',
             hasAllGrades: true,
             isFinalized: true,
+            scores: [8.0, 8.5, 8.0],
             computedScore: 8.2,
         },
         {
@@ -317,60 +318,77 @@ const HeadFinalizeGrades = () => {
                             <GradeBreakdown
                                 advisorGrade={{
                                     id: '1',
-                                    topicId: selectedTopic.id,
-                                    raterRole: 'ADVISOR',
-                                    totalScore: 8.5,
-                                    scores: [],
-                                    submittedAt: new Date().toISOString(),
+                                    topic_id: selectedTopic.id,
+                                    rater_role: 'SUPERVISOR',
+                                    scores: [
+                                        { criterion_id: '1', score: 8.5, comment: 'Tốt' },
+                                        { criterion_id: '2', score: 8.5, comment: 'Đạt yêu cầu' }
+                                    ],
+                                    submitted_at: new Date().toISOString(),
                                 }}
                                 reviewerGrades={[
                                     {
                                         id: '2',
-                                        topicId: selectedTopic.id,
-                                        raterRole: 'REVIEWER',
-                                        totalScore: 8.3,
-                                        scores: [],
-                                        submittedAt: new Date().toISOString(),
+                                        topic_id: selectedTopic.id,
+                                        rater_role: 'REVIEWER',
+                                        reviewer_order: 1,
+                                        scores: [
+                                            { criterion_id: '1', score: 8.0 },
+                                            { criterion_id: '2', score: 8.6 }
+                                        ],
+                                        submitted_at: new Date().toISOString(),
                                     },
                                     {
                                         id: '3',
-                                        topicId: selectedTopic.id,
-                                        raterRole: 'REVIEWER',
-                                        totalScore: 8.7,
-                                        scores: [],
-                                        submittedAt: new Date().toISOString(),
+                                        topic_id: selectedTopic.id,
+                                        rater_role: 'REVIEWER',
+                                        reviewer_order: 2,
+                                        scores: [
+                                            { criterion_id: '1', score: 8.5 },
+                                            { criterion_id: '2', score: 8.9 }
+                                        ],
+                                        submitted_at: new Date().toISOString(),
                                     },
                                 ]}
                                 councilGrades={[
                                     {
                                         id: '4',
-                                        topicId: selectedTopic.id,
-                                        raterRole: 'COUNCIL_MEMBER',
-                                        totalScore: 8.4,
-                                        scores: [],
-                                        submittedAt: new Date().toISOString(),
+                                        topic_id: selectedTopic.id,
+                                        rater_role: 'COMMITTEE',
+                                        committee_role: 'CHAIR',
+                                        scores: [
+                                            { criterion_id: '1', score: 8.0 },
+                                            { criterion_id: '2', score: 8.8 }
+                                        ],
+                                        submitted_at: new Date().toISOString(),
                                     },
                                     {
                                         id: '5',
-                                        topicId: selectedTopic.id,
-                                        raterRole: 'COUNCIL_MEMBER',
-                                        totalScore: 8.6,
-                                        scores: [],
-                                        submittedAt: new Date().toISOString(),
+                                        topic_id: selectedTopic.id,
+                                        rater_role: 'COMMITTEE',
+                                        committee_role: 'MEMBER',
+                                        scores: [
+                                            { criterion_id: '1', score: 8.5 },
+                                            { criterion_id: '2', score: 8.7 }
+                                        ],
+                                        submitted_at: new Date().toISOString(),
                                     },
                                 ]}
                                 finalScore={
                                     selectedTopic.computedScore
                                         ? {
-                                            topicId: selectedTopic.id,
-                                            advisorScore: 8.5,
-                                            avgReviewerScore: 8.5,
-                                            avgCouncilScore: 8.5,
-                                            extraPoints: 0.5,
-                                            finalScore: selectedTopic.computedScore,
-                                            classification: getClassification(selectedTopic.computedScore).text as any,
+                                            id: 'final-score-preview',
+                                            topic_id: selectedTopic.id,
+                                            advisor_score: 8.5,
+                                            avg_reviewer_score: 8.5,
+                                            avg_council_score: 8.5,
+                                            extra_points: 0.5,
+                                            final_score: selectedTopic.computedScore,
+                                            grade_classification: getClassification(selectedTopic.computedScore).text as any,
                                             finalized: selectedTopic.isFinalized,
-                                            finalizedAt: selectedTopic.isFinalized ? new Date().toISOString() : null,
+                                            finalized_at: selectedTopic.isFinalized ? new Date().toISOString() : null,
+                                            created_at: new Date().toISOString(),
+                                            updated_at: new Date().toISOString(),
                                         }
                                         : undefined
                                 }

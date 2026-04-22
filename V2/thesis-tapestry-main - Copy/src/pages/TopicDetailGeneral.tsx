@@ -5,7 +5,7 @@ import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, UsergroupAddOutlined, 
 import { useTopic, useApproveTopic, useRejectTopic, useRequireEdit } from '@/hooks/useTopics';
 import { useAssignReviewer } from '@/hooks/useAssignments';
 import { useUsers } from '@/hooks/useUsers';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import TopicHistoryModal from '@/components/TopicHistoryModal';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
@@ -193,7 +193,14 @@ const TopicDetailGeneral = () => {
             <Card className="shadow-soft">
                 <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
                     <Descriptions.Item label={t('common.status')} span={2}>
-                        <StatusBadge status={topic.status} />
+                        <Space>
+                            <TopicStatusBadge status={topic.status} />
+                            {topic.source_topic && (
+                                <Tag color="orange" icon={<HistoryOutlined />}>
+                                    Tái sử dụng từ {topic.source_topic.semester?.name} ({topic.source_topic.code})
+                                </Tag>
+                            )}
+                        </Space>
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.supervisor')}>

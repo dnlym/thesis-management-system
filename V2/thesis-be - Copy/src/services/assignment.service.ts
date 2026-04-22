@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole } from '@prisma/client';
+import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole, ProgressStage } from '@prisma/client';
 import { CreateAssignmentRequest, CreateDefenseScheduleRequest } from '../types';
 import { ERROR_CODES } from '../constants';
 import { SemesterGuard } from '../utils/semester-guard';
@@ -68,8 +68,9 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
+    // Topics must be REGISTERED to have assignments
     if (topic.status !== TopicStatus.REGISTERED) {
-      throw new Error('Äá» tÃ i pháº£i á»Ÿ tráº¡ng thÃ¡i REGISTERED');
+      throw new Error('Chỉ có thể gán phản biện cho đề tài đã có sinh viên đăng ký (REGISTERED)');
     }
 
 
@@ -162,7 +163,7 @@ export class AssignmentService {
       await prisma.topic.update({
         where: { id: data.topicId },
         data: {
-          status: TopicStatus.UNDER_REVIEW,
+          progress_stage: ProgressStage.REVIEWING,
         },
       });
     }
@@ -308,8 +309,10 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
-    if (topic.status !== TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT) {
-      throw new Error('Topic must be in WAITING_FOR_DEFENSE_ASSIGNMENT status');
+    // Topic must be in READY_FOR_DEFENSE stage
+    if (topic.progress_stage !== ProgressStage.READY_FOR_DEFENSE) {
+      // Logic: Review must be done first
+      throw new Error('Đề tài phải hoàn thành phản biện (READY_FOR_DEFENSE) trước khi gán hội đồng');
     }
 
     // Check if all reviewers have graded
@@ -402,11 +405,11 @@ export class AssignmentService {
       }
     }
 
-    // Update topic status
+    // Initial assignment of committee moves it to DEFENDING stage
     await prisma.topic.update({
       where: { id: data.topicId },
       data: {
-        status: TopicStatus.WAITING_FOR_DEFENSE,
+        progress_stage: ProgressStage.DEFENDING,
       },
     });
 
@@ -772,19 +775,20 @@ export class AssignmentService {
         // Show all topics from reviewer-grading phase through defense completion
         status: {
           in: [
-            TopicStatus.UNDER_REVIEW,
-            TopicStatus.WAITING_FOR_DEFENSE_ASSIGNMENT,
-            TopicStatus.WAITING_FOR_DEFENSE,
-            TopicStatus.DEFENDING,
+            TopicStatus.REGISTERED,
             TopicStatus.COMPLETED,
-          ]
-        }
+            TopicStatus.FINALIZED,
+          ],
+        },
       },
       include: topicForCommitteeAssignmentInclude,
       orderBy: { created_at: 'desc' },
     }) as TopicForCommitteeAssignment[];
 
     const results = topics.map(topic => {
+      if (topic.status === TopicStatus.COMPLETED || topic.status === TopicStatus.FINALIZED) {
+        throw new Error('Không thể gán hội đồng cho đề tài đã kết thúc');
+      }
       const eligibility = this.isEligibleForCommittee(topic);
       
       // Standardized Production Log

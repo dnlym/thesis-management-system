@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Table, Button, Modal, Input, Tag, Spin, Descriptions, Avatar } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
-import { StatusBadge } from '@/components/StatusBadge';
+import { RegistrationStatusBadge } from '@/components/StatusBadge';
 import {
     useRegistrations,
     useConfirmRegistration,
@@ -159,7 +159,7 @@ const SupervisorManageRegistrations = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <RegistrationStatusBadge status={status} />,
         },
         {
             title: 'Thao tác',
@@ -325,7 +325,7 @@ const SupervisorManageRegistrations = () => {
                                 : 'N/A'}
                         </Descriptions.Item>
                         <Descriptions.Item label="Trạng thái">
-                            <StatusBadge status={selectedRegistration.status} />
+                            <RegistrationStatusBadge status={selectedRegistration.status} />
                         </Descriptions.Item>
                         {(selectedRegistration as any).confirmed_at && (
                             <Descriptions.Item label="Ngày xác nhận">

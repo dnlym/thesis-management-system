@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { ERROR_CODES } from '../constants';
 import { SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 import { SemesterGuard } from '../utils/semester-guard';
+import dayjs from '../config/dayjs';
 
 /**
  * Convert a date string ("YYYY-MM-DD" or ISO) to a Date object.
@@ -15,6 +16,16 @@ function toDate(value: string | Date | undefined | null): Date | undefined {
     return new Date(value + 'T00:00:00');
   }
   return new Date(value);
+}
+
+/**
+ * Convert an ISO date string to the end of the local day (23:59:59.999).
+ * Ensures that choosing the same start and end day includes the entire end day.
+ */
+function toEndDate(value: string | Date | undefined | null): Date | undefined {
+  const d = toDate(value);
+  if (!d) return undefined;
+  return dayjs(d).endOf('day').toDate();
 }
 
 export class SemesterService {
@@ -51,18 +62,19 @@ export class SemesterService {
     midterm_end?: Date;
   }) {
     // Parse all date strings to Date objects
+    // Using toEndDate for all deadlines / phase boundaries
     const start_date = toDate(data.start_date)!;
-    const end_date = toDate(data.end_date)!;
-    const proposal_deadline = toDate(data.proposal_deadline)!;
-    const thesis_deadline = toDate(data.thesis_deadline)!;
+    const end_date = toEndDate(data.end_date)!;
+    const proposal_deadline = toEndDate(data.proposal_deadline)!;
+    const thesis_deadline = toEndDate(data.thesis_deadline)!;
     const defense_start = toDate(data.defense_start);
-    const defense_end = toDate(data.defense_end);
+    const defense_end = toEndDate(data.defense_end);
     const topic_viewing_start = toDate(data.topic_viewing_start);
-    const topic_viewing_end = toDate(data.topic_viewing_end);
+    const topic_viewing_end = toEndDate(data.topic_viewing_end);
     const topic_registration_start = toDate(data.topic_registration_start);
-    const topic_registration_end = toDate(data.topic_registration_end);
+    const topic_registration_end = toEndDate(data.topic_registration_end);
     const midterm_start = toDate(data.midterm_start);
-    const midterm_end = toDate(data.midterm_end);
+    const midterm_end = toEndDate(data.midterm_end);
 
     // Validate timeline integrity
     this.validateTimelineIntegrity({
@@ -154,21 +166,21 @@ export class SemesterService {
 
     // Resolve final values (merge incoming with existing)
     const final_start_date = toDate(data.start_date) ?? semester.start_date;
-    const final_end_date = toDate(data.end_date) ?? semester.end_date;
-    const final_proposal_deadline = toDate(data.proposal_deadline) ?? semester.proposal_deadline;
-    const final_thesis_deadline = toDate(data.thesis_deadline) ?? semester.thesis_deadline;
+    const final_end_date = toEndDate(data.end_date) ?? semester.end_date;
+    const final_proposal_deadline = toEndDate(data.proposal_deadline) ?? semester.proposal_deadline;
+    const final_thesis_deadline = toEndDate(data.thesis_deadline) ?? semester.thesis_deadline;
     const final_defense_start = toDate(data.defense_start) ?? semester.defense_start;
-    const final_defense_end = toDate(data.defense_end) ?? semester.defense_end;
-    const final_topic_registration_end = toDate(data.topic_registration_end) ?? semester.topic_registration_end;
-    const final_midterm_start = toDate(data.midterm_start);
-    const final_midterm_end = toDate(data.midterm_end);
+    const final_defense_end = toEndDate(data.defense_end) ?? semester.defense_end;
+    const final_topic_registration_end = toEndDate(data.topic_registration_end) ?? semester.topic_registration_end;
+    const final_midterm_start = toDate(data.midterm_start) ?? semester.midterm_start;
+    const final_midterm_end = toEndDate(data.midterm_end) ?? semester.midterm_end;
 
     // Validate timeline integrity of the final merged result
     this.validateTimelineIntegrity({
       start_date: final_start_date,
       end_date: final_end_date,
       topic_viewing_start: toDate(data.topic_viewing_start) ?? semester.topic_viewing_start,
-      topic_viewing_end: toDate(data.topic_viewing_end) ?? semester.topic_viewing_end,
+      topic_viewing_end: toEndDate(data.topic_viewing_end) ?? semester.topic_viewing_end,
       topic_registration_start: toDate(data.topic_registration_start) ?? semester.topic_registration_start,
       topic_registration_end: final_topic_registration_end,
       proposal_deadline: final_proposal_deadline,
@@ -185,17 +197,17 @@ export class SemesterService {
     const updateData: any = {
       name: data.name,
       start_date: toDate(data.start_date),
-      end_date: toDate(data.end_date),
-      proposal_deadline: toDate(data.proposal_deadline),
-      thesis_deadline: toDate(data.thesis_deadline),
+      end_date: toEndDate(data.end_date),
+      proposal_deadline: toEndDate(data.proposal_deadline),
+      thesis_deadline: toEndDate(data.thesis_deadline),
       defense_start: toDate(data.defense_start),
-      defense_end: toDate(data.defense_end),
+      defense_end: toEndDate(data.defense_end),
       topic_viewing_start: toDate(data.topic_viewing_start),
-      topic_viewing_end: toDate(data.topic_viewing_end),
+      topic_viewing_end: toEndDate(data.topic_viewing_end),
       topic_registration_start: toDate(data.topic_registration_start),
-      topic_registration_end: toDate(data.topic_registration_end),
-      midterm_start: final_midterm_start,
-      midterm_end: final_midterm_end,
+      topic_registration_end: toEndDate(data.topic_registration_end),
+      midterm_start: toDate(data.midterm_start),
+      midterm_end: toEndDate(data.midterm_end),
     };
 
     const oldPhase = SemesterGuard.calculateCurrentPhase(semester);

@@ -394,7 +394,7 @@ const AdminSettings = () => {
       title: t('common.status'),
       dataIndex: 'calculated_phase',
       key: 'calculated_phase',
-      render: (phase: SemesterStatus | SemesterPhase | "DRAFT") => <StatusBadge status={phase} />,
+      render: (phase: SemesterStatus | SemesterPhase | "DRAFT") => <StatusBadge type="semester" status={phase} />,
     },
     {
       title: 'Thao tác',

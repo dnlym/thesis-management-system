@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Table, Button, Modal, Form, Select, Tag, Spin, Descriptions } from 'antd';
 import { notify } from '@/utils/notification';
 import { UserAddOutlined, EyeOutlined, TeamOutlined } from '@ant-design/icons';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 // TODO: Import assignment hooks when created
 // import { useTopics, useAssignReviewers, useAssignCommittee } from '@/hooks/useAssignments';
 
@@ -102,7 +102,7 @@ const HeadAssignReviewers = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <TopicStatusBadge status={status} />,
         },
         {
             title: 'GVPB',

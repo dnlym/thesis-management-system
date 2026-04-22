@@ -23,7 +23,7 @@ async function main() {
     data.assignments = await prisma.assignment.findMany();
     data.grading_criteria = await prisma.gradingCriterion.findMany();
     data.defense_schedules = await prisma.defenseSchedule.findMany();
-    data.submissions = await prisma.submission.findMany();
+
 
     const exportPath = './db_export.json';
     fs.writeFileSync(exportPath, JSON.stringify(data, null, 2));

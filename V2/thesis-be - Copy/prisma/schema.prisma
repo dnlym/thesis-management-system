@@ -22,7 +22,7 @@ model Department {
   auto_approve_proposal_on_midterm_pass Boolean            @default(true)
   max_group_size                        Int                @default(2)
   min_group_size                        Int                @default(1)
-  required_submission_types_for_review  SubmissionType[]   @default([PROPOSAL, THESIS, SOURCE_CODE])
+
   requires_midterm_eval                 Boolean            @default(true)
   committees                            Committee[]
   grading_criteria                      GradingCriterion[]
@@ -100,9 +100,7 @@ model User {
   owned_groups            Group[]                    @relation("GroupLeader")
   notifications           Notification[]             @relation("UserNotifications")
   refresh_tokens          RefreshToken[]
-  uploaded_versions       SubmissionVersion[]        @relation("VersionUploader")
-  approved_submissions    Submission[]               @relation("SubmissionApprover")
-  locked_submissions      Submission[]               @relation("SubmissionLocker")
+
   updated_configs         SystemConfig[]             @relation("ConfigUpdater")
   topic_registrations     TopicRegistration[]        @relation("StudentRegistrations")
   supervised_topics       Topic[]                    @relation("SupervisorTopics")
@@ -143,6 +141,9 @@ model Topic {
   requirements         String
   normalized_title     String
   status               TopicStatus         @default(DRAFT)
+  is_visible           Boolean             @default(true)
+  is_locked            Boolean             @default(false)
+  progress_stage       ProgressStage       @default(WORKING)
   approved_at          DateTime?
   approved_by          String?
   created_at           DateTime            @default(now())
@@ -158,8 +159,11 @@ model Topic {
   is_interdisciplinary Boolean             @default(false)
   interdisciplinary_status InterdisciplinaryStatus?
   updated_at           DateTime            @updatedAt
-  code                 String?             @unique @db.VarChar(50)
+  code                 String?             @db.VarChar(50)
   defense_type         DefenseType?        @default(ORAL)
+  is_eligible_for_defense Boolean?
+  reviewer_required_count Int                @default(2)
+  source_topic_id      String?             @map("source_topic_id")
   assignments          Assignment[]        @relation("TopicAssignments")
   defense_schedule     DefenseSchedule?    @relation("TopicDefense")
   extra_point_requests ExtraPointRequest[] @relation("TopicExtraPoints")
@@ -167,7 +171,7 @@ model Topic {
   grades               Grade[]             @relation("TopicGrades")
   group_invites        GroupInvite[]       @relation("TopicGroupInvites")
   groups               Group[]             @relation("TopicGroups")
-  submissions          Submission[]        @relation("TopicSubmissions")
+
   registrations        TopicRegistration[] @relation("TopicRegistrations")
   versions             TopicVersion[]      @relation("TopicVersions")
   department           Department          @relation("DepartmentTopics", fields: [departmentId], references: [id])
@@ -175,6 +179,8 @@ model Topic {
   semester             Semester            @relation(fields: [semester_id], references: [id])
   supervisor           User                @relation("SupervisorTopics", fields: [supervisor_id], references: [id], onDelete: Cascade)
   co_supervisor        User?               @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
+  source_topic         Topic?              @relation("TopicOrigin", fields: [source_topic_id], references: [id])
+  derived_topics       Topic[]             @relation("TopicOrigin")
 
   @@index([code])
   @@index([supervisor_id])
@@ -183,6 +189,8 @@ model Topic {
   @@index([status])
   @@index([created_at])
   @@index([normalized_title])
+  @@index([source_topic_id])
+  @@unique([code, semester_id])
   @@unique([normalized_title, semester_id, departmentId])
   @@map("topics")
 }
@@ -217,7 +225,7 @@ model Group {
   leader                 User                       @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
   semester               Semester                   @relation(fields: [semester_id], references: [id])
   topic                  Topic?                     @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
-  submissions            Submission[]               @relation("GroupSubmissions")
+
   registrations          TopicRegistration[]        @relation("GroupRegistrations")
 
   @@index([topic_id])
@@ -316,55 +324,7 @@ model TopicRegistration {
   @@map("topic_registrations")
 }
 
-model Submission {
-  id               String              @id @default(uuid())
-  topic_id         String
-  group_id         String
-  type             SubmissionType
-  status           SubmissionStatus    @default(DRAFT)
-  current_version  Int                 @default(0)
-  is_locked        Boolean             @default(false)
-  locked_by        String?
-  locked_at        DateTime?
-  approved_by      String?
-  approved_at      DateTime?
-  rejection_reason String?
-  created_at       DateTime            @default(now())
-  updated_at       DateTime            @updatedAt
-  versions         SubmissionVersion[] @relation("SubmissionVersions")
-  approver         User?               @relation("SubmissionApprover", fields: [approved_by], references: [id])
-  group            Group               @relation("GroupSubmissions", fields: [group_id], references: [id], onDelete: Cascade)
-  locker           User?               @relation("SubmissionLocker", fields: [locked_by], references: [id])
-  topic            Topic               @relation("TopicSubmissions", fields: [topic_id], references: [id], onDelete: Cascade)
 
-  @@unique([topic_id, group_id, type])
-  @@index([topic_id])
-  @@index([group_id])
-  @@index([status])
-  @@index([is_locked])
-  @@map("submissions")
-}
-
-model SubmissionVersion {
-  id            String     @id @default(uuid())
-  submission_id String
-  version       Int
-  file_url      String     @db.VarChar(500)
-  file_name     String     @db.VarChar(255)
-  file_size     Int
-  mime_type     String     @db.VarChar(100)
-  checksum      String     @db.VarChar(64)
-  uploaded_by   String
-  comments      String?
-  uploaded_at   DateTime   @default(now())
-  submission    Submission @relation("SubmissionVersions", fields: [submission_id], references: [id], onDelete: Cascade)
-  uploader      User       @relation("VersionUploader", fields: [uploaded_by], references: [id])
-
-  @@unique([submission_id, version])
-  @@index([submission_id])
-  @@index([uploaded_at])
-  @@map("submission_versions")
-}
 
 model Assignment {
   id                   String           @id @default(uuid())
@@ -641,18 +601,20 @@ enum DefenseType {
 enum TopicStatus {
   DRAFT
   PENDING_APPROVAL
-  PENDING_INTERDISCIPLINARY
-  REQUIRE_EDIT
-  APPROVED
+  REQUIRES_REVISION
   REJECTED
-  HIDDEN
+  APPROVED
   REGISTERED
-  UNDER_REVIEW
-  WAITING_FOR_DEFENSE_ASSIGNMENT
-  WAITING_FOR_DEFENSE
-  DEFENDING
   COMPLETED
   FINALIZED
+}
+
+enum ProgressStage {
+  WORKING
+  REVIEWING
+  READY_FOR_DEFENSE
+  DEFENDING
+  DONE
 }
 
 enum RegistrationStatus {
@@ -738,21 +700,7 @@ enum InterdisciplinaryStatus {
   REJECTED
 }
 
-enum SubmissionType {
-  PROPOSAL
-  THESIS
-  SOURCE_CODE
-  PRESENTATION
-}
 
-enum SubmissionStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED_FOR_REVIEW
-  REVISION_REQUIRED
-  FINAL_APPROVED
-  LOCKED
-}
 
 enum RaterRole {
   SUPERVISOR
@@ -777,10 +725,6 @@ enum ChangeLeaderStatus {
 enum StudentProgressStatus {
   NOT_STARTED
   HAS_TOPIC
-  PROPOSAL_SUBMITTED
-  PROPOSAL_APPROVED
-  THESIS_IN_PROGRESS
-  THESIS_SUBMITTED
   ADVISOR_GRADED
   REVIEWER_GRADED
   DEFENSE_SCHEDULED

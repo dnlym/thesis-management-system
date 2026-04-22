@@ -25,10 +25,12 @@ const GradeSummary = () => {
   const [search, setSearch] = useState('');
   const [computing, setComputing] = useState<string | null>(null);
 
-  const { data: topics = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['grade-summary'],
     queryFn: () => GradingApi.getGradeSummary(),
   });
+
+  const topics = data?.allTopics || [];
 
   const computeMutation = useMutation({
     mutationFn: (topicId: string) => GradingApi.computeFinalScore(topicId),
@@ -72,7 +74,7 @@ const GradeSummary = () => {
     {
       title: 'Đề tài',
       key: 'topic',
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Tag color="blue">{record.code}</Tag>
@@ -94,7 +96,7 @@ const GradeSummary = () => {
       title: 'Sinh viên',
       key: 'students',
       width: 200,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id} className="flex flex-col">
@@ -108,13 +110,13 @@ const GradeSummary = () => {
     {
       title: 'Tiến độ chấm',
       key: 'grading_progress',
-      width: 180,
-      render: (record: any) => {
+      width: 200,
+      render: (_: any, record: any) => {
         const gs = record.gradingStatus;
         const steps = [
           { label: 'GVHD', done: gs?.supervisorGraded },
-          { label: `PB (${gs?.reviewerCount}/2)`, done: gs?.reviewerCount >= 2 },
-          { label: `HĐ (${gs?.committeeCount}/1)`, done: gs?.committeeCount >= 1 },
+          { label: `PB (${gs?.reviewerGradedCount || 0}/${gs?.totalReviewersRequired || 2})`, done: gs?.isReviewerComplete },
+          { label: `HĐ (${gs?.committeeCount || 0})`, done: gs?.committeeCount >= 1 },
         ];
         const doneCount = steps.filter(s => s.done).length;
         return (
@@ -136,7 +138,7 @@ const GradeSummary = () => {
       key: 'sv_score',
       width: 80,
       align: 'center' as const,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id}><Text strong>{s.finalScore?.supervisor_score?.toFixed(2) ?? '—'}</Text></div>
@@ -149,7 +151,7 @@ const GradeSummary = () => {
       key: 'rv_score',
       width: 80,
       align: 'center' as const,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id}><Text strong>{s.finalScore?.reviewer_avg_score?.toFixed(2) ?? '—'}</Text></div>
@@ -162,11 +164,11 @@ const GradeSummary = () => {
       key: 'cm_score',
       width: 80,
       align: 'center' as const,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id}>
-              {s.finalScore?.committee_score !== null ? (
+              {s.finalScore?.committee_score != null ? (
                 <Text strong>{s.finalScore.committee_score.toFixed(2)}</Text>
               ) : (
                 <Text type="secondary" style={{ fontSize: '10px' }}>Chờ HĐ</Text>
@@ -181,7 +183,7 @@ const GradeSummary = () => {
       key: 'bonus',
       width: 70,
       align: 'center' as const,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id}>
@@ -198,11 +200,11 @@ const GradeSummary = () => {
       key: 'final',
       width: 90,
       align: 'center' as const,
-      render: (record: any) => (
+      render: (_: any, record: any) => (
         <div className="space-y-1">
           {record.students?.map((s: any) => (
             <div key={s.id}>
-              {!s.finalScore || s.finalScore.final_score === null ? (
+              {!s.finalScore || s.finalScore.final_score == null ? (
                 <Text type="secondary" style={{ fontSize: '10px' }}>Chưa chốt</Text>
               ) : (
                 <div className="bg-blue-50 rounded py-0.5 px-1 text-center border border-blue-100">
@@ -219,7 +221,7 @@ const GradeSummary = () => {
       key: 'grade',
       width: 110,
       align: 'center' as const,
-      render: (record: any) => {
+      render: (_: any, record: any) => {
         const colorMap: Record<string, string> = { 'Xuất sắc': 'gold', 'Giỏi': 'green', 'Khá': 'blue', 'Trung bình': 'orange', 'Yếu': 'red', 'Không đạt': 'red' };
         return (
           <div className="space-y-1">
@@ -240,7 +242,7 @@ const GradeSummary = () => {
       title: 'Hành động',
       key: 'actions',
       width: 200,
-      render: (record: any) => {
+      render: (_: any, record: any) => {
         const gs = record.gradingStatus;
         if (gs?.isFinalized) {
           return (
@@ -257,7 +259,7 @@ const GradeSummary = () => {
               onClick={() => {
                 let type = 'advisor';
                 if (record.status === 'UNDER_REVIEW') type = 'reviewer';
-                if (['WAITING_FOR_DEFENSE', 'DEFENDING', 'COMPLETED'].includes(record.status)) type = 'council';
+                if (['WAITING_FOR_DEFENSE', 'DEFENDING', 'COMPLETED', 'REGISTERED'].includes(record.status)) type = 'council';
                 navigate(`/evaluation?topicId=${record.id}&type=${type}`);
               }}
               className="w-full"
@@ -311,6 +313,8 @@ const GradeSummary = () => {
       },
     },
   ];
+
+
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">

@@ -1,22 +1,234 @@
 import { useState, Suspense, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Spin } from 'antd';
+import { Button, Avatar, Dropdown, Spin, Layout, Menu, Tooltip } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
   LogoutOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  DashboardOutlined,
+  BookOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  CalendarOutlined,
+  BarChartOutlined,
+  MessageOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined,
+  CrownOutlined,
+  LeftOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { semesterBroadcast } from '@/utils/broadcast';
-import { getMenuItems } from '@/routes';
 import { AuthApi } from '@/api/auth';
 import NotificationDropdown from './NotificationDropdown';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Content } = Layout;
+
+// ─── Menu Config ───────────────────────────────────────────────────────────────
+
+interface MenuItem {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+}
+interface MenuSection {
+  title?: string;
+  items: MenuItem[];
+}
+
+const getMenuSections = (role: string): MenuSection[] => {
+  if (role === 'STUDENT') {
+    return [
+      {
+        items: [
+          { key: '/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+        ]
+      },
+      {
+        title: 'ĐỀ TÀI',
+        items: [
+          { key: '/topics', label: 'Danh sách đề tài', icon: <BookOutlined /> },
+          { key: '/my-topic', label: 'Đề tài của tôi', icon: <BookOutlined /> },
+          { key: '/progress', label: 'Tiến độ', icon: <ClockCircleOutlined /> },
+          { key: '/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+        ]
+      },
+      {
+        title: 'HỆ THỐNG',
+        items: [
+          { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
+        ]
+      },
+    ];
+  }
+
+  if (role === 'LECTURER') {
+    return [
+      {
+        items: [
+          { key: '/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+        ]
+      },
+      {
+        title: 'HƯỚNG DẪN',
+        items: [
+          { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
+          { key: '/supervisor/registrations', label: 'Sinh viên hướng dẫn', icon: <TeamOutlined /> },
+          { key: '/progress', label: 'Tiến độ', icon: <ClockCircleOutlined /> },
+          { key: '/midterm-evaluation', label: 'Đánh giá giữa kỳ', icon: <CheckCircleOutlined /> },
+          { key: '/evaluation', label: 'Đánh giá cuối kỳ', icon: <CheckCircleOutlined /> },
+        ]
+      },
+      {
+        title: 'PHẢN BIỆN / HỘI ĐỒNG',
+        items: [
+          { key: '/reviewer/assignments', label: 'Đề tài cần phản biện', icon: <BookOutlined /> },
+          { key: '/evaluation?type=reviewer', label: 'Phiếu đánh giá phản biện', icon: <CheckCircleOutlined /> },
+        ]
+      },
+      {
+        title: 'HỆ THỐNG',
+        items: [
+          { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
+        ]
+      },
+    ];
+  }
+
+  if (role === 'HEAD') {
+    return [
+      {
+        items: [
+          { key: '/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+        ]
+      },
+      {
+        title: 'QUẢN LÝ',
+        items: [
+          { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
+          { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
+          { key: '/reviewer-assignment', label: 'Phân công phản biện', icon: <SafetyCertificateOutlined /> },
+          { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
+          { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
+          { key: '/head/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+          { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
+        ]
+      },
+      {
+        title: 'BÁO CÁO - THỐNG KÊ',
+        items: [
+          { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
+          { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
+          { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
+          { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
+          { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+        ]
+      },
+      {
+        title: 'HỆ THỐNG',
+        items: [
+          { key: '/head/semester-settings', label: 'Cài đặt học kỳ', icon: <SettingOutlined /> },
+          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
+        ]
+      },
+    ];
+  }
+
+  // ADMIN
+  return [
+    {
+      items: [
+        { key: '/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+      ]
+    },
+    {
+      title: 'QUẢN TRỊ',
+      items: [
+        { key: '/admin/users', label: 'Người dùng', icon: <UserOutlined /> },
+        { key: '/admin/roles', label: 'Vai trò', icon: <TeamOutlined /> },
+        { key: '/admin/criteria', label: 'Tiêu chí đánh giá', icon: <SafetyCertificateOutlined /> },
+        { key: '/admin/council', label: 'Hội đồng', icon: <CrownOutlined /> },
+      ]
+    },
+    {
+      title: 'HỆ THỐNG',
+      items: [
+        { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
+        { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+        { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
+      ]
+    },
+  ];
+};
+
+// ─── Custom Sidebar ─────────────────────────────────────────────────────────────
+
+interface SidebarNavProps {
+  sections: MenuSection[];
+  collapsed: boolean;
+  activeKey: string;
+  onNavigate: (key: string) => void;
+}
+
+const SidebarNav = ({ sections, collapsed, activeKey, onNavigate }: SidebarNavProps) => {
+  return (
+    <nav className="flex-1 overflow-y-auto py-2 px-2">
+      {sections.map((section, si) => (
+        <div key={si} className="mb-1">
+          {section.title && !collapsed && (
+            <div className="text-[10px] font-semibold text-gray-400 tracking-widest px-3 pt-4 pb-1 select-none">
+              {section.title}
+            </div>
+          )}
+          {section.title && collapsed && <div className="border-t border-gray-100 mx-2 my-2" />}
+          {section.items.map(item => {
+            const isActive = (() => {
+              if (activeKey === item.key) return true;
+              
+              const hasExactMatchAnywhere = sections.some(s => s.items.some(i => i.key === activeKey));
+              if (hasExactMatchAnywhere) return false;
+
+              const baseItemKey = item.key.split('?')[0];
+              if (activeKey.startsWith(item.key + '?')) return true;
+              if (item.key !== '/dashboard' && activeKey.startsWith(baseItemKey + '/') && baseItemKey.length > 1) return true;
+              
+              return false;
+            })();
+            const btn = (
+              <button
+                key={item.key + item.label}
+                onClick={() => onNavigate(item.key)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 mb-0.5 group
+                  ${isActive
+                    ? 'bg-blue-50 text-blue-600 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+              >
+                <span className={`text-base flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                  {item.icon}
+                </span>
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </button>
+            );
+            return collapsed
+              ? <Tooltip key={item.key + item.label} title={item.label} placement="right">{btn}</Tooltip>
+              : btn;
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+};
+
+// ─── Main Layout ────────────────────────────────────────────────────────────────
 
 const AppLayout = () => {
   const { t, i18n } = useTranslation();
@@ -25,48 +237,28 @@ const AppLayout = () => {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(false);
-
-  /**
-   * Global Broadcast Listener for Multi-tab Synchronization
-   * Transitions system to near real-time consistency (<1s)
-   */
-  useEffect(() => {
-    const cleanup = semesterBroadcast.setupListener((payload) => {
-      console.log('[Broadcast] Academic phase update detected:', payload);
-      
-      // Broad query invalidation for the entire workflow scope
-      queryClient.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey.some((key: any) =>
-            ['semesters', 'active-semester', 'permissions', 'topics', 'topic', 'dashboard'].includes(key)
-          )
-      });
-    });
-
-    return () => cleanup();
-  }, [queryClient]);
-  const [siderWidth, setSiderWidth] = useState(250);
+  const [siderWidth, setSiderWidth] = useState(220);
   const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-
       let newWidth = e.clientX;
       if (newWidth < 200) newWidth = 200;
-      if (newWidth > 400) newWidth = 400;
-
+      if (newWidth > 450) newWidth = 450;
       setSiderWidth(newWidth);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
       document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
     };
 
     if (isResizing) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none'; // Prevent text selection while dragging
     }
 
     return () => {
@@ -81,15 +273,23 @@ const AppLayout = () => {
   };
 
   useEffect(() => {
+    const cleanup = semesterBroadcast.setupListener((payload) => {
+      console.log('[Broadcast] Academic phase update detected:', payload);
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey.some((key: any) =>
+            ['semesters', 'active-semester', 'permissions', 'topics', 'topic', 'dashboard'].includes(key)
+          )
+      });
+    });
+    return () => cleanup();
+  }, [queryClient]);
+
+  useEffect(() => {
     const bootstrap = async () => {
       try {
         const { token, isAuthenticated, user: current } = useAuthStore.getState();
-
-        // Check if we need to refresh profile: 
-        // 1. Authenticated but no user data
-        // 2. Authenticated but user data is incomplete (missing name)
         const needsRefresh = isAuthenticated && token && (!current || !((current as any).full_name || (current as any).fullName));
-
         if (needsRefresh) {
           const res = await AuthApi.me();
           if (res.success && res.data) {
@@ -105,142 +305,120 @@ const AppLayout = () => {
             useAuthStore.getState().login(mapped as any, token, '');
           }
         }
-      } catch {
-        // ignore bootstrap errors
-      }
+      } catch { /* ignore */ }
     };
     bootstrap();
   }, []);
 
-  const rawMenuItems = getMenuItems(user?.role || 'STUDENT');
+  const sections = getMenuSections(user?.role || 'STUDENT');
+  const activeKey = location.pathname + location.search;
 
-  const processMenuItems = (items: any[]): any[] => {
-    return items.map(item => ({
-      ...item,
-      label: t(item.label),
-      children: item.children ? processMenuItems(item.children) : undefined,
-    }));
+  const handleNavigate = (key: string) => {
+    navigate(key);
   };
-
-  const menuItems = processMenuItems(rawMenuItems);
 
   const userMenu = {
     items: [
+      { key: 'profile', icon: <UserOutlined />, label: t('navigation.profile'), onClick: () => navigate('/profile') },
       {
-        key: 'profile',
-        icon: <UserOutlined />,
-        label: t('navigation.profile'),
-        onClick: () => navigate('/profile'),
+        key: 'logout', icon: <LogoutOutlined />, label: t('auth.logout'),
+        onClick: () => AuthApi.logout().finally(() => { logout(); navigate('/auth/login'); })
       },
-      {
-        key: 'logout',
-        icon: <LogoutOutlined />,
-        label: t('auth.logout'),
-        onClick: () => {
-          AuthApi.logout().finally(() => {
-            logout();
-            navigate('/auth/login');
-          });
-        }
-      }
     ]
-  };
-
-  const changeLanguage = (lang: string) => {
-    i18n.changeLanguage(lang);
   };
 
   const languageMenu = {
     items: [
-      {
-        key: 'vi',
-        label: 'Tiếng Việt',
-        onClick: () => changeLanguage('vi')
-      },
-      {
-        key: 'en',
-        label: 'English',
-        onClick: () => changeLanguage('en')
-      }
+      { key: 'vi', label: 'Tiếng Việt', onClick: () => i18n.changeLanguage('vi') },
+      { key: 'en', label: 'English', onClick: () => i18n.changeLanguage('en') },
     ]
   };
 
+  const SIDEBAR_W = collapsed ? 64 : siderWidth;
+
   return (
-    <Layout className="min-h-screen">
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={siderWidth}
-        className="bg-white shadow-soft border-r relative"
-        style={{
-          overflow: 'hidden',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 100
-        }}
+    <div className="flex min-h-screen bg-gray-50">
+      {/* ── Sidebar ── */}
+      <aside
+        className={`flex flex-col bg-white border-r border-gray-100 fixed left-0 top-0 bottom-0 z-50 ${isResizing ? '' : 'transition-all duration-200'}`}
+        style={{ width: SIDEBAR_W }}
       >
-        <div className="p-4 text-center border-b">
-          <div className="text-lg font-bold text-academic-primary truncate">
-            {collapsed ? 'KLTN' : t('common.systemTitle')}
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 select-none flex-shrink-0">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-base font-bold">K</span>
           </div>
+          {!collapsed && (
+            <span className="font-bold text-blue-700 text-sm leading-tight">Hệ thống KLTN</span>
+          )}
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={['guidance', 'reviewer']} // Optional: open submenus by default
-          items={menuItems}
-          className="border-r-0 h-[calc(100vh-64px)] overflow-y-auto"
-          onClick={({ key }) => {
-            if (key.startsWith('/')) {
-              navigate(key);
-            }
-          }}
+
+        {/* Nav Items */}
+        <SidebarNav
+          sections={sections}
+          collapsed={collapsed}
+          activeKey={activeKey}
+          onNavigate={handleNavigate}
         />
+
+        {/* Collapse toggle */}
+        <div className="border-t border-gray-100 p-2 flex-shrink-0 relative">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all"
+          >
+            <LeftOutlined
+              className="text-xs transition-transform duration-200"
+              style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+            {!collapsed && <span>Thu gọn</span>}
+          </button>
+        </div>
 
         {/* Resize Handle */}
         {!collapsed && (
           <div
-            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors z-50"
+            className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-blue-500 z-50"
             onMouseDown={handleMouseDown}
             style={{
               backgroundColor: isResizing ? '#3b82f6' : 'transparent',
+              transition: isResizing ? 'none' : 'background-color 0.2s',
+              transform: 'translateX(50%)'
             }}
           />
         )}
-      </Sider>
+      </aside>
 
-      <Layout style={{ marginLeft: collapsed ? 80 : siderWidth, transition: isResizing ? 'none' : 'margin-left 0.2s' }}>
-        <Header className="bg-white px-4 shadow-soft flex justify-between items-center">
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-lg"
-          />
-
-          <div className="flex items-center space-x-4">
+      {/* ── Main area ── */}
+      <div className={`flex flex-col flex-1 min-h-screen ${isResizing ? '' : 'transition-all duration-200'}`} style={{ marginLeft: SIDEBAR_W }}>
+        {/* Header */}
+        <header className="bg-white border-b border-gray-100 px-6 h-14 flex items-center justify-between flex-shrink-0 sticky top-0 z-40">
+          <div /> {/* spacer */}
+          <div className="flex items-center gap-3">
             <Dropdown menu={languageMenu} placement="bottomRight">
-              <Button type="text" icon={<GlobalOutlined />} />
+              <Button type="text" size="small" icon={<GlobalOutlined />} className="text-gray-500" />
             </Dropdown>
 
             <NotificationDropdown />
 
             <Dropdown menu={userMenu} placement="bottomRight">
-              <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 rounded-full pr-3 pl-1 py-1 transition-colors">
-                <Avatar src={user?.avatar_url} icon={<UserOutlined />} />
-                <span className="font-medium text-gray-700 hidden sm:inline-block">
-                  {(user as any)?.full_name || (user as any)?.fullName || t('common.user')}
-                </span>
+              <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded-xl px-3 py-1.5 transition-colors">
+                <Avatar size={32} src={user?.avatar_url} icon={<UserOutlined />} className="bg-blue-500" />
+                <div className="hidden sm:block text-right">
+                  <div className="text-sm font-semibold text-gray-800 leading-tight">
+                    {(user as any)?.full_name || (user as any)?.fullName || t('common.user')}
+                  </div>
+                  <div className="text-xs text-gray-400 leading-tight">
+                    {user?.role === 'HEAD' ? 'Trưởng bộ môn' : user?.role === 'LECTURER' ? 'Giảng viên' : user?.role === 'STUDENT' ? 'Sinh viên' : 'Quản trị viên'}
+                  </div>
+                </div>
               </div>
             </Dropdown>
           </div>
-        </Header>
+        </header>
 
-        <Content className="bg-gray-50 min-h-[calc(100vh-64px)]">
+        {/* Page content */}
+        <main className="flex-1 bg-gray-50">
           <Suspense fallback={
             <div className="flex justify-center items-center h-64">
               <Spin size="large" />
@@ -248,9 +426,9 @@ const AppLayout = () => {
           }>
             <Outlet />
           </Suspense>
-        </Content>
-      </Layout>
-    </Layout>
+        </main>
+      </div>
+    </div>
   );
 };
 

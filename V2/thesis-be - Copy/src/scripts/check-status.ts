@@ -7,9 +7,9 @@ async function main() {
     let output = '=== KIEM TRA SO LUONG SINH VIEN TRONG DE TAI ===\n\n';
 
     // Get all topics with their current_students field and actual registrations
-    const topics = await prisma.topic.findMany({
+    const topics: any[] = await prisma.topic.findMany({
         where: {
-            status: { in: ['APPROVED', 'REGISTERED', 'UNDER_REVIEW'] }
+            status: { in: ['REGISTERED'] }
         },
         include: {
             registrations: {
@@ -18,7 +18,7 @@ async function main() {
                 }
             },
             supervisor: { select: { full_name: true } }
-        },
+        } as any,
         orderBy: { code: 'asc' }
     });
 

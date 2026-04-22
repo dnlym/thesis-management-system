@@ -38,6 +38,17 @@ export function useSemesters() {
     });
 }
 
+// Get current active semester
+export function useActiveSemester() {
+    return useQuery({
+        queryKey: [...semesterKeys.all, 'active'],
+        queryFn: async () => {
+            const response = await SemestersApi.getActive();
+            return response;
+        },
+    });
+}
+
 // Get semester by ID
 export function useSemester(id?: string) {
     return useQuery({

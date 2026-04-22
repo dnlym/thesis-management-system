@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tag } from 'antd';
+import { Tag, Tooltip } from 'antd';
 import type {
     TopicStatus,
+    ProgressStage,
     RegistrationStatus,
-    SubmissionStatus,
+
     AssignmentStatus,
     ExtraPointsStatus,
     StudentProgressStatus,
@@ -12,48 +13,27 @@ import type {
     SemesterStatus
 } from '@/types';
 
-interface StatusBadgeProps {
-    status:
-    | TopicStatus
-    | RegistrationStatus
-    | SubmissionStatus
-    | AssignmentStatus
-    | ExtraPointsStatus
-    | StudentProgressStatus
-    | SemesterPhase
-    | SemesterStatus;
-    className?: string;
-}
+// --- CONFIGURATIONS ---
 
 const topicStatusConfig: Record<TopicStatus, { labelKey: string; color: string }> = {
     DRAFT: { labelKey: 'status.topic.DRAFT', color: 'default' },
     PENDING_APPROVAL: { labelKey: 'status.topic.PENDING_APPROVAL', color: 'processing' },
+    REQUIRES_REVISION: { labelKey: 'status.topic.REQUIRES_REVISION', color: 'warning' },
     APPROVED: { labelKey: 'status.topic.APPROVED', color: 'success' },
     REJECTED: { labelKey: 'status.topic.REJECTED', color: 'error' },
-    REQUIRE_EDIT: { labelKey: 'status.topic.REQUIRE_EDIT', color: 'warning' },
     REGISTERED: { labelKey: 'status.topic.REGISTERED', color: 'cyan' },
-    UNDER_REVIEW: { labelKey: 'status.topic.UNDER_REVIEW', color: 'blue' },
-    WAITING_FOR_DEFENSE_ASSIGNMENT: { labelKey: 'status.topic.WAITING_FOR_DEFENSE_ASSIGNMENT', color: 'purple' },
-    WAITING_FOR_DEFENSE: { labelKey: 'status.topic.WAITING_FOR_DEFENSE', color: 'geekblue' },
+    WAITING_FOR_DEFENSE_ASSIGNMENT: { labelKey: 'status.topic.WAITING_FOR_DEFENSE_ASSIGNMENT', color: 'geekblue' },
     DEFENDING: { labelKey: 'status.topic.DEFENDING', color: 'magenta' },
     COMPLETED: { labelKey: 'status.topic.COMPLETED', color: 'green' },
     FINALIZED: { labelKey: 'status.topic.FINALIZED', color: '#87d068' },
-    HIDDEN: { labelKey: 'status.topic.HIDDEN', color: 'default' },
 };
 
-const semesterPhaseConfig: Record<SemesterPhase, { labelKey: string; color: string }> = {
-    PREVIEW: { labelKey: 'PREVIEW', color: 'default' },
-    REGISTRATION: { labelKey: 'REGISTRATION', color: 'cyan' },
-    WORK: { labelKey: 'WORK', color: 'processing' },
-    REVIEWING: { labelKey: 'REVIEWING', color: 'warning' },
-    DEFENSE: { labelKey: 'DEFENSE', color: 'purple' },
-    FINAL: { labelKey: 'FINAL', color: 'success' },
-};
-
-const semesterStatusConfig: Record<SemesterStatus, { labelKey: string; color: string }> = {
-    PLANNING: { labelKey: 'PLANNING', color: 'default' },
-    ACTIVE: { labelKey: 'ACTIVE', color: 'processing' },
-    COMPLETED: { labelKey: 'COMPLETED', color: 'success' },
+const progressStageConfig: Record<ProgressStage, { labelKey: string; color: string }> = {
+    WORKING: { labelKey: 'status.progress.WORKING', color: 'blue' },
+    REVIEWING: { labelKey: 'status.progress.REVIEWING', color: 'orange' },
+    READY_FOR_DEFENSE: { labelKey: 'status.progress.READY_FOR_DEFENSE', color: 'gold' },
+    DEFENDING: { labelKey: 'status.progress.DEFENDING', color: 'magenta' },
+    DONE: { labelKey: 'status.progress.DONE', color: 'green' },
 };
 
 const registrationStatusConfig: Record<RegistrationStatus, { labelKey: string; color: string }> = {
@@ -63,13 +43,7 @@ const registrationStatusConfig: Record<RegistrationStatus, { labelKey: string; c
     CANCELLED: { labelKey: 'status.registration.CANCELLED', color: 'default' },
 };
 
-const submissionStatusConfig: Record<SubmissionStatus, { labelKey: string; color: string }> = {
-    DRAFT: { labelKey: 'status.submission.DRAFT', color: 'default' },
-    SUBMITTED: { labelKey: 'status.submission.SUBMITTED', color: 'processing' },
-    APPROVED_FOR_REVIEW: { labelKey: 'status.submission.APPROVED_FOR_REVIEW', color: 'success' },
-    REVISION_REQUIRED: { labelKey: 'status.submission.REVISION_REQUIRED', color: 'warning' },
-    LOCKED: { labelKey: 'status.submission.LOCKED', color: 'error' },
-};
+
 
 const assignmentStatusConfig: Record<AssignmentStatus, { labelKey: string; color: string }> = {
     PENDING: { labelKey: 'status.assignment.PENDING', color: 'processing' },
@@ -84,13 +58,10 @@ const extraPointsStatusConfig: Record<ExtraPointsStatus, { labelKey: string; col
     WITHDRAWN: { labelKey: 'status.extraPoints.WITHDRAWN', color: 'default' },
 };
 
-const progressStatusConfig: Record<StudentProgressStatus, { labelKey: string; color: string }> = {
+const studentProgressConfig: Record<StudentProgressStatus, { labelKey: string; color: string }> = {
     NOT_STARTED: { labelKey: 'status.progress.NOT_STARTED', color: 'default' },
     HAS_TOPIC: { labelKey: 'status.progress.HAS_TOPIC', color: 'blue' },
-    PROPOSAL_SUBMITTED: { labelKey: 'status.progress.PROPOSAL_SUBMITTED', color: 'cyan' },
-    PROPOSAL_APPROVED: { labelKey: 'status.progress.PROPOSAL_APPROVED', color: 'success' },
-    THESIS_IN_PROGRESS: { labelKey: 'status.progress.THESIS_IN_PROGRESS', color: 'processing' },
-    THESIS_SUBMITTED: { labelKey: 'status.progress.THESIS_SUBMITTED', color: 'geekblue' },
+
     ADVISOR_GRADED: { labelKey: 'status.progress.ADVISOR_GRADED', color: 'purple' },
     REVIEWER_GRADED: { labelKey: 'status.progress.REVIEWER_GRADED', color: 'magenta' },
     DEFENSE_SCHEDULED: { labelKey: 'status.progress.DEFENSE_SCHEDULED', color: 'gold' },
@@ -99,43 +70,151 @@ const progressStatusConfig: Record<StudentProgressStatus, { labelKey: string; co
     COMPLETED: { labelKey: 'status.progress.COMPLETED', color: 'green' },
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+const semesterPhaseConfig: Record<SemesterPhase, { labelKey: string; color: string }> = {
+    PLANNING: { labelKey: 'PLANNING', color: 'default' },
+    PREVIEW: { labelKey: 'PREVIEW', color: 'blue' },
+    REGISTRATION: { labelKey: 'REGISTRATION', color: 'cyan' },
+    WORK: { labelKey: 'WORK', color: 'processing' },
+    REVIEWING: { labelKey: 'REVIEWING', color: 'warning' },
+    DEFENSE: { labelKey: 'DEFENSE', color: 'purple' },
+    FINAL: { labelKey: 'FINAL', color: 'success' },
+};
+
+const semesterStatusConfig: Record<SemesterStatus, { labelKey: string; color: string }> = {
+    PLANNING: { labelKey: 'PLANNING', color: 'default' },
+    ACTIVE: { labelKey: 'ACTIVE', color: 'processing' },
+    COMPLETED: { labelKey: 'COMPLETED', color: 'success' },
+};
+
+// --- DOMAIN-SPECIFIC COMPONENTS ---
+
+export const TopicStatusBadge = ({ 
+    status, 
+    progressStage, 
+    isVisible = true, 
+    isLocked = false, 
+    className = '' 
+}: { 
+    status: TopicStatus; 
+    progressStage?: ProgressStage; 
+    isVisible?: boolean; 
+    isLocked?: boolean; 
+    className?: string;
+}) => {
     const { t } = useTranslation();
-
-    const getStatusConfig = () => {
-        if (status in topicStatusConfig) {
-            return topicStatusConfig[status as TopicStatus];
-        }
-        if (status in registrationStatusConfig) {
-            return registrationStatusConfig[status as RegistrationStatus];
-        }
-        if (status in submissionStatusConfig) {
-            return submissionStatusConfig[status as SubmissionStatus];
-        }
-        if (status in assignmentStatusConfig) {
-            return assignmentStatusConfig[status as AssignmentStatus];
-        }
-        if (status in extraPointsStatusConfig) {
-            return extraPointsStatusConfig[status as ExtraPointsStatus];
-        }
-        if (status in progressStatusConfig) {
-            return progressStatusConfig[status as StudentProgressStatus];
-        }
-        if (status in (semesterPhaseConfig as any)) {
-            return semesterPhaseConfig[status as SemesterPhase];
-        }
-        if (status in semesterStatusConfig) {
-            return semesterStatusConfig[status as SemesterStatus];
-        }
-        return { labelKey: '', color: 'default' };
-    };
-
-    const config = getStatusConfig();
-    const label = config.labelKey ? t(config.labelKey) : status;
+    const config = topicStatusConfig[status] || { labelKey: '', color: 'default' };
 
     return (
-        <Tag color={config.color} className={className}>
-            {label}
-        </Tag>
+        <div className={`flex flex-wrap gap-1 items-center ${className}`}>
+            {!isVisible && (
+                <Tooltip title={t('topics.hiddenTooltip')}>
+                    <Tag color="default" icon={<i className="fas fa-eye-slash" />}>
+                        {t('status.topic.HIDDEN')}
+                    </Tag>
+                </Tooltip>
+            )}
+            
+            <Tag color={config.color}>
+                {config.labelKey ? t(config.labelKey) : status}
+            </Tag>
+
+            {status === 'REGISTERED' && progressStage && progressStageConfig[progressStage] && (
+                <Tag color={progressStageConfig[progressStage].color} bordered={false}>
+                    {t(progressStageConfig[progressStage].labelKey)}
+                </Tag>
+            )}
+
+            {isLocked && (
+                <Tooltip title={t('topics.lockedTooltip')}>
+                    <Tag color="volcano" icon={<i className="fas fa-lock" />}>
+                        Locked
+                    </Tag>
+                </Tooltip>
+            )}
+        </div>
     );
+};
+
+export const RegistrationStatusBadge = ({ status, className = '' }: { status: RegistrationStatus; className?: string }) => {
+    const { t } = useTranslation();
+    const config = registrationStatusConfig[status] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
+};
+
+
+
+export const AssignmentStatusBadge = ({ status, className = '' }: { status: AssignmentStatus; className?: string }) => {
+    const { t } = useTranslation();
+    const config = assignmentStatusConfig[status] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
+};
+
+export const ExtraPointsStatusBadge = ({ status, className = '' }: { status: ExtraPointsStatus; className?: string }) => {
+    const { t } = useTranslation();
+    const config = extraPointsStatusConfig[status] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
+};
+
+export const StudentProgressBadge = ({ status, className = '' }: { status: StudentProgressStatus; className?: string }) => {
+    const { t } = useTranslation();
+    const config = studentProgressConfig[status] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
+};
+
+export const SemesterPhaseBadge = ({ phase, className = '' }: { phase: SemesterPhase; className?: string }) => {
+    const { t } = useTranslation();
+    const config = semesterPhaseConfig[phase] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : phase}</Tag>;
+};
+
+export const SemesterStatusBadge = ({ status, className = '' }: { status: SemesterStatus; className?: string }) => {
+    const { t } = useTranslation();
+    const config = semesterStatusConfig[status] || { labelKey: '', color: 'default' };
+    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
+};
+
+// --- LEGACY WRAPPER (DEPRECATED) ---
+
+interface LegacyStatusBadgeProps {
+    type: 'topic' | 'registration' | 'assignment' | 'extraPoints' | 'progress' | 'semesterPhase' | 'semesterStatus' | 'semester';
+    status: any;
+    progressStage?: ProgressStage;
+    isVisible?: boolean;
+    isLocked?: boolean;
+    className?: string;
 }
+
+/**
+ * @deprecated Use specific badge components instead (e.g. TopicStatusBadge, RegistrationStatusBadge)
+ */
+export const StatusBadge = ({ type, status, ...props }: LegacyStatusBadgeProps) => {
+    if (process.env.NODE_ENV === 'development') {
+        // console.warn(`[DEPRECATED] StatusBadge is deprecated. Used for type: ${type}. Migrate to specific badge components.`);
+    }
+
+    switch (type) {
+        case 'topic':
+            return <TopicStatusBadge status={status} {...props} />;
+        case 'registration':
+            return <RegistrationStatusBadge status={status} className={props.className} />;
+
+        case 'assignment':
+            return <AssignmentStatusBadge status={status} className={props.className} />;
+        case 'extraPoints':
+            return <ExtraPointsStatusBadge status={status} className={props.className} />;
+        case 'progress':
+            return <StudentProgressBadge status={status} className={props.className} />;
+        case 'semesterPhase':
+            return <SemesterPhaseBadge phase={status} className={props.className} />;
+        case 'semesterStatus':
+            return <SemesterStatusBadge status={status} className={props.className} />;
+        case 'semester':
+            // Best effort for the union type in Settings.tsx
+            if (['PLANNING', 'ACTIVE', 'COMPLETED'].includes(status)) {
+                return <SemesterStatusBadge status={status as any} className={props.className} />;
+            }
+            return <SemesterPhaseBadge phase={status as any} className={props.className} />;
+        default:
+            return <Tag>{status}</Tag>;
+    }
+};

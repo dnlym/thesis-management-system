@@ -6,7 +6,7 @@ import {
     TrophyOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { StatusBadge } from '@/components/StatusBadge';
+import { AssignmentStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 
 import { Spin } from 'antd';
@@ -44,7 +44,7 @@ const ReviewerDashboard = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <AssignmentStatusBadge status={status} />,
         },
         {
             title: 'Ngày phân công',

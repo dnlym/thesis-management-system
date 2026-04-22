@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Timeline, Tag, Spin, Empty, Descriptions, Card, Collapse } from 'antd';
 import { HistoryOutlined, CheckCircleOutlined, CloseCircleOutlined, EditOutlined, SendOutlined, FileAddOutlined, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useQuery } from '@tanstack/react-query';
 import { TopicsApi } from '@/api/topics';
 import dayjs from 'dayjs';
@@ -94,11 +95,9 @@ const TopicHistoryModal = ({ topicId, visible, onClose }: TopicHistoryModalProps
                         ({roleMap[item.performedByRole] || item.performedByRole})
                     </span>
                 </div>
-                {item.statusChange?.from && item.statusChange?.to && (
                     <div className="text-sm text-gray-600 mt-1">
-                        Trạng thái: <Tag>{item.statusChange.from}</Tag> → <Tag color="blue">{item.statusChange.to}</Tag>
+                        Trạng thái: <TopicStatusBadge status={item.statusChange.from} /> → <TopicStatusBadge status={item.statusChange.to} />
                     </div>
-                )}
                 {item.reason && (
                     <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
                         <strong>Lý do:</strong> {item.reason}
@@ -169,7 +168,7 @@ const TopicHistoryModal = ({ topicId, visible, onClose }: TopicHistoryModalProps
                             <Descriptions.Item label="Tên đề tài">{data.topic?.title}</Descriptions.Item>
                             <Descriptions.Item label="GVHD">{data.topic?.supervisor?.full_name}</Descriptions.Item>
                             <Descriptions.Item label="Trạng thái hiện tại">
-                                <Tag color="blue">{data.topic?.currentStatus}</Tag>
+                                <TopicStatusBadge status={data.topic?.currentStatus} />
                             </Descriptions.Item>
                             <Descriptions.Item label="Tổng sự kiện">
                                 <Tag color="purple">{data.totalEvents} sự kiện</Tag>

@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Form, Input, InputNumber, Button, Divider, Alert, Modal, Select, Switch, Row, Col, Typography } from 'antd';
+import { Card, Form, Input, InputNumber, Button, Divider, Alert, Modal, Select, Switch, Row, Col, Typography, Spin, Tag } from 'antd';
 import { notify } from '@/utils/notification';
 import { SaveOutlined, SendOutlined, ArrowLeftOutlined, TeamOutlined } from '@ant-design/icons';
 import { RichTextEditor } from '@/components/RichTextEditor';
-import { useCreateTopic } from '@/hooks/useTopics';
-import { useSemesters } from '@/hooks/useSemesters';
+import { useCreateTopic, useTopics, useCloneTopic } from '@/hooks/useTopics';
+import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuthStore } from '@/store/auth';
 import type { TopicForm } from '@/types';
 import { canCreateTopic } from '@/utils/semester-rules';
+import { HistoryOutlined, CopyOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -22,9 +23,20 @@ const SupervisorCreateTopic = () => {
 
     const { user } = useAuthStore();
     const { data: semesters } = useSemesters();
+    const { data: activeSemesterData } = useActiveSemester();
     const { data: lecturers } = useUsers({ role: 'LECTURER' });
     const createMutation = useCreateTopic();
+    const cloneMutation = useCloneTopic();
     const isInterdisciplinary = Form.useWatch('isInterdisciplinary', form);
+
+    // Reuse Topic Modal State
+    const [reuseModalVisible, setReuseModalVisible] = useState(false);
+    const { data: allMyTopics, isLoading: isLoadingOld } = useTopics({ 
+        supervisorId: user?.id, 
+        includeAll: true 
+    });
+
+    const reusableTopics = allMyTopics?.topics?.filter(t => t.semester_id !== activeSemesterData?.id);
 
     const handleSubmit = async (isDraft = false) => {
         try {
@@ -83,6 +95,22 @@ const SupervisorCreateTopic = () => {
         }
     };
 
+    const handleClone = (topicId: string) => {
+        const activeSemester = semesters?.find(s => canCreateTopic(s));
+        if (!activeSemester) {
+            notify.error('Không tìm thấy học kỳ đang trong giai đoạn đề xuất');
+            return;
+        }
+
+        cloneMutation.mutate({ topicId, semesterId: activeSemester.id }, {
+            onSuccess: (clonedTopic) => {
+                setReuseModalVisible(false);
+                // Redirect to edit page so user can update or submit
+                navigate(`/topics/${clonedTopic.id}/edit`);
+            }
+        });
+    };
+
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
@@ -96,6 +124,15 @@ const SupervisorCreateTopic = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">Tạo đề tài mới</h1>
                     <p className="text-muted-foreground">Đề xuất đề tài khóa luận cho sinh viên</p>
+                </div>
+                <div className="flex-1 flex justify-end">
+                    <Button 
+                        icon={<HistoryOutlined />} 
+                        onClick={() => setReuseModalVisible(true)}
+                        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    >
+                        Tái sử dụng đề tài cũ
+                    </Button>
                 </div>
             </div>
 
@@ -272,6 +309,69 @@ const SupervisorCreateTopic = () => {
                     </div>
                 </Form>
             </Card>
+
+            {/* Reuse Topic Modal */}
+            <Modal
+                title={
+                    <div className="flex items-center space-x-2">
+                        <HistoryOutlined className="text-amber-500" />
+                        <span>Chọn đề tài từ các học kỳ trước</span>
+                    </div>
+                }
+                open={reuseModalVisible}
+                onCancel={() => setReuseModalVisible(false)}
+                footer={null}
+                width={800}
+                className="top-10"
+            >
+                <div className="space-y-4">
+                    <Alert 
+                        message="Lưu ý: Khi tái sử dụng, hệ thống sẽ tạo một bản nháp đề tài mới dựa trên nội dung cũ. Bạn có thể chỉnh sửa trước khi gửi phê duyệt."
+                        type="info"
+                        showIcon
+                        className="mb-4"
+                    />
+
+                    {isLoadingOld ? (
+                        <div className="py-20 text-center"><Spin /></div>
+                    ) : !reusableTopics || reusableTopics.length === 0 ? (
+                        <div className="py-20 text-center text-gray-500">
+                            Bạn chưa có đề tài ở các học kỳ khác.
+                        </div>
+                    ) : (
+                        <div className="max-h-[500px] overflow-y-auto pr-2">
+                            {reusableTopics.map(topic => (
+                                <div 
+                                    key={topic.id} 
+                                    className="p-4 mb-3 border rounded-lg hover:border-academic-primary group cursor-pointer transition-all flex justify-between items-center"
+                                    onClick={() => handleClone(topic.id)}
+                                >
+                                    <div className="flex-1 mr-4">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <Tag color="blue">{topic.semester?.name}</Tag>
+                                            <span className="text-xs text-gray-400">Mã: {topic.code}</span>
+                                        </div>
+                                        <h4 className="font-semibold text-base mb-1 group-hover:text-academic-primary transition-colors">
+                                            {topic.title}
+                                        </h4>
+                                        <div className="text-xs text-gray-500 line-clamp-2">
+                                            {topic.description?.replace(/<[^>]*>?/gm, '')}
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        type="primary" 
+                                        ghost 
+                                        icon={<CopyOutlined />}
+                                        loading={cloneMutation.isPending && cloneMutation.variables?.topicId === topic.id}
+                                    >
+                                        Sử dụng
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 };

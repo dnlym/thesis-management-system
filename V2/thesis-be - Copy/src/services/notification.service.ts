@@ -258,42 +258,7 @@ export class NotificationService {
     );
   }
 
-  async notifySubmissionUploaded(topicId: string, supervisorId: string, studentName: string, type: string) {
-    const topic = await prisma.topic.findUnique({ where: { id: topicId } });
-    if (!topic) return;
 
-    const typeLabels: any = {
-      PROPOSAL: 'Đề cương',
-      THESIS: 'Báo cáo khóa luận',
-      SOURCE_CODE: 'Mã nguồn',
-      PRESENTATION: 'Slide báo cáo',
-    };
-
-    await this.createNotification(
-      supervisorId,
-      'SUBMISSION_UPLOADED',
-      'Bài nộp mới',
-      `Sinh viên/Nhóm "${studentName}" đã nộp ${typeLabels[type] || type} cho đề tài "${topic.title}".`,
-      topicId
-    );
-  }
-
-  async notifySubmissionStatus(studentIds: string[], topicTitle: string, type: string, approved: boolean, reason?: string) {
-    const typeLabels: any = {
-      PROPOSAL: 'Đề cương',
-      THESIS: 'Báo cáo khóa luận',
-      SOURCE_CODE: 'Mã nguồn',
-      PRESENTATION: 'Slide báo cáo',
-    };
-
-    await this.createBulkNotifications(
-      studentIds,
-      'SUBMISSION_STATUS',
-      `Kết quả duyệt ${typeLabels[type] || type}`,
-      `${typeLabels[type] || type} của đề tài "${topicTitle}" đã được ${approved ? 'duyệt' : 'yêu cầu chỉnh sửa'}.${reason ? ` Lý do: ${reason}` : ''}`,
-      ''
-    );
-  }
 
   async notifyAssignmentCreated(assignmentId: string) {
     const assignment = await prisma.assignment.findUnique({

@@ -14,26 +14,29 @@ export type CommitteeRole = 'CHAIR' | 'SECRETARY' | 'MEMBER' | 'MEMBER_1' | 'MEM
 export type TopicStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
+  | 'REQUIRES_REVISION'
   | 'APPROVED'
   | 'REJECTED'
-  | 'REQUIRE_EDIT'
   | 'REGISTERED'
-  | 'UNDER_REVIEW'
   | 'WAITING_FOR_DEFENSE_ASSIGNMENT'
-  | 'WAITING_FOR_DEFENSE'
   | 'DEFENDING'
   | 'COMPLETED'
-  | 'FINALIZED'
-  | 'HIDDEN';
+  | 'FINALIZED';
+
+export type ProgressStage =
+  | 'WORKING'
+  | 'REVIEWING'
+  | 'READY_FOR_DEFENSE'
+  | 'DEFENDING'
+  | 'DONE';
 
 // Student Progress Status
 export type StudentProgressStatus =
   | 'NOT_STARTED'
   | 'HAS_TOPIC'
-  | 'PROPOSAL_SUBMITTED'
-  | 'PROPOSAL_APPROVED'
-  | 'THESIS_IN_PROGRESS'
-  | 'THESIS_SUBMITTED'
+  | 'HAS_TOPIC'
+  | 'ADVISOR_GRADED'
+  | 'REVIEWER_GRADED'
   | 'ADVISOR_GRADED'
   | 'REVIEWER_GRADED'
   | 'DEFENSE_SCHEDULED'
@@ -41,16 +44,7 @@ export type StudentProgressStatus =
   | 'COUNCIL_GRADED'
   | 'COMPLETED';
 
-// Submission Types
-export type SubmissionType = 'PROPOSAL' | 'REPORT' | 'SOURCE_CODE' | 'SLIDES';
 
-// Submission Status
-export type SubmissionStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'APPROVED_FOR_REVIEW'
-  | 'REVISION_REQUIRED'
-  | 'LOCKED';
 
 // Assignment Types
 export type AssignmentType = 'REVIEWER' | 'COMMITTEE';
@@ -67,14 +61,8 @@ export type ExtraPointsStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN
 // Rater Roles for Grading - Aligned with Backend
 export type RaterRole =
   | 'SUPERVISOR'
-  | 'REVIEWER_1'
-  | 'REVIEWER_2'
-  | 'REVIEWER_3'
-  | 'COMMITTEE_CHAIR'
-  | 'COMMITTEE_SECRETARY'
-  | 'COMMITTEE_MEMBER'
-  | 'COMMITTEE_MEMBER_1'
-  | 'COMMITTEE_MEMBER_2';
+  | 'REVIEWER'
+  | 'COMMITTEE';
 
 // Criteria Types
 export type CriteriaType = 'ADVISOR' | 'REVIEWER' | 'COUNCIL' | 'FINAL';
@@ -159,9 +147,14 @@ export interface Topic {
   committee?: Committee;
   students?: User[];
   is_interdisciplinary?: boolean;
+  is_visible?: boolean;
+  is_locked?: boolean;
+  progress_stage?: ProgressStage;
   co_supervisor_id?: string | null;
   secondary_department_id?: string | null;
   interdisciplinary_status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+  source_topic_id?: string | null;
+  source_topic?: Topic | null;
 }
 
 export interface Group {
@@ -189,35 +182,7 @@ export interface Registration {
   rejection_reason?: string | null;
 }
 
-export interface Submission {
-  id: string;
-  topic_id: string;
-  group_id: string;
-  type: SubmissionType;
-  current_version: number;
-  status: SubmissionStatus;
-  locked: boolean;
-  locked_by?: string | null;
-  locked_at?: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
-export interface SubmissionVersion {
-  id: string;
-  submission_id: string;
-  version: number;
-  file_url: string;
-  file_name: string;
-  file_size: number;
-  comments?: string | null;
-  uploaded_by: string;
-  uploaded_at: string;
-  approved: boolean;
-  approved_by?: string | null;
-  approved_at?: string | null;
-  rejection_reason?: string | null;
-}
 
 export interface Assignment {
   id: string;
@@ -298,6 +263,7 @@ export interface Grade {
   rater_id: string;
   rater_role: RaterRole;
   reviewer_order?: number | null;
+  committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
   scores: GradeScore[];
   submitted_at: string;
 }
@@ -408,20 +374,19 @@ export interface TopicForm {
   coSupervisorId?: string;
 }
 
-export interface SubmissionUploadForm {
-  topicId: string;
-  groupId: string;
-  type: SubmissionType;
-  file: File;
-  comments?: string;
-}
+
 
 export interface GradeSubmissionForm {
   topic_id: string;
-  student_id?: string;  // For per-student grading
+  student_id?: string;
   rater_role: RaterRole;
-  reviewer_order?: number;
-  scores: GradeScore[];
+  reviewer_order?: number | null;
+  committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
+  scores: {
+    criterion_id: string;
+    score: number;
+    comment?: string;
+  }[];
 }
 
 export interface ExtraPointsForm {
@@ -454,6 +419,7 @@ export type CreateDepartmentDto = Omit<Department, 'id' | 'createdAt' | 'updated
 export type UpdateDepartmentDto = Partial<CreateDepartmentDto>;
 
 export type CreateSemesterDto = Omit<Semester, 'id' | 'createdAt' | 'updatedAt'>;
+export type UpdateSemesterDto = Partial<CreateSemesterDto>;
 // Workflow & Permissions
 export interface ActionPermission {
   allowed: boolean;

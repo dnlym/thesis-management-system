@@ -66,15 +66,15 @@ router.post(
   topicController.rejectTopic.bind(topicController)
 );
 
-// Require edit (HEAD)
-router.put(
-  '/:topicId/require-edit',
+// Request revision (HEAD)
+router.patch(
+  '/:topicId/revision',
   authorize(UserRole.HEAD),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('notes').isLength({ min: 20 }).withMessage('Notes must be at least 20 characters'),
   ]),
-  topicController.requireEdit.bind(topicController)
+  topicController.requestRevision.bind(topicController)
 );
 
 router.get(
@@ -123,6 +123,30 @@ router.post(
   authorize(UserRole.LECTURER, UserRole.HEAD, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.hideTopic.bind(topicController)
+);
+
+// Clone topic (SUPERVISOR)
+router.post(
+  '/:topicId/clone',
+  authorize(UserRole.LECTURER),
+  validate([
+    param('topicId').isUUID().withMessage('Invalid topic ID'),
+    body('semesterId').notEmpty().withMessage('Semester ID is required'),
+  ]),
+  topicController.cloneTopic.bind(topicController)
+);
+
+// Finalize defense eligibility and type (HOD)
+router.post(
+  '/:topicId/finalize-defense-pivot',
+  authorize(UserRole.HEAD),
+  enforceAcademicAction(AcademicAction.ASSIGN_DEFENSE_PIVOT),
+  validate([
+    param('topicId').isUUID().withMessage('Invalid topic ID'),
+    body('isEligible').isBoolean().withMessage('isEligible must be boolean'),
+    body('defenseType').optional().isIn(['ORAL', 'POSTER']).withMessage('Invalid defense type'),
+  ]),
+  topicController.finalizeDefensePivot.bind(topicController)
 );
 
 // Unhide topic (restore to previous status)

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Table, Button, Modal, Descriptions, Tag, Input, Tabs, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
-import { StatusBadge } from '@/components/StatusBadge';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useTopics, useApproveTopic, useRejectTopic, useRequireEdit, useTopicStats } from '@/hooks/useTopics';
 import TopicHistoryModal from '@/components/TopicHistoryModal';
 
@@ -118,7 +118,7 @@ const HeadApproveTopics = () => {
             title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <TopicStatusBadge status={status} />,
         },
         {
             title: t('common.actions'),
@@ -381,7 +381,7 @@ const HeadApproveTopics = () => {
                                 {t('approveTopics.numStudents', { count: selectedTopic.max_students })}
                             </Descriptions.Item>
                             <Descriptions.Item label={t('common.status')}>
-                                <StatusBadge status={selectedTopic.status} />
+                                <TopicStatusBadge status={selectedTopic.status} />
                             </Descriptions.Item>
                             <Descriptions.Item label={t('topics.createdAt')}>
                                 {selectedTopic.created_at ? new Date(selectedTopic.created_at).toLocaleString('vi-VN') : 'N/A'}

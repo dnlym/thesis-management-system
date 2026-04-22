@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { CommitteeApi, Committee } from '@/api/committee';
 import { UsersApi } from '@/api/users';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useAuthStore } from '@/store/auth';
 
 const CommitteeManagement = () => {
     const { t } = useTranslation();
@@ -25,10 +26,13 @@ const CommitteeManagement = () => {
         enabled: !!semesterId,
     });
 
-    // Fetch lecturers for selection
+    const { user } = useAuthStore();
+
+    // Fetch lecturers in the exact same department
     const { data: lecturers } = useQuery({
-        queryKey: ['lecturers'],
-        queryFn: () => UsersApi.getAll({ role: 'LECTURER' }),
+        queryKey: ['lecturers', user?.department_id],
+        queryFn: () => UsersApi.getAll({ role: 'LECTURER', departmentId: user?.department_id }),
+        enabled: !!user?.department_id,
     });
 
     // Fetch lecturers who are already in a committee for this semester (global validation)

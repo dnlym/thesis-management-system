@@ -24,7 +24,7 @@ const FinalEvaluation = () => {
     const [searchParams] = useSearchParams();
 
     const topicId = searchParams.get('topicId');
-    const [activeRole, setActiveRole] = useState<'SUPERVISOR' | 'REVIEWER_1' | 'COMMITTEE'>('SUPERVISOR');
+    const [activeRole, setActiveRole] = useState<'SUPERVISOR' | 'REVIEWER' | 'COMMITTEE'>('SUPERVISOR');
 
     // Fetch topic details and permissions from Grading API
     const { data: gradingContext, isLoading: isLoadingGrading } = useQuery({
@@ -41,7 +41,7 @@ const FinalEvaluation = () => {
     const getPermissionForActiveRole = () => {
         if (!permissions) return { allowed: true, code: 'LOADING' };
         if (activeRole === 'SUPERVISOR') return { allowed: permissions.grade_supervisor, code: permissions.grade_supervisor_code, reason: permissions.grade_supervisor_reason };
-        if (activeRole === 'REVIEWER_1') return { allowed: permissions.grade_reviewer, code: permissions.grade_reviewer_code, reason: permissions.grade_reviewer_reason };
+        if (activeRole === 'REVIEWER') return { allowed: permissions.grade_reviewer, code: permissions.grade_reviewer_code, reason: permissions.grade_reviewer_reason };
         if (activeRole === 'COMMITTEE') return { allowed: permissions.grade_committee, code: permissions.grade_committee_code, reason: permissions.grade_committee_reason };
         return { allowed: false, code: 'UNKNOWN' };
     };
@@ -121,11 +121,9 @@ const FinalEvaluation = () => {
             calculateAverages();
         }
     }, [criteria, students]);
-
+    
     const getRaterRole = (): RaterRole => {
-        if (activeRole === 'SUPERVISOR') return 'SUPERVISOR' as RaterRole;
-        if (activeRole === 'REVIEWER_1') return 'REVIEWER_1' as RaterRole;
-        return 'COMMITTEE_MEMBER' as RaterRole;
+        return activeRole as RaterRole;
     };
 
     const handleSubmit = async () => {
@@ -143,6 +141,8 @@ const FinalEvaluation = () => {
                     topic_id: topicId!,
                     student_id: student.id,
                     rater_role: getRaterRole(),
+                    reviewer_order: activeRole === 'REVIEWER' ? (permissions?.reviewer_order || 1) : undefined,
+                    committee_role: activeRole === 'COMMITTEE' ? (permissions?.committee_role || 'MEMBER') : undefined,
                     scores: gradeScores,
                 };
             });
@@ -230,7 +230,7 @@ const FinalEvaluation = () => {
 
             <Card className="shadow-lg border-t-4 border-t-blue-600">
                 <Title level={3} className="text-center mb-1 uppercase tracking-wide">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
-                <Text type="secondary" className="block text-center mb-6 italic">(Dành cho {activeRole === 'SUPERVISOR' ? 'GVHD' : activeRole === 'REVIEWER_1' ? 'GVPB' : 'Hội đồng'})</Text>
+                <Text type="secondary" className="block text-center mb-6 italic">(Dành cho {activeRole === 'SUPERVISOR' ? 'GVHD' : activeRole === 'REVIEWER' ? 'GVPB' : 'Hội đồng'})</Text>
 
                 <div className="bg-blue-50 p-6 rounded-xl mb-6 border border-blue-100">
                     <Row gutter={32}>
@@ -259,7 +259,7 @@ const FinalEvaluation = () => {
                     className="mb-8"
                     items={[
                         { key: 'SUPERVISOR', label: 'GV Hướng dẫn' },
-                        { key: 'REVIEWER_1', label: 'GV Phản biện' },
+                        { key: 'REVIEWER', label: 'GV Phản biện' },
                         { key: 'COMMITTEE', label: 'Hội đồng' },
                     ]}
                 />

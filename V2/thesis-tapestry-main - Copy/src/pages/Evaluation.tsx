@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox } from 'antd';
+import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination } from 'antd';
 import { notify } from '@/utils/notification';
-import { SaveOutlined, ArrowLeftOutlined, UserOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { SaveOutlined, ArrowLeftOutlined, UserOutlined, CheckCircleOutlined, SearchOutlined, DownloadOutlined, WarningOutlined, CloseCircleOutlined, FlagOutlined } from '@ant-design/icons';
+import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
 import { TopicsApi } from '@/api/topics';
 import { AssignmentsApi } from '@/api/assignments';
 import { GradingApi } from '@/api/grading';
+import DefensePivotModal from '@/components/DefensePivotModal';
+import { useMutation } from '@tanstack/react-query';
 import type { GradeScore, RaterRole } from '@/types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -32,7 +35,15 @@ const Evaluation = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const topicId = searchParams.get('topicId');
-  const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || 'advisor');
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' ? 'department' : 'advisor'));
+
+  // HOD Pivot Modal state
+  const [pivotModalVisible, setPivotModalVisible] = useState(false);
+  const [selectedTopicForPivot, setSelectedTopicForPivot] = useState<any>(null);
+
+  // HOD Department dashboard state
+  const [deptSearch, setDeptSearch] = useState('');
+  const [activeSubTab, setActiveSubTab] = useState('missing_s');
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -62,6 +73,23 @@ const Evaluation = () => {
     enabled: !!user?.id && activeTab === 'council' && !topicId,
   });
 
+  const { data: summaryData, isLoading: isLoadingSummary, refetch: refetchSummary } = useQuery<any>({
+    queryKey: ['grade-summary', user?.id],
+    queryFn: () => GradingApi.getGradeSummary(),
+    enabled: !!user?.id && activeTab === 'department' && !topicId,
+  });
+
+  const finalizePivotMutation = useMutation({
+    mutationFn: (data: { topicId: string; isEligible: boolean; defenseType?: string }) => 
+      TopicsApi.finalizeDefensePivot(data.topicId, { isEligible: data.isEligible, defenseType: data.defenseType }),
+    onSuccess: (res) => {
+      notify.success(res.message || 'Cập nhật thành công');
+      setPivotModalVisible(false);
+      refetchSummary();
+    },
+    onError: (err: any) => notify.error(err.message || 'Lỗi khi chốt quyết định'),
+  });
+
   // 2. Grading mode queries
   const { data: selectedTopic, isLoading: isLoadingTopic } = useQuery({
     queryKey: ['topic', topicId],
@@ -77,20 +105,19 @@ const Evaluation = () => {
 
   const getRaterRole = (): RaterRole => {
     if (activeTab === 'advisor') return 'SUPERVISOR';
-    if (activeTab === 'reviewer' && currentAssignment) {
-        const order = currentAssignment.reviewer_order || 1;
-        return (order === 1 ? 'REVIEWER_1' : order === 2 ? 'REVIEWER_2' : 'REVIEWER_3') as any;
-    }
-    if (activeTab === 'council' && currentAssignment) {
-        const role = currentAssignment.committee_role;
-        return (role === 'CHAIR' ? 'COMMITTEE_CHAIR' : role === 'SECRETARY' ? 'COMMITTEE_SECRETARY' : 'COMMITTEE_MEMBER') as any;
-    }
+    if (activeTab === 'reviewer') return 'REVIEWER';
+    if (activeTab === 'council') return 'COMMITTEE';
     return 'SUPERVISOR';
   };
 
   const { data: myGradesData, isLoading: isLoadingMyGrades } = useQuery({
-    queryKey: ['my-grades', topicId, getRaterRole()],
-    queryFn: () => GradingApi.getMyGrades(topicId!, getRaterRole()),
+    queryKey: ['my-grades', topicId, getRaterRole(), currentAssignment?.reviewer_order, currentAssignment?.committee_role],
+    queryFn: () => GradingApi.getMyGrades(
+        topicId!, 
+        getRaterRole(), 
+        currentAssignment?.reviewer_order, 
+        currentAssignment?.committee_role
+    ),
     enabled: !!topicId,
   });
 
@@ -214,14 +241,7 @@ const Evaluation = () => {
   };
 
   const renderTopicStatus = (status: string) => {
-    let color = 'default';
-    switch (status) {
-      case 'APPROVED': color = 'green'; break;
-      case 'UNDER_REVIEW': color = 'orange'; break;
-      case 'WAITING_FOR_DEFENSE': color = 'purple'; break;
-      case 'COMPLETED': color = 'success'; break;
-    }
-    return <Tag color={color}>{status}</Tag>;
+    return <TopicStatusBadge status={status as any} />;
   };
 
   if (topicId) {
@@ -353,32 +373,263 @@ const Evaluation = () => {
     );
   }
 
-  // Dashboard view
+  // Shared columns for Advisor / Reviewer / Council tabs
   const dashboardColumns = [
+    { title: 'STT', key: 'stt', width: 60, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
     { title: 'Mã ĐT', dataIndex: 'code', key: 'code', width: 100, render: (t: string) => <Tag>{t || 'N/A'}</Tag> },
     { title: 'Tên đề tài', dataIndex: 'title', key: 'title', render: (t: string, r: any) => (
         <div><div className="font-medium text-base">{t}</div><div className="text-xs text-gray-500">GVHD: {r.supervisor?.full_name}</div></div>
     )},
-    { title: 'Sinh viên', key: 'students', render: (_, r: any) => {
+    { title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
         const m = r.registrations?.[0]?.group?.members || [];
         return <Avatar.Group>{m.map((mi: any) => <Avatar key={mi.user.id} src={mi.user.avatar_url}>{mi.user.full_name?.[0]}</Avatar>)}</Avatar.Group>;
     }},
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => renderTopicStatus(s) },
-    { title: 'Hành động', key: 'action', render: (_, r: any) => (
+    { title: 'Hành động', key: 'action', render: (_: any, r: any) => (
       <Button type="primary" onClick={() => setSearchParams({ topicId: r.id })}>Xem & Chấm điểm</Button>
     )},
   ];
 
+  // Department dashboard
+  const renderDepartmentTab = () => {
+    if (isLoadingSummary) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
+    if (!summaryData) return null;
+
+    const allTopics = summaryData.allTopics || [];
+    const readyTopics = summaryData.ready || [];
+    const missingSupervisorTopics = summaryData.missingSupervisor || [];
+    const missingReviewerTopics = summaryData.missingReviewer || [];
+    const finalizedTopics = summaryData.finalized || [];
+    const getFilteredData = (data: any[]) => {
+      if (!deptSearch) return data;
+      const q = deptSearch.toLowerCase();
+      return data.filter(r =>
+        r.title?.toLowerCase().includes(q) ||
+        r.code?.toLowerCase().includes(q) ||
+        r.supervisor?.full_name?.toLowerCase().includes(q) ||
+        r.registrations?.some((reg: any) => reg.student?.full_name?.toLowerCase().includes(q) || reg.student?.student_code?.includes(q))
+      );
+    };
+
+    const tabData: Record<string, any[]> = {
+      all: allTopics,
+      missing_s: missingSupervisorTopics,
+      missing_r: missingReviewerTopics,
+      ready: readyTopics,
+      finalized: finalizedTopics,
+    };
+
+    const currentData = getFilteredData(tabData[activeSubTab] || []);
+
+    const columns = [
+      { title: '#', key: 'idx', width: 48, align: 'center' as const, render: (_: any, __: any, i: number) => <Text type="secondary" className="text-xs">{i + 1}</Text> },
+      { title: 'Mã đề tài', dataIndex: 'code', key: 'code', width: 130, render: (t: string) => <Tag className="font-mono text-xs">{t || 'N/A'}</Tag> },
+      {
+        title: 'Tên đề tài', dataIndex: 'title', key: 'title',
+        render: (t: string) => <Text className="font-medium text-sm leading-snug" style={{ display: 'block', maxWidth: 280 }}>{t}</Text>
+      },
+      {
+        title: 'Sinh viên', key: 'students', width: 160,
+        render: (_: any, r: any) => {
+          const regs = r.registrations || [];
+          if (regs.length === 0) return <Text type="secondary" className="text-xs">Chưa có SV</Text>;
+          return (
+            <div className="space-y-1">
+              {regs.slice(0, 2).map((reg: any) => (
+                <div key={reg.student?.id} className="text-xs leading-tight">
+                  <div className="font-medium">{reg.student?.full_name}</div>
+                  <div className="text-gray-400">MSSV: {reg.student?.student_code || 'N/A'}</div>
+                </div>
+              ))}
+            </div>
+          );
+        }
+      },
+      {
+        title: 'GVHD', key: 'supervisor', width: 160,
+        render: (_: any, r: any) => r.supervisor
+          ? <div className="text-xs"><div className="font-medium">{r.supervisor.full_name}</div></div>
+          : <Tag color="red" className="text-xs">Chưa có GVHD</Tag>
+      },
+      {
+        title: 'Tiến độ chấm điểm', key: 'progress', width: 180,
+        render: (_: any, r: any) => (
+          <Space direction="vertical" size={6} className="w-full">
+            <div className="flex justify-between items-center">
+              {r.gradingStatus?.supervisorGraded
+                ? <Tag color="green" className="m-0 text-xs">✓ GVHD đã chấm</Tag>
+                : <Tag color="red" className="m-0 text-xs">● Chưa có điểm GVHD</Tag>}
+            </div>
+            <div className="flex items-center gap-1">
+              <Tag color={r.gradingStatus?.isReviewerComplete ? 'green' : 'orange'} className="m-0 text-xs">
+                Phản biện: {r.gradingStatus?.reviewerGradedCount ?? 0}/{r.gradingStatus?.totalReviewersRequired ?? 2}
+              </Tag>
+            </div>
+          </Space>
+        )
+      },
+      {
+        title: 'Trạng thái xét', key: 'review_status', width: 160,
+        render: (_: any, r: any) => {
+          if (r.is_eligible_for_defense !== null && r.is_eligible_for_defense !== undefined) {
+            return <Tag color="blue" className="text-xs">Đã phân loại</Tag>;
+          }
+          if (r.gradingStatus?.isReadyForDecision) {
+            return <Tag color="green" className="text-xs">Sẵn sàng xét</Tag>;
+          }
+          if (!r.gradingStatus?.supervisorGraded) {
+            return <Tag color="red" className="text-xs">Chưa đủ điều kiện</Tag>;
+          }
+          return <Tag color="orange" className="text-xs">Chưa đủ điều kiện</Tag>;
+        }
+      },
+      {
+        title: 'Hành động', key: 'action', width: 140, align: 'center' as const,
+        render: (_: any, r: any) => (
+          <Button size="small" onClick={() => navigate(`/topics/${r.id}`)} className="text-xs">Xem chi tiết ›</Button>
+        )
+      },
+    ];
+
+    const subTabConfig = [
+      { key: 'missing_s', icon: <CloseCircleOutlined />, color: '#ff4d4f', label: `Thiếu GVHD (${missingSupervisorTopics.length})`, data: missingSupervisorTopics },
+      { key: 'missing_r', icon: <WarningOutlined />, color: '#fa8c16', label: `Thiếu phản biện (${missingReviewerTopics.length})`, data: missingReviewerTopics },
+      { key: 'ready', icon: <CheckCircleOutlined />, color: '#52c41a', label: `Sẵn sàng xét (${readyTopics.length})`, data: readyTopics },
+      { key: 'finalized', icon: <FlagOutlined />, color: '#1677ff', label: `Đã quyết định (${finalizedTopics.length})`, data: finalizedTopics },
+    ];
+
+    return (
+      <div>
+        {/* Summary stat cards */}
+        <Row gutter={[16, 16]} className="mb-6">
+          {[
+            { key: 'missing_s', icon: <CloseCircleOutlined style={{ fontSize: 28, color: '#ff4d4f' }} />, label: 'Thiếu GVHD', count: missingSupervisorTopics.length, desc: 'Chưa có điểm của giảng viên hướng dẫn', color: '#fff1f0', border: '#ffccc7', textColor: '#cf1322' },
+            { key: 'missing_r', icon: <WarningOutlined style={{ fontSize: 28, color: '#fa8c16' }} />, label: 'Thiếu phản biện', count: missingReviewerTopics.length, desc: 'Chưa đủ điểm của phản biện', color: '#fff7e6', border: '#ffd591', textColor: '#d46b08' },
+            { key: 'ready', icon: <CheckCircleOutlined style={{ fontSize: 28, color: '#52c41a' }} />, label: 'Sẵn sàng xét', count: readyTopics.length, desc: 'Đã đủ điểm, chờ phân loại', color: '#f6ffed', border: '#b7eb8f', textColor: '#389e0d' },
+            { key: 'finalized', icon: <FlagOutlined style={{ fontSize: 28, color: '#1677ff' }} />, label: 'Đã quyết định', count: finalizedTopics.length, desc: 'Đã phân loại (Oral/Poster/Không đạt)', color: '#e6f4ff', border: '#91caff', textColor: '#0958d9' },
+          ].map(card => (
+            <Col xs={24} sm={12} lg={6} key={card.key}>
+              <div
+                className="rounded-xl p-4 cursor-pointer transition-all hover:shadow-md"
+                style={{ background: card.color, border: `1.5px solid ${card.border}` }}
+                onClick={() => setActiveSubTab(card.key)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="mt-1">{card.icon}</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium" style={{ color: card.textColor }}>{card.label}</div>
+                    <div className="text-4xl font-bold mt-0.5" style={{ color: card.textColor }}>{card.count}</div>
+                    <div className="text-xs text-gray-500 mt-1">Đề tài</div>
+                  </div>
+                </div>
+                <div className="text-xs mt-3" style={{ color: card.textColor, opacity: 0.8 }}>{card.desc} <span className="ml-1">›</span></div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {subTabConfig.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveSubTab(tab.key)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border"
+              style={activeSubTab === tab.key
+                ? { background: tab.color, color: '#fff', borderColor: tab.color }
+                : { background: '#fff', color: '#555', borderColor: '#d9d9d9' }}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Sub-tab description */}
+        <div className="text-xs text-gray-500 mb-3">
+          {activeSubTab === 'missing_s' && 'Danh sách đề tài chưa có điểm của Giảng viên hướng dẫn'}
+          {activeSubTab === 'missing_r' && 'Danh sách đề tài chưa đủ điểm của Giảng viên phản biện được phân công'}
+          {activeSubTab === 'ready' && 'Danh sách đề tài đã đủ điểm GVHD + Phản biện, chờ Trưởng bộ môn phân loại'}
+          {activeSubTab === 'finalized' && 'Danh sách đề tài đã được phân loại hình thức bảo vệ'}
+        </div>
+
+        {/* Search + Filter bar */}
+        <div className="flex gap-3 mb-4 flex-wrap items-center">
+          <Input
+            prefix={<SearchOutlined className="text-gray-400" />}
+            placeholder="Tìm kiếm theo tên đề tài, mã đề tài, sinh viên..."
+            value={deptSearch}
+            onChange={e => setDeptSearch(e.target.value)}
+            allowClear
+            className="flex-1 min-w-52 max-w-md"
+          />
+          <Button icon={<DownloadOutlined />} className="ml-auto">Xuất Excel</Button>
+        </div>
+
+        {/* Table */}
+        <Table
+          dataSource={currentData}
+          rowKey="id"
+          columns={columns}
+          pagination={{ pageSize: 10, showTotal: (total) => `Hiển thị 1 - ${Math.min(10, total)} của ${total} đề tài`, showSizeChanger: false }}
+          className="rounded-lg overflow-hidden"
+          rowClassName="hover:bg-blue-50 transition-colors"
+          locale={{ emptyText: <div className="py-10 text-gray-400 text-center">Không có đề tài nào trong mục này</div> }}
+        />
+
+        {/* Legend */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="text-xs font-semibold text-gray-500 mb-3">Giải thích trạng thái xét</div>
+          <Row gutter={16}>
+            {[
+              { icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />, title: 'Thiếu GVHD', desc: 'Chưa có điểm của Giảng viên hướng dẫn' },
+              { icon: <WarningOutlined style={{ color: '#fa8c16' }} />, title: 'Thiếu phản biện', desc: 'Chưa đủ điểm của tất cả phản biện được phân công' },
+              { icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />, title: 'Sẵn sàng xét', desc: 'Đã đủ điểm (GVHD + tất cả phản biện), chờ Trưởng bộ môn phân loại' },
+              { icon: <FlagOutlined style={{ color: '#1677ff' }} />, title: 'Đã quyết định', desc: 'Đã được phân loại (Oral/Poster/Không đạt), chờ bước Hội đồng' },
+            ].map((item, i) => (
+              <Col xs={24} sm={12} lg={6} key={i}>
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 text-base">{item.icon}</span>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-700">{item.title}</div>
+                    <div className="text-xs text-gray-500 leading-snug">{item.desc}</div>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6">
-      <div className="mb-6"><h1 className="text-2xl font-bold">Đánh giá khóa luận</h1><p className="text-gray-500">Quản lý và chấm điểm các đề tài được phân công</p></div>
-      <Card className="shadow-soft"><Tabs activeKey={activeTab} onChange={setActiveTab} type="card"
-        items={[
-          { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} /> },
-          { key: 'reviewer', label: 'Phản biên', children: <Table dataSource={reviewerAssignments?.map((a: any) => a.topic) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} /> },
-          { key: 'council', label: 'Hội đồng', children: <Table dataSource={councilAssignments?.map((a: any) => a.topic) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} /> },
-        ]}
-      /></Card>
+      <div className="mb-6"><h1 className="text-2xl font-bold">Đánh giá khóa luận</h1><p className="text-gray-500">Quản lý và theo dõi tiến độ chấm điểm các đề tài</p></div>
+      <Card className="shadow-soft">
+        <Tabs activeKey={activeTab} onChange={setActiveTab} type="card"
+          items={[
+            ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Bộ môn', children: renderDepartmentTab() }] : []),
+            { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} /> },
+            { key: 'reviewer', label: 'Phản biện', children: <Table dataSource={reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} /> },
+            { key: 'council', label: 'Hội đồng', children: <Table dataSource={councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} /> },
+          ]}
+        />
+      </Card>
+
+      <DefensePivotModal
+        visible={pivotModalVisible}
+        onCancel={() => setPivotModalVisible(false)}
+        topic={selectedTopicForPivot}
+        loading={finalizePivotMutation.isPending}
+        onConfirm={(data) => {
+          finalizePivotMutation.mutate({
+            topicId: selectedTopicForPivot.id,
+            isEligible: data.isEligible,
+            defenseType: data.defenseType,
+          });
+        }}
+      />
     </div>
   );
 };

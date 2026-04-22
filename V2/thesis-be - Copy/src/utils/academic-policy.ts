@@ -16,19 +16,16 @@ export enum AcademicAction {
   JOIN_GROUP = 'JOIN_GROUP',
   CANCEL_REGISTRATION = 'CANCEL_REGISTRATION',
   
-  // Submission & Work
-  SUBMIT_PROPOSAL = 'SUBMIT_PROPOSAL',
-  SUBMIT_MIDTERM = 'SUBMIT_MIDTERM',
-  SUBMIT_THESIS = 'SUBMIT_THESIS',
-  SUBMIT_SOURCE_CODE = 'SUBMIT_SOURCE_CODE',
-  
+  // Work & Extra Points
+  SUBMIT_EXTRA_POINTS = 'SUBMIT_EXTRA_POINTS',
+
   // Grading
   GRADE_MIDTERM = 'GRADE_MIDTERM',
   GRADE_SUPERVISOR = 'GRADE_SUPERVISOR',
   GRADE_REVIEWER = 'GRADE_REVIEWER',
   GRADE_COMMITTEE = 'GRADE_COMMITTEE',
+  ASSIGN_DEFENSE_PIVOT = 'ASSIGN_DEFENSE_PIVOT',
   FINALIZE_SCORE = 'FINALIZE_SCORE',
-  SUBMIT_EXTRA_POINTS = 'SUBMIT_EXTRA_POINTS',
 }
 
 /**
@@ -100,12 +97,29 @@ export class AcademicPolicy {
 
     switch (action) {
       // ─── TOPIC MANAGEMENT ──────────────────────────────────────────────
-      case AcademicAction.CREATE_TOPIC:
       case AcademicAction.UPDATE_TOPIC:
       case AcademicAction.DELETE_TOPIC:
+        // 1. Global Phase Lock: Locked from REVIEWING phase onwards
+        const lockedPhases: string[] = [SemesterPhase.REVIEWING, SemesterPhase.DEFENSE, SemesterPhase.FINAL];
+        if (phase && lockedPhases.includes(phase)) {
+          return { allowed: false, reason: 'Đề tài đã bị khóa do đang trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'PHASE_LOCKED' };
+        }
+
+        // 2. Manual Lock: If the specific topic is locked
+        if (registration?.topic?.is_locked) {
+          return { allowed: false, reason: 'Đề tài này đã bị khóa thủ công bởi quản trị viên.', code: 'MANUAL_LOCKED' };
+        }
+
         // Allowed only during PLANNING (preparation) or PREVIEW (proposal window)
+        // Note: We might allow updates in REGISTRATION/WORK if they are not locked yet (UX choice)
+        if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW && phase !== SemesterPhase.REGISTRATION && phase !== SemesterPhase.WORK) {
+          return { allowed: false, reason: 'Chỉ được phép quản lý đề tài trong các giai đoạn cho phép (Chuẩn bị, Đăng ký hoặc Thực hiện).' };
+        }
+        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
+
+      case AcademicAction.CREATE_TOPIC:
         if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW) {
-          return { allowed: false, reason: 'Chỉ được phép quản lý đề tài trong giai đoạn Chuẩn bị hoặc Công bố (PREVIEW).' };
+          return { allowed: false, reason: 'Chỉ được phép tạo đề tài trong giai đoạn Chuẩn bị hoặc Công bố (PREVIEW).' };
         }
         return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
 
@@ -127,19 +141,13 @@ export class AcademicPolicy {
         }
         return { allowed: user.role === UserRole.STUDENT };
 
-      // ─── WORK & SUBMISSIONS ───────────────────────────────────────────
-      case AcademicAction.SUBMIT_PROPOSAL:
-        if (phase !== SemesterPhase.WORK) {
-          return { allowed: false, reason: 'Chỉ được nộp đề cương trong giai đoạn Thực hiện (WORK).', code: 'INVALID_PHASE' };
+      // ─── WORK & EXTRA POINTS ───────────────────────────────────────────
+      case AcademicAction.SUBMIT_EXTRA_POINTS:
+        if (phase !== SemesterPhase.WORK && phase !== SemesterPhase.REVIEWING) {
+          return { allowed: false, reason: 'Chỉ được nộp minh chứng điểm cộng trong giai đoạn Thực hiện hoặc Phản biện.', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
-
-      case AcademicAction.SUBMIT_MIDTERM:
-        if (phase !== SemesterPhase.WORK) {
-          return { allowed: false, reason: 'Chỉ được nộp báo cáo giữa kỳ trong giai đoạn Thực hiện (WORK).', code: 'INVALID_PHASE' };
-        }
-        if (!timeline.isMidtermActive) {
-          return { allowed: false, reason: 'Hiện không trong khoảng thời gian nộp báo cáo giữa kỳ.', code: 'OUT_OF_TIME' };
+        if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
+          return { allowed: false, reason: 'Bạn cần đạt điểm giữa kỳ (PASS) trước khi nộp minh chứng NCKH.', code: 'MIDTERM_REQUIRED' };
         }
         return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
 
@@ -155,37 +163,26 @@ export class AcademicPolicy {
         }
         return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD, code: 'ALLOWED' };
 
-      case AcademicAction.SUBMIT_THESIS:
-      case AcademicAction.SUBMIT_SOURCE_CODE:
-        if (phase !== SemesterPhase.REVIEWING) {
-          return { allowed: false, reason: 'Chỉ được nộp báo cáo cuối kỳ/source code trong giai đoạn Phản biện.', code: 'INVALID_PHASE' };
-        }
-        if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
-          return { allowed: false, reason: 'Bạn chưa đạt điểm giữa kỳ để thực hiện bước này.', code: 'MIDTERM_REQUIRED' };
-        }
-        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
-
-      case AcademicAction.SUBMIT_EXTRA_POINTS:
-        if (phase !== SemesterPhase.WORK && phase !== SemesterPhase.REVIEWING) {
-          return { allowed: false, reason: 'Chỉ được nộp minh chứng điểm cộng trong giai đoạn Thực hiện hoặc Phản biện.', code: 'INVALID_PHASE' };
-        }
-        if (!registration || (registration.midterm_status !== 'PASS' && registration.midterm_status !== 'pass')) {
-          return { allowed: false, reason: 'Bạn cần đạt điểm giữa kỳ (PASS) trước khi nộp minh chứng NCKH.', code: 'MIDTERM_REQUIRED' };
-        }
-        return { allowed: user.role === UserRole.STUDENT, code: 'ALLOWED' };
-
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        if (phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'GVHD chỉ được chấm điểm trong giai đoạn Tổng hợp (FINAL).', code: 'INVALID_PHASE' };
+        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'GVHD chỉ được chấm điểm từ giai đoạn Phản biện trở đi.', code: 'INVALID_PHASE' };
+        }
+        // Lock: No edits if HOD already made a decision
+        if (registration?.topic?.is_eligible_for_defense !== null && registration?.topic?.is_eligible_for_defense !== undefined) {
+          return { allowed: false, reason: 'Quyết định xét bảo vệ đã được chốt, không thể sửa điểm.', code: 'ALREADY_FINALIZED' };
         }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        if (phase !== SemesterPhase.REVIEWING) {
-          return { allowed: false, reason: 'GVPB chỉ được chấm điểm trong giai đoạn Phản biện (REVIEWING).', code: 'INVALID_PHASE' };
+        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
+          return { allowed: false, reason: 'GVPB chỉ được chấm điểm trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
+        }
+        // Lock: No edits if HOD already made a decision
+        if (registration?.topic?.is_eligible_for_defense !== null && registration?.topic?.is_eligible_for_defense !== undefined) {
+          return { allowed: false, reason: 'Quyết định xét bảo vệ đã được chốt, không thể sửa điểm.', code: 'ALREADY_FINALIZED' };
         }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
@@ -194,7 +191,17 @@ export class AcademicPolicy {
         if (phase !== SemesterPhase.DEFENSE) {
           return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm trong giai đoạn Bảo vệ (DEFENSE).', code: 'INVALID_PHASE' };
         }
+        // Strict Guard: Must be eligible
+        if (!registration?.topic?.is_eligible_for_defense) {
+          return { allowed: false, reason: 'Đề tài chưa được duyệt đủ điều kiện ra Hội đồng.', code: 'NOT_ELIGIBLE' };
+        }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
+
+      case AcademicAction.ASSIGN_DEFENSE_PIVOT:
+        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
+          return { allowed: false, reason: 'Chỉ được xét duyệt hình thức bảo vệ trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
+        }
+        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
 
       case AcademicAction.FINALIZE_SCORE:
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {

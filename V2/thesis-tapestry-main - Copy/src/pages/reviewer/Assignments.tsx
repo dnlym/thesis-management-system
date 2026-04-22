@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Table, Button, Modal, Descriptions, Tag, Spin, Input } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons';
-import { StatusBadge } from '@/components/StatusBadge';
+import { AssignmentStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useAssignments, useAcceptAssignment, useDeclineAssignment } from '@/hooks/useAssignments';
 
@@ -82,7 +82,7 @@ const ReviewerAssignments = () => {
             title: 'Trạng thái',
             dataIndex: 'status',
             key: 'status',
-            render: (status: any) => <StatusBadge status={status} />,
+            render: (status: any) => <AssignmentStatusBadge status={status} />,
         },
         {
             title: 'Ngày phân công',
@@ -195,7 +195,7 @@ const ReviewerAssignments = () => {
                                 <Tag color="blue">GVPB {selectedAssignment.reviewerOrder}</Tag>
                             </Descriptions.Item>
                             <Descriptions.Item label="Trạng thái">
-                                <StatusBadge status={selectedAssignment.status} />
+                                <AssignmentStatusBadge status={selectedAssignment.status} />
                             </Descriptions.Item>
                             <Descriptions.Item label="Ngày phân công">
                                 {new Date(selectedAssignment.assignedAt).toLocaleString('vi-VN')}

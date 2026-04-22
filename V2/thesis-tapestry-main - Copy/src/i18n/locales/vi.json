@@ -61,6 +61,7 @@
     "reports": "Báo cáo",
     "messages": "Tin nhắn",
     "semesterSettings": "Cài đặt Học kỳ",
+    "management": "Quản lý",
     "admin": "Quản trị",
     "users": "Người dùng",
     "roles": "Vai trò",
@@ -214,6 +215,11 @@
       "WITHDRAWN": "Đã rút"
     },
     "progress": {
+      "WORKING": "Đang thực hiện",
+      "REVIEWING": "Đang phản biện",
+      "READY_FOR_DEFENSE": "Sẵn sàng bảo vệ",
+      "DEFENDING": "Đang bảo vệ",
+      "DONE": "Hoàn thành",
       "NOT_STARTED": "Chưa bắt đầu",
       "HAS_TOPIC": "Đã có đề tài",
       "PROPOSAL_SUBMITTED": "Đã nộp đề cương",
