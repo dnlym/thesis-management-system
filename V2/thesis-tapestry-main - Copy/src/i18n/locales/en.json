@@ -117,11 +117,40 @@
       "ADMIN": "System administrator"
     },
     "permissionsList": {
-      "STUDENT": ["Register topics", "Update progress", "Submit work", "View schedule", "Send messages"],
-      "LECTURER": ["Create and edit topics", "Evaluate student progress", "Enter supervisor scores", "Enter reviewer scores", "Manage schedule", "Send messages"],
-      "HEAD_OF_DEPT": ["Approve topics", "Assign supervisors/reviewers", "Assign committees", "View reports", "Manage users", "Configure evaluation criteria"],
-      "COUNCIL": ["Enter committee scores", "View defense schedule", "Send messages"],
-      "ADMIN": ["Full system management", "Manage users and roles", "System configuration", "Backup and restore data"]
+      "STUDENT": [
+        "Register topics",
+        "Update progress",
+        "Submit work",
+        "View schedule",
+        "Send messages"
+      ],
+      "LECTURER": [
+        "Create and edit topics",
+        "Evaluate student progress",
+        "Enter supervisor scores",
+        "Enter reviewer scores",
+        "Manage schedule",
+        "Send messages"
+      ],
+      "HEAD_OF_DEPT": [
+        "Approve topics",
+        "Assign supervisors/reviewers",
+        "Assign committees",
+        "View reports",
+        "Manage users",
+        "Configure evaluation criteria"
+      ],
+      "COUNCIL": [
+        "Enter committee scores",
+        "View defense schedule",
+        "Send messages"
+      ],
+      "ADMIN": [
+        "Full system management",
+        "Manage users and roles",
+        "System configuration",
+        "Backup and restore data"
+      ]
     }
   },
   "status": {
@@ -480,7 +509,7 @@
     "noReviewersSelected": "Please select at least one reviewer!",
     "assignSuccess": "Assignment successful!",
     "assignError": "Assignment failed!",
-    "deadline": "Grading Deadline",
+    "deadline": "Grading Date",
     "selectReviewer": "Select Reviewer",
     "selectPB1": "Select Reviewer 1...",
     "selectPB2": "Select Reviewer 2...",
@@ -636,5 +665,9 @@
     "semesterNameRequired": "Please enter semester name",
     "semesterCodeRequired": "Please enter code",
     "deptNameRequired": "Please enter department name"
+  },
+  "defenseSchedule": {
+    "room": "Room",
+    "roomPlaceholder": "Enter room..."
   }
 }

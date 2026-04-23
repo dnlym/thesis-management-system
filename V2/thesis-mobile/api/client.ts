@@ -60,23 +60,17 @@ api.interceptors.response.use(
         const method = error?.config?.method?.toUpperCase();
         const url = error?.config?.url;
         const errorData = error?.response?.data;
-
-        console.error(`\n[❌ API Error] ${status || 'Network Error'} ${method} ${url}`);
-        if (errorData) {
-            console.error('[Error Details]:', JSON.stringify(errorData, null, 2));
-        } else {
-            console.error('[Error Message]:', error.message);
-        }
-
         const originalRequest = error.config;
 
+        // Handle 401 Refresh Token Logic
         if (status === 401 && !originalRequest._retry) {
-            // Don't attempt to refresh if the failed request was a login attempt
-            if (originalRequest.url?.includes('/auth/login')) {
+            // Don't attempt to refresh if the failed request was login or refresh-token attempt
+            if (url?.includes('/auth/login') || url?.includes('/auth/refresh-token')) {
                 return Promise.reject(error);
             }
 
             if (isRefreshing) {
+                console.log(`[⏳ API Queue] ${method} ${url} (waiting for token refresh)`);
                 return new Promise((resolve, reject) => {
                     subscribeTokenRefresh((token) => {
                         if (token) {
@@ -97,31 +91,32 @@ api.interceptors.response.use(
                 });
             }
 
+            console.warn(`\n[🔑 Token Expired] 401 ${method} ${url} -> Attempting refresh...`);
             originalRequest._retry = true;
             isRefreshing = true;
 
             try {
-                // Call refresh endpoint to rotate cookie and get new access token
                 const { refreshToken } = useAuthStore.getState();
 
                 if (!refreshToken) {
                     throw new Error('No refresh token available');
                 }
 
+                // Call refresh endpoint directly using api instance
                 const refreshResponse = await api.post('/auth/refresh-token', { refreshToken });
                 const newAccessToken: string | undefined = refreshResponse?.data?.data?.accessToken;
                 const { login, user, isAuthenticated } = useAuthStore.getState();
 
                 if (newAccessToken) {
-                    // keep existing user if present
                     if (isAuthenticated && user && refreshToken) {
                         login(user, newAccessToken, refreshToken);
                     } else if (refreshToken) {
-                        // no user available; set token only
                         login((user as any) || null, newAccessToken, refreshToken);
                     }
 
+                    console.log('[✨ Token Refreshed] Retrying pending requests...');
                     onRefreshed(newAccessToken);
+
                     const hdrs: any = originalRequest.headers;
                     if (hdrs && typeof hdrs.set === 'function') {
                         hdrs.set('Authorization', `Bearer ${newAccessToken}`);
@@ -138,23 +133,29 @@ api.interceptors.response.use(
                 return Promise.reject(error);
             } catch (e) {
                 onRefreshed(null);
-                // logout on failed refresh
                 const { logout } = useAuthStore.getState();
                 logout();
+                console.error('[🚫 Refresh Failed] Session expired, logging out.');
                 return Promise.reject(e);
             } finally {
                 isRefreshing = false;
             }
         }
 
+        // Only log errors if they are NOT 401s that were just handled
+        console.error(`\n[❌ API Error] ${status || 'Network Error'} ${method} ${url}`);
+        if (errorData) {
+            console.error('[Error Details]:', JSON.stringify(errorData, null, 2));
+        } else {
+            console.error('[Error Message]:', error.message);
+        }
+
         if (status === 403) {
             console.error('Access Forbidden:', error.response?.data?.message || 'You do not have permission to access this resource.');
-            // Optionally trigger a global notification or redirect here
         }
 
         if (status === 500) {
             console.error('Server Error:', error.response?.data?.message || 'Internal Server Error');
-            // Optionally trigger a global notification here
         }
 
         return Promise.reject(error);

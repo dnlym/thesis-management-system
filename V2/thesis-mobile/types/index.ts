@@ -50,7 +50,7 @@ export type StudentProgressStatus =
 export type AssignmentType = 'REVIEWER' | 'COMMITTEE';
 
 // Assignment Status
-export type AssignmentStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
+export type AssignmentStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'AUTO_ACCEPTED';
 
 // Registration Status
 export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED';
@@ -61,10 +61,20 @@ export type ExtraPointsStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN
 // Rater Roles for Grading - Aligned with Backend
 export type RaterRole =
     | 'SUPERVISOR'
-    | 'REVIEWER'
-    | 'COMMITTEE'
-    | 'ADVISOR'
-    | 'COUNCIL_MEMBER';
+    | 'REVIEWER_1'
+    | 'REVIEWER_2'
+    | 'REVIEWER_3'
+    | 'COMMITTEE_CHAIR'
+    | 'COMMITTEE_SECRETARY'
+    | 'COMMITTEE_MEMBER'
+    | 'COMMITTEE_MEMBER_1'
+    | 'COMMITTEE_MEMBER_2'
+    | 'ORAL_COMMITTEE'
+    | 'POSTER_COMMITTEE'
+    | 'ADVISOR' // For legacy support
+    | 'REVIEWER' // For legacy support
+    | 'COMMITTEE' // For legacy support
+    | 'COUNCIL_MEMBER'; // For legacy support
 
 // Criteria Types
 export type CriteriaType = 'ADVISOR' | 'REVIEWER' | 'COUNCIL' | 'FINAL';
@@ -157,6 +167,9 @@ export interface Topic {
     interdisciplinary_status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
     source_topic_id?: string | null;
     source_topic?: Topic | null;
+    grades?: Grade[];
+    room?: string | null;
+    assignments?: Assignment[];
 }
 
 export interface Group {
@@ -192,9 +205,12 @@ export interface Assignment {
     assignment_type: AssignmentType;
     reviewer_id: string;
     reviewer_order?: number | null;
-    committee_role?: CommitteeRole | null;
+    committee_role?: string | null; // CHAIR, SECRETARY, MEMBER
     status: AssignmentStatus;
     assigned_at: string;
+    deadline_at?: string;
+    room?: string | null;
+    deadline?: string; // Alias for frontend
     responded_at?: string | null;
     decline_reason?: string | null;
     topic?: Topic;
@@ -262,12 +278,16 @@ export interface GradingCriteria {
 export interface Grade {
     id: string;
     topic_id: string;
-    rater_id: string;
+    student_id?: string | null;
+    grader_id: string;
+    criterion_id: string;
     rater_role: RaterRole;
     reviewer_order?: number | null;
     committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
-    scores: GradeScore[];
-    submitted_at: string;
+    score: number;
+    comments?: string | null;
+    graded_at: string;
+    criterion?: GradingCriteria;
 }
 
 export interface GradeScore {

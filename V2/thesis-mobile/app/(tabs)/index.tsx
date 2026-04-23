@@ -7,7 +7,9 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAssignments } from '@/hooks/useAssignments';
-import { useSupervisedTopics } from '@/hooks/useTopics';
+import { useSupervisedTopics, useTopics } from '@/hooks/useTopics';
+
+import { MapPin, Clock } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
@@ -20,85 +22,129 @@ export default function DashboardScreen() {
   const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
   const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments();
   const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
+  const { data: allDeptTopicsRes, refetch: refetchAllTopics, isLoading: isAllTopicsLoading } = useTopics({ size: 100 });
+
+  const isHOD = user?.role === 'HEAD';
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchStats(), refetchAssignments(), refetchSupervised()]);
+    const promises: Promise<any>[] = [refetchStats(), refetchAssignments(), refetchSupervised()];
+    if (isHOD) promises.push(refetchAllTopics());
+    await Promise.all(promises);
     setRefreshing(false);
-  }, [refetchStats, refetchAssignments, refetchSupervised]);
+  }, [refetchStats, refetchAssignments, refetchSupervised, refetchAllTopics, isHOD]);
 
   const d = new Date();
   const TODAY = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading;
+  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading || (isHOD && isAllTopicsLoading);
 
   // Derive stats
   const assignedList = assignments || [];
   const supervisedList = supervisedTopics || [];
+  const allDeptTopics = allDeptTopicsRes?.topics || [];
 
   // Combine all topics the user needs to interact with
-  // We filter supervised to only show those that might need grading soon (optional, or just show all for now)
-  const combinedTopics = [
-    ...assignedList.map(a => ({
-      id: a.topic_id,
-      groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
-      status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
-      statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : a.status === 'ACCEPTED' ? 'Đã nhận' : 'Đã chấm',
-      statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
-      role: a.assignment_type === 'REVIEWER' ? 'GVPB' : 'HĐBV'
-    })),
-    ...supervisedList.map(t => ({
-      id: t.id,
-      groupName: t.code || t.title || 'Supervised Topic',
-      status: 'ADVISOR',
-      statusLabel: 'Chấm HD',
-      statusColor: BLUE,
-      role: 'GVHD'
-    }))
-  ];
+  const uniqueCombinedTopics = React.useMemo(() => {
+    const list = [
+        ...assignedList.map(a => {
+          let roleLabel = 'GVPB';
+          if (a.assignment_type === 'COMMITTEE') {
+            const cRole = a.committee_role;
+            if (cRole === 'CHAIR') roleLabel = 'Chủ tịch HĐ';
+            else if (cRole === 'SECRETARY') roleLabel = 'Thư ký HĐ';
+            else roleLabel = 'Thành viên HĐ';
+          }
+    
+          return {
+            id: a.topic_id,
+            groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
+            status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
+            statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
+            statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
+            role: roleLabel,
+            schedule: a.topic?.defense_schedule,
+            room: a.room || a.topic?.room
+          };
+        }),
+        ...supervisedList.map(t => ({
+          id: t.id,
+          groupName: t.code || t.title || 'Supervised Topic',
+          status: 'ADVISOR',
+          statusLabel: 'Chấm HD',
+          statusColor: BLUE,
+          role: 'GVHD',
+          schedule: t.defense_schedule,
+          room: t.room
+        }))
+    ];
 
-  const totalGroups = combinedTopics.length;
-  const notStarted = assignedList.filter(a => a.status === 'PENDING').length;
+    // Deduplicate by ID
+    return Array.from(new Map(list.map(t => [t.id, t])).values());
+  }, [assignedList, supervisedList]);
 
   // Group assignments by session or date
-  const sessions = combinedTopics.length > 0 ? [
-    {
+  const sessions = [];
+
+  if (uniqueCombinedTopics.length > 0) {
+    sessions.push({
       id: 's1',
-      name: 'Danh sách đề tài & Hội đồng',
-      topics: combinedTopics
-    }
-  ] : [];
+      name: 'Nhiệm vụ của tôi',
+      topics: uniqueCombinedTopics
+    });
+  }
+
+  if (isHOD && allDeptTopics.length > 0) {
+    sessions.push({
+      id: 'hod_all',
+      name: `Quản lý Bộ môn (${user?.departmentId || ''})`,
+      topics: allDeptTopics.map(t => ({
+        id: t.id,
+        groupName: t.code || t.title || 'Topic',
+        status: t.status,
+        statusLabel: t.status,
+        statusColor: '#64748b',
+        role: 'QUẢN LÝ',
+        schedule: t.defense_schedule,
+        room: t.room
+      }))
+    });
+  }
+
+  const totalGroups = isHOD ? allDeptTopics.length : uniqueCombinedTopics.length;
+  const notStarted = assignedList.filter(a => a.status === 'PENDING').length;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <ScrollView
         style={{ flex: 1 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1500); }} tintColor={BLUE} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={BLUE} />}
       >
-        {/* Blue header */}
+        {/* Modern White Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greetSmall}>Xin chào,</Text>
-            <Text style={styles.greetName}>{user?.full_name || 'TS. Nguyễn Văn A'}</Text>
+            <Text style={styles.greetName}>{user?.full_name || 'Giảng viên'}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <View style={styles.dateBadge}>
+              <Text style={styles.dateText}>{TODAY}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Stats card */}
+        {/* Stats card - Premium design */}
         <View style={styles.statsCard}>
           <View style={styles.statsCol}>
-            <Text style={styles.statsLabel}>Hôm nay</Text>
-            <Text style={styles.statsValueSm}>{TODAY}</Text>
-          </View>
-          <View style={[styles.statsCol, styles.statsBorder]}>
-            <Text style={styles.statsLabel}>Ca chấm</Text>
+            <Text style={styles.statsLabel}>CA CHẤM</Text>
             <Text style={styles.statsValue}>{sessions.length}</Text>
           </View>
           <View style={[styles.statsCol, styles.statsBorder]}>
-            <Text style={styles.statsLabel}>Nhóm</Text>
+            <Text style={styles.statsLabel}>TỔNG NHÓM</Text>
             <Text style={styles.statsValue}>{totalGroups}</Text>
           </View>
           <View style={[styles.statsCol, styles.statsBorder]}>
-            <Text style={styles.statsLabel}>Chưa chấm</Text>
-            <Text style={[styles.statsValue, { color: '#ea580c' }]}>{notStarted}</Text>
+            <Text style={styles.statsLabel}>CHƯA CHẤM</Text>
+            <Text style={[styles.statsValue, { color: '#ef4444' }]}>{notStarted}</Text>
           </View>
         </View>
 
@@ -126,15 +172,28 @@ export default function DashboardScreen() {
               {/* Topic rows */}
               {session.topics.map(topic => (
                 <TouchableOpacity
-                  key={topic.id}
+                  key={`${session.id}-${topic.id}`}
                   style={styles.topicCard}
                   onPress={() => router.push(`/topic/${topic.id}` as any)}
                 >
-                  <View>
-                    <Text style={styles.topicGroup}>{topic.groupName}</Text>
-                    <Text style={styles.topicSession}>{session.name}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.topicGroup} numberOfLines={1}>{topic.groupName}</Text>
+                    {topic.room || topic.schedule ? (
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Clock size={10} color="#9ca3af" />
+                          <Text style={styles.topicSession}>{topic.schedule?.defense_time || 'Chưa rõ giờ'}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <MapPin size={10} color="#9ca3af" />
+                          <Text style={styles.topicSession}>{topic.room || topic.schedule?.room || 'Chưa rõ phòng'}</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.topicSession}>{session.name}</Text>
+                    )}
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
+                  <View style={{ alignItems: 'flex-end', marginLeft: 10 }}>
                     <View style={styles.roleBadge}>
                       <Text style={styles.roleBadgeText}>{topic.role}</Text>
                     </View>
@@ -151,21 +210,33 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: BLUE, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 60 },
-  greetSmall: { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
-  greetName: { color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 2 },
+  header: { 
+    backgroundColor: '#fff', 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingHorizontal: 20, 
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9'
+  },
+  greetSmall: { color: '#64748b', fontSize: 13, fontWeight: '500' },
+  greetName: { color: '#111827', fontSize: 20, fontWeight: '800', marginTop: 2 },
+  headerRight: { alignItems: 'flex-end' },
+  dateBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  dateText: { fontSize: 11, fontWeight: '700', color: '#64748b' },
   statsCard: {
     backgroundColor: '#fff', flexDirection: 'row',
     marginHorizontal: 16, borderRadius: 16,
-    paddingVertical: 14, marginTop: -36,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+    paddingVertical: 18, marginTop: 16,
+    borderWidth: 1, borderColor: '#f1f5f9',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   statsCol: { flex: 1, alignItems: 'center' },
-  statsBorder: { borderLeftWidth: 1, borderLeftColor: '#f0f0f0' },
-  statsLabel: { fontSize: 9, color: '#9ca3af', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statsValue: { fontSize: 20, fontWeight: '800', color: '#111827', marginTop: 2 },
-  statsValueSm: { fontSize: 11, fontWeight: '700', color: '#374151', marginTop: 2 },
+  statsBorder: { borderLeftWidth: 1, borderLeftColor: '#f1f5f9' },
+  statsLabel: { fontSize: 10, color: '#94a3b8', fontWeight: '800', letterSpacing: 0.5 },
+  statsValue: { fontSize: 24, fontWeight: '900', color: BLUE, marginTop: 4 },
   body: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16 },
   sessionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },

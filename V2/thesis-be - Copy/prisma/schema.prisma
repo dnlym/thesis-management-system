@@ -342,6 +342,7 @@ model Assignment {
   responded_at         DateTime?
   auto_declined_at     DateTime?
   decline_reason       String?
+  room                 String?          @db.VarChar(100)
   assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
   reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
   topic                Topic            @relation("TopicAssignments", fields: [topic_id], references: [id], onDelete: Cascade)

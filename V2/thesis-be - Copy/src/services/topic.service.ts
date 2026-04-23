@@ -936,6 +936,10 @@ export class TopicService {
             },
           },
           final_scores: true,
+          grades: {
+            where: { grader_id: userId }
+          },
+          assignments: true,
         },
         skip,
         take: limit,
@@ -966,10 +970,13 @@ export class TopicService {
         };
       }) || [];
 
+      const room = (topic.assignments[0] as any)?.room || null;
+
       return {
         ...topic,
         committee: (topic as any).defense_schedule?.committee || null,
         students,
+        room,
       };
     });
 
@@ -1054,6 +1061,9 @@ export class TopicService {
           },
         },
         final_scores: true,
+        grades: {
+          where: { grader_id: userId }
+        },
       },
     });
 
@@ -1094,10 +1104,13 @@ export class TopicService {
       };
     }) || [];
 
+    const room = (topic.assignments[0] as any)?.room || null;
+
     return {
       ...topic,
       committee: (topic as any).defense_schedule?.committee || null,
       students,
+      room,
     };
   }
 

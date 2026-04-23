@@ -1337,7 +1337,7 @@ export class GradingService {
       orderBy: { graded_at: 'desc' },
     });
 
-    const advisorGrade = grades.find((g) => g.rater_role === RaterRole.SUPERVISOR);
+    const advisorGrades = grades.filter((g) => g.rater_role === RaterRole.SUPERVISOR);
     const reviewerGrades = grades.filter((g) => isReviewer(g.rater_role));
     const councilGrades = grades.filter((g) => isCommittee(g.rater_role));
 
@@ -1359,12 +1359,12 @@ export class GradingService {
     );
 
     return {
-      advisorGrade,
+      advisorGrades,
       reviewerGrades,
       councilGrades,
       finalScore,
       permissions,
-      topic, // ← Include topic so frontend can resolve students
+      topic,
     };
   }
 

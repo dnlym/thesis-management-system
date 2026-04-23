@@ -531,7 +531,7 @@
     "noReviewersSelected": "Vui lòng chọn ít nhất 1 giảng viên phản biện!",
     "assignSuccess": "Phân công thành công!",
     "assignError": "Phân công thất bại!",
-    "deadline": "Hạn chót chấm điểm",
+    "deadline": "Ngày chấm",
     "selectReviewer": "Chọn giảng viên phản biện",
     "selectPB1": "Chọn GVPB 1...",
     "selectPB2": "Chọn GVPB 2...",
@@ -687,5 +687,9 @@
     "semesterNameRequired": "Vui lòng nhập tên học kỳ",
     "semesterCodeRequired": "Vui lòng nhập mã",
     "deptNameRequired": "Vui lòng nhập tên bộ môn"
+  },
+  "defenseSchedule": {
+    "room": "Phòng",
+    "roomPlaceholder": "Nhập phòng..."
   }
 }

@@ -55,13 +55,13 @@ export const GradingApi = {
      */
     async getTopicGrades(topicId: string) {
         const res = await api.get<ApiResponse<{
-            advisorGrade?: Grade;
+            advisorGrades: Grade[];
             reviewerGrades: Grade[];
             councilGrades: Grade[];
             finalScore?: FinalScore;
             permissions?: any;
             topic?: any;
-        }>>(`/grading/${topicId}/grades`);
+        }>>(`/grading/${topicId}`);
         return res.data.data;
     },
 

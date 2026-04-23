@@ -34,9 +34,6 @@ export type ProgressStage =
 export type StudentProgressStatus =
   | 'NOT_STARTED'
   | 'HAS_TOPIC'
-  | 'HAS_TOPIC'
-  | 'ADVISOR_GRADED'
-  | 'REVIEWER_GRADED'
   | 'ADVISOR_GRADED'
   | 'REVIEWER_GRADED'
   | 'DEFENSE_SCHEDULED'
@@ -195,6 +192,7 @@ export interface Assignment {
   assigned_at: string;
   responded_at?: string | null;
   decline_reason?: string | null;
+  room?: string | null;
   topic?: Topic;
   reviewer?: {
     id: string;
@@ -401,6 +399,7 @@ export interface ReviewerAssignmentForm {
   reviewerId: string;
   reviewerOrder?: number;
   deadlineAt?: Date;
+  room?: string;
 }
 
 export interface DefenseScheduleForm {

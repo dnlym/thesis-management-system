@@ -6,6 +6,7 @@ export interface CreateAssignmentRequest {
   assignmentType: AssignmentType;
   reviewerOrder?: number;
   deadlineAt: Date;
+  room?: string;
 }
 
 export interface AcceptAssignmentRequest {

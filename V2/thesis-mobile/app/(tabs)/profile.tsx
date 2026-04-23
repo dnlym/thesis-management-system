@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     View, Text, TouchableOpacity, ScrollView,
-    StyleSheet, SafeAreaView
+    StyleSheet, SafeAreaView, StatusBar
 } from 'react-native';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'expo-router';
@@ -31,16 +31,24 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+            <StatusBar barStyle="dark-content" />
             <ScrollView>
-                {/* Header */}
+                {/* Modern Profile Header */}
                 <View style={styles.header}>
-                    <View style={styles.avatarCircle}>
-                        <User size={38} color="#fff" />
+                    <View style={styles.avatarContainer}>
+                        <View style={styles.avatarCircle}>
+                            <User size={40} color={BLUE} />
+                        </View>
+                        <View style={styles.editAvatarBtn}>
+                            <Settings size={14} color="#fff" />
+                        </View>
                     </View>
                     <Text style={styles.userName}>{user?.full_name || 'TS. Nguyễn Văn A'}</Text>
-                    <Text style={styles.userRole}>
-                        {user?.role === 'LECTURER' ? 'Giảng viên' : user?.role || 'Giảng viên'}
-                    </Text>
+                    <View style={styles.roleTag}>
+                        <Text style={styles.roleTagText}>
+                            {user?.role === 'LECTURER' ? 'GIẢNG VIÊN' : user?.role || 'GIẢNG VIÊN'}
+                        </Text>
+                    </View>
                 </View>
 
                 {/* Menu */}
@@ -94,10 +102,13 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    header: { backgroundColor: BLUE, paddingTop: 32, paddingBottom: 40, alignItems: 'center' },
-    avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
-    userName: { fontSize: 20, fontWeight: '700', color: '#fff' },
-    userRole: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+    header: { backgroundColor: '#fff', paddingVertical: 40, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    avatarContainer: { position: 'relative', marginBottom: 16 },
+    avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: '#f8fafc' },
+    editAvatarBtn: { position: 'absolute', bottom: 0, right: 0, backgroundColor: BLUE, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+    userName: { fontSize: 22, fontWeight: '800', color: '#111827' },
+    roleTag: { backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginTop: 8 },
+    roleTagText: { fontSize: 10, fontWeight: '800', color: '#64748b', letterSpacing: 0.5 },
     section: { marginHorizontal: 16, marginTop: 20 },
     sectionLabel: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
     card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden' },

@@ -17,6 +17,7 @@ interface TopicForReviewer {
     reviewerCount: number;
     assignmentStatus: 'NOT_ASSIGNED' | 'PARTIALLY_ASSIGNED' | 'FULLY_ASSIGNED';
     canAssignMore: boolean;
+    room?: string | null;
 }
 
 interface Reviewer {
@@ -31,6 +32,7 @@ interface ReviewerSelection {
     reviewer1: string | null;
     reviewer2: string | null;
     deadline: dayjs.Dayjs;
+    room: string;
 }
 
 /**
@@ -67,15 +69,20 @@ const ReviewerAssignment = () => {
 
     // Assign reviewer mutation
     const assignMutation = useMutation({
-        mutationFn: (data: { topicId: string; reviewerId: string; reviewerOrder: number; deadlineAt: Date }) =>
+        mutationFn: (data: { topicId: string; reviewerId: string; reviewerOrder: number; deadlineAt: Date; room?: string }) =>
             AssignmentsApi.assignReviewer(data),
         onError: (error: any) => {
             notify.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
         },
     });
 
-    const getSelection = (topicId: string): ReviewerSelection => {
-        return selections[topicId] || { reviewer1: null, reviewer2: null, deadline: dayjs().add(14, 'day') };
+    const getSelection = (topicId: string, initialRoom?: string | null): ReviewerSelection => {
+        return selections[topicId] || {
+            reviewer1: null,
+            reviewer2: null,
+            deadline: dayjs().add(14, 'day'),
+            room: initialRoom || ''
+        };
     };
 
     const updateSelection = (topicId: string, field: keyof ReviewerSelection, value: any) => {
@@ -117,6 +124,7 @@ const ReviewerAssignment = () => {
                     reviewerId: sel.reviewer1,
                     reviewerOrder: 1,
                     deadlineAt: sel.deadline.toDate(),
+                    room: sel.room || undefined,
                 });
             }
 
@@ -127,6 +135,7 @@ const ReviewerAssignment = () => {
                     reviewerId: sel.reviewer2,
                     reviewerOrder: 2,
                     deadlineAt: sel.deadline.toDate(),
+                    room: sel.room || undefined,
                 });
             }
 
@@ -163,14 +172,14 @@ const ReviewerAssignment = () => {
             title: t('topics.code'),
             dataIndex: 'code',
             key: 'code',
-            width: 110,
+            width: 90,
             render: (text: string) => <Tag>{text || 'N/A'}</Tag>,
         },
         {
             title: t('common.name'),
             dataIndex: 'title',
             key: 'title',
-            width: 250,
+            width: 200,
             render: (text: string, record: TopicForReviewer) => (
                 <div>
                     <div className="font-medium text-sm">{text}</div>
@@ -183,7 +192,7 @@ const ReviewerAssignment = () => {
         {
             title: `${t('roles.REVIEWER')} 1`,
             key: 'reviewer1',
-            width: 200,
+            width: 180,
             render: (_: any, record: TopicForReviewer) => {
                 const assigned = record.assignments.find((a: any) => a.reviewer_order === 1);
                 if (assigned) {
@@ -196,7 +205,7 @@ const ReviewerAssignment = () => {
                     );
                 }
                 const reviewers = getAvailableReviewersForTopic(record);
-                const sel = getSelection(record.id);
+                const sel = getSelection(record.id, record.room);
                 // Filter out reviewer2 selection
                 const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer2);
                 return (
@@ -222,7 +231,7 @@ const ReviewerAssignment = () => {
         {
             title: `${t('roles.REVIEWER')} 2`,
             key: 'reviewer2',
-            width: 200,
+            width: 180,
             render: (_: any, record: TopicForReviewer) => {
                 const assigned = record.assignments.find((a: any) => a.reviewer_order === 2);
                 if (assigned) {
@@ -235,7 +244,7 @@ const ReviewerAssignment = () => {
                     );
                 }
                 const reviewers = getAvailableReviewersForTopic(record);
-                const sel = getSelection(record.id);
+                const sel = getSelection(record.id, record.room);
                 // Filter out reviewer1 selection
                 const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer1);
                 return (
@@ -261,7 +270,7 @@ const ReviewerAssignment = () => {
         {
             title: t('reviewerAssignment.deadline'),
             key: 'deadline',
-            width: 140,
+            width: 120,
             render: (_: any, record: TopicForReviewer) => {
                 if (!record.canAssignMore) {
                     const firstAssignment = record.assignments[0];
@@ -269,7 +278,7 @@ const ReviewerAssignment = () => {
                         ? <span className="text-sm">{dayjs(firstAssignment.deadline_at).format('DD/MM/YYYY')}</span>
                         : <span className="text-gray-400">—</span>;
                 }
-                const sel = getSelection(record.id);
+                const sel = getSelection(record.id, record.room);
                 return (
                     <DatePicker
                         value={sel.deadline}
@@ -283,6 +292,26 @@ const ReviewerAssignment = () => {
             },
         },
         {
+            title: t('defenseSchedule.room'),
+            key: 'room',
+            width: 100,
+            render: (_: any, record: TopicForReviewer) => {
+                if (!record.canAssignMore) {
+                    return <span className="text-sm">{record.room || 'N/A'}</span>;
+                }
+                const sel = getSelection(record.id, record.room);
+                return (
+                    <input
+                        className="ant-input ant-input-sm"
+                        placeholder={t('defenseSchedule.roomPlaceholder') || 'Phòng'}
+                        value={sel.room}
+                        onChange={(e) => updateSelection(record.id, 'room', e.target.value)}
+                        style={{ width: '100%' }}
+                    />
+                );
+            },
+        },
+        {
             title: t('common.status'),
             dataIndex: 'assignmentStatus',
             key: 'assignmentStatus',
@@ -291,11 +320,11 @@ const ReviewerAssignment = () => {
         },
         {
             title: '',
-            key: 'action',
-            width: 110,
+            key: 'actions',
+            width: 100,
             render: (_: any, record: TopicForReviewer) => {
                 if (!record.canAssignMore) return null;
-                const sel = getSelection(record.id);
+                const sel = getSelection(record.id, record.room);
                 const hasSelection = sel.reviewer1 || sel.reviewer2;
                 return (
                     <Button
@@ -375,7 +404,7 @@ const ReviewerAssignment = () => {
                         columns={columns}
                         rowKey="id"
                         pagination={{ pageSize: 10 }}
-                        scroll={{ x: 1200 }}
+                        scroll={{ x: 'max-content' }}
                         size="middle"
                     />
                 )}

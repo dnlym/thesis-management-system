@@ -142,6 +142,7 @@ export class AssignmentService {
         reviewer_order: data.reviewerOrder,
         assigned_by: userId,
         deadline_at: data.deadlineAt,
+        room: data.room,
         status: AssignmentStatus.AUTO_ACCEPTED,
         responded_at: new Date(),
       },
@@ -572,6 +573,10 @@ export class AssignmentService {
                 email: true,
               },
             },
+            defense_schedule: true,
+            grades: {
+              where: { grader_id: userId }
+            },
             registrations: {
               include: {
                 group: {
@@ -749,12 +754,15 @@ export class AssignmentService {
         assignmentStatus = 'PARTIALLY_ASSIGNED';
       }
 
+      const room = topic.assignments[0]?.room || null;
+
       return {
         ...topic,
         topicTitle: topic.title, // Add for compatibility
         reviewerCount,
         assignmentStatus,
         canAssignMore: reviewerCount < 3,
+        room,
       };
     });
   }

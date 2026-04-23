@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { LayoutDashboard, ListChecks, UserCircle } from 'lucide-react-native';
+import { LayoutDashboard, ListChecks, UserCircle, Bell } from 'lucide-react-native';
 import { SyncOverlay } from '@/components/sync-overlay';
 import { useSync } from '@/hooks/use-sync';
 
@@ -36,8 +36,15 @@ export default function TabLayout() {
         <Tabs.Screen
           name="assigned"
           options={{
-            title: 'Lịch chấm',
+            title: 'Đề tài',
             tabBarIcon: ({ color }) => <ListChecks size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="notifications"
+          options={{
+            title: 'Thông báo',
+            tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
           }}
         />
         <Tabs.Screen
