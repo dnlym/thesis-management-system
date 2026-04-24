@@ -6,7 +6,6 @@ import {
   CheckCircleOutlined,
   CalendarOutlined,
   BarChartOutlined,
-  MessageOutlined,
   SettingOutlined,
   UserOutlined,
   TeamOutlined,
@@ -30,7 +29,6 @@ const FinalEvaluation = lazy(() => import('@/pages/FinalEvaluation'));
 const Schedule = lazy(() => import('@/pages/Schedule'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const FinalResults = lazy(() => import('@/pages/FinalResults'));
-const Messages = lazy(() => import('@/pages/Messages'));
 const AdminUsers = lazy(() => import('@/pages/admin/Users'));
 const AdminRoles = lazy(() => import('@/pages/admin/Roles'));
 const AdminCriteria = lazy(() => import('@/pages/admin/Criteria'));
@@ -238,15 +236,6 @@ export const routes: RouteConfig[] = [
       roles: ['HEAD', 'ADMIN', 'LECTURER'],
     },
   },
-  {
-    path: '/messages',
-    element: Messages,
-    meta: {
-      title: 'navigation.messages',
-      icon: MessageOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
-    },
-  },
 
   // HEAD assignment routes
   {
@@ -416,11 +405,6 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
       },
-      {
-        key: '/messages',
-        icon: <MessageOutlined />,
-        label: 'navigation.messages',
-      },
     ];
   }
 
@@ -458,11 +442,6 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/schedule',
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
-      },
-      {
-        key: '/messages',
-        icon: <MessageOutlined />,
-        label: 'navigation.messages',
       },
     ];
   }
@@ -510,11 +489,6 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/head/semester-settings',
         icon: <SettingOutlined />,
         label: 'navigation.semesterSettings',
-      },
-      {
-        key: '/messages',
-        icon: <MessageOutlined />,
-        label: 'navigation.messages',
       },
     ];
   }

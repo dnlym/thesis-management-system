@@ -13,7 +13,6 @@ import {
   CheckCircleOutlined,
   CalendarOutlined,
   BarChartOutlined,
-  MessageOutlined,
   SettingOutlined,
   TeamOutlined,
   SafetyCertificateOutlined,
@@ -63,7 +62,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         title: 'HỆ THỐNG',
         items: [
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
-          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
         ]
       },
     ];
@@ -97,7 +95,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         title: 'HỆ THỐNG',
         items: [
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
-          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
         ]
       },
     ];
@@ -136,7 +133,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         title: 'HỆ THỐNG',
         items: [
           { key: '/head/semester-settings', label: 'Cài đặt học kỳ', icon: <SettingOutlined /> },
-          { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
         ]
       },
     ];
@@ -163,7 +159,6 @@ const getMenuSections = (role: string): MenuSection[] => {
       items: [
         { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
         { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
-        { key: '/messages', label: 'Tin nhắn', icon: <MessageOutlined /> },
       ]
     },
   ];
