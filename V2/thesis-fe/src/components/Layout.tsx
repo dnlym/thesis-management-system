@@ -339,12 +339,15 @@ const AppLayout = () => {
         style={{ width: SIDEBAR_W }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 select-none flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-base font-bold">K</span>
+        <div className="flex items-center gap-3 px-4 py-6 border-b border-gray-100 select-none flex-shrink-0">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-100">
+            <img src="/assets/branding/logo-short.png" alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-blue-700 text-sm leading-tight">Hệ thống KLTN</span>
+            <div className="flex flex-col overflow-hidden">
+              <span className="font-black text-slate-900 text-[11px] leading-none uppercase tracking-tighter truncate">HỆ THỐNG QUẢN LÝ</span>
+              <span className="font-bold text-blue-600 text-[10px] leading-tight mt-0.5 truncate">KHÓA LUẬN TỐT NGHIỆP</span>
+            </div>
           )}
         </div>
 
