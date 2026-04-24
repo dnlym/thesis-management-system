@@ -94,6 +94,21 @@ export class UserController {
             });
         }
     }
+
+    async getRoleSummary(req: AuthRequest, res: Response) {
+        try {
+            const summary = await userService.getRoleSummary();
+            res.json({
+                success: true,
+                data: summary,
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    }
 }
 
 export default new UserController();

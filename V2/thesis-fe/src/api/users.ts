@@ -29,4 +29,9 @@ export const UsersApi = {
   async update(id: string, data: Partial<{ full_name: string; email: string; avatar_url?: string; phone?: string }>) {
     return (await api.put<ApiResponse<UserResponse>>(`/users/${id}`, data)).data;
   },
+
+  async getRoleSummary() {
+    const res = await api.get<ApiResponse<Array<{ id: string; userCount: number }>>>('/users/roles/summary');
+    return res.data.data;
+  },
 };

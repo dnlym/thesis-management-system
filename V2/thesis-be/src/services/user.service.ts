@@ -108,6 +108,22 @@ export class UserService {
         });
         return { message: 'User deleted successfully' };
     }
+
+    async getRoleSummary() {
+        const roles = Object.values(UserRole);
+        const summary = await Promise.all(
+            roles.map(async (role) => {
+                const count = await prisma.user.count({
+                    where: { role },
+                });
+                return {
+                    id: role,
+                    userCount: count,
+                };
+            })
+        );
+        return summary;
+    }
 }
 
 export default new UserService();
