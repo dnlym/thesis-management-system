@@ -47,7 +47,16 @@
     "emailInvalid": "Invalid email address!",
     "emailPlaceholder": "Enter your email...",
     "passwordRequired": "Please enter your password!",
-    "passwordPlaceholder": "Enter your password..."
+    "passwordPlaceholder": "Enter password...",
+    "welcomeBack": "Welcome back, please enter your details.",
+    "rememberMe": "Remember me",
+    "securePortal": "Secure University Portal",
+    "brandingTitle": "Registration & Implementation",
+    "brandingSubTitle": "Graduation Thesis Management.",
+    "brandingDesc": "A comprehensive system supporting students and faculty throughout the graduation thesis process at IUH.",
+    "activeStudents": "",
+    "researchTopics": "",
+    "empoweringExcellence": "Industrial University of Ho Chi Minh City"
   },
   "navigation": {
     "dashboard": "Dashboard",

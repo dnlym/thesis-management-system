@@ -48,7 +48,16 @@
     "emailInvalid": "Email không hợp lệ!",
     "emailPlaceholder": "Nhập email của bạn...",
     "passwordRequired": "Vui lòng nhập mật khẩu!",
-    "passwordPlaceholder": "Nhập mật khẩu..."
+    "passwordPlaceholder": "Nhập mật khẩu...",
+    "welcomeBack": "Chào mừng quay trở lại, vui lòng nhập thông tin của bạn.",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "securePortal": "Cổng thông tin đại học bảo mật",
+    "brandingTitle": "Quản lý Đăng ký & Thực hiện",
+    "brandingSubTitle": "Khóa luận tốt nghiệp.",
+    "brandingDesc": "Hệ thống hỗ trợ sinh viên và giảng viên trong suốt quá trình thực hiện khóa luận tốt nghiệp tại IUH.",
+    "activeStudents": "",
+    "researchTopics": "",
+    "empoweringExcellence": "Đại học Công nghiệp TP. Hồ Chí Minh"
   },
   "navigation": {
     "dashboard": "Tổng quan",

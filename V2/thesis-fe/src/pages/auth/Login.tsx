@@ -1,11 +1,14 @@
-import { Form, Input, Button, Card } from 'antd';
+import { Form, Input, Button, Typography, Space, Divider, Checkbox } from 'antd';
 import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, ArrowRightOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth';
 import { useNavigate } from 'react-router-dom';
 import type { LoginForm, User } from '@/types';
 import { AuthApi } from '@/api/auth';
+import { motion } from 'framer-motion';
+
+const { Title, Text } = Typography;
 
 const Login = () => {
   const { t } = useTranslation();
@@ -22,7 +25,6 @@ const Login = () => {
 
       const { accessToken, refreshToken, user: beUser } = res.data;
 
-      // Initial mapping from login response
       const initialUser: User = {
         id: beUser.id,
         full_name: beUser.fullName,
@@ -32,10 +34,8 @@ const Login = () => {
         joined_at: new Date().toISOString(),
       };
 
-      // Set token and initial user to store so subsequent requests are authenticated
       login(initialUser, accessToken, refreshToken);
 
-      // Fetch full profile from server to ensure we have the latest data (name, avatar, etc.)
       try {
         const profileRes = await AuthApi.me();
         if (profileRes && profileRes.success && profileRes.data) {
@@ -49,12 +49,10 @@ const Login = () => {
             avatar_url: profile.avatar_url || undefined,
             joined_at: profile.joined_at || initialUser.joined_at,
           };
-          // Update store with fresh data
           login(updatedUser, accessToken, refreshToken);
         }
       } catch (profileError) {
         console.error('Failed to fetch user profile after login', profileError);
-        // Continue with initial user data if profile fetch fails
       }
 
       notify.success(t('auth.loginSuccess'));
@@ -65,19 +63,73 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-accent p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-academic border-0">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-              <UserOutlined className="text-2xl text-white" />
+    <div className="min-h-screen flex bg-[#0f172a] overflow-hidden">
+      {/* ── Left Side: Visual Experience ────────────────────────────────────────── */}
+      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-blue-900">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[100px]" />
+          <img
+            src="https://images.unsplash.com/photo-1541339907198-e08759dfc3ef?auto=format&fit=crop&q=80&w=2070"
+            alt="University"
+            className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30 scale-110"
+          />
+        </div>
+
+        <div className="relative z-10 w-full flex flex-col justify-between p-16 text-white">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="flex items-center gap-3"
+          >
+            <div className="bg-white/10 backdrop-blur-md p-2.5 rounded-2xl border border-white/20 shadow-xl">
+              <img src="/assets/branding/logo-trang-vang.png" alt="Logo" className="h-10 w-auto" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              {t('common.systemTitle')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('auth.login')}
-            </p>
+            <div className="w-[1px] h-10 bg-white/20 self-center mx-1" />
+            <div>
+              <Text className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-bold block leading-none">KHOA</Text>
+              <Text className="text-white text-lg font-black tracking-tight block -mt-1">CÔNG NGHỆ THÔNG TIN</Text>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
+          >
+            <Title className="!text-white !text-6xl !font-black !mb-6 leading-none tracking-tighter">
+              {t('auth.brandingTitle')}
+              <span className="text-blue-400 block mt-2">{t('auth.brandingSubTitle')}</span>
+            </Title>
+            <Text className="text-blue-100/60 text-xl max-w-lg block leading-relaxed font-medium">
+              {t('auth.brandingDesc')}
+            </Text>
+
+          </motion.div>
+
+          <div className="flex items-center gap-2 text-white/30 text-xs font-bold tracking-widest uppercase">
+            <div className="w-12 h-[1px] bg-white/10" />
+            {t('auth.empoweringExcellence')}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right Side: Login Form ─────────────────────────────────────────────── */}
+      <div className="w-full lg:w-2/5 flex flex-col justify-center items-center p-8 lg:p-16 relative bg-white">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-[420px]"
+        >
+          <div className="lg:hidden flex justify-center mb-12">
+            <img src="/assets/branding/logo-trang-vang.png" alt="Logo" className="h-16 w-auto" />
+          </div>
+
+          <div className="mb-10">
+            <Title className="!text-4xl !font-black !mb-2 !text-slate-900 tracking-tight">{t('auth.login')}.</Title>
+            <Text className="text-slate-400 text-lg font-medium">{t('auth.welcomeBack')}</Text>
           </div>
 
           <Form
@@ -85,48 +137,68 @@ const Login = () => {
             onFinish={onFinish}
             layout="vertical"
             size="large"
+            requiredMark={false}
           >
             <Form.Item
-              label={t('auth.email')}
               name="email"
               rules={[
                 { required: true, message: t('auth.emailRequired') },
                 { type: 'email', message: t('auth.emailInvalid') }
               ]}
             >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder={t('auth.emailPlaceholder')}
-                className="rounded-lg"
-              />
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                  <UserOutlined />
+                </div>
+                <Input
+                  placeholder={t('auth.email')}
+                  className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
+                />
+              </div>
             </Form.Item>
 
             <Form.Item
-              label={t('auth.password')}
               name="password"
               rules={[{ required: true, message: t('auth.passwordRequired') }]}
             >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder={t('auth.passwordPlaceholder')}
-                className="rounded-lg"
-              />
+              <div className="relative group">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
+                  <LockOutlined />
+                </div>
+                <Input.Password
+                  placeholder={t('auth.password')}
+                  className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
+                />
+              </div>
             </Form.Item>
+
+            <div className="flex justify-between items-center mb-8 px-1">
+              <Form.Item name="remember" valuePropName="checked" noStyle initialValue={true}>
+                <Checkbox className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">
+                  {t('auth.rememberMe')}
+                </Checkbox>
+              </Form.Item>
+              <a href="#" className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('auth.forgotPassword')}</a>
+            </div>
 
             <Form.Item>
               <Button
                 type="primary"
                 htmlType="submit"
                 block
-                className="h-12 text-lg bg-gradient-primary border-0 rounded-lg hover:opacity-90"
+                className="h-[56px] text-lg font-black bg-blue-600 hover:bg-blue-700 border-0 rounded-2xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2 group transition-all"
               >
                 {t('auth.login')}
+                <ArrowRightOutlined className="group-hover:translate-x-1 transition-transform" />
               </Button>
             </Form.Item>
           </Form>
 
-          {/* Bạn có thể xóa khối demo này nếu không cần */}
-        </Card>
+        </motion.div>
+
+        <div className="absolute bottom-8 text-slate-300 text-[10px] font-bold uppercase tracking-[0.2em] select-none">
+          © 2026 Thesis Management System • Ver 2.0
+        </div>
       </div>
     </div>
   );
