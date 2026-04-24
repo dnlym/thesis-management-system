@@ -1290,8 +1290,8 @@ export class GradingService {
   }
 
   /**
-   * Get the current user's grades for a specific topic.
-   * Returns grades, status (DRAFT/SUBMITTED), metadata, and audit history.
+   * Get all grades for a topic, grouped by rater and student.
+   * This is used by the HEAD/ADMIN to see a comprehensive breakdown of all scores.
    */
   async getGrades(userId: string, topicId: string) {
     const [topic, user] = await Promise.all([
@@ -1299,23 +1299,10 @@ export class GradingService {
         where: { id: topicId },
         include: {
           semester: true,
+          supervisor: { select: { id: true, full_name: true, role: true, avatar_url: true } },
           registrations: {
             include: {
-              student: {
-                select: { id: true, full_name: true, student_code: true, email: true, avatar_url: true }
-              },
-              group: {
-                include: {
-                  members: {
-                    where: { status: 'ACCEPTED' },
-                    include: {
-                      user: {
-                        select: { id: true, full_name: true, student_code: true, email: true, avatar_url: true }
-                      }
-                    }
-                  }
-                }
-              }
+              student: { select: { id: true, full_name: true, student_code: true, email: true, avatar_url: true } },
             }
           }
         }
@@ -1326,43 +1313,71 @@ export class GradingService {
     if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     if (!user) throw new Error(ERROR_CODES.USER_NOT_FOUND);
 
-    const grades = await prisma.grade.findMany({
+    const allGrades = await prisma.grade.findMany({
       where: { topic_id: topicId },
       include: {
         criterion: true,
-        grader: {
-          select: { id: true, full_name: true, role: true, avatar_url: true },
-        },
-        student: {
-          select: { id: true, full_name: true, student_code: true },
-        },
+        grader: { select: { id: true, full_name: true, role: true, avatar_url: true } },
       },
-      orderBy: { graded_at: 'desc' },
+      orderBy: { graded_at: 'asc' },
     });
 
-    const advisorGrades = grades.filter((g) => g.rater_role === RaterRole.SUPERVISOR);
-    const reviewerGrades = grades.filter((g) => isReviewer(g.rater_role));
-    const councilGrades = grades.filter((g) => isCommittee(g.rater_role));
+    // Helper to group grades by grader and student
+    const groupGrades = (grades: any[]) => {
+      const grouped = new Map<string, any>();
+      
+      grades.forEach(g => {
+        const key = `${g.grader_id}-${g.student_id || 'topic'}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: g.id, // Use the first grade ID as reference
+            topic_id: g.topic_id,
+            rater_id: g.grader_id,
+            rater_name: g.grader.full_name,
+            rater_role: g.rater_role,
+            student_id: g.student_id,
+            reviewer_order: g.reviewer_order,
+            committee_role: g.grader.committee_role, // Note: might need to join assignments for exact role
+            scores: [],
+            submitted_at: g.graded_at,
+          });
+        }
+        
+        const entry = grouped.get(key);
+        entry.scores.push({
+          criterion_id: g.criterion_id,
+          score: g.score,
+          comment: g.comments,
+        });
+        
+        // Ensure submitted_at is the latest
+        if (new Date(g.graded_at) > new Date(entry.submitted_at)) {
+          entry.submitted_at = g.graded_at;
+        }
+      });
+      
+      return Array.from(grouped.values());
+    };
 
-    const finalScore = await prisma.finalScore.findUnique({
-      where: {
-        topic_id_student_id: {
-          topic_id: topicId,
-          student_id: topic.registrations[0]?.student_id || '',
-        },
-      },
+    const groupedGrades = groupGrades(allGrades);
+
+    const advisorGrade = groupedGrades.find(g => g.rater_role === RaterRole.SUPERVISOR);
+    const reviewerGrades = groupedGrades.filter(g => isReviewer(g.rater_role));
+    const councilGrades = groupedGrades.filter(g => isCommittee(g.rater_role));
+
+    const finalScore = await prisma.finalScore.findFirst({
+      where: { topic_id: topicId },
       include: { student: true },
     });
 
-    // Compute permissions for this user on this topic
     const permissions = this.getTopicPermissions(
       { id: userId, role: user.role },
       topic.semester,
-      topic.registrations[0] // Assume first student represents the registration context
+      topic.registrations[0]
     );
 
     return {
-      advisorGrades,
+      advisorGrade,
       reviewerGrades,
       councilGrades,
       finalScore,

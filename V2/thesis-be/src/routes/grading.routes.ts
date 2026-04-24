@@ -134,9 +134,9 @@ router.get(
   gradingController.getMyGrades.bind(gradingController)
 );
 
-// Route này sẽ hứng tất cả các GET request còn lại có dạng /{id}
+// Get all grades for a topic (HEAD, ADMIN, or assigned lecturers)
 router.get(
-  '/:topicId',
+  '/:topicId/grades',
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   gradingController.getGrades.bind(gradingController)
 );
