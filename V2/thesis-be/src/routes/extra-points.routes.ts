@@ -23,7 +23,7 @@ router.post(
 
 router.post(
   '/:requestId/approve',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('requestId').isUUID().withMessage('Invalid request ID'),
     body('approvedPoints').isFloat({ min: 0.1, max: 1.0 }).withMessage('Approved points must be between 0.1 and 1.0'),
@@ -33,7 +33,7 @@ router.post(
 
 router.post(
   '/:requestId/reject',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('requestId').isUUID().withMessage('Invalid request ID'),
     body('rejectionReason').isLength({ min: 50 }).withMessage('Rejection reason must be at least 50 characters'),

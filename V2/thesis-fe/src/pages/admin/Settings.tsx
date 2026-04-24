@@ -193,7 +193,7 @@ const AdminSettings = () => {
 
   const handleGlobalDateChange = (newStart: dayjs.Dayjs | null, newEnd: dayjs.Dayjs | null) => {
     setSemesterDates([newStart, newEnd]);
-    
+
     if (newStart && newEnd) {
       if (!timelineInitialized) {
         // Lần đầu chọn thì auto-fill luôn cực mượt, không notification khó chịu
@@ -227,12 +227,12 @@ const AdminSettings = () => {
         const maxDate = semesterDates[1] || date;
         let newNextStart = date; // Thay vì +1 ngày cứng nhắc, ta cho phép trùng ngày để linh hoạt cho học kỳ ngắn
         if (newNextStart.isAfter(maxDate)) newNextStart = maxDate;
-        
+
         next[index + 1] = { ...next[index + 1], start: newNextStart };
-        
+
         // Cấp cứu: Nếu start mới lỡ "vượt mặt" end cũ của chính phase đó
         if (next[index + 1].start.isAfter(next[index + 1].end)) {
-           next[index + 1].end = next[index + 1].start;
+          next[index + 1].end = next[index + 1].start;
         }
       }
       if (field === 'start' && index > 0 && next[index - 1]) {
@@ -244,10 +244,10 @@ const AdminSettings = () => {
 
         // Cấp cứu: Nếu end mới lỡ "thụt lùi" sau start cũ của chính phase đó
         if (next[index - 1].end.isBefore(next[index - 1].start)) {
-           next[index - 1].start = next[index - 1].end;
+          next[index - 1].start = next[index - 1].end;
         }
       }
-      
+
       // Tự động neo lại điểm Midterm nếu Admin thay đổi thời gian của phase WORK (index 2)
       if (index === 2) {
         const workStart = field === 'start' ? date : next[2].start;
@@ -333,12 +333,12 @@ const AdminSettings = () => {
         notify.success('Đã kích hoạt học kỳ thành công!');
       },
       onError: (error: any) => {
-         notify.error(error?.response?.data?.error || 'Kích hoạt thất bại');
+        notify.error(error?.response?.data?.error || 'Kích hoạt thất bại');
       }
     });
   };
 
-  const handleDeactivateSectorPlaceholder = () => {}; // keep structure if needed
+  const handleDeactivateSectorPlaceholder = () => { }; // keep structure if needed
 
   const handleFinalizeSemester = (id: string) => {
     Modal.confirm({
@@ -587,26 +587,26 @@ const AdminSettings = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Visual Timeline Bar */}
           {semesterDates[0] && semesterDates[1] && phaseDates.length >= 5 && (
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
-                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phân bổ giai đoạn (Visual Overview)</span>
-                 <Tag color="cyan" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">Gantt View</Tag>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phân bổ giai đoạn (Visual Overview)</span>
+                <Tag color="cyan" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">Gantt View</Tag>
               </div>
               <div className="h-6 w-full bg-slate-100 rounded-full flex overflow-hidden border border-slate-200 shadow-sm relative group">
                 {SEMESTER_PHASES.slice(0, 5).map((phase, idx) => {
                   const total = semesterDates[1]!.diff(semesterDates[0]!, 'day') + 1;
                   const phaseDuration = phaseDates[idx].end.diff(phaseDates[idx].start, 'day') + 1;
                   const width = ((phaseDuration / total) * 100).toFixed(1);
-                  
+
                   return (
-                    <div 
-                      key={phase.key} 
+                    <div
+                      key={phase.key}
                       className="h-full relative transition-all duration-500 hover:brightness-95 flex items-center justify-center overflow-hidden"
-                      style={{ 
-                        width: `${width}%`, 
+                      style={{
+                        width: `${width}%`,
                         backgroundColor: phase.color,
                         borderRight: idx < 4 ? '1px solid rgba(255,255,255,0.3)' : 'none'
                       }}
@@ -621,16 +621,16 @@ const AdminSettings = () => {
 
                 {/* Midterm Marker Overlay */}
                 {midtermStart && midtermEnd && (
-                   <div 
-                     className="absolute top-0 h-full border-x-2 border-dashed border-white/50 bg-amber-400/30 flex items-center justify-center"
-                     style={{
-                        left: `${((midtermStart.diff(semesterDates[0], 'day') / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`,
-                        width: `${(((midtermEnd.diff(midtermStart, 'day') + 1) / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`
-                     }}
-                     title="Giai đoạn Midterm"
-                   >
-                     <div className="text-[10px]">📍</div>
-                   </div>
+                  <div
+                    className="absolute top-0 h-full border-x-2 border-dashed border-white/50 bg-amber-400/30 flex items-center justify-center"
+                    style={{
+                      left: `${((midtermStart.diff(semesterDates[0], 'day') / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`,
+                      width: `${(((midtermEnd.diff(midtermStart, 'day') + 1) / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`
+                    }}
+                    title="Giai đoạn Midterm"
+                  >
+                    <div className="text-[10px]">📍</div>
+                  </div>
                 )}
               </div>
             </div>

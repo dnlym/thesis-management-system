@@ -53,7 +53,7 @@ router.get('/criteria', gradingController.getGradingCriteria.bind(gradingControl
 // ==========================================
 router.get(
   '/grade-summary',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   gradingController.getGradeSummary.bind(gradingController)
 );
 
@@ -114,14 +114,14 @@ router.post(
 
 router.post(
   '/:topicId/compute',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   gradingController.computeFinalScore.bind(gradingController)
 );
 
 router.post(
   '/:topicId/finalize',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.FINALIZE_SCORE),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   gradingController.finalizeFinalScore.bind(gradingController)

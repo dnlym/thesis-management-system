@@ -50,7 +50,7 @@ router.put(
 
 router.post(
   '/:topicId/approve',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.APPROVE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.approveTopic.bind(topicController)
@@ -58,7 +58,7 @@ router.post(
 
 router.post(
   '/:topicId/reject',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('rejectionReason').isLength({ min: 20 }).withMessage('Rejection reason must be at least 20 characters'),
@@ -69,7 +69,7 @@ router.post(
 // Request revision (HEAD)
 router.patch(
   '/:topicId/revision',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('notes').isLength({ min: 20 }).withMessage('Notes must be at least 20 characters'),
@@ -139,7 +139,7 @@ router.post(
 // Finalize defense eligibility and type (HOD)
 router.post(
   '/:topicId/finalize-defense-pivot',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.ASSIGN_DEFENSE_PIVOT),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),

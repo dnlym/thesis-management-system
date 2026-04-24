@@ -499,11 +499,11 @@ export class GradingService {
    */
   async getGradeSummary(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) throw new Error(ERROR_CODES.FORBIDDEN);
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) throw new Error(ERROR_CODES.FORBIDDEN);
 
     const topics = await prisma.topic.findMany({
       where: {
-        departmentId: user.departmentId,
+        ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         status: {
           in: [
             TopicStatus.REGISTERED,
@@ -616,7 +616,10 @@ export class GradingService {
     if (user.role === UserRole.HEAD) {
       // HOD must create for their own department unless explicitly allowed otherwise
       targetDeptId = user.departmentId || null;
-    } else if (user.role !== UserRole.ADMIN) {
+    } else if (user.role === UserRole.ADMIN) {
+      // Admin can specify any departmentId or null for global
+      targetDeptId = data.departmentId || null;
+    } else {
       throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền tạo tiêu chí');
     }
 
@@ -680,7 +683,7 @@ export class GradingService {
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== existing.departmentId) {
       throw new Error('Bạn không có quyền chỉnh sửa tiêu chí của bộ môn khác');
-    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
+    } else if (![UserRole.HEAD, UserRole.ADMIN].includes(user?.role as UserRole)) {
       throw new Error('Không có quyền thực hiện');
     }
 
@@ -763,7 +766,7 @@ export class GradingService {
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== criterion.departmentId) {
       throw new Error('Bạn không có quyền xóa tiêu chí của bộ môn khác');
-    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
+    } else if (![UserRole.HEAD, UserRole.ADMIN].includes(user?.role as UserRole)) {
       throw new Error('Không có quyền thực hiện');
     }
 

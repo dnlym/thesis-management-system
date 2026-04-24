@@ -244,7 +244,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.extraPoints',
       icon: SafetyCertificateOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -253,7 +253,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.reviewerAssignment',
       icon: TeamOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -262,7 +262,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeAssignment',
       icon: CrownOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -271,7 +271,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeManagement',
       icon: TeamOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -280,7 +280,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeSchedules',
       icon: CalendarOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -289,7 +289,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.semesterSettings',
       icon: SettingOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
   {
@@ -298,7 +298,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.gradeSummary',
       icon: BarChartOutlined,
-      roles: ['HEAD'],
+      roles: ['HEAD', 'ADMIN'],
     },
   },
 

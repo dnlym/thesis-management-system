@@ -11,7 +11,7 @@ router.use(authenticate);
 
 router.post(
   '/reviewer',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     body('topicId').isUUID().withMessage('Invalid topic ID'),
     body('reviewerId').isUUID().withMessage('Invalid reviewer ID'),
@@ -39,7 +39,7 @@ router.post(
 
 router.post(
   '/defense-schedule',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     body('topicId').isUUID().withMessage('Invalid topic ID'),
     body('defenseDate').isISO8601().withMessage('Invalid defense date'),
@@ -57,7 +57,7 @@ router.get('/', assignmentController.getAssignments.bind(assignmentController));
 
 router.delete(
   '/:assignmentId',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([param('assignmentId').isUUID().withMessage('Invalid assignment ID')]),
   assignmentController.deleteAssignment.bind(assignmentController)
 );
@@ -67,28 +67,28 @@ router.delete(
 // Get topics eligible for reviewer assignment
 router.get(
   '/topics-for-reviewer',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   assignmentController.getTopicsForReviewerAssignment.bind(assignmentController)
 );
 
 // Get topics eligible for committee assignment
 router.get(
   '/topics-for-committee',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   assignmentController.getTopicsForCommitteeAssignment.bind(assignmentController)
 );
 
 // Get all potential reviewers for a department (HEAD only)
 router.get(
   '/available-reviewers',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   assignmentController.getAvailableReviewersForDepartment.bind(assignmentController)
 );
 
 // Get available reviewers for a topic (excluding GVHD)
 router.get(
   '/available-reviewers/:topicId',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   assignmentController.getAvailableReviewers.bind(assignmentController)
 );
@@ -96,7 +96,7 @@ router.get(
 // Assign committee members to a topic
 router.post(
   '/committee',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     body('topicId').isUUID().withMessage('Invalid topic ID'),
     body('chairId').isUUID().withMessage('Invalid chair ID'),
@@ -110,7 +110,7 @@ router.post(
 // Update defense type of a topic
 router.patch(
   '/:topicId/defense-type',
-  authorize(UserRole.HEAD),
+  authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('type').optional({ nullable: true }).isIn(['ORAL', 'POSTER']).withMessage('Invalid defense type'),

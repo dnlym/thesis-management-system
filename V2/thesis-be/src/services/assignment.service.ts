@@ -692,13 +692,13 @@ export class AssignmentService {
    */
   async getTopicsForReviewerAssignment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
     const topics = await prisma.topic.findMany({
       where: {
-        departmentId: user.departmentId,
+        ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         // Only topics with PASS midterm registrations
         registrations: {
           some: {
@@ -773,13 +773,13 @@ export class AssignmentService {
    */
   async getTopicsForCommitteeAssignment(userId: string): Promise<TopicForCommitteeAssignment[]> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
     const topics = await prisma.topic.findMany({
       where: {
-        departmentId: user.departmentId,
+        ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         // Show all topics from reviewer-grading phase through defense completion
         status: {
           in: [
@@ -909,7 +909,7 @@ export class AssignmentService {
    */
   async getAvailableReviewers(userId: string, topicId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -929,10 +929,10 @@ export class AssignmentService {
     // Get already assigned reviewer IDs
     const assignedReviewerIds = topic.assignments.map(a => a.reviewer_id);
 
-    // Get available reviewers (SUPERVISOR role, same department, not GVHD, not already assigned)
+    // Get available reviewers (LECTURER/HEAD role, same department as topic, not GVHD, not already assigned)
     const reviewers = await prisma.user.findMany({
       where: {
-        departmentId: user.departmentId,
+        departmentId: topic.departmentId,
         role: { in: [UserRole.LECTURER, UserRole.HEAD] },
         id: {
           notIn: [...assignedReviewerIds, topic.supervisor_id], // Exclude GVHD and already assigned
@@ -955,13 +955,13 @@ export class AssignmentService {
    */
   async getAvailableReviewersForDepartment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
     const reviewers = await prisma.user.findMany({
       where: {
-        departmentId: user.departmentId,
+        ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         role: { in: [UserRole.LECTURER, UserRole.HEAD] },
       },
       select: {
@@ -990,7 +990,7 @@ export class AssignmentService {
     }
   ) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 

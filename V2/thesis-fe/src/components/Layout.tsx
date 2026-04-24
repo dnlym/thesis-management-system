@@ -146,6 +146,26 @@ const getMenuSections = (role: string): MenuSection[] => {
       ]
     },
     {
+      title: 'QUẢN LÝ',
+      items: [
+        { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
+        { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
+        { key: '/reviewer-assignment', label: 'Phân công phản biện', icon: <SafetyCertificateOutlined /> },
+        { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
+        { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
+        { key: '/head/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+        { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
+      ]
+    },
+    {
+      title: 'BÁO CÁO - THỐNG KÊ',
+      items: [
+        { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
+        { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
+        { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
+      ]
+    },
+    {
       title: 'QUẢN TRỊ',
       items: [
         { key: '/admin/users', label: 'Người dùng', icon: <UserOutlined /> },
@@ -187,14 +207,14 @@ const SidebarNav = ({ sections, collapsed, activeKey, onNavigate }: SidebarNavPr
           {section.items.map(item => {
             const isActive = (() => {
               if (activeKey === item.key) return true;
-              
+
               const hasExactMatchAnywhere = sections.some(s => s.items.some(i => i.key === activeKey));
               if (hasExactMatchAnywhere) return false;
 
               const baseItemKey = item.key.split('?')[0];
               if (activeKey.startsWith(item.key + '?')) return true;
               if (item.key !== '/dashboard' && activeKey.startsWith(baseItemKey + '/') && baseItemKey.length > 1) return true;
-              
+
               return false;
             })();
             const btn = (

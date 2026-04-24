@@ -72,10 +72,9 @@ export const authorize = (...roles: UserRole[]) => {
         message: "Người dùng chưa đăng nhập",
       });
     }
-    console.log(req.user.role);
-    console.log(roles);
+    console.log(`[AUTH DEBUG] User Role: ${req.user.role}, Required Roles: ${roles.join(', ')}`);
     if (!roles.includes(req.user.role)) {
-      console.log("ko co quyen");
+      console.log(`[AUTH DEBUG] Authorization failed for user ${req.user.id}`);
       return res.status(403).json({
         success: false,
         error: ERROR_CODES.FORBIDDEN,
