@@ -124,60 +124,63 @@ const TopicDetailStudent = () => {
     };
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate('/topics')}
-                >
-                    {t('common.back')}
-                </Button>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><ArrowLeftOutlined className="text-base" onClick={() => navigate('/topics')} style={{ cursor: 'pointer' }} /></div>
+                            <div>
+                                <div className="page-header-title">{topic.title}</div>
+                                <div className="page-header-subtitle">Chi tiết đề tài khóa luận và thực hiện đăng ký</div>
+                            </div>
+                        </div>
+                        <Space>
+                            {/* Registration Button - All students can register individually */}
+                            {canRegister && (
+                                isRegisteredForThisTopic ? (
+                                    <Button type="default" disabled className="bg-green-100 text-green-700 border-green-200" icon={<CheckOutlined />}>
+                                        {t('topics.alreadyRegistered')}
+                                    </Button>
+                                ) : hasAnyRegistration ? (
+                                    <Tooltip title={t('topics.alreadyHasOtherTopicTooltip', { title: myCurrentRegistration?.topic?.title || 'khác' })}>
+                                        <Button
+                                            type="default"
+                                            icon={<StopOutlined />}
+                                            disabled
+                                            className="opacity-60"
+                                        >
+                                            {t('topics.alreadyHasOtherTopic')}
+                                        </Button>
+                                    </Tooltip>
+                                ) : isFull ? (
+                                    <Tooltip title={t('topics.isFullSlotTooltip')}>
+                                        <Button
+                                            type="default"
+                                            icon={<StopOutlined />}
+                                            disabled
+                                            className="opacity-60"
+                                        >
+                                            {t('topics.isFullSlotCount')}
+                                        </Button>
+                                    </Tooltip>
+                                ) : (
+                                    <Button
+                                        type="primary"
+                                        icon={<UserAddOutlined />}
+                                        onClick={() => setRegisterModalVisible(true)}
+                                        loading={registerMutation.isPending}
+                                    >
+                                        {t('topics.registerTopic')}
+                                    </Button>
+                                )
+                            )}
+                        </Space>
+                    </div>
+                </Card>
 
-                <Space>
-                    {/* Registration Button - All students can register individually */}
-                    {canRegister && (
-                        isRegisteredForThisTopic ? (
-                            <Button type="default" disabled className="bg-green-100 text-green-700 border-green-200" icon={<CheckOutlined />}>
-                                {t('topics.alreadyRegistered')}
-                            </Button>
-                        ) : hasAnyRegistration ? (
-                            <Tooltip title={t('topics.alreadyHasOtherTopicTooltip', { title: myCurrentRegistration?.topic?.title || 'khác' })}>
-                                <Button
-                                    type="default"
-                                    icon={<StopOutlined />}
-                                    disabled
-                                    onClick={() => notify.warning(t('topics.alreadyHasOtherTopicTooltip', { title: myCurrentRegistration?.topic?.title || 'khác' }))}
-                                    className="opacity-60"
-                                >
-                                    {t('topics.alreadyHasOtherTopic')}
-                                </Button>
-                            </Tooltip>
-                        ) : isFull ? (
-                            <Tooltip title={t('topics.isFullSlotTooltip')}>
-                                <Button
-                                    type="default"
-                                    icon={<StopOutlined />}
-                                    disabled
-                                    className="opacity-60"
-                                >
-                                    {t('topics.isFullSlotCount')}
-                                </Button>
-                            </Tooltip>
-                        ) : (
-                            <Button
-                                type="primary"
-                                icon={<UserAddOutlined />}
-                                onClick={() => setRegisterModalVisible(true)}
-                                loading={registerMutation.isPending}
-                            >
-                                {t('topics.registerTopic')}
-                            </Button>
-                        )
-                    )}
-                </Space>
-            </div>
 
-            <h1 className="text-2xl font-bold text-primary mb-6">{topic.title}</h1>
 
             <Card className="shadow-soft">
                 <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
@@ -286,6 +289,7 @@ const TopicDetailStudent = () => {
                     Sau khi đăng ký, bạn có thể tìm đồng đội cùng đề tài để lập nhóm.
                 </p>
             </Modal>
+            </div>
         </div>
     );
 };

@@ -174,48 +174,62 @@ const Criteria = () => {
     };
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-foreground">{t('navigation.criteria')}</h1>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                    {t('common.add')}
-                </Button>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('navigation.criteria')}</div>
+                                <div className="page-header-subtitle">Quản lý các tiêu chí đánh giá cho từng vai trò (Hướng dẫn, Phản biện, Hội đồng)</div>
+                            </div>
+                        </div>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            {t('common.add')}
+                        </Button>
+                    </div>
+                </Card>
 
-            <Card className="shadow-soft">
-                <Tabs
-                    activeKey={activeTab}
-                    onChange={(key) => setActiveTab(key as CriteriaType)}
-                >
-                    <TabPane tab={t('role.advisor')} key="ADVISOR">
-                        <Table
-                            columns={columns}
-                            dataSource={getCriteriaList('ADVISOR')}
-                            rowKey="id"
-                            loading={isLoading}
-                            pagination={false}
-                        />
-                    </TabPane>
-                    <TabPane tab={t('role.reviewer')} key="REVIEWER">
-                        <Table
-                            columns={columns}
-                            dataSource={getCriteriaList('REVIEWER')}
-                            rowKey="id"
-                            loading={isLoading}
-                            pagination={false}
-                        />
-                    </TabPane>
-                    <TabPane tab={t('role.council')} key="COUNCIL">
-                        <Table
-                            columns={columns}
-                            dataSource={getCriteriaList('COUNCIL')}
-                            rowKey="id"
-                            loading={isLoading}
-                            pagination={false}
-                        />
-                    </TabPane>
-                </Tabs>
-            </Card>
+                <Card className="page-card-flush">
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={(key) => setActiveTab(key as CriteriaType)}
+                        className="sys-tabs"
+                    >
+                        <TabPane tab={t('role.advisor')} key="ADVISOR">
+                            <Table
+                                columns={columns}
+                                dataSource={getCriteriaList('ADVISOR')}
+                                rowKey="id"
+                                loading={isLoading}
+                                pagination={false}
+                                className="sys-table"
+                            />
+                        </TabPane>
+                        <TabPane tab={t('role.reviewer')} key="REVIEWER">
+                            <Table
+                                columns={columns}
+                                dataSource={getCriteriaList('REVIEWER')}
+                                rowKey="id"
+                                loading={isLoading}
+                                pagination={false}
+                                className="sys-table"
+                            />
+                        </TabPane>
+                        <TabPane tab={t('role.council')} key="COUNCIL">
+                            <Table
+                                columns={columns}
+                                dataSource={getCriteriaList('COUNCIL')}
+                                rowKey="id"
+                                loading={isLoading}
+                                pagination={false}
+                                className="sys-table"
+                            />
+                        </TabPane>
+                    </Tabs>
+                </Card>
 
             <Modal
                 title={editingId ? t('criteria.edit') : t('criteria.add')}
@@ -289,6 +303,7 @@ const Criteria = () => {
                     </div>
                 </Form>
             </Modal>
+            </div>
         </div>
     );
 };

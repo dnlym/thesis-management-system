@@ -209,37 +209,43 @@ const MyRegisteredTopic = () => {
     const receivedInvites = invitesData?.receivedInvites || [];
 
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <div>
-                <Button 
-                    type="link" 
-                    icon={<ArrowLeftOutlined />} 
-                    onClick={() => navigate('/topics')}
-                    className="p-0 mb-2"
-                >
-                    Quay lại danh sách
-                </Button>
-                <Title level={2} className="m-0">Đề tài của tôi</Title>
-                <Text type="secondary">Thông tin đề tài và quản lý nhóm của sinh viên</Text>
-              </div>
-              
-              {group && (
-                <Popconfirm
-                  title="Xác nhận giải tán nhóm?"
-                  description="Hành động này sẽ đưa bạn và các thành viên khác về trạng thái làm việc cá nhân."
-                  onConfirm={() => disbandGroupMutation.mutate()}
-                  okText="Giải tán"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true, loading: disbandGroupMutation.isPending }}
-                >
-                  <Button danger icon={<DeleteOutlined />}>
-                    Giải tán nhóm
-                  </Button>
-                </Popconfirm>
-              )}
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><TeamOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Đề tài của tôi</div>
+                                <div className="page-header-subtitle">Thông tin đề tài và quản lý nhóm của sinh viên</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button 
+                                type="text" 
+                                icon={<ArrowLeftOutlined />} 
+                                onClick={() => navigate('/topics')}
+                            >
+                                Quay lại
+                            </Button>
+                            {group && (
+                                <Popconfirm
+                                    title="Xác nhận giải tán nhóm?"
+                                    description="Hành động này sẽ đưa bạn và các thành viên khác về trạng thái làm việc cá nhân."
+                                    onConfirm={() => disbandGroupMutation.mutate()}
+                                    okText="Giải tán"
+                                    cancelText="Hủy"
+                                    okButtonProps={{ danger: true, loading: disbandGroupMutation.isPending }}
+                                >
+                                    <Button danger icon={<DeleteOutlined />}>
+                                        Giải tán nhóm
+                                    </Button>
+                                </Popconfirm>
+                            )}
+                        </div>
+                    </div>
+                </Card>
 
             {/* Topic Info Card */}
             <Card className="shadow-soft overflow-hidden border-0">
@@ -502,6 +508,7 @@ const MyRegisteredTopic = () => {
                 />
               </div>
             </Modal>
+            </div>
         </div>
     );
 };

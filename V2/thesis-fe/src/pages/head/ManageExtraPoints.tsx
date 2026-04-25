@@ -157,13 +157,18 @@ const HeadManageExtraPoints = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1>Quản lý điểm cộng</h1>
-                <p className="text-muted-foreground">
-                    Xét duyệt yêu cầu cộng điểm từ sinh viên
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+                <div className="flex items-center gap-3">
+                    <div className="page-header-icon"><CheckOutlined className="text-base" /></div>
+                    <div>
+                        <div className="page-header-title">Quản lý điểm cộng</div>
+                        <div className="page-header-subtitle">Xét duyệt yêu cầu cộng điểm từ sinh viên</div>
+                    </div>
+                </div>
+            </Card>
 
             {/* Info Card */}
             <Card className="bg-blue-50 border-blue-200">
@@ -216,15 +221,18 @@ const HeadManageExtraPoints = () => {
             </div>
 
             {/* Requests Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 <Spin spinning={isLoading}>
                     <Table
                         columns={columns}
                         dataSource={requests || []}
                         rowKey="id"
+                        size="middle"
+                        className="sys-table"
                         pagination={{
                             pageSize: 10,
                             showTotal: (total) => `Tổng ${total} yêu cầu`,
+                            className: 'px-6 py-3',
                         }}
                         locale={{ emptyText: 'Chưa có yêu cầu nào' }}
                     />
@@ -396,6 +404,7 @@ const HeadManageExtraPoints = () => {
                     )}
                 </div>
             </Modal>
+            </div>
         </div>
     );
 };

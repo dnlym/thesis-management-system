@@ -10,7 +10,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { useAuthStore } from '@/store/auth';
 import type { TopicForm } from '@/types';
 import { canCreateTopic } from '@/utils/semester-rules';
-import { HistoryOutlined, CopyOutlined } from '@ant-design/icons';
+import { HistoryOutlined, CopyOutlined, PlusOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -112,29 +112,35 @@ const SupervisorCreateTopic = () => {
     };
 
     return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center space-x-3">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate('/topics')}
-                >
-                    Quay lại
-                </Button>
-                <div>
-                    <h1>Tạo đề tài mới</h1>
-                    <p className="text-muted-foreground">Đề xuất đề tài khóa luận cho sinh viên</p>
-                </div>
-                <div className="flex-1 flex justify-end">
-                    <Button 
-                        icon={<HistoryOutlined />} 
-                        onClick={() => setReuseModalVisible(true)}
-                        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                    >
-                        Tái sử dụng đề tài cũ
-                    </Button>
-                </div>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                icon={<ArrowLeftOutlined />}
+                                onClick={() => navigate('/topics')}
+                                type="text"
+                                className="hover:bg-gray-100"
+                            />
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Tạo đề tài mới</div>
+                                <div className="page-header-subtitle">Đề xuất đề tài khóa luận cho sinh viên</div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button 
+                                icon={<HistoryOutlined />} 
+                                onClick={() => setReuseModalVisible(true)}
+                                className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                            >
+                                Tái sử dụng đề tài cũ
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Form Content */}
             <Card className="shadow-soft">
@@ -372,6 +378,7 @@ const SupervisorCreateTopic = () => {
                     )}
                 </div>
             </Modal>
+            </div>
         </div>
     );
 };

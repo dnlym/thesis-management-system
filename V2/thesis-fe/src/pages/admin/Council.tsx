@@ -87,24 +87,31 @@ const Council = () => {
     ];
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">{t('navigation.council')}</h1>
-                    <p className="text-muted-foreground">{t('council.subtitle')}</p>
-                </div>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><UsergroupAddOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('navigation.council')}</div>
+                            <div className="page-header-subtitle">{t('council.subtitle')}</div>
+                        </div>
+                    </div>
+                </Card>
 
-            <Card className="shadow-soft" title={t('council.waitingListTitle')}>
-                <Spin spinning={isLoadingTopics}>
-                    <Table
-                        dataSource={topicsData?.topics || []}
-                        columns={columns}
-                        rowKey="id"
-                        locale={{ emptyText: t('council.noTopicsWaiting') }}
-                    />
-                </Spin>
-            </Card>
+                <Card className="page-card-flush">
+                    <Spin spinning={isLoadingTopics}>
+                        <Table
+                            dataSource={topicsData?.topics || []}
+                            columns={columns}
+                            rowKey="id"
+                            className="sys-table"
+                            locale={{ emptyText: t('council.noTopicsWaiting') }}
+                            pagination={{ pageSize: 10, className: 'px-6 py-4' }}
+                        />
+                    </Spin>
+                </Card>
 
             <Modal
                 title={t('council.modalTitle', { title: selectedTopic?.title })}
@@ -198,6 +205,7 @@ const Council = () => {
                     </div>
                 </Form>
             </Modal>
+            </div>
         </div>
     );
 };

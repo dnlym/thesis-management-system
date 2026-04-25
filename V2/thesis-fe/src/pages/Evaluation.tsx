@@ -253,7 +253,7 @@ const Evaluation = () => {
     const gradedAt = firstGradedStudent?.gradedAt;
 
     return (
-      <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="page-container">
         <div className="flex items-center justify-between">
           <Button icon={<ArrowLeftOutlined />} onClick={() => setSearchParams({})}>Quay lại danh sách</Button>
           {isConfirmed && (
@@ -604,32 +604,50 @@ const Evaluation = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6"><h1 className="text-2xl font-bold">Đánh giá khóa luận</h1><p className="text-gray-500">Quản lý và theo dõi tiến độ chấm điểm các đề tài</p></div>
-      <Card className="shadow-soft">
-        <Tabs activeKey={activeTab} onChange={setActiveTab} type="card"
-          items={[
-            ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Bộ môn', children: renderDepartmentTab() }] : []),
-            { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} /> },
-            { key: 'reviewer', label: 'Phản biện', children: <Table dataSource={reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} /> },
-            { key: 'council', label: 'Hội đồng', children: <Table dataSource={councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} /> },
-          ]}
-        />
-      </Card>
+    <div className="page-container">
+      <div className="page-inner">
+        {/* Header */}
+        <Card className="page-header-card">
+          <div className="flex items-center gap-3">
+            <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
+            <div>
+              <div className="page-header-title">Đánh giá khóa luận</div>
+              <div className="page-header-subtitle">Quản lý và theo dõi tiến độ chấm điểm các đề tài</div>
+            </div>
+          </div>
+        </Card>
 
-      <DefensePivotModal
-        visible={pivotModalVisible}
-        onCancel={() => setPivotModalVisible(false)}
-        topic={selectedTopicForPivot}
-        loading={finalizePivotMutation.isPending}
-        onConfirm={(data) => {
-          finalizePivotMutation.mutate({
-            topicId: selectedTopicForPivot.id,
-            isEligible: data.isEligible,
-            defenseType: data.defenseType,
-          });
-        }}
-      />
+        <Card className="page-card-flush">
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              setActiveTab(key);
+              setSearchParams({ type: key });
+            }}
+            className="px-6 pt-2"
+            items={[
+              ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Quản lý Bộ môn', children: <div className="p-6">{renderDepartmentTab()}</div> }] : []),
+              { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
+              { key: 'reviewer', label: 'Phản biện', children: <Table dataSource={reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
+              { key: 'council', label: 'Hội đồng', children: <Table dataSource={councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
+            ]}
+          />
+        </Card>
+
+        <DefensePivotModal
+          visible={pivotModalVisible}
+          onCancel={() => setPivotModalVisible(false)}
+          topic={selectedTopicForPivot}
+          loading={finalizePivotMutation.isPending}
+          onConfirm={(data) => {
+            finalizePivotMutation.mutate({
+              topicId: selectedTopicForPivot.id,
+              isEligible: data.isEligible,
+              defenseType: data.defenseType,
+            });
+          }}
+        />
+      </div>
     </div>
   );
 };

@@ -152,26 +152,30 @@ const StudentExtraPoints = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1>Điểm Cộng</h1>
-                    <p className="text-muted-foreground">
-                        Gửi yêu cầu cộng điểm cho các thành tích đạt được
-                    </p>
-                </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalVisible(true)}
-                    size="large"
-                >
-                    Gửi yêu cầu mới
-                </Button>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Điểm Cộng</div>
+                                <div className="page-header-subtitle">Gửi yêu cầu cộng điểm cho các thành tích đạt được</div>
+                            </div>
+                        </div>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsModalVisible(true)}
+                        >
+                            Gửi yêu cầu mới
+                        </Button>
+                    </div>
+                </Card>
 
             {/* Info Card */}
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-blue-50 border-blue-200 mb-6">
                 <div className="space-y-2">
                     <h3 className="font-semibold text-blue-900">Hướng dẫn cộng điểm</h3>
                     <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
@@ -184,15 +188,16 @@ const StudentExtraPoints = () => {
             </Card>
 
             {/* Requests Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 <Spin spinning={isLoading}>
                     <Table
                         columns={columns}
                         dataSource={requests || []}
                         rowKey="id"
+                        className="sys-table"
                         pagination={{
                             pageSize: 10,
-                            showTotal: (total) => `Tổng ${total} yêu cầu`,
+                            className: 'px-6 py-4'
                         }}
                         locale={{
                             emptyText: 'Chưa có yêu cầu cộng điểm nào',
@@ -335,6 +340,7 @@ const StudentExtraPoints = () => {
                     </div>
                 )}
             </Modal>
+            </div>
         </div>
     );
 };

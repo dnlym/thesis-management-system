@@ -30,7 +30,10 @@ const StudentViewGrades = () => {
         );
     }
 
-    const { advisorGrade, reviewerGrades, councilGrades, finalScore } = grades;
+    const advisorGrade = grades.advisorGrades?.[0];
+    const reviewerGrades = grades.reviewerGrades;
+    const councilGrades = grades.councilGrades;
+    const finalScore = grades.finalScores?.[0];
 
     // Calculate progress
     const hasAdvisorGrade = !!advisorGrade;
@@ -39,13 +42,18 @@ const StudentViewGrades = () => {
     const isFinalized = finalScore?.finalized || false;
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1>Kết quả đánh giá</h1>
-                <p className="text-muted-foreground">
-                    Xem điểm chi tiết từ GVHD, GVPB và Hội đồng
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><TrophyOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Kết quả đánh giá</div>
+                            <div className="page-header-subtitle">Xem điểm chi tiết từ GVHD, GVPB và Hội đồng</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Status Timeline */}
             <Card className="shadow-soft">
@@ -216,6 +224,7 @@ const StudentViewGrades = () => {
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
+            </div>
         </div>
     );
 };

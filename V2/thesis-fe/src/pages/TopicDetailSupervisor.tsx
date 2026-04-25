@@ -98,60 +98,64 @@ const TopicDetailSupervisor = () => {
     const canRegisterForStudent = isOwner && topic.status === 'APPROVED' && !isFull;
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate('/topics')}
-                >
-                    {t('common.back')}
-                </Button>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><ArrowLeftOutlined className="text-base" onClick={() => navigate('/topics')} style={{ cursor: 'pointer' }} /></div>
+                            <div>
+                                <div className="page-header-title">{topic.title}</div>
+                                <div className="page-header-subtitle">Quản lý và theo dõi đề tài hướng dẫn</div>
+                            </div>
+                        </div>
+                        <Space>
+                            {/* View History Button */}
+                            <Button
+                                icon={<HistoryOutlined />}
+                                onClick={() => setHistoryModalVisible(true)}
+                                className="bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-700"
+                            >
+                                {t('topics.viewHistory')}
+                            </Button>
 
-                <Space>
-                    {/* View History Button */}
-                    <Button
-                        icon={<HistoryOutlined />}
-                        onClick={() => setHistoryModalVisible(true)}
-                        className="bg-amber-50 hover:bg-amber-100 border-amber-300"
-                    >
-                        {t('topics.viewHistory')}
-                    </Button>
+                            {/* Submit for Approval */}
+                            {canSubmitForApproval && (
+                                <Button
+                                    type="primary"
+                                    icon={<SendOutlined />}
+                                    onClick={handleSubmitForApproval}
+                                    loading={submitForApprovalMutation.isPending}
+                                >
+                                    {t('topics.submitForApproval')}
+                                </Button>
+                            )}
 
-                    {/* Submit for Approval */}
-                    {canSubmitForApproval && (
-                        <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            onClick={handleSubmitForApproval}
-                            loading={submitForApprovalMutation.isPending}
-                        >
-                            {t('topics.submitForApproval')}
-                        </Button>
-                    )}
+                            {/* Register For Student Button (Optional feature) */}
+                            {canRegisterForStudent && (
+                                <Button
+                                    icon={<UserAddOutlined />}
+                                    onClick={() => setRegisterModalVisible(true)}
+                                >
+                                    {t('topics.registerForStudent')}
+                                </Button>
+                            )}
 
-                    {/* Register For Student Button (Optional feature) */}
-                    {canRegisterForStudent && (
-                        <Button
-                            icon={<UserAddOutlined />}
-                            onClick={() => setRegisterModalVisible(true)}
-                        >
-                            {t('topics.registerForStudent')}
-                        </Button>
-                    )}
+                            {/* Edit Button */}
+                            {canEdit && (
+                                <Button
+                                    icon={<EditOutlined />}
+                                    onClick={() => navigate(`/topics/${topic.id}/edit`)}
+                                >
+                                    {t('common.edit')}
+                                </Button>
+                            )}
+                        </Space>
+                    </div>
+                </Card>
 
-                    {/* Edit Button */}
-                    {canEdit && (
-                        <Button
-                            icon={<EditOutlined />}
-                            onClick={() => navigate(`/topics/${topic.id}/edit`)}
-                        >
-                            {t('common.edit')}
-                        </Button>
-                    )}
-                </Space>
-            </div>
 
-            <h1 className="text-2xl font-bold text-primary mb-6">{topic.title}</h1>
 
             {/* Show edit notes if REQUIRES_REVISION */}
             {topic.status === 'REQUIRES_REVISION' && topic.edit_notes && (
@@ -301,6 +305,7 @@ const TopicDetailSupervisor = () => {
                 visible={historyModalVisible}
                 onClose={() => setHistoryModalVisible(false)}
             />
+            </div>
         </div>
     );
 };

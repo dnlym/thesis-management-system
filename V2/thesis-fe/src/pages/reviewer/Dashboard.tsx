@@ -73,13 +73,18 @@ const ReviewerDashboard = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1>Dashboard - Phản biện</h1>
-                <p className="text-muted-foreground">
-                    Tổng quan công việc phản biện và chấm điểm
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Dashboard - Phản biện</div>
+                            <div className="page-header-subtitle">Tổng quan công việc phản biện và chấm điểm</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Statistics Cards */}
             <Row gutter={16}>
@@ -190,6 +195,7 @@ const ReviewerDashboard = () => {
                     </ul>
                 </div>
             </Card>
+            </div>
         </div>
     );
 };

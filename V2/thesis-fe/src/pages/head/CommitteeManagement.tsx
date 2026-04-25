@@ -203,29 +203,32 @@ const CommitteeManagement = () => {
     ];
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">{t('committeeManagement.title')}</h1>
-                    <p className="text-gray-500">{t('committeeManagement.description', { semester: activeSemester?.name })}</p>
+        <div className="page-container">
+            <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('committeeManagement.title')}</div>
+                            <div className="page-header-subtitle">{t('committeeManagement.description', { semester: activeSemester?.name })}</div>
+                        </div>
+                    </div>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                        {t('committeeManagement.addCommittee')}
+                    </Button>
                 </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    size="large"
-                    onClick={handleAdd}
-                    className="shadow-md"
-                >
-                    {t('committeeManagement.addCommittee')}
-                </Button>
-            </div>
+            </Card>
 
-            <Card className="shadow-sm border-0">
+            <Card className="page-card-flush">
                 <Table
                     dataSource={committees}
                     columns={columns}
                     loading={isLoading}
                     rowKey="id"
+                    size="middle"
+                    className="sys-table"
                     pagination={false}
                 />
             </Card>
@@ -404,6 +407,7 @@ const CommitteeManagement = () => {
                     </Form.List>
                 </Form>
             </Modal>
+            </div>
         </div>
     );
 };

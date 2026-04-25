@@ -173,13 +173,18 @@ const HeadApproveTopics = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground">{t('approveTopics.title')}</h1>
-                <p className="text-muted-foreground">
-                    {t('approveTopics.subtitle')}
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><CheckOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('approveTopics.title')}</div>
+                            <div className="page-header-subtitle">{t('approveTopics.subtitle')}</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Info Card */}
             <Card className="bg-blue-50 border-blue-200">
@@ -194,9 +199,9 @@ const HeadApproveTopics = () => {
                 </div>
             </Card>
 
-            {/* Topics Table with Tabs */}
-            <Card className="shadow-soft">
-                <Tabs activeKey={activeTab} onChange={setActiveTab}>
+                {/* Topics Table with Tabs */}
+                <Card className="page-card-flush">
+                    <Tabs activeKey={activeTab} onChange={setActiveTab} className="px-4">
                     <TabPane
                         tab={
                             <div className="flex items-center space-x-2">
@@ -213,6 +218,8 @@ const HeadApproveTopics = () => {
                                 columns={columns}
                                 dataSource={topics}
                                 rowKey="id"
+                                size="middle"
+                                className="sys-table"
                                 pagination={{
                                     pageSize: 10,
                                     showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
@@ -487,6 +494,7 @@ const HeadApproveTopics = () => {
                     onClose={() => setHistoryModalVisible(false)}
                 />
             )}
+            </div>
         </div>
     );
 };

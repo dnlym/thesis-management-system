@@ -204,13 +204,18 @@ const SupervisorManageRegistrations = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1>Quản lý đăng ký</h1>
-                <p className="text-muted-foreground">
-                    Xem và xử lý đăng ký đề tài từ sinh viên
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><CheckOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Quản lý đăng ký</div>
+                            <div className="page-header-subtitle">Xem và xử lý đăng ký đề tài từ sinh viên</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -241,15 +246,16 @@ const SupervisorManageRegistrations = () => {
             </div>
 
             {/* Registrations Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 <Spin spinning={isLoading}>
                     <Table
                         columns={columns}
                         dataSource={groupedRegistrations || []}
                         rowKey={(record: any) => record.topic_id || record.topic?.id || record.id}
+                        className="sys-table"
                         pagination={{
                             pageSize: 10,
-                            showTotal: (total) => `Tổng ${total} đề tài`,
+                            className: 'px-6 py-4'
                         }}
                         locale={{
                             emptyText: 'Chưa có đăng ký nào',
@@ -372,6 +378,7 @@ const SupervisorManageRegistrations = () => {
                     )}
                 </div>
             </Modal>
+            </div>
         </div>
     );
 };

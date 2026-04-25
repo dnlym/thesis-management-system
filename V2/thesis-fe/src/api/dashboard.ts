@@ -39,6 +39,7 @@ export interface DashboardCharts {
     monthlyProgress: { month: string; registered: number; completed: number; defended: number }[];
     defenseType: { type: string; count: number; percentage: number }[];
     scoreDistribution: { range: string; count: number }[];
+    leaderboard: { id: string; full_name: string; email: string; avatar_url?: string; topicCount: number }[];
 }
 
 export const DashboardApi = {

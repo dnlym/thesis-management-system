@@ -111,19 +111,18 @@ const EditTopic = () => {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex items-center space-x-3">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(`/topics/${id}`)}
-                >
-                    Quay lại
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Chỉnh sửa đề tài</h1>
-                    <p className="text-muted-foreground">Cập nhật thông tin đề tài</p>
-                </div>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><ArrowLeftOutlined className="text-base" onClick={() => navigate(`/topics/${id}`)} style={{ cursor: 'pointer' }} /></div>
+                        <div>
+                            <div className="page-header-title">Chỉnh sửa đề tài</div>
+                            <div className="page-header-subtitle">Cập nhật thông tin chi tiết cho đề tài khóa luận</div>
+                        </div>
+                    </div>
+                </Card>
 
             {topic.status === 'REQUIRES_REVISION' && (
                 <Alert
@@ -219,6 +218,7 @@ const EditTopic = () => {
                     </div>
                 </Form>
             </Card>
+            </div>
         </div>
     );
 };

@@ -83,43 +83,41 @@ const StudentTopics = () => {
     };
 
     return (
-        <div className="container mx-auto p-4 md:p-6 space-y-8 animate-in fade-in duration-500">
-            {/* Hero Section */}
-            <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-12 text-primary-foreground shadow-academic">
-                <div className="relative z-10 max-w-2xl">
-                    <h1 className="tracking-tight mb-4">
-                        Khám phá Đề tài Khóa luận
-                    </h1>
-                    <p className="text-lg opacity-90 mb-8">
-                        Tìm kiếm và lựa chọn đề tài phù hợp với định hướng phát triển nghề nghiệp của bạn.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/50" />
-                            <Input 
-                                placeholder="Tên đề tài, mã đề tài hoặc giảng viên..." 
-                                className="bg-white text-foreground pl-10 h-12 rounded-xl border-none shadow-lg focus-visible:ring-offset-0"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card mb-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><BookOpen className="h-5 w-5" /></div>
+                            <div>
+                                <div className="page-header-title">Khám phá Đề tài Khóa luận</div>
+                                <div className="page-header-subtitle">Tìm kiếm và lựa chọn đề tài phù hợp với định hướng phát triển của bạn</div>
+                            </div>
                         </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] h-12 bg-white text-foreground border-none rounded-xl shadow-lg font-medium">
-                                <SelectValue placeholder="Trạng thái" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="APPROVED">Đang mở đăng ký</SelectItem>
-                                <SelectItem value="REGISTERED">Đã có người đăng ký</SelectItem>
-                                <SelectItem value="COMPLETED">Đã hoàn thành</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex flex-col sm:flex-row gap-3 min-w-[400px]">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input 
+                                    placeholder="Tìm kiếm đề tài, giảng viên..." 
+                                    className="pl-9"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Trạng thái" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="APPROVED">Đang mở đăng ký</SelectItem>
+                                    <SelectItem value="REGISTERED">Đã có người đăng ký</SelectItem>
+                                    <SelectItem value="COMPLETED">Đã hoàn thành</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                </div>
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 h-48 w-48 rounded-full bg-primary-dark/30 blur-2xl" />
-                <BookOpen className="absolute right-12 bottom-12 h-32 w-32 text-white/10 rotate-12" />
-            </div>
+                </Card>
 
             {/* Results Grid */}
             {isLoading ? (
@@ -240,6 +238,7 @@ const StudentTopics = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            </div>
         </div>
     );
 };

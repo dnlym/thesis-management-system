@@ -205,12 +205,18 @@ const MidtermEvaluation = () => {
     const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
 
     return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Đánh giá giữa kỳ</h1>
-                <p className="text-gray-500">Đánh giá PASS/FAIL cho các nhóm sinh viên được phân công hướng dẫn</p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Đánh giá giữa kỳ</div>
+                            <div className="page-header-subtitle">Đánh giá PASS/FAIL cho các nhóm sinh viên được phân công hướng dẫn</div>
+                        </div>
+                    </div>
+                </Card>
 
             {hasAnyRestrictedPhase && (
                 <Alert
@@ -223,37 +229,38 @@ const MidtermEvaluation = () => {
             )}
 
             {/* Statistics */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <Card className="bg-orange-50 border-orange-200">
+            <div className="grid grid-cols-3 gap-6 mb-6">
+                <Card className="shadow-soft border-l-4 border-l-orange-500 rounded-xl">
                     <div className="text-center">
                         <div className="text-3xl font-bold text-orange-600">{pendingCount}</div>
-                        <div className="text-gray-600">Chưa đánh giá</div>
+                        <div className="text-gray-500 font-medium mt-1">Chưa đánh giá</div>
                     </div>
                 </Card>
-                <Card className="bg-green-50 border-green-200">
+                <Card className="shadow-soft border-l-4 border-l-green-500 rounded-xl">
                     <div className="text-center">
                         <div className="text-3xl font-bold text-green-600">{passedCount}</div>
-                        <div className="text-gray-600">PASS</div>
+                        <div className="text-gray-500 font-medium mt-1">PASS</div>
                     </div>
                 </Card>
-                <Card className="bg-red-50 border-red-200">
+                <Card className="shadow-soft border-l-4 border-l-red-500 rounded-xl">
                     <div className="text-center">
                         <div className="text-3xl font-bold text-red-600">{failedCount}</div>
-                        <div className="text-gray-600">FAIL</div>
+                        <div className="text-gray-500 font-medium mt-1">FAIL</div>
                     </div>
                 </Card>
             </div>
 
             {/* Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 {registrations?.length === 0 ? (
-                    <Empty description="Không có nhóm nào cần đánh giá giữa kỳ" />
+                    <Empty description="Không có nhóm nào cần đánh giá giữa kỳ" className="py-12" />
                 ) : (
                     <Table
                         dataSource={registrations || []}
                         columns={columns}
                         rowKey="id"
-                        pagination={{ pageSize: 10 }}
+                        pagination={{ pageSize: 10, className: 'px-6 py-4' }}
+                        className="sys-table"
                     />
                 )}
             </Card>
@@ -331,6 +338,7 @@ const MidtermEvaluation = () => {
                     </div>
                 )}
             </Modal>
+            </div>
         </div>
     );
 };

@@ -60,23 +60,30 @@ const CommitteeSchedules = () => {
     ];
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">{t('navigation.committeeSchedules', 'Lịch bảo vệ hội đồng')}</h1>
-                    <p className="text-gray-500">Xem và quản lý phân bổ thời gian bảo vệ của các hội đồng trong học kỳ này</p>
-                </div>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><CalendarOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('navigation.committeeSchedules', 'Lịch bảo vệ hội đồng')}</div>
+                            <div className="page-header-subtitle">Xem và quản lý phân bổ thời gian bảo vệ của các hội đồng trong học kỳ này</div>
+                        </div>
+                    </div>
+                </Card>
 
-            <Card className="shadow-sm border-0">
-                <Table
-                    dataSource={masterSchedules}
-                    columns={columns}
-                    loading={isLoading}
-                    rowKey={(record) => record.committee.id}
-                    pagination={false}
-                />
-            </Card>
+                <Card className="page-card-flush">
+                    <Table
+                        dataSource={masterSchedules}
+                        columns={columns}
+                        loading={isLoading}
+                        rowKey={(record) => record.committee.id}
+                        pagination={false}
+                        className="sys-table"
+                    />
+                </Card>
+            </div>
         </div>
     );
 };

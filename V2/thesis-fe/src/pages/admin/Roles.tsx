@@ -1,4 +1,5 @@
 import { Card, Table, Tag, Descriptions, Spin, Alert } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { UsersApi } from '@/api/users';
@@ -113,35 +114,41 @@ const Roles = () => {
     );
   }
 
-  return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{t('navigation.roles')}</h1>
-        <p className="text-muted-foreground">{t('roles.subtitle')}</p>
-      </div>
+    return (
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('navigation.roles')}</div>
+                                <div className="page-header-subtitle">{t('roles.subtitle')}</div>
+                            </div>
+                        </div>
+                        <div className="text-sm font-medium text-gray-500">
+                            {t('roles.totalUsers', { count: rolesData.reduce((sum, role) => sum + role.userCount, 0) })} users
+                        </div>
+                    </div>
+                </Card>
 
-      <Card
-        title={t('roles.listTitle')}
-        className="shadow-soft"
-        extra={
-          <div className="text-sm text-muted-foreground">
-            {t('roles.totalUsers', { count: rolesData.reduce((sum, role) => sum + role.userCount, 0) })}
-          </div>
-        }
-      >
-        <Table
-          columns={columns}
-          dataSource={rolesData}
-          rowKey="id"
-          expandable={{
-            expandedRowRender,
-            expandRowByClick: true,
-          }}
-          pagination={false}
-        />
-      </Card>
-    </div>
-  );
+                <Card className="page-card-flush">
+                    <Table
+                        columns={columns}
+                        dataSource={rolesData}
+                        rowKey="id"
+                        className="sys-table"
+                        expandable={{
+                            expandedRowRender,
+                            expandRowByClick: true,
+                        }}
+                        pagination={false}
+                    />
+                </Card>
+            </div>
+        </div>
+    );
 };
 
 export default Roles;

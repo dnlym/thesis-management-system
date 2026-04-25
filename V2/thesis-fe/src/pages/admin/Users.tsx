@@ -150,37 +150,43 @@ const Users = () => {
     });
   };
 
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('navigation.users')}</h1>
-          <p className="text-muted-foreground">{t('users.subtitle')}</p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleCreate}
-          className="bg-academic-primary hover:bg-academic-primary-dark"
-        >
-          {t('users.addUser')}
-        </Button>
-      </div>
+    return (
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('navigation.users')}</div>
+                                <div className="page-header-subtitle">{t('users.subtitle')}</div>
+                            </div>
+                        </div>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={handleCreate}
+                        >
+                            {t('users.addUser')}
+                        </Button>
+                    </div>
+                </Card>
 
-      <Card className="shadow-soft">
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} of ${total} items`,
-          }}
-        />
-      </Card>
+                <Card className="page-card-flush">
+                    <Table
+                        columns={columns}
+                        dataSource={data}
+                        rowKey="id"
+                        loading={isLoading}
+                        className="sys-table"
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            className: 'px-6 py-4'
+                        }}
+                    />
+                </Card>
 
       <Modal
         title={editingUser ? t('users.editUser') : t('users.addNewUser')}
@@ -246,9 +252,10 @@ const Users = () => {
             </Form.Item>
           )}
         </Form>
-      </Modal>
-    </div>
-  );
+            </Modal>
+            </div>
+        </div>
+    );
 };
 
 export default Users;

@@ -246,12 +246,14 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
           dataSource={logs || []}
           loading={isLoadingLogs}
           rowKey="id"
+          size="middle"
+          className="sys-table"
           columns={[
             {
               title: t('progress.time'),
               dataIndex: 'created_at',
               key: 'time',
-              render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm')
+              render: (text) => <span className="text-xs text-gray-500">{dayjs(text).format('DD/MM/YYYY HH:mm')}</span>
             },
             {
               title: t('progress.actor'),
@@ -260,7 +262,7 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
               render: (user) => (
                 <Space>
                   <Avatar size="small" src={user?.avatar_url} icon={<UserOutlined />} />
-                  {user?.full_name}
+                  <span className="text-sm font-medium">{user?.full_name}</span>
                 </Space>
               )
             },
@@ -268,7 +270,7 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
               title: t('progress.action'),
               dataIndex: 'action',
               key: 'action',
-              render: (action) => <Tag>{action}</Tag>
+              render: (action) => <Tag className="m-0">{action}</Tag>
             },
             {
               title: t('progress.details'),
@@ -276,8 +278,8 @@ const RegistrationDetail = ({ registration, isSupervisor }: { registration: any,
               render: (_, record: any) => {
                 const newValue = record.new_value as any;
                   return (
-                    <div>
-                      {newValue?.status && <div>{t('common.status')}: <StudentProgressBadge status={newValue.status} /></div>}
+                    <div className="text-xs">
+                      {newValue?.status && <div className="mb-1">{t('common.status')}: <StudentProgressBadge status={newValue.status} /></div>}
                       {newValue?.feedback && <div className="text-gray-500 italic">"{newValue.feedback}"</div>}
                     </div>
                   );
@@ -338,16 +340,32 @@ const Progress = () => {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <h1>{t('progress.title')}</h1>
+    <div className="page-container">
+      <div className="page-inner">
+        {/* Header */}
+        <Card className="page-header-card">
+          <div className="flex items-center gap-3">
+            <div className="page-header-icon"><ClockCircleOutlined className="text-base" /></div>
+            <div>
+              <div className="page-header-title">{t('progress.title')}</div>
+              <div className="page-header-subtitle">Theo dõi tiến độ thực hiện đề tài của các nhóm sinh viên</div>
+            </div>
+          </div>
+        </Card>
 
-      <Card className="shadow-soft">
-        <Table
-          dataSource={registrations || []}
-          columns={columns}
-          rowKey="id"
-        />
-      </Card>
+        <Card className="page-card-flush">
+          <Table
+            dataSource={registrations || []}
+            columns={columns}
+            rowKey="id"
+            size="middle"
+            className="sys-table"
+            pagination={{
+              pageSize: 10,
+              className: 'px-6 py-4'
+            }}
+          />
+        </Card>
 
       <Modal
         title={t('progress.progressDetail')}
@@ -363,8 +381,9 @@ const Progress = () => {
           />
         )}
       </Modal>
-    </div>
-  );
+            </div>
+        </div>
+    );
 };
 
 export default Progress;

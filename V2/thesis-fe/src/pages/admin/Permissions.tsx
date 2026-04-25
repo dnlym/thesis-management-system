@@ -5,8 +5,6 @@ import {
     Shield, 
     Save, 
     RefreshCcw, 
-    CheckCircle2, 
-    XCircle, 
     Info,
     Lock,
     Unlock,
@@ -27,7 +25,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
     Tooltip,
     TooltipContent,
@@ -123,28 +120,30 @@ const ManagePermissions: React.FC = () => {
     }, {} as Record<string, typeof matrix.permissions>);
 
     return (
-        <div className="container mx-auto py-6 space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                        <Shield className="h-6 w-6 text-primary" />
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><Shield className="h-5 w-5" /></div>
+                            <div>
+                                <div className="page-header-title">Quản lý Phân quyền</div>
+                                <div className="page-header-subtitle">Thiết lập quyền hạn cho từng vai trò trong hệ thống</div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleSeed} disabled={isSeeding}>
+                                {isSeeding ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                                Reset
+                            </Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || isUpdating}>
+                                {isUpdating ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Lưu thay đổi
+                            </Button>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Quản lý Phân quyền</h1>
-                        <p className="text-muted-foreground">Thiết lập quyền hạn cho từng vai trò trong hệ thống.</p>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleSeed} disabled={isSeeding}>
-                        {isSeeding ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                        Reset về mặc định
-                    </Button>
-                    <Button onClick={handleSave} disabled={!hasChanges || isUpdating}>
-                        {isUpdating ? <RefreshCcw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Lưu thay đổi
-                    </Button>
-                </div>
-            </div>
+                </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 {/* Role Selection Sidebar */}
@@ -269,15 +268,7 @@ const ManagePermissions: React.FC = () => {
                     </CardContent>
                 </Card>
             </div>
-
-            <Alert className="bg-primary/5 border-primary/20">
-                <Info className="h-4 w-4 text-primary" />
-                <AlertTitle>Thông tin quan trọng</AlertTitle>
-                <AlertDescription className="text-muted-foreground">
-                    Hệ thống sử dụng mô hình <strong>Triple-Check</strong>: Các quyền ở đây là quyền cơ sở. 
-                    Hành động thực tế sẽ được kiểm tra thêm dựa trên <strong>Ngữ cảnh (Topic Context)</strong> và <strong>Giai đoạn (Semester Phase)</strong> tại Backend.
-                </AlertDescription>
-            </Alert>
+            </div>
         </div>
     );
 };

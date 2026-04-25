@@ -212,27 +212,24 @@ const FinalResults = () => {
     ];
 
     return (
-        <div className="p-6 bg-slate-50 min-h-screen font-sans">
-            <div className="max-w-[1200px] mx-auto space-y-4">
+        <div className="page-container">
+            <div className="page-inner">
 
                 {/* Header — title + export cùng 1 hàng */}
-                <Card
-                    className="shadow-sm border-slate-200 rounded-xl"
-                    bodyStyle={{ padding: '14px 24px' }}
-                >
+                <Card className="page-header-card">
                     <div className="flex items-center justify-between gap-4">
                         {/* Icon + title */}
                         <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow shadow-blue-100">
+                            <div className="page-header-icon">
                                 <FileTextOutlined className="text-base" />
                             </div>
                             <div className="min-w-0">
-                                <Title level={5} className="!m-0 text-slate-900 whitespace-nowrap leading-tight">
+                                <div className="page-header-title">
                                     Bảng kết quả khóa luận
-                                </Title>
-                                <Text className="text-slate-400 text-xs whitespace-nowrap">
+                                </div>
+                                <div className="page-header-subtitle">
                                     Xem và xuất danh sách kết quả theo hội đồng
-                                </Text>
+                                </div>
                             </div>
                         </div>
 
@@ -253,10 +250,7 @@ const FinalResults = () => {
                 </Card>
 
                 {/* Filter & Search */}
-                <Card
-                    className="shadow-sm border-slate-200 rounded-xl"
-                    bodyStyle={{ padding: '12px 24px' }}
-                >
+                <Card className="page-toolbar-card">
                     <div className="flex items-center gap-4">
                         <Radio.Group
                             value={councilFilter}
@@ -281,10 +275,7 @@ const FinalResults = () => {
                 </Card>
 
                 {/* Table */}
-                <Card
-                    className="shadow-sm border-slate-200 rounded-xl overflow-hidden"
-                    bodyStyle={{ padding: 0 }}
-                >
+                <Card className="page-card-flush">
                     <Table
                         dataSource={processedData}
                         columns={columns}
@@ -299,30 +290,11 @@ const FinalResults = () => {
                                 <span className="text-slate-400 text-sm">Tổng {total} đề tài</span>
                             ),
                         }}
-                        className="custom-results-table"
+                        className="sys-table"
                     />
                 </Card>
 
             </div>
-
-            <style dangerouslySetInnerHTML={{ __html: `
-                .custom-results-table .ant-table-thead > tr > th {
-                    background: #f8fafc !important;
-                    font-weight: 700 !important;
-                    color: #64748b !important;
-                    font-size: 12px !important;
-                    border-bottom: 1px solid #e2e8f0 !important;
-                    padding: 10px 16px !important;
-                    white-space: nowrap !important;
-                }
-                .custom-results-table .ant-table-tbody > tr > td {
-                    padding: 10px 16px !important;
-                    border-bottom: 1px solid #f1f5f9 !important;
-                }
-                .custom-results-table .ant-table-tbody > tr:hover > td {
-                    background: #f8fafc !important;
-                }
-            `}} />
         </div>
     );
 };

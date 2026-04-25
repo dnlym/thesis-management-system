@@ -105,36 +105,38 @@ const Reports = () => {
   ];
 
   return (
-    <div className="p-8 space-y-8 bg-[#f8fafc] min-h-screen">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <Title level={2} className="mb-1 bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-            {t('navigation.reports')}
-          </Title>
-          <Text type="secondary" className="flex items-center gap-2">
-            <CalendarOutlined /> Dữ liệu thống kê học kỳ hiện tại • Cập nhật: {dayjs().format('DD/MM/YYYY HH:mm')}
-          </Text>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Select
-            defaultValue="current"
-            style={{ width: 220 }}
-            prefix={<FilterOutlined className="text-blue-500" />}
-            className="shadow-sm rounded-lg"
-          >
-            <Select.Option value="current">Học kỳ 2 (2025-2026)</Select.Option>
-            <Select.Option value="prev">Học kỳ 1 (2025-2026)</Select.Option>
-          </Select>
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            className="bg-indigo-600 hover:bg-indigo-700 shadow-md h-[40px] px-6"
-          >
-            {t('reports.exportExcel')}
-          </Button>
-        </div>
-      </div>
+    <div className="page-container">
+      <div className="page-inner">
+        {/* Header Section */}
+        <Card className="page-header-card">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
+              <div>
+                <div className="page-header-title">{t('navigation.reports')}</div>
+                <div className="page-header-subtitle">
+                  <CalendarOutlined className="mr-1" /> Dữ liệu thống kê học kỳ hiện tại • Cập nhật: {dayjs().format('DD/MM/YYYY HH:mm')}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Select
+                defaultValue="current"
+                style={{ width: 220 }}
+                className="rounded-lg"
+              >
+                <Select.Option value="current">Học kỳ 2 (2025-2026)</Select.Option>
+                <Select.Option value="prev">Học kỳ 1 (2025-2026)</Select.Option>
+              </Select>
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+              >
+                {t('reports.exportExcel')}
+              </Button>
+            </div>
+          </div>
+        </Card>
 
       {/* Overview Stats Cards */}
       <Row gutter={[24, 24]}>
@@ -301,7 +303,7 @@ const Reports = () => {
                     outerRadius={100}
                     dataKey="count"
                     nameKey="type"
-                    label={({ type, percent }) => `${type}: ${(percent * 100).toFixed(0)}%`}
+                    label={({ payload, percent }: any) => `${payload.type}: ${(percent * 100).toFixed(0)}%`}
                   >
                     <Cell fill="#6366f1" />
                     <Cell fill="#ec4899" />
@@ -335,6 +337,7 @@ const Reports = () => {
           </Card>
         </Col>
       </Row>
+      </div>
     </div>
   );
 };

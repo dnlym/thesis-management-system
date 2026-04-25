@@ -359,12 +359,18 @@ const ReviewerAssignment = () => {
     }
 
     return (
-        <div className="p-6">
+        <div className="page-container">
+            <div className="page-inner">
             {/* Header */}
-            <div className="mb-6">
-                <h1>{t('reviewerAssignment.title')}</h1>
-                <p className="text-gray-500">{t('reviewerAssignment.description')}</p>
-            </div>
+            <Card className="page-header-card">
+                <div className="flex items-center gap-3">
+                    <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                    <div>
+                        <div className="page-header-title">{t('reviewerAssignment.title')}</div>
+                        <div className="page-header-subtitle">{t('reviewerAssignment.description')}</div>
+                    </div>
+                </div>
+            </Card>
 
             {/* Statistics */}
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -395,9 +401,9 @@ const ReviewerAssignment = () => {
             </div>
 
             {/* Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 {topics?.length === 0 ? (
-                    <Empty description={t('reviewerAssignment.noTopics')} />
+                    <Empty description={t('reviewerAssignment.noTopics')} className="py-12" />
                 ) : (
                     <Table
                         dataSource={topics || []}
@@ -406,9 +412,11 @@ const ReviewerAssignment = () => {
                         pagination={{ pageSize: 10 }}
                         scroll={{ x: 'max-content' }}
                         size="middle"
+                        className="sys-table"
                     />
                 )}
             </Card>
+            </div>
         </div>
     );
 };

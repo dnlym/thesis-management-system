@@ -125,13 +125,18 @@ const ReviewerAssignments = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1>Phân công phản biện</h1>
-                <p className="text-muted-foreground">
-                    Quản lý các đề tài được phân công phản biện
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><DownloadOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Phân công phản biện</div>
+                            <div className="page-header-subtitle">Quản lý các đề tài được phân công phản biện</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Info Card */}
             <Card className="bg-blue-50 border-blue-200">
@@ -147,15 +152,16 @@ const ReviewerAssignments = () => {
             </Card>
 
             {/* Assignments Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 <Spin spinning={isLoading}>
                     <Table
                         columns={columns}
                         dataSource={assignments}
                         rowKey="id"
+                        className="sys-table"
                         pagination={{
                             pageSize: 10,
-                            showTotal: (total) => `Tổng ${total} phân công`,
+                            className: 'px-6 py-4'
                         }}
                         locale={{
                             emptyText: 'Chưa có phân công nào',
@@ -256,6 +262,7 @@ const ReviewerAssignments = () => {
                     )}
                 </div>
             </Modal>
+            </div>
         </div>
     );
 };

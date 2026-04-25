@@ -157,13 +157,18 @@ const HeadAssignReviewers = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground">Phân công đánh giá</h1>
-                <p className="text-muted-foreground">
-                    Phân công giảng viên phản biện và hội đồng bảo vệ
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><UserAddOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Phân công đánh giá</div>
+                            <div className="page-header-subtitle">Phân công giảng viên phản biện và hội đồng bảo vệ</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Info Card */}
             <Card className="bg-blue-50 border-blue-200">
@@ -179,21 +184,23 @@ const HeadAssignReviewers = () => {
                 </div>
             </Card>
 
-            {/* Topics Table */}
-            <Card className="shadow-soft">
-                <Spin spinning={isLoading}>
-                    <Table
-                        columns={columns}
-                        dataSource={topics}
-                        rowKey="id"
-                        pagination={{
-                            pageSize: 10,
-                            showTotal: (total) => `Tổng ${total} đề tài`,
-                        }}
-                        locale={{ emptyText: 'Chưa có đề tài nào' }}
-                    />
-                </Spin>
-            </Card>
+                {/* Topics Table */}
+                <Card className="page-card-flush">
+                    <Spin spinning={isLoading}>
+                        <Table
+                            columns={columns}
+                            dataSource={topics}
+                            rowKey="id"
+                            size="middle"
+                            className="sys-table"
+                            pagination={{
+                                pageSize: 10,
+                                showTotal: (total) => `Tổng ${total} đề tài`,
+                            }}
+                            locale={{ emptyText: 'Chưa có đề tài nào' }}
+                        />
+                    </Spin>
+                </Card>
 
             {/* Assign Reviewers Modal */}
             <Modal
@@ -327,6 +334,7 @@ const HeadAssignReviewers = () => {
                     </div>
                 </Form>
             </Modal>
+            </div>
         </div>
     );
 };

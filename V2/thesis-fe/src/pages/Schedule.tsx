@@ -87,21 +87,27 @@ const Schedule = () => {
     ).slice(0, 5);
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1>{t('navigation.schedule')}</h1>
-                    <p className="text-muted-foreground">Quản lý lịch trình báo cáo và bảo vệ khóa luận</p>
-                </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => setIsModalVisible(true)}
-                    className="bg-academic-primary hover:bg-academic-primary-dark"
-                >
-                    Tạo lịch mới
-                </Button>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><CalendarOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('navigation.schedule')}</div>
+                                <div className="page-header-subtitle">Quản lý lịch trình báo cáo và bảo vệ khóa luận</div>
+                            </div>
+                        </div>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsModalVisible(true)}
+                        >
+                            Tạo lịch mới
+                        </Button>
+                    </div>
+                </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Calendar */}
@@ -255,6 +261,7 @@ const Schedule = () => {
                     </Form.Item>
                 </Form>
             </Modal>
+            </div>
         </div>
     );
 };

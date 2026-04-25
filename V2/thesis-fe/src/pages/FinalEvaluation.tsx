@@ -220,19 +220,25 @@ const FinalEvaluation = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-            <div className="flex items-center justify-between mb-2">
-                <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/evaluation')}>
-                    Quay lại
-                </Button>
-                <Text type="secondary">Ngày: {dayjs().format('DD/MM/YYYY')}</Text>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                <div className="flex items-center justify-between mb-2">
+                    <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/evaluation')}>
+                        Quay lại
+                    </Button>
+                    <Text type="secondary">Ngày: {dayjs().format('DD/MM/YYYY')}</Text>
+                </div>
 
-            <Card className="shadow-lg border-t-4 border-t-blue-600">
-                <Title level={3} className="text-center mb-1 uppercase tracking-wide">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
-                <Text type="secondary" className="block text-center mb-6 italic">(Dành cho {activeRole === 'SUPERVISOR' ? 'GVHD' : activeRole === 'REVIEWER' ? 'GVPB' : 'Hội đồng'})</Text>
+                {/* Header Card as the main title section */}
+                <Card className="page-header-card mb-6">
+                    <div className="text-center w-full">
+                        <Title level={3} className="mb-1 uppercase tracking-wide">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
+                        <Text type="secondary" className="italic">(Dành cho {activeRole === 'SUPERVISOR' ? 'GVHD' : activeRole === 'REVIEWER' ? 'GVPB' : 'Hội đồng'})</Text>
+                    </div>
+                </Card>
 
-                <div className="bg-blue-50 p-6 rounded-xl mb-6 border border-blue-100">
+                <Card className="shadow-lg border-t-4 border-t-blue-600 rounded-2xl">
+                    <div className="bg-blue-50 p-6 rounded-xl mb-6 border border-blue-100">
                     <Row gutter={32}>
                         <Col span={14}>
                             <Text type="secondary" className="block text-xs uppercase mb-1 font-bold opacity-70">Tên đề tài</Text>
@@ -285,7 +291,7 @@ const FinalEvaluation = () => {
                             rowKey="id"
                             bordered
                             size="middle"
-                            className="grading-table bg-white"
+                            className="sys-table bg-white"
                             summary={() => (
                                 <>
                                     <Table.Summary.Row className="bg-gray-100 font-bold">
@@ -373,6 +379,7 @@ const FinalEvaluation = () => {
                     body { background: white; }
                 }
             ` }} />
+            </div>
         </div>
     );
 };

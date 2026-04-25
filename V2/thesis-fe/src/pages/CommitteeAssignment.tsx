@@ -192,22 +192,27 @@ const CommitteeAssignment = () => {
     if (isError) return <div className="p-6"><Alert message={t('common.errorLoadingData')} type="error" showIcon /></div>;
 
     return (
-        <div className="p-6 max-w-[1400px] mx-auto bg-gray-50/30 min-h-screen">
-            <div className="mb-8 animate-in fade-in slide-in-from-left-4">
-                <h1 className="flex items-center gap-3">
-                    <CrownOutlined className="text-academic-primary" />
-                    {t('committeeAssignment.title')}
-                </h1>
-                <p className="text-base text-gray-500 italic mt-1">{t('committeeAssignment.description')}</p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+                <div className="flex items-center gap-3">
+                    <div className="page-header-icon"><TeamOutlined className="text-base" /></div>
+                    <div>
+                        <div className="page-header-title">{t('committeeAssignment.title')}</div>
+                        <div className="page-header-subtitle">{t('committeeAssignment.description')}</div>
+                    </div>
+                </div>
+            </Card>
 
-            <Card className="shadow-soft border-none">
+            <Card className="page-card-flush">
                 <Table
                     dataSource={topics || []}
                     columns={columns}
                     rowKey="id"
+                    size="middle"
+                    className="sys-table"
                     pagination={{ pageSize: 10 }}
-                    className="overflow-hidden"
                 />
             </Card>
 
@@ -304,17 +309,7 @@ const CommitteeAssignment = () => {
                     </div>
                 )}
             </Modal>
-
-            <style>{`
-                .committee-assignment-table .ant-table-thead > tr > th {
-                    background: transparent;
-                    color: #94a3b8;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    font-weight: 800;
-                    letter-spacing: 0.05em;
-                }
-            `}</style>
+            </div>
         </div>
     );
 };

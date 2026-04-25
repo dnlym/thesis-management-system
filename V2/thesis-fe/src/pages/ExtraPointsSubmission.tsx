@@ -222,11 +222,18 @@ export default function ExtraPointsSubmission() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
-            <div className="text-center md:text-left">
-                <Title level={2}>Xác nhận Điểm cộng NCKH</Title>
-                <Text type="secondary">Cung cấp bằng chứng về thành tích nghiên cứu để nhận ưu tiên điểm số.</Text>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
+                            <div className="page-header-subtitle">Cung cấp bằng chứng về thành tích nghiên cứu để nhận ưu tiên điểm số.</div>
+                        </div>
+                    </div>
+                </Card>
 
             <Card 
                 className="bg-blue-600 text-white border-0 shadow-soft" 
@@ -400,6 +407,7 @@ export default function ExtraPointsSubmission() {
                     </div>
                 )}
             </Card>
+            </div>
         </div>
     );
 }

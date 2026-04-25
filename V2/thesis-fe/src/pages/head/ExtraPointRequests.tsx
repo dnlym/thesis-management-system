@@ -286,6 +286,8 @@ export default function ExtraPointRequests() {
                     columns={pendingColumns}
                     rowKey="id"
                     loading={isLoading}
+                    size="middle"
+                    className="sys-table"
                     pagination={{ pageSize: 10 }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: renderEmptyPending() }}
@@ -301,6 +303,8 @@ export default function ExtraPointRequests() {
                     columns={processedColumns}
                     rowKey="id"
                     loading={isLoading}
+                    size="middle"
+                    className="sys-table"
                     pagination={{ pageSize: 10 }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: renderEmptyProcessed() }}
@@ -310,10 +314,21 @@ export default function ExtraPointRequests() {
     ];
 
     return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6">Duyệt Điểm Cộng NCKH</h1>
-            <Card className="mb-6">
-                <Row gutter={[16, 16]}>
+        <div className="page-container">
+            <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+                <div className="flex items-center gap-3">
+                    <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
+                    <div>
+                        <div className="page-header-title">Duyệt Điểm Cộng NCKH</div>
+                        <div className="page-header-subtitle">Xem xét và phê duyệt yêu cầu điểm cộng của sinh viên</div>
+                    </div>
+                </div>
+            </Card>
+            {/* Filter Toolbar */}
+            <Card className="page-toolbar-card">
+                <Row gutter={[16, 0]} align="middle">
                     <Col xs={24} md={8}>
                         <div className="text-sm text-gray-500 mb-1">Tìm kiếm</div>
                         <Input
@@ -355,8 +370,9 @@ export default function ExtraPointRequests() {
                 </Row>
             </Card>
 
-            <Card className="shadow-soft">
-                <Tabs items={tabItems} />
+            {/* Table */}
+            <Card className="page-card-flush">
+                <Tabs items={tabItems} className="px-4" />
             </Card>
 
             {/* Approve Modal */}
@@ -516,6 +532,7 @@ export default function ExtraPointRequests() {
                     </div>
                 )}
             </Modal>
+            </div>
         </div>
     );
 }

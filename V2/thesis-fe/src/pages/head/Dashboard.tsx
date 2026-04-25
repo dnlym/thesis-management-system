@@ -123,13 +123,18 @@ const HeadDashboard = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground">Dashboard - Trưởng Bộ môn</h1>
-                <p className="text-muted-foreground">
-                    Tổng quan quản lý khóa luận tốt nghiệp
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><RiseOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">Dashboard - Trưởng Bộ môn</div>
+                            <div className="page-header-subtitle">Tổng quan quản lý khóa luận tốt nghiệp</div>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Key Statistics */}
             <Row gutter={16}>
@@ -236,13 +241,14 @@ const HeadDashboard = () => {
                         <span>Công việc cần xử lý</span>
                     </div>
                 }
-                className="shadow-soft"
+                className="page-card-flush"
             >
                 <Table
                     columns={columns}
                     dataSource={pendingActions}
                     rowKey="id"
                     pagination={false}
+                    className="sys-table"
                 />
             </Card>
 
@@ -279,6 +285,7 @@ const HeadDashboard = () => {
                     </button>
                 </div>
             </Card>
+            </div>
         </div>
     );
 };

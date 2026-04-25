@@ -123,72 +123,75 @@ const TopicDetailGeneral = () => {
     const isFull = (topic.current_students || 0) >= (topic.max_students || 0);
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-                <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate('/topics')}
-                >
-                    {t("common.back")}
-                </Button>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><ArrowLeftOutlined className="text-base" onClick={() => navigate('/topics')} style={{ cursor: 'pointer' }} /></div>
+                            <div>
+                                <div className="page-header-title">{topic.title}</div>
+                                <div className="page-header-subtitle">Chi tiết đề tài khóa luận và các thao tác quản lý</div>
+                            </div>
+                        </div>
+                        <Space>
+                            {/* View History Button */}
+                            <Button
+                                icon={<HistoryOutlined />}
+                                onClick={() => setHistoryModalVisible(true)}
+                                className="bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-700"
+                            >
+                                {t('topics.viewHistory')}
+                            </Button>
 
-                <Space>
-                    {/* View History Button */}
-                    <Button
-                        icon={<HistoryOutlined />}
-                        onClick={() => setHistoryModalVisible(true)}
-                        className="bg-amber-50 hover:bg-amber-100 border-amber-300"
-                    >
-                        {t('topics.viewHistory')}
-                    </Button>
+                            {/* Approve Button */}
+                            {canApprove && (
+                                <Button
+                                    type="primary"
+                                    icon={<CheckOutlined />}
+                                    onClick={handleApprove}
+                                    loading={approveMutation.isPending}
+                                >
+                                    {t('approveTopics.approveButton')}
+                                </Button>
+                            )}
 
-                    {/* Approve Button */}
-                    {canApprove && (
-                        <Button
-                            type="primary"
-                            icon={<CheckOutlined />}
-                            onClick={handleApprove}
-                            loading={approveMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            {t('approveTopics.approveButton')}
-                        </Button>
-                    )}
+                            {/* Require Edit Button */}
+                            {canRequireEdit && (
+                                <Button
+                                    icon={<FormOutlined />}
+                                    onClick={() => setRequireEditModalVisible(true)}
+                                >
+                                    {t('approveTopics.requireEditButton')}
+                                </Button>
+                            )}
 
-                    {/* Require Edit Button */}
-                    {canRequireEdit && (
-                        <Button
-                            icon={<FormOutlined />}
-                            onClick={() => setRequireEditModalVisible(true)}
-                        >
-                            {t('approveTopics.requireEditButton')}
-                        </Button>
-                    )}
+                            {/* Reject Button */}
+                            {canApprove && (
+                                <Button
+                                    danger
+                                    icon={<CloseOutlined />}
+                                    onClick={() => setRejectModalVisible(true)}
+                                >
+                                    {t('approveTopics.rejectButton')}
+                                </Button>
+                            )}
 
-                    {/* Reject Button */}
-                    {canApprove && (
-                        <Button
-                            danger
-                            icon={<CloseOutlined />}
-                            onClick={() => setRejectModalVisible(true)}
-                        >
-                            {t('approveTopics.rejectButton')}
-                        </Button>
-                    )}
+                            {/* Assign Reviewer */}
+                            {canAssignReviewer && (
+                                <Button
+                                    icon={<UsergroupAddOutlined />}
+                                    onClick={() => setAssignReviewerModalVisible(true)}
+                                >
+                                    {t('topics.selectReviewer')}
+                                </Button>
+                            )}
+                        </Space>
+                    </div>
+                </Card>
 
-                    {/* Assign Reviewer */}
-                    {canAssignReviewer && (
-                        <Button
-                            icon={<UsergroupAddOutlined />}
-                            onClick={() => setAssignReviewerModalVisible(true)}
-                        >
-                            {t('topics.selectReviewer')}
-                        </Button>
-                    )}
-                </Space>
-            </div>
 
-            <h1 className="text-2xl font-bold text-primary mb-6">{topic.title}</h1>
 
             <Card className="shadow-soft">
                 <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
@@ -326,6 +329,7 @@ const TopicDetailGeneral = () => {
                 visible={historyModalVisible}
                 onClose={() => setHistoryModalVisible(false)}
             />
+            </div>
         </div>
     );
 };

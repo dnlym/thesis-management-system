@@ -378,27 +378,29 @@ const Topics = () => {
   const isFiltering = filters.status || filters.search;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1>{t('topics.title')}</h1>
-          <p className="text-base text-muted-foreground mt-1">{t('topics.subtitle')}</p>
-        </div>
-        {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/supervisor/create-topic')}
-            className="bg-academic-primary hover:bg-academic-primary-dark border-academic-primary"
-          >
-            {t('topics.createTopic')}
-          </Button>
-        )}
-      </div>
+    <div className="page-container">
+      <div className="page-inner">
+        {/* Header */}
+        <Card className="page-header-card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="page-header-icon"><FilterOutlined className="text-base" /></div>
+              <div>
+                <div className="page-header-title">{t('topics.title')}</div>
+                <div className="page-header-subtitle">{t('topics.subtitle')}</div>
+              </div>
+            </div>
+            {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/supervisor/create-topic')}>
+                {t('topics.createTopic')}
+              </Button>
+            )}
+          </div>
+        </Card>
 
-      {/* Inline Filter Bar */}
-      <Card className="shadow-sm mb-4 bg-gray-50/50">
-        <Flex gap="middle" wrap="wrap" align="center">
+        {/* Filter Bar */}
+        <Card className="page-toolbar-card">
+          <Flex gap="middle" wrap="wrap" align="center">
           <Input.Search
             placeholder="Tìm kiếm đề tài..."
             value={searchValue}
@@ -447,14 +449,16 @@ const Topics = () => {
             </Button>
           )}
         </Flex>
-      </Card>
+        </Card>
 
-      {/* Topics Table */}
-      <Card className="shadow-sm">
-        <Table
+        {/* Topics Table */}
+        <Card className="page-card-flush">
+          <Table
           columns={columns}
           dataSource={topics?.topics || []}
           rowKey="id"
+          size="middle"
+          className="sys-table"
           loading={isLoading || isFetching}
           pagination={{
             current: topics?.pagination?.page || 1,
@@ -486,10 +490,10 @@ const Topics = () => {
               </Empty>
             ),
           }}
-        />
-      </Card>
+          />
+        </Card>
 
-      {/* Registration Modal */}
+        {/* Registration Modal */}
       <Modal
         title={t('topics.registerModalTitle')}
         open={registerModalVisible}
@@ -532,6 +536,7 @@ const Topics = () => {
           </div>
         )}
       </Modal>
+      </div>
     </div>
   );
 };

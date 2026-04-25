@@ -173,13 +173,18 @@ const HeadFinalizeGrades = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6 min-h-screen">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground">Hoàn tất chấm điểm</h1>
-                <p className="text-muted-foreground">
-                    Tính toán điểm tổng và hoàn tất quá trình chấm điểm
-                </p>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+                <div className="flex items-center gap-3">
+                    <div className="page-header-icon"><LockOutlined className="text-base" /></div>
+                    <div>
+                        <div className="page-header-title">Hoàn tất chấm điểm</div>
+                        <div className="page-header-subtitle">Tính toán điểm tổng và hoàn tất quá trình chấm điểm</div>
+                    </div>
+                </div>
+            </Card>
 
             {/* Info Card */}
             <Card className="bg-iuh-blue/10/50 border-iuh-blue-200 rounded-2xl shadow-sm mb-6">
@@ -232,15 +237,18 @@ const HeadFinalizeGrades = () => {
             </div>
 
             {/* Topics Table */}
-            <Card className="shadow-soft">
+            <Card className="page-card-flush">
                 <Spin spinning={isLoading}>
                     <Table
                         columns={columns}
                         dataSource={topics}
                         rowKey="id"
+                        size="middle"
+                        className="sys-table"
                         pagination={{
                             pageSize: 10,
                             showTotal: (total) => `Tổng ${total} đề tài`,
+                            className: 'px-6 py-3',
                         }}
                         locale={{ emptyText: 'Chưa có đề tài nào' }}
                     />
@@ -363,6 +371,7 @@ const HeadFinalizeGrades = () => {
                     </div>
                 )}
             </Modal>
+            </div>
         </div>
     );
 };

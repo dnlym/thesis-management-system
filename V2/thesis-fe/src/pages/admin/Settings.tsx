@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Tabs, Table, Button, Modal, Form, Input, Tag, Spin, Steps, DatePicker, Alert } from 'antd';
 import { notify } from '@/utils/notification';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, InfoCircleOutlined, RightOutlined, LeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, InfoCircleOutlined, RightOutlined, LeftOutlined, CheckCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import { useSemesters, useCreateSemester, useUpdateSemester, useDeleteSemester, useActivateSemester, useFinalizeSemester } from '@/hooks/useSemesters';
@@ -438,53 +438,67 @@ const AdminSettings = () => {
   /* ====== Phase summary UI ================================================ */
 
   /* ====== RENDER ============================================================ */
-  return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1>{t('settings.title')}</h1>
-        <p className="text-base text-muted-foreground mt-1">{t('settings.subtitle')}</p>
-      </div>
+    return (
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><SettingOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('settings.title')}</div>
+                                <div className="page-header-subtitle">{t('settings.subtitle')}</div>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
 
-      <Card className="shadow-soft">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          tabBarExtraContent={
-            activeTab === 'semesters' ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSemester}>
-                {t('settings.addSemester')}
-              </Button>
-            ) : (
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateDept}>
-                {t('settings.addDept')}
-              </Button>
-            )
-          }
-        >
-          <TabPane tab={t('settings.semesters')} key="semesters">
-            <Spin spinning={loadingSemesters}>
-              <Table
-                columns={semesterColumns}
-                dataSource={semesters || []}
-                rowKey="id"
-                pagination={{ pageSize: 10, showTotal: (total) => t('settings.totalSemesters', { total }) }}
-                locale={{ emptyText: t('settings.noSemesters') }}
-              />
-            </Spin>
-          </TabPane>
-          <TabPane tab={t('settings.departments')} key="departments">
-            <Spin spinning={loadingDepts}>
-              <Table
-                columns={deptColumns}
-                dataSource={departments || []}
-                rowKey="id"
-                pagination={{ pageSize: 10, showTotal: (total) => t('settings.totalDepts', { total }) }}
-                locale={{ emptyText: t('settings.noDepts') }}
-              />
-            </Spin>
-          </TabPane>
-        </Tabs>
-      </Card>
+                <Card className="page-card-flush">
+                    <Tabs
+                        activeKey={activeTab}
+                        onChange={setActiveTab}
+                        className="sys-tabs"
+                        tabBarExtraContent={
+                            <div className="px-6 py-2">
+                                {activeTab === 'semesters' ? (
+                                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSemester}>
+                                        {t('settings.addSemester')}
+                                    </Button>
+                                ) : (
+                                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateDept}>
+                                        {t('settings.addDept')}
+                                    </Button>
+                                )}
+                            </div>
+                        }
+                    >
+                        <TabPane tab={t('settings.semesters')} key="semesters">
+                            <Spin spinning={loadingSemesters}>
+                                <Table
+                                    columns={semesterColumns}
+                                    dataSource={semesters || []}
+                                    rowKey="id"
+                                    className="sys-table"
+                                    pagination={{ pageSize: 10, className: 'px-6 py-4' }}
+                                    locale={{ emptyText: t('settings.noSemesters') }}
+                                />
+                            </Spin>
+                        </TabPane>
+                        <TabPane tab={t('settings.departments')} key="departments">
+                            <Spin spinning={loadingDepts}>
+                                <Table
+                                    columns={deptColumns}
+                                    dataSource={departments || []}
+                                    rowKey="id"
+                                    className="sys-table"
+                                    pagination={{ pageSize: 10, className: 'px-6 py-4' }}
+                                    locale={{ emptyText: t('settings.noDepts') }}
+                                />
+                            </Spin>
+                        </TabPane>
+                    </Tabs>
+                </Card>
 
       {/* ── Semester Modal (Phase-based Timeline) ─────────────────────────── */}
       <Modal
@@ -726,9 +740,10 @@ const AdminSettings = () => {
             <Input.TextArea rows={3} placeholder={t('settings.enterDeptDescription')} />
           </Form.Item>
         </Form>
-      </Modal>
-    </div>
-  );
+            </Modal>
+            </div>
+        </div>
+    );
 };
 
 export default AdminSettings;

@@ -80,20 +80,26 @@ const StudentProgress = () => {
     const progressPercentage = ((currentStepIndex + 1) / PROGRESS_STEPS.length) * 100;
 
     return (
-        <div className="container mx-auto p-4 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
-            {/* Header & Overview */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="space-y-2">
-                    <h1 className="tracking-tight">Tiến độ Khóa luận</h1>
-                    <p className="text-lg text-muted-foreground font-medium">Lộ trình học tập & Hồ sơ năng lực của bạn</p>
-                </div>
-                <div className="flex items-center gap-3 bg-muted/50 p-2 pr-4 rounded-full border ring-offset-background">
-                    <Badge variant="outline" className="rounded-full px-3 py-1 bg-background text-primary font-bold border-primary/20">
-                      Học kỳ I, 2024 - 2025
-                    </Badge>
-                    <span className="text-sm font-medium text-muted-foreground">Mã nhóm: {myRegistration.group?.name}</span>
-                </div>
-            </div>
+        <div className="page-container">
+            <div className="page-inner">
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><Activity className="h-5 w-5" /></div>
+                            <div>
+                                <div className="page-header-title">Tiến độ Khóa luận</div>
+                                <div className="page-header-subtitle">Lộ trình học tập & Hồ sơ năng lực của bạn</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 bg-muted/50 p-2 pr-4 rounded-full border ring-offset-background">
+                            <Badge variant="outline" className="rounded-full px-3 py-1 bg-background text-primary font-bold border-primary/20">
+                                Học kỳ I, 2024 - 2025
+                            </Badge>
+                            <span className="text-sm font-medium text-muted-foreground">Mã nhóm: {myRegistration.group?.name}</span>
+                        </div>
+                    </div>
+                </Card>
 
             {/* Progress Visualization */}
             <Card className="border-none shadow-academic bg-gradient-to-br from-white to-blue-50/30">
@@ -297,6 +303,7 @@ const StudentProgress = () => {
                         </CardContent>
                     </Card>
                 </div>
+            </div>
             </div>
         </div>
     );
