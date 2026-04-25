@@ -364,9 +364,9 @@ const AppLayout = () => {
             <img src="/assets/branding/logo-short.png" alt="Logo" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="font-black text-slate-900 text-[11px] leading-none uppercase tracking-tighter truncate">HỆ THỐNG QUẢN LÝ</span>
-              <span className="font-bold text-blue-600 text-[10px] leading-tight mt-0.5 truncate">KHÓA LUẬN TỐT NGHIỆP</span>
+            <div className="flex flex-col py-1">
+              <span className="font-black text-slate-900 text-[11px] leading-[1.4] uppercase tracking-tighter whitespace-nowrap">{t('auth.brandingTitle')}</span>
+              <span className="font-bold text-blue-600 text-[10px] leading-[1.4] mt-0.5 whitespace-nowrap">{t('auth.brandingSubTitle')}</span>
             </div>
           )}
         </div>

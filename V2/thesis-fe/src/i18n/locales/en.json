@@ -56,7 +56,9 @@
     "brandingDesc": "A comprehensive system supporting students and faculty throughout the graduation thesis process at IUH.",
     "activeStudents": "",
     "researchTopics": "",
-    "empoweringExcellence": "Industrial University of Ho Chi Minh City"
+    "empoweringExcellence": "Industrial University of Ho Chi Minh City",
+    "faculty": "FACULTY OF",
+    "departmentName": "INFORMATION TECHNOLOGY"
   },
   "navigation": {
     "dashboard": "Dashboard",

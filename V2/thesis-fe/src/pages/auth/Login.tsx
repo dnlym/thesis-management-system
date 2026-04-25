@@ -11,17 +11,11 @@ import { motion } from 'framer-motion';
 const { Title, Text } = Typography;
 
 const Login = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
   const [form] = Form.useForm();
 
-  const handleQuickLogin = (email: string) => {
-    form.setFieldsValue({
-      email: email,
-      password: 'Password@123'
-    });
-  };
 
   const onFinish = async (values: LoginForm) => {
     try {
@@ -96,8 +90,8 @@ const Login = () => {
             </div>
             <div className="w-[1px] h-10 bg-white/20 self-center mx-1" />
             <div>
-              <Text className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-bold block leading-none">KHOA</Text>
-              <Text className="text-white text-lg font-black tracking-tight block -mt-1">CÔNG NGHỆ THÔNG TIN</Text>
+              <Text className="text-white/60 text-[10px] uppercase tracking-[0.2em] font-bold block leading-none">{t('auth.faculty')}</Text>
+              <Text className="text-white text-lg font-black tracking-tight block -mt-1">{t('auth.departmentName')}</Text>
             </div>
           </motion.div>
 
@@ -188,11 +182,28 @@ const Login = () => {
             </Form.Item>
 
             <div className="flex justify-between items-center mb-8 px-1">
-              <Form.Item name="remember" valuePropName="checked" noStyle initialValue={true}>
-                <Checkbox className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">
-                  {t('auth.rememberMe')}
-                </Checkbox>
-              </Form.Item>
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => i18n.changeLanguage('vi')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${i18n.language === 'vi'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                  Tiếng Việt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => i18n.changeLanguage('en')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${i18n.language === 'en'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                  English
+                </button>
+              </div>
               <a href="#" className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('auth.forgotPassword')}</a>
             </div>
 
@@ -209,43 +220,6 @@ const Login = () => {
             </Form.Item>
           </Form>
 
-          {/* Quick Login Section */}
-          <div className="mt-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-[1px] flex-1 bg-slate-100" />
-              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Đăng nhập nhanh (Demo)</Text>
-              <div className="h-[1px] flex-1 bg-slate-100" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { role: 'ADMIN', email: 'admin@university.edu.vn', label: 'Quản trị viên', color: 'bg-slate-900' },
-                { role: 'HEAD', email: 'ts.ngo.huu.dung@university.edu.vn', label: 'Trưởng bộ môn', color: 'bg-blue-600' },
-                { role: 'LECTURER', email: 'ths.tran.thi.kim.chi@university.edu.vn', label: 'Giảng viên', color: 'bg-indigo-500' },
-                { role: 'STUDENT', email: '21092831@student.edu.vn', label: 'Sinh viên', color: 'bg-emerald-500' },
-              ].map((acc) => (
-                <button
-                  key={acc.role}
-                  type="button"
-                  onClick={() => handleQuickLogin(acc.email)}
-                  className="group flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/50 transition-all text-left relative overflow-hidden"
-                >
-                  <div className={`w-1.5 h-full absolute left-0 top-0 ${acc.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                  <div className={`w-8 h-8 rounded-lg ${acc.color} flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0`}>
-                    {acc.role[0]}
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-bold text-slate-900 leading-none mb-0.5">{acc.label}</span>
-                    <span className="text-[10px] text-slate-400 truncate">{acc.email}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <Text className="block text-center mt-6 text-[11px] text-slate-400 font-medium italic">
-              * Mật khẩu mặc định: <span className="font-bold text-blue-600 not-italic">Password@123</span>
-            </Text>
-          </div>
 
         </motion.div>
 

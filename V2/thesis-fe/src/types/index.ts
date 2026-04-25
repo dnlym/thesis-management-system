@@ -109,6 +109,7 @@ export interface Semester {
   defense_end: string;
   status: SemesterStatus;
   calculated_phase?: SemesterPhase | null;
+  allowedActions?: Record<string, ActionPermission>;
   created_at: string;
   updated_at: string;
 }
@@ -449,4 +450,17 @@ export interface MidtermRegistration extends Registration {
   midterm_feedback?: string;
   midterm_graded_at?: string;
   permissions?: EntityPermissions;
+}
+
+export interface Permission {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
+export interface PermissionMatrix {
+  permissions: Permission[];
+  matrix: Record<UserRole, string[]>;
 }

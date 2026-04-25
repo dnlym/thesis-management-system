@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PermissionsApi } from '@/api/permissions';
 import { useToast } from './use-toast';
+import { PermissionMatrix } from '@/types';
 
 export const usePermissions = () => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    const matrixQuery = useQuery({
+    const matrixQuery = useQuery<PermissionMatrix>({
         queryKey: ['permission-matrix'],
         queryFn: () => PermissionsApi.getMatrix(),
     });

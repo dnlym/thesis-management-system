@@ -692,7 +692,7 @@ export class AssignmentService {
    */
   async getTopicsForReviewerAssignment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -773,7 +773,7 @@ export class AssignmentService {
    */
   async getTopicsForCommitteeAssignment(userId: string): Promise<TopicForCommitteeAssignment[]> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -909,7 +909,7 @@ export class AssignmentService {
    */
   async getAvailableReviewers(userId: string, topicId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -955,7 +955,7 @@ export class AssignmentService {
    */
   async getAvailableReviewersForDepartment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -990,7 +990,7 @@ export class AssignmentService {
     }
   ) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 

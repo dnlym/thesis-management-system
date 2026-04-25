@@ -52,12 +52,14 @@
     "welcomeBack": "Chào mừng quay trở lại, vui lòng nhập thông tin của bạn.",
     "rememberMe": "Ghi nhớ đăng nhập",
     "securePortal": "Cổng thông tin đại học bảo mật",
-    "brandingTitle": "Quản lý Đăng ký & Thực hiện",
-    "brandingSubTitle": "Khóa luận tốt nghiệp.",
+    "brandingTitle": "HỆ THỐNG QUẢN LÝ",
+    "brandingSubTitle": "KHÓA LUẬN TỐT NGHIỆP",
     "brandingDesc": "Hệ thống hỗ trợ sinh viên và giảng viên trong suốt quá trình thực hiện khóa luận tốt nghiệp tại IUH.",
     "activeStudents": "",
     "researchTopics": "",
-    "empoweringExcellence": "Đại học Công nghiệp TP. Hồ Chí Minh"
+    "empoweringExcellence": "Đại học Công nghiệp TP. Hồ Chí Minh",
+    "faculty": "KHOA",
+    "departmentName": "CÔNG NGHỆ THÔNG TIN"
   },
   "navigation": {
     "dashboard": "Tổng quan",

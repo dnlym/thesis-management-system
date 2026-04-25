@@ -499,7 +499,7 @@ export class GradingService {
    */
   async getGradeSummary(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || ![UserRole.HEAD, UserRole.ADMIN].includes(user.role)) throw new Error(ERROR_CODES.FORBIDDEN);
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
     const topics = await prisma.topic.findMany({
       where: {
@@ -683,7 +683,7 @@ export class GradingService {
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== existing.departmentId) {
       throw new Error('Bạn không có quyền chỉnh sửa tiêu chí của bộ môn khác');
-    } else if (![UserRole.HEAD, UserRole.ADMIN].includes(user?.role as UserRole)) {
+    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
       throw new Error('Không có quyền thực hiện');
     }
 
@@ -766,7 +766,7 @@ export class GradingService {
     // 0. Permission check
     if (user?.role === UserRole.HEAD && user.departmentId !== criterion.departmentId) {
       throw new Error('Bạn không có quyền xóa tiêu chí của bộ môn khác');
-    } else if (![UserRole.HEAD, UserRole.ADMIN].includes(user?.role as UserRole)) {
+    } else if (user?.role !== UserRole.HEAD && user?.role !== UserRole.ADMIN) {
       throw new Error('Không có quyền thực hiện');
     }
 
