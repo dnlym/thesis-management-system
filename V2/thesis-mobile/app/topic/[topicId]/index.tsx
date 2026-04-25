@@ -1,8 +1,9 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, SafeAreaView, ActivityIndicator, StatusBar
+    StyleSheet, ActivityIndicator, StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTopic } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';

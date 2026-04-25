@@ -381,8 +381,8 @@ const Topics = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">{t('topics.title')}</h1>
-          <p className="text-muted-foreground">{t('topics.subtitle')}</p>
+          <h1>{t('topics.title')}</h1>
+          <p className="text-base text-muted-foreground mt-1">{t('topics.subtitle')}</p>
         </div>
         {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
           <Button
@@ -506,8 +506,8 @@ const Topics = () => {
         {selectedTopic && (
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-lg mb-2">{selectedTopic.title}</h3>
-              <div className="text-sm text-gray-600" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
+              <h3 className="mb-2">{selectedTopic.title}</h3>
+              <div className="text-sm text-slate-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3">

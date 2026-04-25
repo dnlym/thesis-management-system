@@ -127,7 +127,7 @@ const ReviewerAssignments = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Phân công phản biện</h1>
+                <h1>Phân công phản biện</h1>
                 <p className="text-muted-foreground">
                     Quản lý các đề tài được phân công phản biện
                 </p>

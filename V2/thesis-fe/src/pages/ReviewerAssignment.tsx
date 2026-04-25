@@ -362,7 +362,7 @@ const ReviewerAssignment = () => {
         <div className="p-6">
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">{t('reviewerAssignment.title')}</h1>
+                <h1>{t('reviewerAssignment.title')}</h1>
                 <p className="text-gray-500">{t('reviewerAssignment.description')}</p>
             </div>
 
@@ -370,7 +370,7 @@ const ReviewerAssignment = () => {
             <div className="grid grid-cols-3 gap-4 mb-6">
                 <Card className="bg-gray-50">
                     <div className="text-center">
-                        <div className="text-3xl font-bold text-gray-600">
+                        <div className="font-bold text-gray-600">
                             {topics?.filter(t => t.assignmentStatus === 'NOT_ASSIGNED').length || 0}
                         </div>
                         <div className="text-gray-500">{t('reviewerAssignment.notAssigned')}</div>
@@ -378,7 +378,7 @@ const ReviewerAssignment = () => {
                 </Card>
                 <Card className="bg-blue-50">
                     <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">
+                        <div className="font-bold text-blue-600">
                             {topics?.filter(t => t.assignmentStatus === 'PARTIALLY_ASSIGNED').length || 0}
                         </div>
                         <div className="text-gray-500">{t('reviewerAssignment.partiallyAssigned')}</div>
@@ -386,7 +386,7 @@ const ReviewerAssignment = () => {
                 </Card>
                 <Card className="bg-green-50">
                     <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="font-bold text-green-600">
                             {topics?.filter(t => t.assignmentStatus === 'FULLY_ASSIGNED').length || 0}
                         </div>
                         <div className="text-gray-500">{t('reviewerAssignment.fullyAssigned')}</div>

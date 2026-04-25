@@ -159,7 +159,7 @@ const HeadManageExtraPoints = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Quản lý điểm cộng</h1>
+                <h1>Quản lý điểm cộng</h1>
                 <p className="text-muted-foreground">
                     Xét duyệt yêu cầu cộng điểm từ sinh viên
                 </p>
@@ -184,7 +184,7 @@ const HeadManageExtraPoints = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Chờ duyệt</div>
-                        <div className="text-3xl font-bold text-orange-600">
+                        <div className="font-bold text-orange-600">
                             {requests?.filter(r => r.status === 'PENDING').length || 0}
                         </div>
                     </div>
@@ -192,7 +192,7 @@ const HeadManageExtraPoints = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đã duyệt</div>
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="font-bold text-green-600">
                             {requests?.filter(r => r.status === 'APPROVED').length || 0}
                         </div>
                     </div>
@@ -200,7 +200,7 @@ const HeadManageExtraPoints = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Từ chối</div>
-                        <div className="text-3xl font-bold text-red-600">
+                        <div className="font-bold text-red-600">
                             {requests?.filter(r => r.status === 'REJECTED').length || 0}
                         </div>
                     </div>
@@ -208,7 +208,7 @@ const HeadManageExtraPoints = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Tổng cộng</div>
-                        <div className="text-3xl font-bold text-blue-600">
+                        <div className="font-bold text-blue-600">
                             {requests?.length || 0}
                         </div>
                     </div>
@@ -311,9 +311,9 @@ const HeadManageExtraPoints = () => {
                         {selectedRequest.approvedPoints !== null && (
                             <div className="bg-green-50 border border-green-200 rounded p-4">
                                 <h4 className="font-semibold text-green-900 mb-2">Điểm được duyệt:</h4>
-                                <p className="text-2xl font-bold text-green-600">
+                                <div className="font-bold text-green-600">
                                     +{selectedRequest.approvedPoints.toFixed(2)}
-                                </p>
+                                </div>
                             </div>
                         )}
 

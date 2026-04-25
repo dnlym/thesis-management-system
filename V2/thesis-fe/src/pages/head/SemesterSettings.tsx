@@ -202,7 +202,7 @@ const SemesterSettings = () => {
             <div className="mb-8 animate-in fade-in slide-in-from-left-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-3">
+                        <h1 className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-3">
                             <RocketOutlined className="text-blue-500" />
                             {t('semesterSettings.title', 'Vận hành Học kỳ')}
                         </h1>

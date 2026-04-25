@@ -1,8 +1,9 @@
 import React from 'react';
 import {
     View, Text, TouchableOpacity, ScrollView,
-    StyleSheet, SafeAreaView, StatusBar
+    StyleSheet, StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';

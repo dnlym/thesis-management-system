@@ -72,8 +72,34 @@ const App = () => (
         theme={{
           token: {
             colorPrimary: '#3b82f6',
-            borderRadius: 12, // Tăng thêm bo góc cho đồng nhất
+            borderRadius: 12,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: 14,
+            fontWeightStrong: 600,
           },
+          components: {
+            Typography: {
+              fontSizeHeading1: 24,
+              fontSizeHeading2: 20,
+              fontSizeHeading3: 18,
+              fontWeightStrong: 700,
+            },
+            Button: {
+              fontWeight: 500,
+              fontSize: 14,
+            },
+            Table: {
+              fontSize: 14,
+            },
+            Card: {
+              fontSize: 16,
+              fontWeightStrong: 600,
+            },
+            Modal: {
+              titleFontSize: 18,
+              titleColor: '#0f172a',
+            }
+          }
         }}
       >
         <AntdApp>

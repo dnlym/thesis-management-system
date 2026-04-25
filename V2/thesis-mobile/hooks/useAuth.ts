@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { Alert } from 'react-native';
 
 export function useAuth() {
-    const { login: setAuth, logout: clearAuth } = useAuthStore();
+    const { login: setAuth, logout: clearAuth, refreshToken } = useAuthStore();
     const queryClient = useQueryClient();
 
     const loginMutation = useMutation({
@@ -27,7 +27,7 @@ export function useAuth() {
     });
 
     const logoutMutation = useMutation({
-        mutationFn: () => AuthApi.logout(),
+        mutationFn: () => AuthApi.logout(refreshToken),
         onSettled: () => {
             clearAuth();
             queryClient.clear();

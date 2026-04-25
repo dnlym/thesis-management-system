@@ -87,7 +87,7 @@ const StudentTopics = () => {
             {/* Hero Section */}
             <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-12 text-primary-foreground shadow-academic">
                 <div className="relative z-10 max-w-2xl">
-                    <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl mb-4">
+                    <h1 className="tracking-tight mb-4">
                         Khám phá Đề tài Khóa luận
                     </h1>
                     <p className="text-lg opacity-90 mb-8">
@@ -141,7 +141,7 @@ const StudentTopics = () => {
                         <Card key={topic.id} className="group flex flex-col hover:shadow-academic transition-all duration-300 border-none bg-card/50 backdrop-blur-sm ring-1 ring-border hover:ring-primary/20">
                             <CardHeader className="pb-3">
                                 <div className="flex justify-between items-start mb-2">
-                                    <Badge variant="secondary" className="font-mono text-[10px] tracking-tighter bg-primary/5 text-primary border-primary/10">
+                                    <Badge variant="secondary" className="font-mono text-xs tracking-tighter bg-primary/5 text-primary border-primary/10">
                                         {topic.code}
                                     </Badge>
                                     <div className="flex items-center gap-1.5">

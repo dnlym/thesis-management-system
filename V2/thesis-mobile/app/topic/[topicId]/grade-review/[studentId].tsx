@@ -1,8 +1,9 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, SafeAreaView, ActivityIndicator, StatusBar, LayoutAnimation, Platform, UIManager
+    StyleSheet, ActivityIndicator, StatusBar, LayoutAnimation, Platform, UIManager
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
     ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, 

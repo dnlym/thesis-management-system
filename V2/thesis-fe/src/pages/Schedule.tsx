@@ -90,7 +90,7 @@ const Schedule = () => {
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">{t('navigation.schedule')}</h1>
+                    <h1>{t('navigation.schedule')}</h1>
                     <p className="text-muted-foreground">Quản lý lịch trình báo cáo và bảo vệ khóa luận</p>
                 </div>
                 <Button

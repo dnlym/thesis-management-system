@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, RefreshControl, SafeAreaView, ActivityIndicator
+  StyleSheet, RefreshControl, ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useDashboardStats } from '@/hooks/useDashboard';
@@ -96,7 +97,7 @@ export default function DashboardScreen() {
   if (isHOD && allDeptTopics.length > 0) {
     sessions.push({
       id: 'hod_all',
-      name: `Quản lý Bộ môn (${user?.departmentId || ''})`,
+      name: 'Quản lý Bộ môn',
       topics: allDeptTopics.map(t => ({
         id: t.id,
         groupName: t.code || t.title || 'Topic',

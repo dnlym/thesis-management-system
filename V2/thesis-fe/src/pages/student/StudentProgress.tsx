@@ -84,7 +84,7 @@ const StudentProgress = () => {
             {/* Header & Overview */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
-                    <h1 className="text-4xl font-extrabold tracking-tight">Tiến độ Khóa luận</h1>
+                    <h1 className="tracking-tight">Tiến độ Khóa luận</h1>
                     <p className="text-lg text-muted-foreground font-medium">Lộ trình học tập & Hồ sơ năng lực của bạn</p>
                 </div>
                 <div className="flex items-center gap-3 bg-muted/50 p-2 pr-4 rounded-full border ring-offset-background">
@@ -104,7 +104,7 @@ const StudentProgress = () => {
                               <CheckCircle2 className="h-6 w-6 text-primary" />
                               Tiến độ hiện tại
                             </h3>
-                            <span className="text-4xl font-black tabular-nums text-primary">
+                            <span className="font-black tabular-nums text-primary">
                               {Math.round(progressPercentage)}%
                             </span>
                         </div>
@@ -131,7 +131,7 @@ const StudentProgress = () => {
                                     </div>
                                     <div className="space-y-1 px-4">
                                         <p className={`text-sm font-bold ${isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</p>
-                                        <p className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity leading-tight max-w-[120px] mx-auto">
+                                        <p className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity leading-tight max-w-[120px] mx-auto">
                                             {step.description}
                                         </p>
                                     </div>
@@ -201,11 +201,11 @@ const StudentProgress = () => {
                                                   <div key={member.id} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                       <Avatar className="h-7 w-7">
-                                                        <AvatarFallback className="text-[10px]">{member.user?.fullName?.[0]}</AvatarFallback>
+                                                        <AvatarFallback className="text-xs">{member.user?.fullName?.[0]}</AvatarFallback>
                                                       </Avatar>
                                                       <span className="text-sm font-medium">{member.user?.fullName}</span>
                                                     </div>
-                                                    <Badge variant="outline" className="text-[10px] font-mono">{member.user?.studentCode}</Badge>
+                                                    <Badge variant="outline" className="text-xs font-mono">{member.user?.studentCode}</Badge>
                                                   </div>
                                                 ))}
                                             </div>
@@ -234,7 +234,7 @@ const StudentProgress = () => {
                                           <div className="flex-grow space-y-1">
                                             <div className="flex justify-between items-start">
                                                 <p className="text-sm font-bold">{log.action}</p>
-                                                <span className="text-[10px] text-muted-foreground">{dayjs(log.created_at).format('DD/MM/YYYY HH:mm')}</span>
+                                                <span className="text-xs text-muted-foreground">{dayjs(log.created_at).format('DD/MM/YYYY HH:mm')}</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">Thực hiện bởi: <span className="font-medium text-foreground">{log.user?.full_name}</span></p>
                                             {log.new_value?.feedback && (

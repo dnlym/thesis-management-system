@@ -32,10 +32,8 @@ const Dashboard = () => {
     return (
         <div className="p-6 space-y-6">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground mb-2">
-                    {t('dashboard.welcome')}
-                </h1>
-                <p className="text-muted-foreground">
+                <h1>{t('dashboard.welcome')}</h1>
+                <p className="text-base text-muted-foreground mt-1">
                     {t('dashboard.greeting', { name: user?.full_name })} ({t(`roles.${user?.role}`)})
                 </p>
             </div>
@@ -77,8 +75,8 @@ const Dashboard = () => {
                                 color: activity.color,
                                 children: (
                                     <div>
-                                        <div className="text-sm text-muted-foreground">{activity.time}</div>
-                                        <div className="text-foreground">{activity.content}</div>
+                                        <div className="text-xs text-slate-400 font-medium">{activity.time}</div>
+                                        <div className="text-sm text-slate-700 font-medium">{activity.content}</div>
                                     </div>
                                 ),
                             }))}

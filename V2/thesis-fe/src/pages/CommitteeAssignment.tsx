@@ -121,9 +121,9 @@ const CommitteeAssignment = () => {
             key: 'title',
             render: (text: string, record: TopicForCommittee) => (
                 <div className="max-w-md">
-                    <div className="font-bold text-gray-800 uppercase text-xs mb-1">{text}</div>
-                    <div className="text-[10px] text-gray-500">
-                        {t('topics.supervisor')}: <span className="font-semibold">{record.supervisor?.full_name}</span>
+                    <div className="text-sm font-semibold text-slate-800 uppercase mb-1">{text}</div>
+                    <div className="text-xs text-slate-400">
+                        {t('topics.supervisor')}: <span className="font-medium text-slate-600">{record.supervisor?.full_name}</span>
                     </div>
                 </div>
             ),
@@ -194,11 +194,11 @@ const CommitteeAssignment = () => {
     return (
         <div className="p-6 max-w-[1400px] mx-auto bg-gray-50/30 min-h-screen">
             <div className="mb-8 animate-in fade-in slide-in-from-left-4">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <h1 className="flex items-center gap-3">
                     <CrownOutlined className="text-academic-primary" />
                     {t('committeeAssignment.title')}
                 </h1>
-                <p className="text-gray-500 italic mt-1">{t('committeeAssignment.description')}</p>
+                <p className="text-base text-gray-500 italic mt-1">{t('committeeAssignment.description')}</p>
             </div>
 
             <Card className="shadow-soft border-none">

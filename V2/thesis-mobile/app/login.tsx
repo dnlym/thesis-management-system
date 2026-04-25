@@ -2,8 +2,9 @@ import React from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, ScrollView,
-    StyleSheet, SafeAreaView, Alert
+    StyleSheet, Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { Eye, EyeOff, Lock, User, GraduationCap, Shield } from 'lucide-react-native';

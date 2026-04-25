@@ -1,9 +1,10 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    TextInput, StyleSheet, SafeAreaView, Alert, ActivityIndicator,
+    TextInput, StyleSheet, Alert, ActivityIndicator,
     Platform, StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, GraduationCap, MapPin, Users, User, ChevronRight,
     Save, CheckCircle

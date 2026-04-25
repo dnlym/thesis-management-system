@@ -441,8 +441,8 @@ const AdminSettings = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">{t('settings.title')}</h1>
-        <p className="text-muted-foreground">{t('settings.subtitle')}</p>
+        <h1>{t('settings.title')}</h1>
+        <p className="text-base text-muted-foreground mt-1">{t('settings.subtitle')}</p>
       </div>
 
       <Card className="shadow-soft">

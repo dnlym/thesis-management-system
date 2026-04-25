@@ -29,8 +29,8 @@ export const AuthApi = {
         return res.data;
     },
 
-    async logout() {
-        const res = await api.post<ApiResponse<null>>('/auth/logout');
+    async logout(refreshToken?: string | null) {
+        const res = await api.post<ApiResponse<null>>('/auth/logout', { refreshToken });
         return res.data;
     },
 

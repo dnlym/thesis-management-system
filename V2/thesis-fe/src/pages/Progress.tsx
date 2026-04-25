@@ -339,7 +339,7 @@ const Progress = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-foreground">{t('progress.title')}</h1>
+      <h1>{t('progress.title')}</h1>
 
       <Card className="shadow-soft">
         <Table

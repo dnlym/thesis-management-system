@@ -122,7 +122,7 @@ const SupervisorCreateTopic = () => {
                     Quay lại
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">Tạo đề tài mới</h1>
+                    <h1>Tạo đề tài mới</h1>
                     <p className="text-muted-foreground">Đề xuất đề tài khóa luận cho sinh viên</p>
                 </div>
                 <div className="flex-1 flex justify-end">

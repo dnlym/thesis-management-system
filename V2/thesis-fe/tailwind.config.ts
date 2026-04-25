@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindAnimate from "tailwindcss-animate";
+import tailwindTypography from "@tailwindcss/typography";
 
 export default {
   darkMode: ["class"],
@@ -107,7 +109,24 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        xs: ["12px", { lineHeight: "1.5" }],
+        sm: ["14px", { lineHeight: "1.57" }],
+        base: ["16px", { lineHeight: "1.6" }],
+        lg: ["18px", { lineHeight: "1.5" }],
+        xl: ["20px", { lineHeight: "1.4" }],
+        "2xl": ["24px", { lineHeight: "1.3" }],
+      },
+      fontWeight: {
+        regular: "400",
+        medium: "500",
+        semibold: "600",
+        bold: "700",
+      },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindAnimate, tailwindTypography],
 } satisfies Config;

@@ -1,6 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  h1 { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  h2 { @apply text-xl font-semibold text-slate-800 tracking-tight; }
+  h3 { @apply text-lg font-medium text-slate-800; }
+  body { 
+    @apply text-base text-slate-600 bg-background;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
 
 /* Custom Modern Notifications Style */
 .modern-notification {
@@ -130,19 +143,9 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 217 91% 60%;
   }
-}
 
-@layer base {
   * {
-    /* @apply border-border; */
     border-color: hsl(var(--border));
-  }
-
-  body {
-    /* @apply bg-background text-foreground; */
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 

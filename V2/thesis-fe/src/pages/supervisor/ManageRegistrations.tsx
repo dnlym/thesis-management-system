@@ -206,7 +206,7 @@ const SupervisorManageRegistrations = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Quản lý đăng ký</h1>
+                <h1>Quản lý đăng ký</h1>
                 <p className="text-muted-foreground">
                     Xem và xử lý đăng ký đề tài từ sinh viên
                 </p>
@@ -217,7 +217,7 @@ const SupervisorManageRegistrations = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Chờ xử lý</div>
-                        <div className="text-3xl font-bold text-blue-600">
+                        <div className="font-bold text-blue-600">
                             {registrations?.filter(r => r.status === 'PENDING').length || 0}
                         </div>
                     </div>
@@ -225,7 +225,7 @@ const SupervisorManageRegistrations = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đã xác nhận</div>
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="font-bold text-green-600">
                             {registrations?.filter(r => r.status === 'CONFIRMED').length || 0}
                         </div>
                     </div>
@@ -233,7 +233,7 @@ const SupervisorManageRegistrations = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đã từ chối</div>
-                        <div className="text-3xl font-bold text-red-600">
+                        <div className="font-bold text-red-600">
                             {registrations?.filter(r => r.status === 'REJECTED').length || 0}
                         </div>
                     </div>

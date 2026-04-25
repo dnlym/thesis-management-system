@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, ActivityIndicator, RefreshControl, TextInput, StatusBar
+  StyleSheet, ActivityIndicator, RefreshControl, TextInput, StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useSupervisedTopics, useTopics } from '@/hooks/useTopics';

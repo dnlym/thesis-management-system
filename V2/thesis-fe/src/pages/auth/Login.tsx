@@ -14,6 +14,14 @@ const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
+  const [form] = Form.useForm();
+
+  const handleQuickLogin = (email: string) => {
+    form.setFieldsValue({
+      email: email,
+      password: 'Password@123'
+    });
+  };
 
   const onFinish = async (values: LoginForm) => {
     try {
@@ -128,11 +136,12 @@ const Login = () => {
           </div>
 
           <div className="mb-10">
-            <Title className="!text-4xl !font-black !mb-2 !text-slate-900 tracking-tight">{t('auth.login')}.</Title>
-            <Text className="text-slate-400 text-lg font-medium">{t('auth.welcomeBack')}</Text>
+            <h1 className="!text-4xl tracking-tight">{t('auth.login')}.</h1>
+            <p className="text-lg text-slate-400 font-medium">{t('auth.welcomeBack')}</p>
           </div>
 
           <Form
+            form={form}
             name="login"
             onFinish={onFinish}
             layout="vertical"
@@ -151,6 +160,9 @@ const Login = () => {
                   <UserOutlined />
                 </div>
                 <Input
+                  id="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder={t('auth.email')}
                   className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
                 />
@@ -166,6 +178,9 @@ const Login = () => {
                   <LockOutlined />
                 </div>
                 <Input.Password
+                  id="password"
+                  name="password"
+                  autoComplete="current-password"
                   placeholder={t('auth.password')}
                   className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
                 />
@@ -193,6 +208,44 @@ const Login = () => {
               </Button>
             </Form.Item>
           </Form>
+
+          {/* Quick Login Section */}
+          <div className="mt-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-[1px] flex-1 bg-slate-100" />
+              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Đăng nhập nhanh (Demo)</Text>
+              <div className="h-[1px] flex-1 bg-slate-100" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { role: 'ADMIN', email: 'admin@university.edu.vn', label: 'Quản trị viên', color: 'bg-slate-900' },
+                { role: 'HEAD', email: 'ts.ngo.huu.dung@university.edu.vn', label: 'Trưởng bộ môn', color: 'bg-blue-600' },
+                { role: 'LECTURER', email: 'ths.tran.thi.kim.chi@university.edu.vn', label: 'Giảng viên', color: 'bg-indigo-500' },
+                { role: 'STUDENT', email: '21092831@student.edu.vn', label: 'Sinh viên', color: 'bg-emerald-500' },
+              ].map((acc) => (
+                <button
+                  key={acc.role}
+                  type="button"
+                  onClick={() => handleQuickLogin(acc.email)}
+                  className="group flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/50 transition-all text-left relative overflow-hidden"
+                >
+                  <div className={`w-1.5 h-full absolute left-0 top-0 ${acc.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <div className={`w-8 h-8 rounded-lg ${acc.color} flex items-center justify-center text-white text-[10px] font-bold shadow-sm flex-shrink-0`}>
+                    {acc.role[0]}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-bold text-slate-900 leading-none mb-0.5">{acc.label}</span>
+                    <span className="text-[10px] text-slate-400 truncate">{acc.email}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            <Text className="block text-center mt-6 text-[11px] text-slate-400 font-medium italic">
+              * Mật khẩu mặc định: <span className="font-bold text-blue-600 not-italic">Password@123</span>
+            </Text>
+          </div>
 
         </motion.div>
 
