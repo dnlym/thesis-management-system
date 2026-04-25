@@ -1361,11 +1361,10 @@ export class GradingService {
 
     const groupedGrades = groupGrades(allGrades);
 
-    const advisorGrade = groupedGrades.find(g => g.rater_role === RaterRole.SUPERVISOR);
     const reviewerGrades = groupedGrades.filter(g => isReviewer(g.rater_role));
     const councilGrades = groupedGrades.filter(g => isCommittee(g.rater_role));
 
-    const finalScore = await prisma.finalScore.findFirst({
+    const finalScores = await prisma.finalScore.findMany({
       where: { topic_id: topicId },
       include: { student: true },
     });
@@ -1376,13 +1375,18 @@ export class GradingService {
       topic.registrations[0]
     );
 
+    const students = topic.registrations.map(reg => {
+      const fs = finalScores.find(s => s.student_id === reg.student_id);
+      return { ...reg.student, finalScore: fs };
+    });
+
     return {
-      advisorGrade,
+      advisorGrades: groupedGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR),
       reviewerGrades,
       councilGrades,
-      finalScore,
+      finalScores,
       permissions,
-      topic,
+      topic: { ...topic, students },
     };
   }
 

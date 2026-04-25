@@ -120,7 +120,7 @@ const EditTopic = () => {
                     Quay lại
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">Chỉnh sửa đề tài</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Chỉnh sửa đề tài</h1>
                     <p className="text-muted-foreground">Cập nhật thông tin đề tài</p>
                 </div>
             </div>

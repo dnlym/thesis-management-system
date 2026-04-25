@@ -10,7 +10,21 @@ export const gradingKeys = {
     all: ['grading'] as const,
     topicGrades: (topicId: string) => [...gradingKeys.all, 'topic', topicId] as const,
     criteria: (filters?: CriteriaFilters) => [...gradingKeys.all, 'criteria', filters] as const,
+    summary: () => [...gradingKeys.all, 'summary'] as const,
 };
+
+/**
+ * Get grade summary for HOD dashboard
+ */
+export function useGradeSummary() {
+    return useQuery({
+        queryKey: gradingKeys.summary(),
+        queryFn: async () => {
+            const response = await GradingApi.getGradeSummary();
+            return response;
+        },
+    });
+}
 
 /**
  * Get grades for a topic
@@ -19,8 +33,7 @@ export function useTopicGrades(topicId: string | undefined) {
     return useQuery({
         queryKey: gradingKeys.topicGrades(topicId!),
         queryFn: async () => {
-            const response = await GradingApi.getTopicGrades(topicId!);
-            return response;
+            return await GradingApi.getTopicGrades(topicId!);
         },
         enabled: !!topicId,
     });

@@ -116,7 +116,7 @@ const Roles = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">{t('navigation.roles')}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t('navigation.roles')}</h1>
         <p className="text-muted-foreground">{t('roles.subtitle')}</p>
       </div>
 

@@ -159,7 +159,7 @@ const HeadAssignReviewers = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Phân công đánh giá</h1>
+                <h1 className="text-2xl font-bold text-foreground">Phân công đánh giá</h1>
                 <p className="text-muted-foreground">
                     Phân công giảng viên phản biện và hội đồng bảo vệ
                 </p>

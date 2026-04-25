@@ -125,7 +125,7 @@ const HeadDashboard = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Dashboard - Trưởng Bộ môn</h1>
+                <h1 className="text-2xl font-bold text-foreground">Dashboard - Trưởng Bộ môn</h1>
                 <p className="text-muted-foreground">
                     Tổng quan quản lý khóa luận tốt nghiệp
                 </p>

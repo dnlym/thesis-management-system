@@ -90,7 +90,7 @@ const Council = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">{t('navigation.council')}</h1>
+                    <h1 className="text-2xl font-bold text-foreground">{t('navigation.council')}</h1>
                     <p className="text-muted-foreground">{t('council.subtitle')}</p>
                 </div>
             </div>

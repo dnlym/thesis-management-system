@@ -81,7 +81,7 @@ const GradeSummary = () => {
         <div className="mb-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <Title level={2} className="!mb-1 flex items-center gap-3">
+              <Title level={3} className="!mb-1 flex items-center gap-3">
                 <TrophyOutlined className="text-blue-600" />
                 Tổng kết & Xác nhận điểm
               </Title>
@@ -240,7 +240,7 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
         <Col span={5}>
           <div className="flex items-center gap-2 mb-2">
             <UserOutlined className="text-gray-400" />
-            <Text className="text-xs font-medium text-gray-500">{topic.students?.length} sinh viên</Text>
+            <Text className="text-xs font-medium text-gray-500">{topic.students?.length || 0} sinh viên</Text>
           </div>
           <div className="space-y-1">
             {topic.students?.map((s: any) => (
@@ -280,10 +280,10 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
             <div>
               <div className="text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Tổng điểm dự kiến</div>
               <div className="text-2xl font-black text-green-600 leading-none mb-1">
-                {topic.students?.[0]?.finalScore?.final_score?.toFixed(2) || '—'}
+                {topic.final_score?.final_score?.toFixed(2) || '—'}
               </div>
               <Tag color="success" className="text-xs font-bold border-none bg-green-50 text-green-700 px-2 py-0">
-                {topic.students?.[0]?.finalScore?.grade_classification || '—'}
+                {topic.final_score?.grade_classification || '—'}
               </Tag>
             </div>
           ) : (
@@ -319,6 +319,8 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
  * Layer 2: Grade Detail Drawer
  */
 const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) => {
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+
   const { data: details, isLoading } = useQuery({
     queryKey: ['topic-grades', topicId],
     queryFn: () => GradingApi.getTopicGrades(topicId!),
@@ -326,9 +328,28 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
   });
 
   const topic = details?.topic;
-  const finalScore = details?.finalScore;
+  const students = topic?.students || [];
+  
+  // Set default student if not set
+  useMemo(() => {
+    if (students.length > 0 && !selectedStudentId) {
+      setSelectedStudentId(students[0].id);
+    }
+  }, [students, selectedStudentId]);
+
+  const finalScore = details?.finalScores?.find((fs: any) => fs.student_id === selectedStudentId);
   const isComplete = topic?.gradingStatus?.isReadyForDecision;
   const isFinalized = topic?.gradingStatus?.isFinalized;
+
+  // Filter grades by selected student
+  const advisorGrade = details?.advisorGrades?.find((g: any) => !g.student_id || g.student_id === selectedStudentId);
+  const reviewerGrades = details?.reviewerGrades?.filter((g: any) => !g.student_id || g.student_id === selectedStudentId) || [];
+  const councilGrades = details?.councilGrades?.filter((g: any) => !g.student_id || g.student_id === selectedStudentId) || [];
+
+  const calculateAvg = (scores: any[]) => {
+    if (!scores || scores.length === 0) return 0;
+    return scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
+  };
 
   return (
     <Drawer
@@ -367,21 +388,35 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
             </div>
 
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-              <Text className="text-xs uppercase font-black text-blue-400 block mb-3">Sinh viên thực hiện ({topic?.students?.length})</Text>
-              <Row gutter={16}>
-                {topic?.students?.map((s: any) => (
-                  <Col span={12} key={s.id}>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="bg-blue-600 text-white font-bold" size={32}>
-                        {s.full_name?.charAt(0)}
-                      </Avatar>
-                      <div>
-                        <div className="text-sm font-bold text-gray-800">{s.full_name}</div>
-                        <div className="text-xs text-gray-500 font-medium">{s.student_code}</div>
+              <div className="flex justify-between items-center mb-3">
+                <Text className="text-xs uppercase font-black text-blue-400">Sinh viên thực hiện ({students.length})</Text>
+                {students.length > 1 && (
+                   <Text className="text-[10px] text-blue-400 italic">Chọn SV để xem điểm riêng</Text>
+                )}
+              </div>
+              <Row gutter={12}>
+                {students.map((s: any) => {
+                  const isSelected = selectedStudentId === s.id;
+                  return (
+                    <Col span={12} key={s.id}>
+                      <div 
+                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-white border-blue-300 shadow-sm' : 'border-transparent hover:bg-white/50'}`}
+                        onClick={() => setSelectedStudentId(s.id)}
+                      >
+                        <Avatar className={`${isSelected ? 'bg-blue-600' : 'bg-gray-400'} text-white font-bold transition-colors`} size={32}>
+                          {s.full_name?.charAt(0)}
+                        </Avatar>
+                        <div className="overflow-hidden">
+                          <div className={`text-sm font-bold truncate ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>{s.full_name}</div>
+                          <div className="text-[10px] text-gray-500 font-medium">{s.student_code}</div>
+                        </div>
+                        {isSelected && students.length > 1 && (
+                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
+                        )}
                       </div>
-                    </div>
-                  </Col>
-                ))}
+                    </Col>
+                  );
+                })}
               </Row>
             </div>
           </div>
@@ -393,12 +428,14 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
             <section>
               <div className="flex items-center justify-between mb-3 px-1">
                 <Title level={5} className="!m-0 text-sm font-bold text-gray-700">1. Điểm hướng dẫn (GVHD)</Title>
-                {details?.advisorGrade ? <Tag color="success" icon={<CheckOutlined />} className="border-none bg-green-50 text-green-600 rounded-full text-xs font-bold">Đã chấm</Tag> : <Tag color="default" className="border-none bg-gray-100 text-gray-400 rounded-full text-xs">Chưa chấm</Tag>}
+                {advisorGrade ? <Tag color="success" icon={<CheckOutlined />} className="border-none bg-green-50 text-green-600 rounded-full text-xs font-bold">Đã chấm</Tag> : <Tag color="default" className="border-none bg-gray-100 text-gray-400 rounded-full text-xs">Chưa chấm</Tag>}
               </div>
               <Card size="small" className="rounded-xl border-none shadow-sm overflow-hidden">
                 <div className="flex justify-between items-center py-2 px-3">
                   <Text className="font-medium text-gray-600">{topic?.supervisor?.full_name}</Text>
-                  <Text className="text-xl font-black text-blue-600">{details?.advisorGrade?.scores?.[0]?.score?.toFixed(2) || '—'}</Text>
+                  <Text className="text-xl font-black text-blue-600">
+                    {finalScore ? finalScore.supervisor_score?.toFixed(2) : (advisorGrade ? calculateAvg(advisorGrade.scores).toFixed(2) : '—')}
+                  </Text>
                 </div>
               </Card>
             </section>
@@ -407,15 +444,15 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
               <div className="flex items-center justify-between mb-3 px-1">
                 <Title level={5} className="!m-0 text-sm font-bold text-gray-700">2. Điểm phản biện</Title>
                 <Tag className="border-none bg-blue-50 text-blue-600 rounded-full text-xs font-bold">
-                  {details?.reviewerGrades?.length || 0} / 2 giảng viên
+                  {reviewerGrades.length || 0} / 2 giảng viên
                 </Tag>
               </div>
               <div className="space-y-2">
-                {details?.reviewerGrades?.map((g: any, idx: number) => (
+                {reviewerGrades.map((g: any, idx: number) => (
                   <Card key={g.id} size="small" className="rounded-xl border-none shadow-sm">
                     <div className="flex justify-between items-center py-2 px-3">
                       <Text className="font-medium text-gray-500">GVPB {idx + 1}: <span className="text-gray-800">{g.rater_name || `Giảng viên ${idx + 1}`}</span></Text>
-                      <Text className="text-lg font-black text-blue-600">{g.scores?.[0]?.score?.toFixed(2) || '—'}</Text>
+                      <Text className="text-lg font-black text-blue-600">{calculateAvg(g.scores).toFixed(2)}</Text>
                     </div>
                   </Card>
                 ))}
@@ -429,17 +466,17 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
             <section>
               <div className="flex items-center justify-between mb-3 px-1">
                 <Title level={5} className="!m-0 text-sm font-bold text-gray-700">3. Điểm hội đồng chấm</Title>
-                {details?.councilGrades?.length > 0 ? <Tag color="success" className="border-none bg-green-50 text-green-600 rounded-full text-xs font-bold">Đã chấm</Tag> : <Tag color="default" className="border-none bg-gray-100 text-gray-400 rounded-full text-xs">Chưa chấm</Tag>}
+                {councilGrades.length > 0 ? <Tag color="success" className="border-none bg-green-50 text-green-600 rounded-full text-xs font-bold">Đã chấm</Tag> : <Tag color="default" className="border-none bg-gray-100 text-gray-400 rounded-full text-xs">Chưa chấm</Tag>}
               </div>
               <div className="space-y-2">
-                {details?.councilGrades?.map((g: any) => (
+                {councilGrades.map((g: any) => (
                   <Card key={g.id} size="small" className="rounded-xl border-none shadow-sm">
                     <div className="flex justify-between items-center py-2 px-3">
                       <div>
                         <div className="font-bold text-gray-800 text-sm">{g.rater_name}</div>
                         <Text className="text-xs uppercase font-black text-gray-400">{g.committee_role === 'CHAIR' ? 'Chủ tịch' : g.committee_role === 'SECRETARY' ? 'Thư ký' : 'Ủy viên'}</Text>
                       </div>
-                      <Text className="text-lg font-black text-blue-600">{g.scores?.[0]?.score?.toFixed(2) || '—'}</Text>
+                      <Text className="text-lg font-black text-blue-600">{calculateAvg(g.scores).toFixed(2)}</Text>
                     </div>
                   </Card>
                 ))}

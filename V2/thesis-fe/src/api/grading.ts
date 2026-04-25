@@ -55,10 +55,10 @@ export const GradingApi = {
      */
     async getTopicGrades(topicId: string) {
         const res = await api.get<ApiResponse<{
-            advisorGrade?: Grade;
+            advisorGrades: Grade[];
             reviewerGrades: Grade[];
             councilGrades: Grade[];
-            finalScore?: FinalScore;
+            finalScores: FinalScore[];
             permissions?: any;
             topic?: any;
         }>>(`/grading/${topicId}/grades`);

@@ -2,53 +2,52 @@ import { useState } from 'react';
 import { Card, Table, Button, Modal, Tag, Spin, Descriptions } from 'antd';
 import { CheckCircleOutlined, EyeOutlined, LockOutlined } from '@ant-design/icons';
 import { GradeBreakdown } from '@/components/GradeBreakdown';
-import { useTopicGrades, useFinalizeGrades, useComputeFinalScore } from '@/hooks/useGrading';
+import { useTopicGrades, useFinalizeGrades, useComputeFinalScore, useGradeSummary } from '@/hooks/useGrading';
+import { useQueryClient } from '@tanstack/react-query';
 
 const HeadFinalizeGrades = () => {
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState<any>(null);
+    const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
-    // TODO: Get list of topics ready for finalization
-    const isLoading = false;
+    const queryClient = useQueryClient();
+    const { data: summaryData, isLoading } = useGradeSummary();
+    
+    // Show topics that are ready for finalization or already finalized
     const topics = [
-        {
-            id: '1',
-            title: 'Nghiên cứu ứng dụng AI trong giáo dục',
-            studentName: 'Nguyễn Văn A',
-            hasAllGrades: true,
-            isFinalized: false,
-            scores: [8.0, 9.0, 8.5],
-            computedScore: 8.5,
-        },
-        {
-            id: '2',
-            title: 'Hệ thống quản lý học tập thông minh',
-            studentName: 'Trần Thị B',
-            hasAllGrades: true,
-            isFinalized: true,
-            scores: [8.0, 8.5, 8.0],
-            computedScore: 8.2,
-        },
-        {
-            id: '3',
-            title: 'Ứng dụng blockchain trong quản lý dữ liệu',
-            studentName: 'Lê Văn C',
-            hasAllGrades: false,
-            isFinalized: false,
-            computedScore: null,
-        },
-    ];
+        ...(summaryData?.ready || []),
+        ...(summaryData?.finalized || [])
+    ].map(topic => ({
+        id: topic.id,
+        title: topic.title,
+        studentName: topic.students?.map((s: any) => s.full_name).join(', ') || 'N/A',
+
+        hasAllGrades: topic.gradingStatus?.isReadyForDecision || topic.status === 'DEFENDED',
+        isFinalized: !!topic.final_score,
+        computedScore: topic.final_score?.final_score || null,
+        rawTopic: topic
+    }));
+
+    // Fetch grades for selected topic
+    const { data: detailGrades, isLoading: isLoadingDetails } = useTopicGrades(selectedTopic?.id);
 
     const finalizeMutation = useFinalizeGrades();
     const computeMutation = useComputeFinalScore();
 
     const viewDetail = (topic: any) => {
         setSelectedTopic(topic);
+        if (topic.rawTopic?.students?.length > 0) {
+            setSelectedStudentId(topic.rawTopic.students[0].id);
+        }
         setDetailModalVisible(true);
     };
 
     const handleCompute = (topicId: string) => {
-        computeMutation.mutate(topicId);
+        computeMutation.mutate(topicId, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['grading'] });
+            }
+        });
     };
 
     const handleFinalize = (topicId: string) => {
@@ -59,7 +58,11 @@ const HeadFinalizeGrades = () => {
             cancelText: 'Hủy',
             okButtonProps: { danger: true },
             onOk: () => {
-                finalizeMutation.mutate(topicId);
+                finalizeMutation.mutate(topicId, {
+                    onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: ['grading'] });
+                    }
+                });
             },
         });
     };
@@ -172,7 +175,7 @@ const HeadFinalizeGrades = () => {
     return (
         <div className="p-6 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-foreground">Hoàn tất chấm điểm</h1>
+                <h1 className="text-2xl font-bold text-foreground">Hoàn tất chấm điểm</h1>
                 <p className="text-muted-foreground">
                     Tính toán điểm tổng và hoàn tất quá trình chấm điểm
                 </p>
@@ -198,7 +201,7 @@ const HeadFinalizeGrades = () => {
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đủ điểm</div>
                         <div className="text-3xl font-bold text-green-600">
-                            {topics.filter(t => t.hasAllGrades).length}
+                            {summaryData?.ready?.length || 0}
                         </div>
                     </div>
                 </Card>
@@ -206,7 +209,7 @@ const HeadFinalizeGrades = () => {
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Chưa đủ điểm</div>
                         <div className="text-3xl font-bold text-orange-600">
-                            {topics.filter(t => !t.hasAllGrades).length}
+                            {(summaryData?.missingSupervisor?.length || 0) + (summaryData?.missingReviewer?.length || 0)}
                         </div>
                     </div>
                 </Card>
@@ -214,7 +217,7 @@ const HeadFinalizeGrades = () => {
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đã hoàn tất</div>
                         <div className="text-3xl font-bold text-purple-600">
-                            {topics.filter(t => t.isFinalized).length}
+                            {summaryData?.finalized?.length || 0}
                         </div>
                     </div>
                 </Card>
@@ -222,7 +225,7 @@ const HeadFinalizeGrades = () => {
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Tổng cộng</div>
                         <div className="text-3xl font-bold text-blue-600">
-                            {topics.length}
+                            {summaryData?.allTopics?.length || 0}
                         </div>
                     </div>
                 </Card>
@@ -312,87 +315,41 @@ const HeadFinalizeGrades = () => {
                             </Descriptions.Item>
                         </Descriptions>
 
-                        {/* Grade Breakdown - Mock data, replace with real API call */}
+                        {/* Student Selector for multi-student topics */}
+                        {selectedTopic.rawTopic?.students?.length > 1 && (
+                            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                <span className="text-xs font-bold text-blue-600 uppercase block mb-2">Xem điểm cho sinh viên:</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedTopic.rawTopic.students.map((s: any) => (
+                                        <Button 
+                                            key={s.id}
+                                            size="small"
+                                            type={selectedStudentId === s.id ? 'primary' : 'default'}
+                                            onClick={() => setSelectedStudentId(s.id)}
+                                            className="rounded-full text-xs"
+                                        >
+                                            {s.full_name} ({s.student_code})
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Grade Breakdown */}
                         <div className="mt-4">
                             <h3 className="font-semibold mb-3">Chi tiết điểm:</h3>
-                            <GradeBreakdown
-                                advisorGrade={{
-                                    id: '1',
-                                    topic_id: selectedTopic.id,
-                                    rater_role: 'SUPERVISOR',
-                                    scores: [
-                                        { criterion_id: '1', score: 8.5, comment: 'Tốt' },
-                                        { criterion_id: '2', score: 8.5, comment: 'Đạt yêu cầu' }
-                                    ],
-                                    submitted_at: new Date().toISOString(),
-                                }}
-                                reviewerGrades={[
-                                    {
-                                        id: '2',
-                                        topic_id: selectedTopic.id,
-                                        rater_role: 'REVIEWER',
-                                        reviewer_order: 1,
-                                        scores: [
-                                            { criterion_id: '1', score: 8.0 },
-                                            { criterion_id: '2', score: 8.6 }
-                                        ],
-                                        submitted_at: new Date().toISOString(),
-                                    },
-                                    {
-                                        id: '3',
-                                        topic_id: selectedTopic.id,
-                                        rater_role: 'REVIEWER',
-                                        reviewer_order: 2,
-                                        scores: [
-                                            { criterion_id: '1', score: 8.5 },
-                                            { criterion_id: '2', score: 8.9 }
-                                        ],
-                                        submitted_at: new Date().toISOString(),
-                                    },
-                                ]}
-                                councilGrades={[
-                                    {
-                                        id: '4',
-                                        topic_id: selectedTopic.id,
-                                        rater_role: 'COMMITTEE',
-                                        committee_role: 'CHAIR',
-                                        scores: [
-                                            { criterion_id: '1', score: 8.0 },
-                                            { criterion_id: '2', score: 8.8 }
-                                        ],
-                                        submitted_at: new Date().toISOString(),
-                                    },
-                                    {
-                                        id: '5',
-                                        topic_id: selectedTopic.id,
-                                        rater_role: 'COMMITTEE',
-                                        committee_role: 'MEMBER',
-                                        scores: [
-                                            { criterion_id: '1', score: 8.5 },
-                                            { criterion_id: '2', score: 8.7 }
-                                        ],
-                                        submitted_at: new Date().toISOString(),
-                                    },
-                                ]}
-                                finalScore={
-                                    selectedTopic.computedScore
-                                        ? {
-                                            id: 'final-score-preview',
-                                            topic_id: selectedTopic.id,
-                                            advisor_score: 8.5,
-                                            avg_reviewer_score: 8.5,
-                                            avg_council_score: 8.5,
-                                            extra_points: 0.5,
-                                            final_score: selectedTopic.computedScore,
-                                            grade_classification: getClassification(selectedTopic.computedScore).text as any,
-                                            finalized: selectedTopic.isFinalized,
-                                            finalized_at: selectedTopic.isFinalized ? new Date().toISOString() : null,
-                                            created_at: new Date().toISOString(),
-                                            updated_at: new Date().toISOString(),
-                                        }
-                                        : undefined
-                                }
-                            />
+                            <Spin spinning={isLoadingDetails}>
+                                {detailGrades ? (
+                                    <GradeBreakdown
+                                        advisorGrade={detailGrades.advisorGrades?.find((g: any) => !g.student_id || g.student_id === selectedStudentId)}
+                                        reviewerGrades={detailGrades.reviewerGrades?.filter((g: any) => !g.student_id || g.student_id === selectedStudentId) || []}
+                                        councilGrades={detailGrades.councilGrades?.filter((g: any) => !g.student_id || g.student_id === selectedStudentId) || []}
+                                        finalScore={detailGrades.finalScores?.find((fs: any) => fs.student_id === selectedStudentId)}
+                                    />
+                                ) : (
+                                    <div className="py-10 text-center text-gray-400">Không tìm thấy dữ liệu điểm chi tiết</div>
+                                )}
+                            </Spin>
                         </div>
 
                         {!selectedTopic.isFinalized && (
