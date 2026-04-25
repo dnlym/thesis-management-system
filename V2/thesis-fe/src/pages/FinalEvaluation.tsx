@@ -33,7 +33,7 @@ const FinalEvaluation = () => {
         enabled: !!topicId,
     });
 
-    const selectedTopic = (gradingContext as any)?.topic || gradingContext?.finalScore?.topic || (gradingContext as any)?.permissions?.topic;
+    const selectedTopic = (gradingContext as any)?.topic || gradingContext?.finalScores?.[0]?.topic || (gradingContext as any)?.permissions?.topic;
     
     // permissions object from backend
     const permissions = gradingContext?.permissions;

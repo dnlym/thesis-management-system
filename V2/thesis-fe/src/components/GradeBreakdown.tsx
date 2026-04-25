@@ -18,9 +18,9 @@ export function GradeBreakdown({
 }: GradeBreakdownProps) {
     const getClassification = (score: number): { label: string; color: string } => {
         if (score >= 9.0) return { label: 'Xuất sắc', color: 'text-purple-600' };
-        if (score >= 8.0) return { label: 'Giỏi', color: 'text-blue-600' };
-        if (score >= 7.0) return { label: 'Khá', color: 'text-green-600' };
-        if (score >= 5.5) return { label: 'Trung bình', color: 'text-yellow-600' };
+        if (score >= 8.0) return { label: 'Giỏi', color: 'text-iuh-blue' };
+        if (score >= 7.0) return { label: 'Khá', color: 'text-iuh-green' };
+        if (score >= 5.5) return { label: 'Trung bình', color: 'text-iuh-yellow' };
         return { label: 'Yếu', color: 'text-red-600' };
     };
 
@@ -40,9 +40,9 @@ export function GradeBreakdown({
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center justify-between">
                         <span>Điểm Hướng dẫn (40%)</span>
-                        {finalScore?.advisorScore && (
-                            <span className="text-2xl font-bold text-blue-600">
-                                {formatScore(finalScore.advisorScore)}
+                        {finalScore?.advisor_score && (
+                            <span className="text-2xl font-bold text-iuh-blue">
+                                {formatScore(finalScore.advisor_score)}
                             </span>
                         )}
                     </CardTitle>
@@ -73,9 +73,9 @@ export function GradeBreakdown({
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center justify-between">
                         <span>Điểm Phản biện (40%)</span>
-                        {finalScore?.avgReviewerScore && (
-                            <span className="text-2xl font-bold text-green-600">
-                                {formatScore(finalScore.avgReviewerScore)}
+                        {finalScore?.avg_reviewer_score && (
+                            <span className="text-2xl font-bold text-iuh-green">
+                                {formatScore(finalScore.avg_reviewer_score)}
                             </span>
                         )}
                     </CardTitle>
@@ -86,7 +86,7 @@ export function GradeBreakdown({
                             {reviewerGrades.map((grade, index) => {
                                 const avgScore = calculateAverage(grade.scores.map((s) => s.score));
                                 return (
-                                    <div key={index} className="p-3 bg-gray-50 rounded-md">
+                                    <div key={index} className="p-3 bg-slate-50 rounded-md">
                                         <div className="flex justify-between mb-2">
                                             <span className="font-medium text-sm">Phản biện {index + 1}</span>
                                             <span className="font-bold">{formatScore(avgScore)}/10</span>
@@ -107,9 +107,9 @@ export function GradeBreakdown({
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center justify-between">
                         <span>Điểm Hội đồng (20%)</span>
-                        {finalScore?.avgCouncilScore && (
+                        {finalScore?.avg_council_score && (
                             <span className="text-2xl font-bold text-purple-600">
-                                {formatScore(finalScore.avgCouncilScore)}
+                                {formatScore(finalScore.avg_council_score)}
                             </span>
                         )}
                     </CardTitle>
@@ -121,7 +121,7 @@ export function GradeBreakdown({
                                 const avgScore = calculateAverage(grade.scores.map((s) => s.score));
                                 const roleLabels = ['Chủ tịch', 'Thư ký', 'Ủy viên'];
                                 return (
-                                    <div key={index} className="p-3 bg-gray-50 rounded-md">
+                                    <div key={index} className="p-3 bg-slate-50 rounded-md">
                                         <div className="flex justify-between mb-2">
                                             <span className="font-medium text-sm">{roleLabels[index] || `Thành viên ${index + 1}`}</span>
                                             <span className="font-bold">{formatScore(avgScore)}/10</span>
@@ -138,36 +138,36 @@ export function GradeBreakdown({
             </Card>
 
             {/* Final Score */}
-            {finalScore?.finalized && finalScore.finalScore !== null && (
-                <Card className="border-2 border-blue-500">
-                    <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+            {finalScore?.finalized && finalScore.final_score !== null && (
+                <Card className="border-2 border-iuh-blue">
+                    <CardHeader className="bg-gradient-to-r from-iuh-blue/10 to-purple-50">
                         <CardTitle className="text-xl text-center">Điểm Tổng kết</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="text-center space-y-4">
                             <div>
                                 <p className="text-sm text-gray-600 mb-1">Điểm tổng hợp</p>
-                                <p className="text-3xl font-bold">{formatScore(finalScore.computedScore)}</p>
+                                <p className="text-3xl font-bold">{formatScore(finalScore.computed_score)}</p>
                             </div>
 
-                            {finalScore.extraPoints && finalScore.extraPoints > 0 && (
+                            {finalScore.extra_points && finalScore.extra_points > 0 && (
                                 <div>
                                     <p className="text-sm text-gray-600 mb-1">Điểm cộng</p>
-                                    <p className="text-xl font-semibold text-green-600">
-                                        +{formatScore(finalScore.extraPoints)}
+                                    <p className="text-xl font-semibold text-iuh-green">
+                                        +{formatScore(finalScore.extra_points)}
                                     </p>
                                 </div>
                             )}
 
                             <div className="border-t-2 border-dashed pt-4">
                                 <p className="text-sm text-gray-600 mb-2">Điểm cuối cùng</p>
-                                <p className="text-5xl font-bold text-blue-600 mb-2">
-                                    {formatScore(finalScore.finalScore)}
+                                <p className="text-5xl font-bold text-iuh-blue mb-2">
+                                    {formatScore(finalScore.final_score)}
                                     <span className="text-2xl text-gray-400">/10</span>
                                 </p>
                                 {finalScore.classification && (
-                                    <p className={`text-xl font-semibold ${getClassification(finalScore.finalScore).color}`}>
-                                        {getClassification(finalScore.finalScore).label}
+                                    <p className={`text-xl font-semibold ${getClassification(finalScore.final_score).color}`}>
+                                        {getClassification(finalScore.final_score).label}
                                     </p>
                                 )}
                             </div>

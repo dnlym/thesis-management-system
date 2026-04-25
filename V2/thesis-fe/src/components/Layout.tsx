@@ -352,7 +352,7 @@ const AppLayout = () => {
   const SIDEBAR_W = collapsed ? 64 : siderWidth;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-slate-100">
       {/* ── Sidebar ── */}
       <aside
         className={`flex flex-col bg-white border-r border-gray-100 fixed left-0 top-0 bottom-0 z-50 ${isResizing ? '' : 'transition-all duration-200'}`}
@@ -436,7 +436,7 @@ const AppLayout = () => {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 bg-gray-50">
+        <main className="flex-1 bg-slate-100">
           <Suspense fallback={
             <div className="flex justify-center items-center h-64">
               <Spin size="large" />

@@ -5,10 +5,19 @@
 @tailwind utilities;
 
 @layer base {
-  h1 { @apply text-2xl font-bold text-slate-900 tracking-tight; }
-  h2 { @apply text-xl font-semibold text-slate-800 tracking-tight; }
-  h3 { @apply text-lg font-medium text-slate-800; }
-  body { 
+  h1 {
+    @apply text-2xl font-bold text-slate-900 tracking-tight;
+  }
+
+  h2 {
+    @apply text-xl font-semibold text-slate-800 tracking-tight;
+  }
+
+  h3 {
+    @apply text-lg font-medium text-slate-800;
+  }
+
+  body {
     @apply text-base text-slate-600 bg-background;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -56,6 +65,7 @@
   top: 16px !important;
   right: 16px !important;
 }
+
 @layer base {
   :root {
     /* Academic Blue Theme */

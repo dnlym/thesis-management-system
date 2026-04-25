@@ -71,7 +71,7 @@ const HeadFinalizeGrades = () => {
         if (score >= 9.0) return { text: 'Xuất sắc', color: 'purple' };
         if (score >= 8.0) return { text: 'Giỏi', color: 'green' };
         if (score >= 7.0) return { text: 'Khá', color: 'blue' };
-        if (score >= 5.5) return { text: 'Trung bình', color: 'orange' };
+        if (score >= 5.5) return { text: 'Trung bình', color: 'warning' };
         return { text: 'Yếu', color: 'red' };
     };
 
@@ -114,7 +114,7 @@ const HeadFinalizeGrades = () => {
                 hasAll ? (
                     <Tag color="green" icon={<CheckCircleOutlined />}>Đủ điểm</Tag>
                 ) : (
-                    <Tag color="orange">Chưa đủ</Tag>
+                    <Tag color="warning">Chưa đủ</Tag>
                 )
             ),
         },
@@ -173,7 +173,7 @@ const HeadFinalizeGrades = () => {
     ];
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 min-h-screen">
             <div>
                 <h1 className="text-2xl font-bold text-foreground">Hoàn tất chấm điểm</h1>
                 <p className="text-muted-foreground">
@@ -182,10 +182,10 @@ const HeadFinalizeGrades = () => {
             </div>
 
             {/* Info Card */}
-            <Card className="bg-blue-50 border-blue-200">
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-blue-900">Quy trình hoàn tất</h3>
-                    <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+            <Card className="bg-iuh-blue/10/50 border-iuh-blue-200 rounded-2xl shadow-sm mb-6">
+                <div className="p-4 space-y-2">
+                    <h3 className="font-semibold text-iuh-blue-900">Quy trình hoàn tất</h3>
+                    <ol className="text-sm text-iuh-blue space-y-1 list-decimal list-inside">
                         <li>Kiểm tra đề tài đã có đủ điểm: GVHD, GVPB (2), Hội đồng (≥3)</li>
                         <li>Nhấn "Tính điểm" để hệ thống tự động tính theo công thức</li>
                         <li>Xem chi tiết và xác minh điểm tính đúng</li>
@@ -200,7 +200,7 @@ const HeadFinalizeGrades = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Đủ điểm</div>
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="text-3xl font-bold text-iuh-green">
                             {summaryData?.ready?.length || 0}
                         </div>
                     </div>
@@ -224,7 +224,7 @@ const HeadFinalizeGrades = () => {
                 <Card className="shadow-soft">
                     <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">Tổng cộng</div>
-                        <div className="text-3xl font-bold text-blue-600">
+                        <div className="text-3xl font-bold text-iuh-blue">
                             {summaryData?.allTopics?.length || 0}
                         </div>
                     </div>
@@ -317,8 +317,8 @@ const HeadFinalizeGrades = () => {
 
                         {/* Student Selector for multi-student topics */}
                         {selectedTopic.rawTopic?.students?.length > 1 && (
-                            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                <span className="text-xs font-bold text-blue-600 uppercase block mb-2">Xem điểm cho sinh viên:</span>
+                            <div className="mb-4 p-3 bg-iuh-blue/10 rounded-lg border border-iuh-blue/20">
+                                <span className="text-xs font-bold text-iuh-blue uppercase block mb-2">Xem điểm cho sinh viên:</span>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedTopic.rawTopic.students.map((s: any) => (
                                         <Button 

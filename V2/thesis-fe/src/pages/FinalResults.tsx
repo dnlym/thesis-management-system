@@ -1,20 +1,62 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Table, Card, Tag, Input, Space, Typography, Button, Tooltip, Row, Col, Statistic, Radio, Divider } from 'antd';
-import { SearchOutlined, EyeOutlined, CheckCircleOutlined, CloseCircleOutlined, TrophyOutlined, BarChartOutlined, FireOutlined, InteractionOutlined, UserOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Table, Card, Tag, Input, Typography, Button, Radio, Avatar, Dropdown } from 'antd';
+import { SearchOutlined, UserOutlined, FileTextOutlined, DownOutlined, FileExcelOutlined, FileOutlined } from '@ant-design/icons';
 import { TopicsApi } from '@/api/topics';
-import { Topic, User } from '@/types';
-import dayjs from 'dayjs';
+import { Topic } from '@/types';
 
 const { Title, Text } = Typography;
 
+// ── Helpers xuất file ────────────────────────────────────────────────
+const getExportRows = (data: Topic[]) =>
+    data.map((r, i) => ({
+        STT: i + 1,
+        'Mã đề tài': r.code || '',
+        'Tên đề tài': r.title || '',
+        'Sinh viên': r.students?.map((s: any) => s.full_name).join(', ') || '',
+        'Điểm HD': (r.students as any)?.[0]?.finalScore?.supervisor_score?.toFixed(1) ?? '',
+        'Điểm PB': (r.students as any)?.[0]?.finalScore?.reviewer_avg_score?.toFixed(1) ?? '',
+        'Điểm HĐ': (r.students as any)?.[0]?.finalScore?.committee_score?.toFixed(1) ?? '',
+        'Tổng điểm': (r.students as any)?.[0]?.finalScore?.final_score?.toFixed(1) ?? '',
+        'Kết quả': (r.students as any)?.[0]?.finalScore?.grade_classification ?? '',
+    }));
+
+const exportCSV = (data: Topic[]) => {
+    const rows = getExportRows(data);
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [
+        headers.join(','),
+        ...rows.map(r => headers.map(h => `"${(r as any)[h]}"`).join(',')),
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ket-qua-khoa-luan.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+const exportExcel = async (data: Topic[]) => {
+    try {
+        const XLSX = await import('xlsx');
+        const ws = XLSX.utils.json_to_sheet(getExportRows(data));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Kết quả');
+        XLSX.writeFile(wb, 'ket-qua-khoa-luan.xlsx');
+    } catch {
+        // Fallback về CSV nếu chưa cài xlsx
+        exportCSV(data);
+        console.info('Thư viện xlsx chưa được cài, đã xuất dưới dạng CSV.');
+    }
+};
+// ─────────────────────────────────────────────────────────────────────
+
 const FinalResults = () => {
-    const navigate = useNavigate();
     const [searchText, setSearchText] = useState('');
     const [councilFilter, setCouncilFilter] = useState<'ALL' | 'ORAL' | 'POSTER'>('ALL');
 
-    // Fetch all finalized topics
     const { data: results, isLoading } = useQuery({
         queryKey: ['final-results'],
         queryFn: () => TopicsApi.getAll({ status: 'FINALIZED' }),
@@ -22,267 +64,267 @@ const FinalResults = () => {
 
     const processedData = useMemo(() => {
         if (!results?.topics) return [];
-
         let filtered = [...results.topics];
-
-        // 1. Filter by Council Type
         if (councilFilter !== 'ALL') {
             filtered = filtered.filter(item => item.defense_type === councilFilter);
         }
-
-        // 2. Filter by search text
         if (searchText) {
-            const lowerSearch = searchText.toLowerCase();
+            const q = searchText.toLowerCase();
             filtered = filtered.filter(item =>
-                item.title?.toLowerCase().includes(lowerSearch) ||
-                item.code?.toLowerCase().includes(lowerSearch) ||
-                item.students?.some(s => s.full_name?.toLowerCase().includes(lowerSearch) || s.student_code?.toLowerCase().includes(lowerSearch))
+                item.title?.toLowerCase().includes(q) ||
+                item.code?.toLowerCase().includes(q) ||
+                item.students?.some((s: any) =>
+                    s.full_name?.toLowerCase().includes(q) ||
+                    s.student_code?.toLowerCase().includes(q)
+                )
             );
         }
-
-        // 3. Sort by Final Score DESC (Top-down)
-        return filtered.sort((a, b) => {
-            const scoreA = a.students?.[0]?.finalScore?.final_score || 0;
-            const scoreB = b.students?.[0]?.finalScore?.final_score || 0;
-            return scoreB - scoreA;
-        });
+        return filtered;
     }, [results, councilFilter, searchText]);
+
+    const exportMenuItems = [
+        {
+            key: 'excel',
+            icon: <FileExcelOutlined className="text-green-600" />,
+            label: <span className="font-medium">Excel (.xlsx)</span>,
+            onClick: () => exportExcel(processedData),
+        },
+        {
+            key: 'csv',
+            icon: <FileOutlined className="text-slate-500" />,
+            label: <span className="text-slate-600">CSV (.csv)</span>,
+            onClick: () => exportCSV(processedData),
+        },
+    ];
 
     const columns = [
         {
-            title: 'Hạng',
-            key: 'rank',
-            width: 70,
+            title: 'STT',
+            key: 'index',
+            width: 55,
             align: 'center' as const,
-            render: (_: any, __: Topic, index: number) => {
-                if (index === 0) return <TrophyOutlined className="text-yellow-500 text-xl" />;
-                if (index === 1) return <div className="text-gray-400 font-bold text-lg">2</div>;
-                if (index === 2) return <div className="text-orange-400 font-bold text-lg">3</div>;
-                return <span className="text-gray-400">{index + 1}</span>;
-            }
-        },
-        {
-            title: 'Thông tin Đề tài',
-            key: 'topic_info',
-            render: (record: Topic) => (
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <Tag color="blue">{record.code}</Tag>
-                        <Tag color={record.defense_type === 'ORAL' ? 'cyan' : 'purple'}>
-                            {record.defense_type === 'ORAL' ? 'HỘI ĐỒNG ORAL' : 'HỘI ĐỒNG POSTER'}
-                        </Tag>
-                    </div>
-                    <div className="font-bold text-gray-800 text-base">{record.title}</div>
-                    <div className="text-xs text-gray-500 mt-1">Học kỳ: {record.semester?.name} | Khoa: {record.department?.name}</div>
-                </div>
+            render: (_: any, __: any, index: number) => (
+                <span className="text-slate-400 text-xs">{index + 1}</span>
             ),
         },
         {
-            title: 'Sinh viên thực hiện',
+            title: 'Mã',
+            dataIndex: 'code',
+            key: 'code',
+            width: 75,
+            render: (code: string) => (
+                <Tag color="blue" className="font-mono text-xs">{code}</Tag>
+            ),
+        },
+        {
+            title: 'Tên đề tài',
+            dataIndex: 'title',
+            key: 'title',
+            ellipsis: true,
+            render: (title: string) => (
+                <span className="font-semibold text-slate-800">{title}</span>
+            ),
+        },
+        {
+            title: 'Sinh viên',
             dataIndex: 'students',
             key: 'students',
-            width: 250,
+            width: 190,
             render: (students: any[]) => (
-                <div className="space-y-1">
-                    {students?.map(s => (
-                        <div key={s.id} className="flex items-center gap-2">
-                            <Avatar size="small" src={s.avatar_url} icon={<UserOutlined />} />
-                            <div>
-                                <Text strong className="block leading-none">{s.full_name}</Text>
-                                <Text type="secondary" style={{ fontSize: 11 }}>{s.student_code}</Text>
-                            </div>
+                <div className="flex flex-col gap-1">
+                    {students?.map((s: any) => (
+                        <div key={s.id} className="flex items-center gap-1.5">
+                            <Avatar
+                                size={18}
+                                src={s.avatar_url}
+                                icon={<UserOutlined />}
+                                className="bg-slate-200 flex-shrink-0"
+                            />
+                            <Text className="text-[12px] text-slate-700 leading-tight">{s.full_name}</Text>
                         </div>
                     ))}
                 </div>
             ),
         },
         {
-            title: 'GVHD',
-            key: 'supervisor_score',
+            title: 'Điểm HD',
+            key: 'supervisor',
             align: 'center' as const,
-            width: 100,
+            width: 78,
             render: (record: Topic) => (
-                <Tooltip title="Điểm Giảng viên Hướng dẫn">
-                    <div className="text-gray-600 font-medium">{record.students?.[0]?.finalScore?.supervisor_score?.toFixed(2) || '0.00'}</div>
-                </Tooltip>
+                <span className="text-slate-600 text-sm">
+                    {(record.students as any)?.[0]?.finalScore?.supervisor_score?.toFixed(1) || '—'}
+                </span>
             ),
         },
         {
-            title: 'GVPB (TB)',
-            key: 'reviewer_avg_score',
+            title: 'Điểm PB',
+            key: 'reviewer',
             align: 'center' as const,
-            width: 100,
+            width: 78,
             render: (record: Topic) => (
-                <Tooltip title="Trung bình điểm Phản biện">
-                    <div className="text-gray-600 font-medium">{record.students?.[0]?.finalScore?.reviewer_avg_score?.toFixed(2) || '0.00'}</div>
-                </Tooltip>
+                <span className="text-slate-600 text-sm">
+                    {(record.students as any)?.[0]?.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
+                </span>
             ),
         },
         {
-            title: councilFilter === 'ORAL' ? 'HĐ Oral' : councilFilter === 'POSTER' ? 'HĐ Poster' : 'HĐ (TB)',
-            key: 'committee_score',
+            title: 'Điểm HĐ',
+            key: 'committee',
             align: 'center' as const,
-            width: 100,
+            width: 78,
             render: (record: Topic) => (
-                <Tooltip title="Trung bình điểm Hội đồng">
-                    <div className="text-gray-600 font-medium">{record.students?.[0]?.finalScore?.committee_score?.toFixed(2) || '0.00'}</div>
-                </Tooltip>
+                <span className="text-slate-600 text-sm">
+                    {(record.students as any)?.[0]?.finalScore?.committee_score?.toFixed(1) || '—'}
+                </span>
             ),
         },
         {
-            title: 'Cộng',
-            key: 'extra_points',
+            title: 'Tổng',
+            key: 'total',
             align: 'center' as const,
-            width: 80,
+            width: 70,
             render: (record: Topic) => (
-                <Tooltip title="Điểm cộng NCKH/Thành tích">
-                    <Text type={record.students?.[0]?.finalScore?.extra_points > 0 ? 'warning' : 'secondary'} strong>
-                        +{record.students?.[0]?.finalScore?.extra_points?.toFixed(2) || '0.00'}
-                    </Text>
-                </Tooltip>
-            ),
-        },
-        {
-            title: 'Tổng điểm',
-            key: 'final_score',
-            align: 'center' as const,
-            width: 120,
-            render: (record: Topic) => (
-                <div className="bg-blue-50 py-2 rounded-lg border border-blue-100">
-                    <Text strong className="text-xl text-blue-700">
-                        {record.students?.[0]?.finalScore?.final_score?.toFixed(2) || '0.00'}
-                    </Text>
-                    <div className="text-[10px] text-blue-400 uppercase font-black">Final Grade</div>
-                </div>
+                <Text strong className="text-blue-600 text-sm">
+                    {(record.students as any)?.[0]?.finalScore?.final_score?.toFixed(1) || '—'}
+                </Text>
             ),
         },
         {
             title: 'Kết quả',
             key: 'result',
             align: 'center' as const,
-            width: 140,
+            width: 95,
             render: (record: Topic) => {
-                const cls = record.students?.[0]?.finalScore?.grade_classification;
-                const isPass = (record.students?.[0]?.finalScore?.final_score || 0) >= 6.0;
+                const cls = (record.students as any)?.[0]?.finalScore?.grade_classification;
                 let color = 'default';
                 if (cls === 'Xuất sắc') color = 'gold';
                 if (cls === 'Giỏi') color = 'green';
                 if (cls === 'Khá') color = 'blue';
                 if (cls === 'Trung bình') color = 'orange';
-
                 return (
-                    <Space direction="vertical" size={2}>
-                        <Tag color={color} style={{ margin: 0, width: '100%', textAlign: 'center' }}>{cls || 'N/A'}</Tag>
-                        {isPass ? (
-                            <Badge status="success" text={<Text type="success" strong style={{ fontSize: 11 }}>ĐẠT (PASSED)</Text>} />
-                        ) : (
-                            <Badge status="error" text={<Text type="danger" strong style={{ fontSize: 11 }}>HỎNG (FAILED)</Text>} />
-                        )}
-                    </Space>
+                    <Tag color={color} className="min-w-[68px] text-center m-0 text-xs">
+                        {cls || '—'}
+                    </Tag>
                 );
             },
         },
-        {
-            title: '',
-            key: 'actions',
-            width: 60,
-            render: (record: Topic) => (
-                <Button
-                    type="primary"
-                    shape="circle"
-                    icon={<EyeOutlined />}
-                    onClick={() => navigate(`/evaluation?topicId=${record.id}`)}
-                />
-            ),
-        },
     ];
 
-    const passCount = processedData.filter(r => (r.students?.[0]?.finalScore?.final_score || 0) >= 6.0).length;
-    const totalCount = processedData.length;
-    const passRate = totalCount > 0 ? (passCount / totalCount * 100).toFixed(1) : '0';
-
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <div className="max-w-[1400px] mx-auto">
-                <Row gutter={[24, 24]} className="mb-8 items-end">
-                    <Col span={14}>
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                                <TrophyOutlined className="text-white text-2xl" />
-                            </div>
-                            <div>
-                                <Title level={2} style={{ margin: 0 }}>Bảng vàng Kết quả Khóa luận</Title>
-                                <Text type="secondary">Xếp hạng kết quả học tập và bảo vệ đồ án của sinh viên</Text>
-                            </div>
-                        </div>
-                    </Col>
-                    <Col span={10}>
-                        <div className="flex gap-4 justify-end">
-                            <Card size="small" className="bg-white shadow-sm border-none min-w-[160px]">
-                                <Statistic
-                                    title="Tỷ lệ Đạt"
-                                    value={passRate}
-                                    suffix="%"
-                                    prefix={<FireOutlined className="text-orange-500" />}
-                                    valueStyle={{ color: '#3f8600', fontWeight: '900' }}
-                                />
-                            </Card>
-                            <Card size="small" className="bg-white shadow-sm border-none min-w-[160px]">
-                                <Statistic
-                                    title="Hoàn thành"
-                                    value={totalCount}
-                                    prefix={<CheckCircleOutlined className="text-blue-500" />}
-                                    valueStyle={{ color: '#096dd9', fontWeight: '900' }}
-                                />
-                            </Card>
-                        </div>
-                    </Col>
-                </Row>
+        <div className="p-6 bg-slate-50 min-h-screen font-sans">
+            <div className="max-w-[1200px] mx-auto space-y-4">
 
-                <Card className="shadow-md border-none rounded-xl">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                {/* Header — title + export cùng 1 hàng */}
+                <Card
+                    className="shadow-sm border-slate-200 rounded-xl"
+                    bodyStyle={{ padding: '14px 24px' }}
+                >
+                    <div className="flex items-center justify-between gap-4">
+                        {/* Icon + title */}
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow shadow-blue-100">
+                                <FileTextOutlined className="text-base" />
+                            </div>
+                            <div className="min-w-0">
+                                <Title level={5} className="!m-0 text-slate-900 whitespace-nowrap leading-tight">
+                                    Bảng kết quả khóa luận
+                                </Title>
+                                <Text className="text-slate-400 text-xs whitespace-nowrap">
+                                    Xem và xuất danh sách kết quả theo hội đồng
+                                </Text>
+                            </div>
+                        </div>
+
+                        {/* Export dropdown */}
+                        <Dropdown
+                            menu={{ items: exportMenuItems }}
+                            trigger={['click']}
+                            placement="bottomRight"
+                        >
+                            <Button
+                                icon={<FileExcelOutlined className="text-green-600" />}
+                                className="flex-shrink-0 rounded-lg border-slate-300 font-medium"
+                            >
+                                Xuất dữ liệu <DownOutlined className="text-[10px] ml-0.5 opacity-60" />
+                            </Button>
+                        </Dropdown>
+                    </div>
+                </Card>
+
+                {/* Filter & Search */}
+                <Card
+                    className="shadow-sm border-slate-200 rounded-xl"
+                    bodyStyle={{ padding: '12px 24px' }}
+                >
+                    <div className="flex items-center gap-4">
                         <Radio.Group
                             value={councilFilter}
                             onChange={e => setCouncilFilter(e.target.value)}
                             buttonStyle="solid"
-                            size="large"
+                            size="middle"
                         >
                             <Radio.Button value="ALL">Tất cả hội đồng</Radio.Button>
-                            <Radio.Button value="ORAL">Hội đồng Oral</Radio.Button>
-                            <Radio.Button value="POSTER">Hội đồng Poster</Radio.Button>
+                            <Radio.Button value="ORAL">Oral</Radio.Button>
+                            <Radio.Button value="POSTER">Poster</Radio.Button>
                         </Radio.Group>
 
-                        <div className="flex gap-3 w-full md:w-auto">
-                            <Input
-                                placeholder="Mã đề tài, tên, sinh viên..."
-                                prefix={<SearchOutlined className="text-gray-400" />}
-                                value={searchText}
-                                onChange={e => setSearchText(e.target.value)}
-                                style={{ width: 300 }}
-                                size="large"
-                                allowClear
-                                className="rounded-lg"
-                            />
-                            <Button type="primary" size="large" icon={<BarChartOutlined />} className="rounded-lg">Xuất Báo cáo</Button>
-                        </div>
+                        <Input
+                            placeholder="Tìm theo mã, tên đề tài, sinh viên..."
+                            prefix={<SearchOutlined className="text-slate-400" />}
+                            className="rounded-lg h-9 border-slate-200 flex-1"
+                            value={searchText}
+                            onChange={e => setSearchText(e.target.value)}
+                            allowClear
+                        />
                     </div>
+                </Card>
 
+                {/* Table */}
+                <Card
+                    className="shadow-sm border-slate-200 rounded-xl overflow-hidden"
+                    bodyStyle={{ padding: 0 }}
+                >
                     <Table
                         dataSource={processedData}
                         columns={columns}
                         rowKey="id"
                         loading={isLoading}
-                        pagination={{ pageSize: 10 }}
-                        rowClassName={(record, index) => index < 3 ? 'bg-yellow-50/30' : ''}
+                        size="middle"
+                        pagination={{
+                            pageSize: 10,
+                            className: 'px-6 py-4 !m-0 border-t border-slate-100',
+                            showSizeChanger: false,
+                            showTotal: (total) => (
+                                <span className="text-slate-400 text-sm">Tổng {total} đề tài</span>
+                            ),
+                        }}
+                        className="custom-results-table"
                     />
                 </Card>
+
             </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .custom-results-table .ant-table-thead > tr > th {
+                    background: #f8fafc !important;
+                    font-weight: 700 !important;
+                    color: #64748b !important;
+                    font-size: 12px !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
+                    padding: 10px 16px !important;
+                    white-space: nowrap !important;
+                }
+                .custom-results-table .ant-table-tbody > tr > td {
+                    padding: 10px 16px !important;
+                    border-bottom: 1px solid #f1f5f9 !important;
+                }
+                .custom-results-table .ant-table-tbody > tr:hover > td {
+                    background: #f8fafc !important;
+                }
+            `}} />
         </div>
     );
 };
-
-// Internal Components replacement for brevity
-const Badge = ({ status, text }: any) => <div className="flex items-center gap-1"><div className={`w-2 h-2 rounded-full ${status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />{text}</div>;
-const Avatar = ({ size, src, icon }: any) => <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">{src ? <img src={src} className="w-full h-full object-cover" /> : icon}</div>;
 
 export default FinalResults;
