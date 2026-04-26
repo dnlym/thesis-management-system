@@ -32,6 +32,7 @@ export interface DashboardStats {
     completionRate?: number;
     avgScore?: number;
     defendedCount?: number;
+    milestones?: any[];
 }
 
 export interface DashboardCharts {

@@ -226,78 +226,78 @@ const Criteria = () => {
                     </Tabs>
                 </Card>
 
-            <Modal
-                title={editingId ? t('criteria.edit') : t('criteria.add')}
-                open={isModalVisible}
-                onOk={handleOk}
-                onCancel={() => setIsModalVisible(false)}
-                confirmLoading={createMutation.isPending || updateMutation.isPending}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item
-                        name="name"
-                        label={t('common.name')}
-                        rules={[{ required: true, message: t('validation.required') }]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item
-                        name="description"
-                        label={t('common.description')}
-                    >
-                        <Input.TextArea rows={3} />
-                    </Form.Item>
-                    <Form.Item
-                        name="roleGroup"
-                        label={t('criteria.type')}
-                        rules={[{ required: true, message: t('validation.required') }]}
-                    >
-                        <Select disabled={!!editingId}>
-                            <Option value="SUPERVISOR">{t('role.advisor')}</Option>
-                            <Option value="REVIEWER">{t('role.reviewer')}</Option>
-                            <Option value="COMMITTEE">{t('role.council')}</Option>
-                        </Select>
-                    </Form.Item>
-                    <div className="grid grid-cols-2 gap-4">
+                <Modal
+                    title={editingId ? t('criteria.edit') : t('criteria.add')}
+                    open={isModalVisible}
+                    onOk={handleOk}
+                    onCancel={() => setIsModalVisible(false)}
+                    confirmLoading={createMutation.isPending || updateMutation.isPending}
+                >
+                    <Form form={form} layout="vertical">
                         <Form.Item
-                            name="weight"
-                            label={t('criteria.weight')}
-                            rules={[
-                                { required: true, message: t('validation.required') },
-                                { type: 'number', min: 0, max: 1, message: t('validation.range', { min: 0, max: 1 }) }
-                            ]}
-                        >
-                            <InputNumber step={0.1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                            name="maxScore"
-                            label={t('criteria.maxScore')}
+                            name="name"
+                            label={t('common.name')}
                             rules={[{ required: true, message: t('validation.required') }]}
-                            initialValue={10}
                         >
-                            <InputNumber min={0} style={{ width: '100%' }} />
-                        </Form.Item>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item
-                            name="minScore"
-                            label={t('criteria.minScore')}
-                            rules={[{ required: true, message: t('validation.required') }]}
-                            initialValue={0}
-                        >
-                            <InputNumber min={0} style={{ width: '100%' }} />
+                            <Input />
                         </Form.Item>
                         <Form.Item
-                            name="orderIndex"
-                            label={t('criteria.order')}
-                            rules={[{ required: true, message: t('validation.required') }]}
-                            initialValue={0}
+                            name="description"
+                            label={t('common.description')}
                         >
-                            <InputNumber min={0} style={{ width: '100%' }} />
+                            <Input.TextArea rows={3} />
                         </Form.Item>
-                    </div>
-                </Form>
-            </Modal>
+                        <Form.Item
+                            name="roleGroup"
+                            label={t('criteria.type')}
+                            rules={[{ required: true, message: t('validation.required') }]}
+                        >
+                            <Select disabled={!!editingId}>
+                                <Option value="SUPERVISOR">{t('role.advisor')}</Option>
+                                <Option value="REVIEWER">{t('role.reviewer')}</Option>
+                                <Option value="COMMITTEE">{t('role.council')}</Option>
+                            </Select>
+                        </Form.Item>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Form.Item
+                                name="weight"
+                                label={t('criteria.weight')}
+                                rules={[
+                                    { required: true, message: t('validation.required') },
+                                    { type: 'number', min: 0, max: 1, message: t('validation.range', { min: 0, max: 1 }) }
+                                ]}
+                            >
+                                <InputNumber step={0.1} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                name="maxScore"
+                                label={t('criteria.maxScore')}
+                                rules={[{ required: true, message: t('validation.required') }]}
+                                initialValue={10}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Form.Item
+                                name="minScore"
+                                label={t('criteria.minScore')}
+                                rules={[{ required: true, message: t('validation.required') }]}
+                                initialValue={0}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                            <Form.Item
+                                name="orderIndex"
+                                label={t('criteria.order')}
+                                rules={[{ required: true, message: t('validation.required') }]}
+                                initialValue={0}
+                            >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </div>
+                    </Form>
+                </Modal>
             </div>
         </div>
     );

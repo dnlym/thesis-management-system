@@ -1,154 +1,306 @@
-import { Card, Table, Tag, Descriptions, Spin, Alert } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { 
+  Shield, 
+  Search, 
+  Save, 
+  RefreshCcw, 
+  ChevronRight,
+  Users,
+  Lock,
+  Info
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PermissionsApi } from '@/api/permissions';
 import { UsersApi } from '@/api/users';
+import PermissionGroup from '@/components/admin/PermissionGroup';
+import { cn } from '@/lib/utils';
 
-const Roles = () => {
+const Roles: React.FC = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('STUDENT');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPermissions, setCurrentPermissions] = useState<string[]>([]);
 
-  const { data: roleStats, isLoading, isError } = useQuery({
+  // Roles definition
+  const roles = [
+    { id: 'STUDENT', name: 'Sinh viên', description: 'Người học trong hệ thống' },
+    { id: 'LECTURER', name: 'Giảng viên', description: 'Giảng viên hướng dẫn & Phản biện' },
+    { id: 'HEAD', name: 'Trưởng bộ môn', description: 'Quản lý chuyên môn bộ môn' },
+    { id: 'ADMIN', name: 'Quản trị viên', description: 'Quản trị hệ thống toàn diện' },
+  ].filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  // Fetch permissions matrix
+  const { data: matrixData, isLoading: isLoadingMatrix } = useQuery({
+    queryKey: ['permissions-matrix'],
+    queryFn: () => PermissionsApi.getMatrix(),
+  });
+
+  // Fetch role statistics
+  const { data: roleStats } = useQuery({
     queryKey: ['roles-summary'],
     queryFn: () => UsersApi.getRoleSummary(),
   });
 
-  const rolesData = [
-    {
-      id: 'STUDENT',
-      name: t('roles.names.STUDENT'),
-      description: t('roles.descriptions.STUDENT'),
-      permissions: t('roles.permissionsList.STUDENT', { returnObjects: true }) as string[],
-    },
-    {
-      id: 'LECTURER',
-      name: t('roles.names.LECTURER'),
-      description: t('roles.descriptions.LECTURER'),
-      permissions: t('roles.permissionsList.LECTURER', { returnObjects: true }) as string[],
-    },
-    {
-      id: 'HEAD',
-      name: t('roles.names.HEAD_OF_DEPT') || 'Trưởng bộ môn',
-      description: t('roles.descriptions.HEAD_OF_DEPT') || 'Quản lý học thuật tại bộ môn',
-      permissions: t('roles.permissionsList.HEAD_OF_DEPT', { returnObjects: true }) as string[],
-    },
-    {
-      id: 'ADMIN',
-      name: t('roles.names.ADMIN'),
-      description: t('roles.descriptions.ADMIN'),
-      permissions: t('roles.permissionsList.ADMIN', { returnObjects: true }) as string[],
+  // Update current permissions when role changes or data loaded
+  useEffect(() => {
+    if (matrixData?.matrix && selectedRoleId) {
+      setCurrentPermissions(matrixData.matrix[selectedRoleId] || []);
     }
-  ].map(role => {
-    const stats = roleStats?.find(s => s.id === role.id);
-    return {
-      ...role,
-      userCount: stats?.userCount || 0
-    };
+  }, [matrixData, selectedRoleId]);
+
+  // Update permissions mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ role, permissions }: { role: string; permissions: string[] }) =>
+      PermissionsApi.updateRolePermissions(role, permissions),
+    onSuccess: () => {
+      toast.success('Cập nhật quyền hạn thành công');
+      queryClient.invalidateQueries({ queryKey: ['permissions-matrix'] });
+    },
+    onError: (error: any) => {
+      toast.error('Lỗi cập nhật: ' + (error.response?.data?.message || error.message));
+    },
   });
 
-  const columns = [
-    {
-      title: t('common.role'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: any) => (
-        <div>
-          <div className="font-medium text-foreground">{name}</div>
-          <div className="text-sm text-muted-foreground">{record.description}</div>
-        </div>
-      ),
-    },
-    {
-      title: t('common.userCount'),
-      dataIndex: 'userCount',
-      key: 'userCount',
-      render: (count: number) => (
-        <Tag color="blue">{t('roles.userCountLabel', { count })}</Tag>
-      ),
-    },
-    {
-      title: t('common.permissions'),
-      dataIndex: 'permissions',
-      key: 'permissions',
-      render: (permissions: string[]) => (
-        <div className="space-y-1">
-          {permissions?.slice(0, 3).map((permission, index) => (
-            <Tag key={index} color="green" className="mb-1">
-              {permission}
-            </Tag>
-          ))}
-          {permissions?.length > 3 && (
-            <Tag color="default">{t('roles.otherPermissions', { count: permissions.length - 3 })}</Tag>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const handleSave = () => {
+    updateMutation.mutate({
+      role: selectedRoleId,
+      permissions: currentPermissions,
+    });
+  };
 
-  const expandedRowRender = (record: any) => {
-    return (
-      <div className="p-4 bg-academic-primary-light rounded-lg">
-        <Descriptions title={t('roles.permissionsDetail')} size="small" column={1}>
-          {record.permissions?.map((permission: string, index: number) => (
-            <Descriptions.Item key={index} label={t('roles.permissionLabel', { index: index + 1 })}>
-              {permission}
-            </Descriptions.Item>
-          ))}
-        </Descriptions>
-      </div>
+  const handleTogglePermission = (code: string) => {
+    setCurrentPermissions(prev => 
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-12 flex justify-center items-center">
-        <Spin size="large" tip={t('common.loading')} />
-      </div>
-    );
-  }
+  const handleToggleAllGroup = (codes: string[], checked: boolean) => {
+    if (checked) {
+      setCurrentPermissions(prev => Array.from(new Set([...prev, ...codes])));
+    } else {
+      setCurrentPermissions(prev => prev.filter(c => !codes.includes(c)));
+    }
+  };
 
-  if (isError) {
-    return (
-      <div className="p-6">
-        <Alert message={t('common.errorLoadingData')} type="error" showIcon />
-      </div>
-    );
-  }
+  const getUserCount = (roleId: string) => {
+    return roleStats?.find(s => s.id === roleId)?.userCount || 0;
+  };
 
-    return (
-        <div className="page-container">
-            <div className="page-inner">
-                {/* Header */}
-                <Card className="page-header-card">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
-                            <div>
-                                <div className="page-header-title">{t('navigation.roles')}</div>
-                                <div className="page-header-subtitle">{t('roles.subtitle')}</div>
-                            </div>
-                        </div>
-                        <div className="text-sm font-medium text-gray-500">
-                            {t('roles.totalUsers', { count: rolesData.reduce((sum, role) => sum + role.userCount, 0) })} users
-                        </div>
-                    </div>
-                </Card>
+  // Group permissions by category
+  const groupedPermissions = React.useMemo(() => {
+    if (!matrixData?.permissions) return {};
+    const groups: Record<string, any[]> = {};
+    matrixData.permissions.forEach(p => {
+      if (!groups[p.category]) groups[p.category] = [];
+      groups[p.category].push(p);
+    });
+    return groups;
+  }, [matrixData]);
 
-                <Card className="page-card-flush">
-                    <Table
-                        columns={columns}
-                        dataSource={rolesData}
-                        rowKey="id"
-                        className="sys-table"
-                        expandable={{
-                            expandedRowRender,
-                            expandRowByClick: true,
-                        }}
-                        pagination={false}
-                    />
-                </Card>
-            </div>
+  if (isLoadingMatrix) {
+    return (
+      <div className="p-8 space-y-6">
+        <Skeleton className="h-12 w-1/3" />
+        <div className="grid grid-cols-12 gap-6">
+          <Skeleton className="col-span-3 h-[600px]" />
+          <Skeleton className="col-span-9 h-[600px]" />
         </div>
+      </div>
     );
+  }
+
+  const selectedRole = roles.find(r => r.id === selectedRoleId) || roles[0];
+
+  return (
+    <div className="min-h-screen bg-background/50 p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+            <Lock className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Quản lý Vai trò & Phân quyền</h1>
+            <p className="text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              Thiết lập và kiểm soát quyền truy cập cho từng nhóm người dùng
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Tìm kiếm vai trò..." 
+              className="pl-9 bg-muted/50 border-none focus-visible:ring-1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" className="gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            Làm mới
+          </Button>
+          <Button className="gap-2 bg-primary shadow-lg shadow-primary/20">
+            <Users className="h-4 w-4" />
+            Tạo vai trò mới
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-6">
+        {/* Sidebar - Role List */}
+        <div className="col-span-12 lg:col-span-3 space-y-4">
+          <div className="bg-card rounded-2xl border shadow-sm overflow-hidden">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vai trò hệ thống</span>
+              <Badge variant="secondary" className="rounded-full">{roles.length}</Badge>
+            </div>
+            <div className="p-2 space-y-1">
+              {roles.map((role) => (
+                <button
+                  key={role.id}
+                  onClick={() => setSelectedRoleId(role.id)}
+                  className={cn(
+                    "w-full flex items-center justify-between p-4 rounded-xl transition-all duration-200 group text-left",
+                    selectedRoleId === role.id 
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 translate-x-1" 
+                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "h-2 w-2 rounded-full",
+                      selectedRoleId === role.id ? "bg-white animate-pulse" : "bg-muted-foreground/30"
+                    )} />
+                    <div>
+                      <div className="font-semibold">{role.name}</div>
+                      <div className={cn(
+                        "text-xs mt-0.5",
+                        selectedRoleId === role.id ? "text-primary-foreground/70" : "text-muted-foreground"
+                      )}>
+                        {getUserCount(role.id)} người dùng
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn(
+                    "h-4 w-4 transition-transform",
+                    selectedRoleId === role.id ? "rotate-90" : "opacity-0 group-hover:opacity-100"
+                  )} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+            <div className="flex gap-3">
+              <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Mẹo phân quyền</h4>
+                <p className="text-xs text-blue-700/80 dark:text-blue-400/70 mt-1 leading-relaxed">
+                  Thay đổi quyền hạn sẽ có hiệu lực ngay lập tức cho tất cả người dùng thuộc vai trò này sau khi họ tải lại trang.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Permission Matrix */}
+        <div className="col-span-12 lg:col-span-9 space-y-6">
+          <div className="bg-card rounded-2xl border shadow-sm flex flex-col h-[700px] relative overflow-hidden">
+            {/* Role Header */}
+            <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-card to-muted/20">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Shield className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">
+                    PHÂN QUYỀN: <span className="text-primary">{selectedRole?.name}</span>
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{selectedRole?.description}</p>
+                </div>
+              </div>
+              <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20 text-sm font-medium">
+                {currentPermissions.length} quyền đã chọn
+              </Badge>
+            </div>
+
+            <ScrollArea className="flex-1">
+              <div className="p-6 pb-24">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={selectedRoleId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="space-y-6">
+                      {Object.entries(groupedPermissions).map(([category, perms]) => (
+                        <PermissionGroup
+                          key={category}
+                          title={category}
+                          permissions={perms}
+                          selectedCodes={currentPermissions}
+                          onToggle={handleTogglePermission}
+                          onToggleAll={handleToggleAllGroup}
+                        />
+                      ))}
+
+                      {Object.keys(groupedPermissions).length === 0 && (
+                        <div className="text-center py-12 border-2 border-dashed rounded-xl border-muted">
+                          <p className="text-muted-foreground">Không tìm thấy quyền hạn nào trong Database.</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </ScrollArea>
+
+            {/* Footer Actions */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-card via-card to-transparent border-t backdrop-blur-sm flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                Lưu lại để áp dụng các thay đổi quyền hạn.
+              </div>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  className="gap-2 h-11 px-6 rounded-xl"
+                  onClick={() => setCurrentPermissions(matrixData?.matrix[selectedRoleId] || [])}
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  Đặt lại
+                </Button>
+                <Button 
+                  className="gap-2 h-11 px-8 rounded-xl shadow-lg shadow-primary/20"
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? (
+                    <RefreshCcw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default Roles;
+export default Roles;

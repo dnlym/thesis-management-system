@@ -27,12 +27,10 @@ const Evaluation = lazy(() => import('@/pages/Evaluation'));
 const MidtermEvaluation = lazy(() => import('@/pages/MidtermEvaluation'));
 const FinalEvaluation = lazy(() => import('@/pages/FinalEvaluation'));
 const Schedule = lazy(() => import('@/pages/Schedule'));
-const Reports = lazy(() => import('@/pages/Reports'));
 const FinalResults = lazy(() => import('@/pages/FinalResults'));
 const AdminUsers = lazy(() => import('@/pages/admin/Users'));
 const AdminRoles = lazy(() => import('@/pages/admin/Roles'));
 const AdminCriteria = lazy(() => import('@/pages/admin/Criteria'));
-const AdminCouncil = lazy(() => import('@/pages/admin/Council'));
 const AdminSettings = lazy(() => import('@/pages/admin/Settings'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Profiles = lazy(() => import('@/pages/Profiles'));
@@ -219,15 +217,6 @@ export const routes: RouteConfig[] = [
     },
   },
   {
-    path: '/reports',
-    element: Reports,
-    meta: {
-      title: 'navigation.reports',
-      icon: BarChartOutlined,
-      roles: ['HEAD', 'ADMIN'],
-    },
-  },
-  {
     path: '/final-results',
     element: FinalResults,
     meta: {
@@ -327,15 +316,6 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.criteria',
       icon: SafetyCertificateOutlined,
-      roles: ['HEAD', 'ADMIN'],
-    },
-  },
-  {
-    path: '/admin/council',
-    element: AdminCouncil,
-    meta: {
-      title: 'navigation.council',
-      icon: CrownOutlined,
       roles: ['HEAD', 'ADMIN'],
     },
   },
@@ -474,11 +454,6 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/final-results',
         icon: <BarChartOutlined />,
         label: 'Kết quả khóa luận',
-      },
-      {
-        key: '/reports',
-        icon: <BarChartOutlined />,
-        label: 'navigation.reports',
       },
       {
         key: '/schedule',

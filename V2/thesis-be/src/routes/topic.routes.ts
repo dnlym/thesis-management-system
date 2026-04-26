@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import topicController from '../controllers/topic.controller';
 import { UserRole } from '@prisma/client';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticate, authorize, checkPermission } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validator.middleware';
 import { body, param } from 'express-validator';
 import { enforceAcademicAction } from '../middleware/academic.middleware';
@@ -13,7 +13,7 @@ router.use(authenticate);
 
 router.post(
   '/',
-  authorize(UserRole.LECTURER, UserRole.HEAD, UserRole.ADMIN),
+  checkPermission('TOPIC_CREATE'),
   enforceAcademicAction(AcademicAction.CREATE_TOPIC),
   validate([
     body('title').notEmpty().withMessage('Title is required'),
@@ -42,7 +42,7 @@ router.put(
 // Submit for approval (SUPERVISOR)
 router.put(
   '/:topicId/submit',
-  authorize(UserRole.LECTURER),
+  checkPermission('TOPIC_UPDATE'),
   enforceAcademicAction(AcademicAction.UPDATE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.submitForApproval.bind(topicController)
@@ -50,7 +50,7 @@ router.put(
 
 router.post(
   '/:topicId/approve',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  checkPermission('TOPIC_APPROVE'),
   enforceAcademicAction(AcademicAction.APPROVE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.approveTopic.bind(topicController)
@@ -58,7 +58,7 @@ router.post(
 
 router.post(
   '/:topicId/reject',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  checkPermission('TOPIC_REJECT'),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('rejectionReason').isLength({ min: 20 }).withMessage('Rejection reason must be at least 20 characters'),

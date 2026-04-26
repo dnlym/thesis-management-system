@@ -150,112 +150,112 @@ const Users = () => {
     });
   };
 
-    return (
-        <div className="page-container">
-            <div className="page-inner">
-                {/* Header */}
-                <Card className="page-header-card">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
-                            <div>
-                                <div className="page-header-title">{t('navigation.users')}</div>
-                                <div className="page-header-subtitle">{t('users.subtitle')}</div>
-                            </div>
-                        </div>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={handleCreate}
-                        >
-                            {t('users.addUser')}
-                        </Button>
-                    </div>
-                </Card>
-
-                <Card className="page-card-flush">
-                    <Table
-                        columns={columns}
-                        dataSource={data}
-                        rowKey="id"
-                        loading={isLoading}
-                        className="sys-table"
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            className: 'px-6 py-4'
-                        }}
-                    />
-                </Card>
-
-      <Modal
-        title={editingUser ? t('users.editUser') : t('users.addNewUser')}
-        open={isModalVisible}
-        onOk={handleModalOk}
-        onCancel={() => setIsModalVisible(false)}
-        width={600}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            label={t('users.fullName')}
-            name="name"
-            rules={[{ required: true, message: t('users.fullNameRequired') }]}
-          >
-            <Input placeholder={t('users.enterFullName')} />
-          </Form.Item>
-
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              { required: true, message: t('users.emailRequired') },
-              { type: 'email', message: t('users.emailInvalid') }
-            ]}
-          >
-            <Input placeholder={t('users.enterEmail')} />
-          </Form.Item>
-
-          <Form.Item
-            label={t('common.role')}
-            name="role"
-            rules={[{ required: true, message: t('users.roleRequired') }]}
-          >
-            <Select placeholder={t('users.selectRole')}>
-              <Select.Option value="STUDENT">{t('roles.STUDENT')}</Select.Option>
-              <Select.Option value="SUPERVISOR">{t('roles.SUPERVISOR')}</Select.Option>
-              <Select.Option value="HEAD">{t('roles.HEAD')}</Select.Option>
-              <Select.Option value="REVIEWER">{t('roles.REVIEWER')}</Select.Option>
-              <Select.Option value="ADMIN">{t('roles.ADMIN')}</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            label={t('users.department')}
-            name="department"
-            rules={[{ required: true, message: t('users.departmentRequired') }]}
-          >
-            <Select placeholder={t('users.selectDepartment')}>
-              <Select.Option value="CNTT">{t('departments.CNTT')}</Select.Option>
-              <Select.Option value="DTVT">{t('departments.DTVT')}</Select.Option>
-              <Select.Option value="KTMT">{t('departments.KTMT')}</Select.Option>
-              <Select.Option value="HTTT">{t('departments.HTTT')}</Select.Option>
-            </Select>
-          </Form.Item>
-
-          {!editingUser && (
-            <Form.Item
-              label={t('users.password')}
-              name="password"
-              rules={[{ required: true, message: t('users.passwordRequired') }]}
-            >
-              <Input.Password placeholder={t('users.enterPassword')} />
-            </Form.Item>
-          )}
-        </Form>
-            </Modal>
+  return (
+    <div className="page-container">
+      <div className="page-inner">
+        {/* Header */}
+        <Card className="page-header-card">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+              <div>
+                <div className="page-header-title">{t('navigation.users')}</div>
+                <div className="page-header-subtitle">{t('users.subtitle')}</div>
+              </div>
             </div>
-        </div>
-    );
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleCreate}
+            >
+              {t('users.addUser')}
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="page-card-flush">
+          <Table
+            columns={columns}
+            dataSource={data}
+            rowKey="id"
+            loading={isLoading}
+            className="sys-table"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              className: 'px-6 py-4'
+            }}
+          />
+        </Card>
+
+        <Modal
+          title={editingUser ? t('users.editUser') : t('users.addNewUser')}
+          open={isModalVisible}
+          onOk={handleModalOk}
+          onCancel={() => setIsModalVisible(false)}
+          width={600}
+        >
+          <Form form={form} layout="vertical">
+            <Form.Item
+              label={t('users.fullName')}
+              name="name"
+              rules={[{ required: true, message: t('users.fullNameRequired') }]}
+            >
+              <Input placeholder={t('users.enterFullName')} />
+            </Form.Item>
+
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[
+                { required: true, message: t('users.emailRequired') },
+                { type: 'email', message: t('users.emailInvalid') }
+              ]}
+            >
+              <Input placeholder={t('users.enterEmail')} />
+            </Form.Item>
+
+            <Form.Item
+              label={t('common.role')}
+              name="role"
+              rules={[{ required: true, message: t('users.roleRequired') }]}
+            >
+              <Select placeholder={t('users.selectRole')}>
+                <Select.Option value="STUDENT">{t('roles.STUDENT')}</Select.Option>
+                <Select.Option value="SUPERVISOR">{t('roles.SUPERVISOR')}</Select.Option>
+                <Select.Option value="HEAD">{t('roles.HEAD')}</Select.Option>
+                <Select.Option value="REVIEWER">{t('roles.REVIEWER')}</Select.Option>
+                <Select.Option value="ADMIN">{t('roles.ADMIN')}</Select.Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label={t('users.department')}
+              name="department"
+              rules={[{ required: true, message: t('users.departmentRequired') }]}
+            >
+              <Select placeholder={t('users.selectDepartment')}>
+                <Select.Option value="CNTT">{t('departments.CNTT')}</Select.Option>
+                <Select.Option value="DTVT">{t('departments.DTVT')}</Select.Option>
+                <Select.Option value="KTMT">{t('departments.KTMT')}</Select.Option>
+                <Select.Option value="HTTT">{t('departments.HTTT')}</Select.Option>
+              </Select>
+            </Form.Item>
+
+            {!editingUser && (
+              <Form.Item
+                label={t('users.password')}
+                name="password"
+                rules={[{ required: true, message: t('users.passwordRequired') }]}
+              >
+                <Input.Password placeholder={t('users.enterPassword')} />
+              </Form.Item>
+            )}
+          </Form>
+        </Modal>
+      </div>
+    </div>
+  );
 };
 
 export default Users;

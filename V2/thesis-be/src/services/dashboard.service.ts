@@ -7,18 +7,53 @@ export class DashboardService {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new Error('User not found');
 
+        const activeSemester = await semesterService.getActiveSemester();
+        const milestones = this.getMilestones(activeSemester);
+
+        let roleStats = {};
         switch (user.role) {
             case 'STUDENT':
-                return this.getStudentStats(userId);
+                roleStats = await this.getStudentStats(userId);
+                break;
             case UserRole.LECTURER:
-                return this.getSupervisorStats(userId);
+                roleStats = await this.getSupervisorStats(userId);
+                break;
             case UserRole.HEAD:
-                return this.getHeadStats(userId, user.departmentId!);
+                roleStats = await this.getHeadStats(userId, user.departmentId!);
+                break;
             case UserRole.ADMIN:
-                return this.getAdminStats();
-            default:
-                return {};
+                roleStats = await this.getAdminStats();
+                break;
         }
+
+        return {
+            ...roleStats,
+            activeSemester,
+            milestones
+        };
+    }
+
+    private getMilestones(semester: any) {
+        if (!semester) return [];
+        const now = new Date();
+        
+        const items = [
+            { title: 'Hạn nộp đề cương', date: semester.proposal_deadline, type: 'PROPOSAL' },
+            { title: 'Hạn nộp khóa luận', date: semester.thesis_deadline, type: 'THESIS' },
+            { title: 'Bắt đầu bảo vệ', date: semester.defense_start, type: 'DEFENSE_START' },
+            { title: 'Kết thúc học kỳ', date: semester.end_date, type: 'SEMESTER_END' },
+        ].filter(item => item.date);
+
+        return items.map(item => {
+            const diffTime = new Date(item.date).getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return {
+                ...item,
+                daysLeft: diffDays,
+                isOverdue: diffDays < 0,
+                isUrgent: diffDays >= 0 && diffDays <= 3
+            };
+        });
     }
 
     private async getStudentStats(userId: string) {
@@ -290,6 +325,13 @@ export class DashboardService {
             where: { semester_id: activeSemester?.id }
         });
 
+        const pendingApprovalTopics = await prisma.topic.count({
+            where: {
+                semester_id: activeSemester?.id,
+                status: TopicStatus.PENDING_APPROVAL
+            }
+        });
+
         const completedCount = await prisma.topic.count({
             where: {
                 semester_id: activeSemester?.id,
@@ -319,6 +361,7 @@ export class DashboardService {
             totalSemesters,
             totalDepartments,
             activeSemester,
+            pendingApprovalTopics,
             userDistribution: userDistribution.map(u => ({ role: u.role, count: u._count.role })),
             // Report Stats
             totalTopics,

@@ -125,7 +125,6 @@ const getMenuSections = (role: string): MenuSection[] => {
           { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
           { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
-          { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
       },
@@ -162,7 +161,6 @@ const getMenuSections = (role: string): MenuSection[] => {
       items: [
         { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
         { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
-        { key: '/reports', label: 'Báo cáo', icon: <BarChartOutlined /> },
       ]
     },
     {
@@ -171,7 +169,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         { key: '/admin/users', label: 'Người dùng', icon: <UserOutlined /> },
         { key: '/admin/roles', label: 'Vai trò', icon: <TeamOutlined /> },
         { key: '/admin/criteria', label: 'Tiêu chí đánh giá', icon: <SafetyCertificateOutlined /> },
-        { key: '/admin/council', label: 'Hội đồng', icon: <CrownOutlined /> },
       ]
     },
     {

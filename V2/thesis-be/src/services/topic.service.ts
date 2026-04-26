@@ -58,7 +58,7 @@ export class TopicService {
     const year = semesterCodeParts[1] || new Date().getFullYear().toString();
     const deptCode = department.code;
 
-    const prefix = `${deptCode}-${year}-${term}-`;
+    const prefix = deptCode;
 
     // Attempt to generate unique code with retry logic to handle race conditions
     let attempts = 0;
@@ -76,8 +76,8 @@ export class TopicService {
 
       let nextSeq = 1;
       if (latestTopic && latestTopic.code) {
-        const parts = latestTopic.code.split('-');
-        const lastSeqStr = parts[parts.length - 1];
+        // Extract sequence from code like "CNTT001"
+        const lastSeqStr = latestTopic.code.substring(prefix.length);
         const lastSeq = parseInt(lastSeqStr);
         if (!isNaN(lastSeq)) {
           nextSeq = lastSeq + 1;
@@ -805,7 +805,7 @@ export class TopicService {
     // Role-based status constraints & logic
     if (user.role === UserRole.STUDENT) {
       const allowedStatuses: TopicStatus[] = [TopicStatus.APPROVED, TopicStatus.REGISTERED];
-      
+
       // Mandatory visibility filter for students
       andConditions.push({ is_visible: true });
 
@@ -1492,10 +1492,10 @@ export class TopicService {
     }
 
     // 2. Semester Status Guard: Must clone into an ACTIVE semester
-    const targetSemester = await prisma.semester.findUnique({ 
-      where: { id: newSemesterId } 
+    const targetSemester = await prisma.semester.findUnique({
+      where: { id: newSemesterId }
     });
-    
+
     if (!targetSemester || targetSemester.status !== 'ACTIVE') {
       throw new ApiError(400, 'INVALID_SEMESTER', 'Chỉ có thể sao chép đề tài vào học kỳ đang ở trạng thái Hoạt động (ACTIVE)');
     }
@@ -1550,9 +1550,9 @@ export class TopicService {
           action: 'CLONE',
           entity_type: 'Topic',
           entity_id: newTopic.id,
-          new_value: { 
+          new_value: {
             source_topic_id: oldTopic.id,
-            semester_id: newSemesterId 
+            semester_id: newSemesterId
           },
         },
       });

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import gradingController from '../controllers/grading.controller';
 import { UserRole } from '@prisma/client';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticate, authorize, checkPermission } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validator.middleware';
 import { body, param } from 'express-validator';
 import { enforceAcademicAction } from '../middleware/academic.middleware';
@@ -53,7 +53,7 @@ router.get('/criteria', gradingController.getGradingCriteria.bind(gradingControl
 // ==========================================
 router.get(
   '/grade-summary',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  checkPermission('SCORE_FINALIZE'),
   gradingController.getGradeSummary.bind(gradingController)
 );
 

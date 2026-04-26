@@ -221,6 +221,7 @@
 .page-container {
   @apply p-6 bg-slate-50 min-h-screen font-sans;
 }
+
 .page-inner {
   @apply max-w-[1200px] mx-auto space-y-4;
 }
@@ -230,13 +231,15 @@
 .page-header-card .ant-card-body {
   padding: 14px 24px !important;
 }
+
 .page-header-icon {
-  @apply w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg
-         flex items-center justify-center text-white shadow shadow-blue-100;
+  @apply w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow shadow-blue-100;
 }
+
 .page-header-title {
   @apply text-[15px] font-bold text-slate-900 leading-tight whitespace-nowrap;
 }
+
 .page-header-subtitle {
   @apply text-xs text-slate-400 whitespace-nowrap;
 }
@@ -250,8 +253,10 @@
 .page-card .ant-card-body {
   padding: 20px 24px !important;
 }
+
 .page-card-flush .ant-card-body {
-  padding: 0 !important;           /* for tables that go edge-to-edge */
+  padding: 0 !important;
+  /* for tables that go edge-to-edge */
 }
 
 /* ── Shared card base ────────────────────────────────────────── */
@@ -263,7 +268,7 @@
 }
 
 /* ── Global table (system-wide) ──────────────────────────────── */
-.sys-table .ant-table-thead > tr > th {
+.sys-table .ant-table-thead>tr>th {
   background: #f8fafc !important;
   font-weight: 700 !important;
   color: #64748b !important;
@@ -272,15 +277,18 @@
   border-bottom: 1px solid #e2e8f0 !important;
   padding: 10px 16px !important;
 }
-.sys-table .ant-table-tbody > tr > td {
+
+.sys-table .ant-table-tbody>tr>td {
   padding: 10px 16px !important;
   font-size: 13px !important;
   color: #334155;
   border-bottom: 1px solid #f1f5f9 !important;
 }
-.sys-table .ant-table-tbody > tr:hover > td {
+
+.sys-table .ant-table-tbody>tr:hover>td {
   background: #f8fafc !important;
 }
+
 .sys-table .ant-table-pagination {
   margin: 0 !important;
   padding: 12px 24px !important;
@@ -292,10 +300,12 @@
 .section-label {
   @apply text-[11px] font-bold uppercase tracking-wider text-slate-400;
 }
+
 /* Primary value / score */
 .score-value {
   @apply text-sm font-semibold text-slate-700;
 }
+
 .score-value-primary {
   @apply text-sm font-bold text-blue-600;
 }
@@ -308,4 +318,4 @@
 /* ── Ant Design Card global radius ──────────────────────────── */
 .ant-card {
   border-radius: 12px !important;
-}
+}

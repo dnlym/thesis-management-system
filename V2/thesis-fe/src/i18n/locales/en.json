@@ -68,7 +68,6 @@
     "submissions": "Submissions",
     "evaluation": "Evaluation",
     "schedule": "Schedule",
-    "reports": "Reports",
     "messages": "Messages",
     "semesterSettings": "Semester Settings",
     "management": "Management",
@@ -419,22 +418,6 @@
     "approveSuccess": "Approved and moved to next step successfully",
     "revisionSuccess": "Revision request sent",
     "revisionRequiredError": "Please enter the revision request content"
-  },
-  "reports": {
-    "subtitle": "Statistical reports and thesis data analysis",
-    "selectYear": "Select academic year",
-    "totalTopics": "Total Topics",
-    "completionRate": "Completion Rate",
-    "avgScore": "Average Score",
-    "defendedCount": "Defended",
-    "statusDistribution": "Topic Status Distribution",
-    "defenseType": "Defense Type",
-    "monthlyProgress": "Monthly Progress",
-    "scoreDistribution": "Score Distribution",
-    "registeredCount": "Registered",
-    "completedCount": "Completed",
-    "defendedLabel": "Defended",
-    "countLabel": "Count"
   },
   "users": {
     "subtitle": "Manage users in the system",

@@ -18,7 +18,6 @@ model Department {
   auto_approve_proposal_on_midterm_pass Boolean            @default(true)
   max_group_size                        Int                @default(2)
   min_group_size                        Int                @default(1)
-
   requires_midterm_eval                 Boolean            @default(true)
   committees                            Committee[]
   grading_criteria                      GradingCriterion[]
@@ -32,18 +31,18 @@ model Department {
 }
 
 model Semester {
-  id                       String              @id @default(uuid())
-  name                     String              @db.VarChar(100)
-  code                     String              @unique @db.VarChar(50)
-  status                  SemesterStatus      @default(PLANNING)
+  id                       String                  @id @default(uuid())
+  name                     String                  @db.VarChar(100)
+  code                     String                  @unique @db.VarChar(50)
+  status                   SemesterStatus          @default(PLANNING)
   start_date               DateTime
   end_date                 DateTime
   proposal_deadline        DateTime
   thesis_deadline          DateTime
   defense_start            DateTime?
   defense_end              DateTime?
-  created_at               DateTime            @default(now())
-  updated_at               DateTime            @updatedAt
+  created_at               DateTime                @default(now())
+  updated_at               DateTime                @updatedAt
   topic_registration_end   DateTime?
   topic_registration_start DateTime?
   topic_viewing_start      DateTime?
@@ -53,10 +52,10 @@ model Semester {
   committees               Committee[]
   defense_schedules        DefenseSchedule[]
   groups                   Group[]
+  registration_extensions  RegistrationExtension[]
   topic_registrations      TopicRegistration[]
   topics                   Topic[]
   workload_limits          UserWorkloadLimit[]
-  registration_extensions  RegistrationExtension[]
 
   @@index([code])
   @@map("semesters")
@@ -95,13 +94,12 @@ model User {
   owned_groups            Group[]                    @relation("GroupLeader")
   notifications           Notification[]             @relation("UserNotifications")
   refresh_tokens          RefreshToken[]
-
+  created_extensions      RegistrationExtension[]    @relation("ExtensionCreator")
   updated_configs         SystemConfig[]             @relation("ConfigUpdater")
   topic_registrations     TopicRegistration[]        @relation("StudentRegistrations")
-  supervised_topics       Topic[]                    @relation("SupervisorTopics")
   co_supervised_topics    Topic[]                    @relation("CoSupervisorTopics")
+  supervised_topics       Topic[]                    @relation("SupervisorTopics")
   workload_limits         UserWorkloadLimit[]        @relation("UserWorkload")
-  created_extensions      RegistrationExtension[]    @relation("ExtensionCreator")
   department              Department                 @relation(fields: [departmentId], references: [id])
 
   @@index([email])
@@ -129,53 +127,55 @@ model RefreshToken {
 }
 
 model Topic {
-  id                   String              @id @default(uuid())
-  title                String              @db.VarChar(500)
-  description          String
-  objectives           String
-  requirements         String
-  normalized_title     String
-  status               TopicStatus         @default(DRAFT)
-  is_visible           Boolean             @default(true)
-  is_locked            Boolean             @default(false)
-  progress_stage       ProgressStage       @default(WORKING)
-  approved_at          DateTime?
-  approved_by          String?
-  created_at           DateTime            @default(now())
-  current_students     Int                 @default(0)
-  departmentId         String              @map("department_id")
-  max_students         Int
-  rejection_reason     String?
-  semester_id          String
-  supervisor_id        String
-  co_supervisor_id     String?             @map("co_supervisor_id")
-  secondary_department_id String?          @map("secondary_department_id")
-  is_interdisciplinary Boolean             @default(false)
+  id                       String                   @id @default(uuid())
+  title                    String                   @db.VarChar(500)
+  description              String
+  objectives               String
+  requirements             String
+  normalized_title         String
+  status                   TopicStatus              @default(DRAFT)
+  is_visible               Boolean                  @default(true)
+  is_locked                Boolean                  @default(false)
+  progress_stage           ProgressStage            @default(WORKING)
+  approved_at              DateTime?
+  approved_by              String?
+  created_at               DateTime                 @default(now())
+  current_students         Int                      @default(0)
+  departmentId             String                   @map("department_id")
+  max_students             Int
+  rejection_reason         String?
+  edit_notes               String?
+  semester_id              String
+  supervisor_id            String
+  co_supervisor_id         String?                  @map("co_supervisor_id")
+  secondary_department_id  String?                  @map("secondary_department_id")
+  is_interdisciplinary     Boolean                  @default(false)
   interdisciplinary_status InterdisciplinaryStatus?
-  updated_at           DateTime            @updatedAt
-  code                 String?             @db.VarChar(50)
-  defense_type         DefenseType?        @default(ORAL)
-  is_eligible_for_defense Boolean?
-  reviewer_required_count Int                @default(2)
-  source_topic_id      String?             @map("source_topic_id")
-  assignments          Assignment[]        @relation("TopicAssignments")
-  defense_schedule     DefenseSchedule?    @relation("TopicDefense")
-  extra_point_requests ExtraPointRequest[] @relation("TopicExtraPoints")
-  final_scores         FinalScore[]        @relation("TopicFinalScore")
-  grades               Grade[]             @relation("TopicGrades")
-  group_invites        GroupInvite[]       @relation("TopicGroupInvites")
-  groups               Group[]             @relation("TopicGroups")
+  updated_at               DateTime                 @updatedAt
+  code                     String?                  @db.VarChar(50)
+  defense_type             DefenseType?             @default(ORAL)
+  is_eligible_for_defense  Boolean?
+  reviewer_required_count  Int                      @default(2)
+  source_topic_id          String?                  @map("source_topic_id")
+  assignments              Assignment[]             @relation("TopicAssignments")
+  defense_schedule         DefenseSchedule?         @relation("TopicDefense")
+  extra_point_requests     ExtraPointRequest[]      @relation("TopicExtraPoints")
+  final_scores             FinalScore[]             @relation("TopicFinalScore")
+  grades                   Grade[]                  @relation("TopicGrades")
+  group_invites            GroupInvite[]            @relation("TopicGroupInvites")
+  groups                   Group[]                  @relation("TopicGroups")
+  registrations            TopicRegistration[]      @relation("TopicRegistrations")
+  versions                 TopicVersion[]           @relation("TopicVersions")
+  co_supervisor            User?                    @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
+  department               Department               @relation("DepartmentTopics", fields: [departmentId], references: [id])
+  secondary_department     Department?              @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
+  semester                 Semester                 @relation(fields: [semester_id], references: [id])
+  source_topic             Topic?                   @relation("TopicOrigin", fields: [source_topic_id], references: [id])
+  derived_topics           Topic[]                  @relation("TopicOrigin")
+  supervisor               User                     @relation("SupervisorTopics", fields: [supervisor_id], references: [id], onDelete: Cascade)
 
-  registrations        TopicRegistration[] @relation("TopicRegistrations")
-  versions             TopicVersion[]      @relation("TopicVersions")
-  department           Department          @relation("DepartmentTopics", fields: [departmentId], references: [id])
-  secondary_department Department?         @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
-  semester             Semester            @relation(fields: [semester_id], references: [id])
-  supervisor           User                @relation("SupervisorTopics", fields: [supervisor_id], references: [id], onDelete: Cascade)
-  co_supervisor        User?               @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
-  source_topic         Topic?              @relation("TopicOrigin", fields: [source_topic_id], references: [id])
-  derived_topics       Topic[]             @relation("TopicOrigin")
-
+  @@unique([code, semester_id])
+  @@unique([normalized_title, semester_id, departmentId])
   @@index([code])
   @@index([supervisor_id])
   @@index([departmentId])
@@ -184,8 +184,6 @@ model Topic {
   @@index([created_at])
   @@index([normalized_title])
   @@index([source_topic_id])
-  @@unique([code, semester_id])
-  @@unique([normalized_title, semester_id, departmentId])
   @@map("topics")
 }
 
@@ -219,7 +217,6 @@ model Group {
   leader                 User                       @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
   semester               Semester                   @relation(fields: [semester_id], references: [id])
   topic                  Topic?                     @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
-
   registrations          TopicRegistration[]        @relation("GroupRegistrations")
 
   @@index([topic_id])
@@ -318,8 +315,6 @@ model TopicRegistration {
   @@map("topic_registrations")
 }
 
-
-
 model Assignment {
   id                   String           @id @default(uuid())
   topic_id             String
@@ -351,19 +346,20 @@ model Assignment {
 }
 
 model GradingCriterion {
-  id            String      @id @default(uuid())
-  name          String      @db.VarChar(255)
-  description   String
-  weight        Float
-  max_score     Float
-  min_score     Float       @default(0)
-  order_index   Int         @default(0)
-  active        Boolean     @default(true)
-  created_at    DateTime    @default(now())
+  id           String      @id @default(uuid())
+  name         String      @db.VarChar(255)
+  description  String
+  weight       Float
+  max_score    Float
+  min_score    Float       @default(0)
+  order_index  Int         @default(0)
+  active       Boolean     @default(true)
+  created_at   DateTime    @default(now())
   departmentId  String?     @map("department_id")
   role          RaterRole   @default(SUPERVISOR)
-  grades        Grade[]     @relation("CriterionGrades")
-  department    Department? @relation(fields: [departmentId], references: [id])
+  criteria_type String?     @db.VarChar(50)
+  grades       Grade[]     @relation("CriterionGrades")
+  department   Department? @relation(fields: [departmentId], references: [id])
 
   @@index([active])
   @@index([role])
@@ -579,6 +575,44 @@ model SystemConfig {
   @@map("system_config")
 }
 
+model Permission {
+  id               String           @id @default(uuid())
+  code             String           @unique @db.VarChar(100)
+  name             String           @db.VarChar(255)
+  category         String           @db.VarChar(100)
+  description      String?
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  role_permissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  role         UserRole
+  permissionId String
+  created_at   DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([role, permissionId], name: "role_permissionId")
+  @@map("role_permissions")
+}
+
+model RegistrationExtension {
+  id             String   @id @default(uuid())
+  semester_id    String
+  extended_until DateTime
+  reason         String
+  created_by     String
+  created_at     DateTime @default(now())
+  creator        User     @relation("ExtensionCreator", fields: [created_by], references: [id], onDelete: Cascade)
+  semester       Semester @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+
+  @@index([semester_id])
+  @@index([created_by])
+  @@map("registration_extensions")
+}
+
 enum UserRole {
   STUDENT
   LECTURER
@@ -693,8 +727,6 @@ enum InterdisciplinaryStatus {
   REJECTED
 }
 
-
-
 enum RaterRole {
   SUPERVISOR
   REVIEWER_1
@@ -734,20 +766,4 @@ enum MidtermStatus {
 enum ScheduleStatus {
   PENDING
   COMPLETED
-}
-
-model RegistrationExtension {
-  id             String   @id @default(uuid())
-  semester_id    String
-  extended_until DateTime
-  reason         String
-  created_by     String
-  created_at     DateTime @default(now())
-
-  semester       Semester @relation(fields: [semester_id], references: [id], onDelete: Cascade)
-  creator        User     @relation("ExtensionCreator", fields: [created_by], references: [id], onDelete: Cascade)
-
-  @@index([semester_id])
-  @@index([created_by])
-  @@map("registration_extensions")
 }

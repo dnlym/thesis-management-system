@@ -86,6 +86,44 @@ export const authorize = (...roles: UserRole[]) => {
   };
 };
 
+import permissionService from "../services/permission.service";
+
+/**
+ * Middleware kiểm tra quyền hạn (Permission)
+ * @param permissionCode mã quyền hạn cần kiểm tra (ví dụ: 'TOPIC_CREATE')
+ */
+export const checkPermission = (permissionCode: string) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: ERROR_CODES.UNAUTHORIZED,
+        message: "Người dùng chưa đăng nhập",
+      });
+    }
+
+    try {
+      const hasPerm = await permissionService.hasPermission(req.user.role, permissionCode);
+      
+      if (!hasPerm) {
+        return res.status(403).json({
+          success: false,
+          error: ERROR_CODES.FORBIDDEN,
+          message: `Không có quyền thực hiện hành động này (${permissionCode})`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: ERROR_CODES.INTERNAL_ERROR,
+        message: "Lỗi kiểm tra quyền hạn",
+      });
+    }
+  };
+};
+
 /**
  * Giữ tên cũ để các file khác không bị ảnh hưởng
  */
