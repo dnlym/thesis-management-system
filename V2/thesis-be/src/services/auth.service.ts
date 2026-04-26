@@ -28,7 +28,6 @@ export class AuthService {
       role: user.role,
       departmentId: user.departmentId,
       avatarUrl: user.avatar_url,
-      joinedAt: user.joined_at,
     };
   }
   refreshToken(refreshToken: any) {

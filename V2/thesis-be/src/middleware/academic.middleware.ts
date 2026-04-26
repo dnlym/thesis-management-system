@@ -59,7 +59,7 @@ export const enforceAcademicAction = (action: AcademicAction | ((req: AuthReques
       }
 
       // 3. Evaluate Policy
-      const result = AcademicPolicy.canPerform(resolvedAction, req.user, semester, registration);
+      const result = await AcademicPolicy.canPerform(resolvedAction, req.user, semester, registration);
 
       if (!result.allowed) {
         return res.status(403).json({

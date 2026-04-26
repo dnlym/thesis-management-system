@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notify } from '@/utils/notification';
 import { GradingApi } from '@/api/grading';
 import { useAuthStore } from '@/store/auth';
-import { GradingCriteria, CriteriaType } from '@/types';
+import { GradingCriteria, RaterRole } from '@/types';
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -18,7 +18,7 @@ const Criteria = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form] = Form.useForm();
-    const [activeTab, setActiveTab] = useState<CriteriaType>('ADVISOR');
+    const [activeTab, setActiveTab] = useState<string>('SUPERVISOR');
 
     // Fetch criteria
     const { data: criteriaMap, isLoading } = useQuery({
@@ -79,7 +79,7 @@ const Criteria = () => {
     const handleAdd = () => {
         setEditingId(null);
         form.resetFields();
-        form.setFieldsValue({ criteriaType: activeTab });
+        form.setFieldsValue({ roleGroup: activeTab });
         setIsModalVisible(true);
     };
 
@@ -95,13 +95,14 @@ const Criteria = () => {
 
     const handleOk = () => {
         form.validateFields().then((values) => {
-            // Map frontend types to valid backend RaterRole enums
-            let backendRole = values.criteriaType;
-            if (values.criteriaType === 'ADVISOR') backendRole = 'SUPERVISOR';
-            if (values.criteriaType === 'REVIEWER') backendRole = 'REVIEWER_1';
-            if (values.criteriaType === 'COUNCIL') backendRole = 'COMMITTEE_MEMBER';
+            // Map generic groups to actual default roles
+            let backendRole = values.roleGroup;
+            if (values.roleGroup === 'SUPERVISOR') backendRole = 'SUPERVISOR';
+            if (values.roleGroup === 'REVIEWER') backendRole = 'REVIEWER_1';
+            if (values.roleGroup === 'COMMITTEE') backendRole = 'COMMITTEE_MEMBER';
 
             const payload = { ...values, role: backendRole };
+            delete payload.roleGroup;
 
             if (editingId) {
                 updateMutation.mutate({ id: editingId, data: payload });
@@ -162,15 +163,9 @@ const Criteria = () => {
         },
     ];
 
-    const getCriteriaList = (type: CriteriaType) => {
+    const getCriteriaList = (group: string) => {
         if (!criteriaMap) return [];
-
-        let backendKey = type as string;
-        if (type === 'ADVISOR') backendKey = 'SUPERVISOR';
-        if (type === 'COUNCIL') backendKey = 'COMMITTEE';
-
-        // The backend now returns keys grouped by RoleGroup (SUPERVISOR, REVIEWER, COMMITTEE)
-        return criteriaMap[backendKey] || [];
+        return criteriaMap[group] || [];
     };
 
     return (
@@ -195,13 +190,13 @@ const Criteria = () => {
                 <Card className="page-card-flush">
                     <Tabs
                         activeKey={activeTab}
-                        onChange={(key) => setActiveTab(key as CriteriaType)}
+                        onChange={(key) => setActiveTab(key)}
                         className="sys-tabs"
                     >
-                        <TabPane tab={t('role.advisor')} key="ADVISOR">
+                        <TabPane tab={t('role.advisor')} key="SUPERVISOR">
                             <Table
                                 columns={columns}
-                                dataSource={getCriteriaList('ADVISOR')}
+                                dataSource={getCriteriaList('SUPERVISOR')}
                                 rowKey="id"
                                 loading={isLoading}
                                 pagination={false}
@@ -218,10 +213,10 @@ const Criteria = () => {
                                 className="sys-table"
                             />
                         </TabPane>
-                        <TabPane tab={t('role.council')} key="COUNCIL">
+                        <TabPane tab={t('role.council')} key="COMMITTEE">
                             <Table
                                 columns={columns}
-                                dataSource={getCriteriaList('COUNCIL')}
+                                dataSource={getCriteriaList('COMMITTEE')}
                                 rowKey="id"
                                 loading={isLoading}
                                 pagination={false}
@@ -253,14 +248,14 @@ const Criteria = () => {
                         <Input.TextArea rows={3} />
                     </Form.Item>
                     <Form.Item
-                        name="criteriaType"
+                        name="roleGroup"
                         label={t('criteria.type')}
                         rules={[{ required: true, message: t('validation.required') }]}
                     >
                         <Select disabled={!!editingId}>
-                            <Option value="ADVISOR">{t('role.advisor')}</Option>
+                            <Option value="SUPERVISOR">{t('role.advisor')}</Option>
                             <Option value="REVIEWER">{t('role.reviewer')}</Option>
-                            <Option value="COUNCIL">{t('role.council')}</Option>
+                            <Option value="COMMITTEE">{t('role.council')}</Option>
                         </Select>
                     </Form.Item>
                     <div className="grid grid-cols-2 gap-4">

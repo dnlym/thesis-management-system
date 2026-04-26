@@ -15,10 +15,6 @@ model Department {
   active                                Boolean            @default(true)
   created_at                            DateTime           @default(now())
   updated_at                            DateTime           @updatedAt
-  topic_viewing_start                   DateTime?
-  topic_viewing_end                     DateTime?
-  topic_registration_start              DateTime?
-  topic_registration_end                DateTime?
   auto_approve_proposal_on_midterm_pass Boolean            @default(true)
   max_group_size                        Int                @default(2)
   min_group_size                        Int                @default(1)
@@ -75,7 +71,6 @@ model User {
   created_at              DateTime                   @default(now())
   departmentId            String                     @map("department_id")
   full_name               String                     @db.VarChar(255)
-  joined_at               DateTime                   @default(now())
   last_login_at           DateTime?
   last_login_ip           String?                    @db.VarChar(50)
   password_hash           String                     @db.VarChar(255)
@@ -149,7 +144,6 @@ model Topic {
   created_at           DateTime            @default(now())
   current_students     Int                 @default(0)
   departmentId         String              @map("department_id")
-  edit_notes           String?
   max_students         Int
   rejection_reason     String?
   semester_id          String
@@ -363,7 +357,6 @@ model GradingCriterion {
   weight        Float
   max_score     Float
   min_score     Float       @default(0)
-  criteria_type String      @db.VarChar(100)
   order_index   Int         @default(0)
   active        Boolean     @default(true)
   created_at    DateTime    @default(now())
@@ -375,7 +368,6 @@ model GradingCriterion {
   @@index([active])
   @@index([role])
   @@index([order_index])
-  @@index([criteria_type])
   @@map("grading_criteria")
 }
 

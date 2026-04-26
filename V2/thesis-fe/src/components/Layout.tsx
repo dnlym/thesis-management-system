@@ -315,7 +315,7 @@ const AppLayout = () => {
               role: res.data.role as any,
               department: '',
               avatar_url: (res.data as any).avatar_url || (res.data as any).avatarUrl || undefined,
-              joined_at: (res.data as any).joined_at || (res.data as any).joinedAt || new Date().toISOString(),
+              joined_at: (res.data as any).created_at || new Date().toISOString(),
             };
             useAuthStore.getState().login(mapped as any, token, '');
           }

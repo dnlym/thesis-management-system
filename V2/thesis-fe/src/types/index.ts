@@ -247,7 +247,6 @@ export interface GradingCriteria {
   id: string;
   name: string;
   description?: string;
-  criteria_type: CriteriaType;
   max_score: number;
   min_score: number;
   weight: number;

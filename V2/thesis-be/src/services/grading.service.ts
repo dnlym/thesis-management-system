@@ -656,7 +656,6 @@ export class GradingService {
         min_score: data.minScore,
         role: data.role,
         order_index: data.orderIndex,
-        criteria_type: 'REGULAR',
         departmentId: targetDeptId,
       },
     });
@@ -814,9 +813,7 @@ export class GradingService {
     const where: any = { active: true };
     where.departmentId = departmentId || null;
 
-    if (roleFilter === 'FINAL') {
-      where.criteria_type = 'FINAL';
-    } else if (roleFilter) {
+    if (roleFilter) {
       // Map requested role (specific or generic) to its group
       let group: string | undefined = undefined;
 
@@ -882,10 +879,10 @@ export class GradingService {
       return this.getGradingCriteria(roleFilter, undefined, undefined);
     }
 
-    // Role handling for FINAL output
-    if (roleFilter === 'FINAL') {
-      const firstGroup = Object.keys(grouped)[0];
-      if (firstGroup) return { FINAL: grouped[firstGroup] };
+    // Role handling for generic output
+    if (roleFilter) {
+      const firstGroupFound = Object.keys(grouped)[0];
+      return firstGroupFound ? grouped[firstGroupFound] : [];
     }
 
     return grouped;
@@ -907,7 +904,6 @@ export class GradingService {
     // 0. Final Evaluation Priority - MUST filter by role group and department
     const finalCriteria = await prisma.gradingCriterion.findMany({
       where: {
-        criteria_type: 'FINAL',
         active: true,
         role: { in: rolesInGroup },
         departmentId: departmentId || null
@@ -920,7 +916,6 @@ export class GradingService {
     if (departmentId) {
       const globalFinalCriteria = await prisma.gradingCriterion.findMany({
         where: {
-          criteria_type: 'FINAL',
           active: true,
           role: { in: rolesInGroup },
           departmentId: null

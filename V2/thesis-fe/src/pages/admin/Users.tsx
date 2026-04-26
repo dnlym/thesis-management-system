@@ -20,7 +20,7 @@ const Users = () => {
     role: User['role'];
     departmentName: string;
     avatarUrl?: string;
-    joinedAt: string;
+    createdAt: string;
   }
 
   const { data, isLoading } = useQuery({
@@ -34,7 +34,7 @@ const Users = () => {
         role: u.role as User['role'],
         departmentName: u.department?.name || '',
         avatarUrl: u.avatar_url || u.avatarUrl || undefined,
-        joinedAt: u.created_at || u.joinedAt || new Date().toISOString(),
+        createdAt: u.created_at || new Date().toISOString(),
       })) || [];
     },
   });
@@ -86,9 +86,9 @@ const Users = () => {
     },
     {
       title: t('topics.createdAt'),
-      dataIndex: 'joinedAt',
-      key: 'joinedAt',
-      sorter: (a: UserDisplay, b: UserDisplay) => a.joinedAt.localeCompare(b.joinedAt),
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      sorter: (a: UserDisplay, b: UserDisplay) => a.createdAt.localeCompare(b.createdAt),
     },
     {
       title: t('common.actions'),

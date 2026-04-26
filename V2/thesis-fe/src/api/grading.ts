@@ -1,8 +1,8 @@
 import api from './client';
-import type { ApiResponse, Grade, GradingCriteria, FinalScore, GradeSubmissionForm, CriteriaType, RaterRole } from '@/types';
+import type { ApiResponse, Grade, GradingCriteria, FinalScore, GradeSubmissionForm, RaterRole } from '@/types';
 
 export interface CriteriaFilters {
-    criteriaType?: CriteriaType;
+    role?: string;
     topicId?: string;
     departmentId?: string;
 }

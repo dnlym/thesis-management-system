@@ -21,7 +21,7 @@ export function useExtraPoints(filters?: ExtraPointsFilters) {
         queryKey: extraPointsKeys.list(filters),
         queryFn: async () => {
             const response = await ExtraPointsApi.getAll(filters);
-            return response.data;
+            return response;
         },
     });
 }
@@ -34,7 +34,7 @@ export function useExtraPointRequest(id: string | undefined) {
         queryKey: extraPointsKeys.detail(id!),
         queryFn: async () => {
             const response = await ExtraPointsApi.getById(id!);
-            return response.data;
+            return response;
         },
         enabled: !!id,
     });
@@ -47,7 +47,12 @@ export function useCreateExtraPointsRequest() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (formData: FormData) => ExtraPointsApi.create(formData),
+        mutationFn: (data: {
+            topicId: string;
+            reason: string;
+            pointsRequested: number;
+            evidenceUrl?: string;
+        }) => ExtraPointsApi.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: extraPointsKeys.lists() });
             toast.success('Gửi yêu cầu cộng điểm thành công');

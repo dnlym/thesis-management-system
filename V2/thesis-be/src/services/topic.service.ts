@@ -724,17 +724,13 @@ export class TopicService {
     // DRAFT topics are only visible to their owner (GVHD who created them)
     // HIDDEN topics are only visible to their owner (GVHD who created them)
     if (user.role === UserRole.STUDENT) {
-      // Students can only see APPROVED topics (not DRAFT, not HIDDEN)
-      // Get student's department for viewing window
-      const department = await prisma.department.findUnique({
-        where: { id: user.departmentId || '' }
-      });
-
+      // Use semester for viewing window
+      const semester = await semesterService.getActiveSemester();
       const now = new Date();
-      if (department?.topic_viewing_start && now < department.topic_viewing_start) {
+      if (semester?.topic_viewing_start && now < semester.topic_viewing_start) {
         return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
       }
-      if (department?.topic_viewing_end && now > department.topic_viewing_end) {
+      if (semester?.topic_viewing_end && now > semester.topic_viewing_end) {
         return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
       }
 
@@ -1233,10 +1229,7 @@ export class TopicService {
         from: (log.old_value as any)?.status || null,
         to: (log.new_value as any)?.status || null,
       },
-      // Extract reason if any
-      reason: (log.new_value as any)?.rejection_reason ||
-        (log.new_value as any)?.edit_notes ||
-        null,
+      reason: (log.new_value as any)?.rejection_reason || '',
     }));
 
     return {
