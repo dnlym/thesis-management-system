@@ -9,7 +9,6 @@ import {
   GlobalOutlined,
   DashboardOutlined,
   BookOutlined,
-  ClockCircleOutlined,
   CheckCircleOutlined,
   CalendarOutlined,
   BarChartOutlined,
@@ -54,7 +53,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         items: [
           { key: '/topics', label: 'Danh sách đề tài', icon: <BookOutlined /> },
           { key: '/my-topic', label: 'Đề tài của tôi', icon: <BookOutlined /> },
-          { key: '/progress', label: 'Tiến độ', icon: <ClockCircleOutlined /> },
           { key: '/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
         ]
       },
@@ -79,7 +77,6 @@ const getMenuSections = (role: string): MenuSection[] => {
         items: [
           { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
           { key: '/supervisor/registrations', label: 'Sinh viên hướng dẫn', icon: <TeamOutlined /> },
-          { key: '/progress', label: 'Tiến độ', icon: <ClockCircleOutlined /> },
           { key: '/midterm-evaluation', label: 'Đánh giá giữa kỳ', icon: <CheckCircleOutlined /> },
           { key: '/evaluation', label: 'Đánh giá cuối kỳ', icon: <CheckCircleOutlined /> },
         ]

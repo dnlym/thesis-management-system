@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Form, Input, InputNumber, Button, Divider, Alert, Modal, Select, Switch, Row, Col, Typography, Spin, Tag } from 'antd';
+import { Card, Form, Input, InputNumber, Button, Divider, Alert, Modal, Typography, Spin, Tag } from 'antd';
 import { notify } from '@/utils/notification';
-import { SaveOutlined, SendOutlined, ArrowLeftOutlined, TeamOutlined } from '@ant-design/icons';
+import { SaveOutlined, SendOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { useCreateTopic, useTopics, useCloneTopic } from '@/hooks/useTopics';
 import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
-import { useUsers } from '@/hooks/useUsers';
 import { useAuthStore } from '@/store/auth';
 import type { TopicForm } from '@/types';
 import { canCreateTopic } from '@/utils/semester-rules';
@@ -24,10 +23,8 @@ const SupervisorCreateTopic = () => {
     const { user } = useAuthStore();
     const { data: semesters } = useSemesters();
     const { data: activeSemesterData } = useActiveSemester();
-    const { data: lecturers } = useUsers({ role: 'LECTURER' });
     const createMutation = useCreateTopic();
     const cloneMutation = useCloneTopic();
-    const isInterdisciplinary = Form.useWatch('isInterdisciplinary', form);
 
     // Reuse Topic Modal State
     const [reuseModalVisible, setReuseModalVisible] = useState(false);
@@ -71,8 +68,6 @@ const SupervisorCreateTopic = () => {
                 semesterId: activeSemester.id,
                 maxStudents: values.maxStudents || 2,
                 isDraft,
-                isInterdisciplinary: values.isInterdisciplinary,
-                coSupervisorId: values.isInterdisciplinary ? values.coSupervisorId : undefined,
             };
 
             createMutation.mutate(topicData, {
@@ -177,45 +172,6 @@ const SupervisorCreateTopic = () => {
                         >
                             <InputNumber min={1} className="w-full" placeholder="Nhập số lượng SV..." />
                         </Form.Item>
-
-                        <Divider />
-
-                        <div className="bg-gray-50 p-4 rounded-lg border border-dashed">
-                            <h3 className="text-base font-semibold mb-4 flex items-center">
-                                <TeamOutlined className="mr-2 text-academic-primary" />
-                                Cấu hình liên ngành
-                            </h3>
-                            
-                            <Form.Item
-                                label="Đây là đề tài liên ngành"
-                                name="isInterdisciplinary"
-                                valuePropName="checked"
-                                initialValue={false}
-                                extra="Bật nếu đề tài này cần sự tham gia của giảng viên bộ môn khác."
-                            >
-                                <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
-                            </Form.Item>
-
-                            {isInterdisciplinary && (
-                                <Form.Item
-                                    label="Giảng viên đồng hướng dẫn"
-                                    name="coSupervisorId"
-                                    rules={[{ required: true, message: 'Vui lòng chọn giảng viên đồng hướng dẫn' }]}
-                                    className="mb-0"
-                                >
-                                    <Select
-                                        showSearch
-                                        placeholder="Tìm kiếm giảng viên (Tên hoặc Email)..."
-                                        optionFilterProp="label"
-                                        className="w-full"
-                                        options={lecturers?.filter(l => l.id !== user?.id).map((l: any) => ({
-                                            value: l.id,
-                                            label: `${(l as any).full_name || (l as any).fullName} - ${l.email} (${(l as any).department?.name || 'Chưa rõ bộ môn'})`
-                                        }))}
-                                    />
-                                </Form.Item>
-                            )}
-                        </div>
                     </div>
 
                     <Divider />

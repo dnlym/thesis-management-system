@@ -91,7 +91,6 @@ const Dashboard = () => {
   const getQuickActions = () => {
     if (isStudent) {
       return [
-        { title: 'Theo dõi tiến độ', icon: FileText, color: 'bg-blue-50 text-blue-600', path: '/progress' },
         { title: 'Xem điểm', icon: Star, color: 'bg-amber-50 text-amber-600', path: '/my-topic' },
         { title: 'Tìm đề tài', icon: Search, color: 'bg-emerald-50 text-emerald-600', path: '/topics' },
       ];
@@ -100,7 +99,6 @@ const Dashboard = () => {
       return [
         { title: 'Chấm điểm', icon: Star, color: 'bg-amber-50 text-amber-600', path: '/evaluation' },
         { title: 'Duyệt sinh viên', icon: Users, color: 'bg-blue-50 text-blue-600', path: '/supervisor/registrations' },
-        { title: 'Cập nhật tiến độ', icon: Clock, color: 'bg-indigo-50 text-indigo-600', path: '/progress' },
       ];
     }
     return [
@@ -116,7 +114,7 @@ const Dashboard = () => {
   // Navigation logic for milestones
   const handleMilestoneClick = (m: any) => {
     if (m.type === 'PROPOSAL' || m.type === 'MIDTERM') {
-      navigate('/progress');
+      navigate('/topics');
     } else if (m.type === 'REVIEW') {
       navigate('/reviewer/assignments');
     } else if (m.type === 'DEFENSE_START') {

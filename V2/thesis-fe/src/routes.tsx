@@ -1,7 +1,6 @@
 import {
   DashboardOutlined,
   BookOutlined,
-  ClockCircleOutlined,
   UploadOutlined,
   CheckCircleOutlined,
   CalendarOutlined,
@@ -21,7 +20,6 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Topics = lazy(() => import('@/pages/Topics'));
 const TopicDetail = lazy(() => import('@/pages/TopicDetail'));
 const EditTopic = lazy(() => import('@/pages/EditTopic'));
-const Progress = lazy(() => import('@/pages/Progress'));
 
 const Evaluation = lazy(() => import('@/pages/Evaluation'));
 const MidtermEvaluation = lazy(() => import('@/pages/MidtermEvaluation'));
@@ -166,15 +164,6 @@ export const routes: RouteConfig[] = [
       title: 'navigation.approveTopics',
       icon: CheckCircleOutlined,
       roles: ['HEAD', 'ADMIN'],
-    },
-  },
-  {
-    path: '/progress',
-    element: Progress,
-    meta: {
-      title: 'navigation.progress',
-      icon: ClockCircleOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD'],
     },
   },
   // ... (các routes khác giữ nguyên)
@@ -374,11 +363,6 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <SafetyCertificateOutlined />,
         label: 'navigation.extraPoints',
       },
-      {
-        key: '/progress',
-        icon: <ClockCircleOutlined />,
-        label: 'navigation.progress',
-      },
 
       {
         key: '/schedule',
@@ -403,7 +387,6 @@ export const getMenuItems = (userRole: UserRole) => {
         children: [
           { key: '/topics', label: 'navigation.topics', icon: <BookOutlined /> },
           { key: '/supervisor/registrations', label: 'navigation.registrations', icon: <TeamOutlined /> },
-          { key: '/progress', label: 'navigation.progress', icon: <ClockCircleOutlined /> },
 
           { key: '/midterm-evaluation', label: 'navigation.midtermEvaluation', icon: <CheckCircleOutlined /> },
           { key: '/evaluation', label: 'navigation.finalEvaluation', icon: <CheckCircleOutlined /> },

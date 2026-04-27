@@ -145,13 +145,7 @@ export interface Topic {
   defense_schedule?: DefenseSchedule;
   committee?: Committee;
   students?: User[];
-  is_interdisciplinary?: boolean;
   is_visible?: boolean;
-  is_locked?: boolean;
-  progress_stage?: ProgressStage;
-  co_supervisor_id?: string | null;
-  secondary_department_id?: string | null;
-  interdisciplinary_status?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
   source_topic_id?: string | null;
   source_topic?: Topic | null;
 }
@@ -369,8 +363,6 @@ export interface TopicForm {
   departmentId?: string;
   maxStudents: number;
   isDraft?: boolean;
-  isInterdisciplinary?: boolean;
-  coSupervisorId?: string;
 }
 
 
