@@ -193,18 +193,6 @@ const HeadApproveTopics = () => {
                     </div>
                 </Card>
 
-            {/* Info Card */}
-            <Card className="bg-blue-50 border-blue-200">
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-blue-900">{t('approveTopics.guideTitle')}</h3>
-                    <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                        <li>{t('approveTopics.guide1')}</li>
-                        <li>{t('approveTopics.guide2')}</li>
-                        <li>{t('approveTopics.guide3')}</li>
-                        <li>{t('approveTopics.guide4')}</li>
-                    </ul>
-                </div>
-            </Card>
 
                 {/* Topics Table with Tabs */}
                 <Card className="page-card-flush">

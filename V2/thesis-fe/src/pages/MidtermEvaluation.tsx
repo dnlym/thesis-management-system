@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty } from 'antd';
+import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty, Tabs } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useAuthStore } from '@/store/auth';
@@ -31,6 +31,7 @@ const MidtermEvaluation = () => {
     const [gradeModalVisible, setGradeModalVisible] = useState(false);
     const [feedback, setFeedback] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'PASS' | 'FAIL' | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
     const handleOpenGradeModal = (registration: MidtermRegistration, status: 'PASS' | 'FAIL') => {
         setSelectedRegistration(registration);
@@ -204,6 +205,13 @@ const MidtermEvaluation = () => {
     const passedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length || 0;
     const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
 
+    const filteredRegistrations = useMemo(() => {
+        if (!registrations) return [];
+        if (filterStatus === 'ALL') return registrations;
+        if (filterStatus === 'PENDING') return registrations.filter(r => !r.midterm_status);
+        return registrations.filter(r => r.midterm_status === filterStatus);
+    }, [registrations, filterStatus]);
+
     return (
         <div className="page-container">
             <div className="page-inner">
@@ -220,35 +228,63 @@ const MidtermEvaluation = () => {
 
             {hasAnyRestrictedPhase && (
                 <Alert
-                    message="Lưu ý về quyền đánh giá"
-                    description="Một số đề tài có thể bị khóa nút đánh giá do nằm ngoài khoảng thời gian quy định hoặc thiếu dữ liệu học kỳ. Rê chuột vào nút bị khóa để xem chi tiết lý do."
+                    message={
+                        <span className="text-[13px] text-blue-800">
+                            <strong>Lưu ý:</strong> Một số nút đánh giá bị khóa do ngoài thời gian quy định hoặc thiếu dữ liệu. Rê chuột vào nút để xem lý do.
+                        </span>
+                    }
                     type="info"
                     showIcon
-                    className="mb-6 border-l-4 border-l-blue-500 shadow-sm"
+                    className="mb-4 py-2 px-4 rounded-xl border-blue-100 bg-blue-50/50"
                 />
             )}
 
-            {/* Statistics */}
-            <div className="grid grid-cols-3 gap-6 mb-6">
-                <Card className="shadow-soft border-l-4 border-l-orange-500 rounded-xl">
-                    <div className="text-center">
-                        <div className="text-3xl font-bold text-orange-600">{pendingCount}</div>
-                        <div className="text-gray-500 font-medium mt-1">Chưa đánh giá</div>
-                    </div>
-                </Card>
-                <Card className="shadow-soft border-l-4 border-l-green-500 rounded-xl">
-                    <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">{passedCount}</div>
-                        <div className="text-gray-500 font-medium mt-1">PASS</div>
-                    </div>
-                </Card>
-                <Card className="shadow-soft border-l-4 border-l-red-500 rounded-xl">
-                    <div className="text-center">
-                        <div className="text-3xl font-bold text-red-600">{failedCount}</div>
-                        <div className="text-gray-500 font-medium mt-1">FAIL</div>
-                    </div>
-                </Card>
-            </div>
+            {/* Filter & Stats Tabs */}
+            <Card className="page-toolbar-card !mb-4">
+                <Tabs 
+                    activeKey={filterStatus} 
+                    onChange={setFilterStatus}
+                    className="sys-tabs"
+                    items={[
+                        { 
+                            key: 'ALL', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>Tất cả</span>
+                                    <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">{registrations?.length || 0}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'PENDING', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>Chưa đánh giá</span>
+                                    <Tag className="m-0 rounded-full bg-orange-50 text-orange-600 border-none font-bold px-2">{pendingCount}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'PASS', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>PASS</span>
+                                    <Tag className="m-0 rounded-full bg-green-50 text-green-600 border-none font-bold px-2">{passedCount}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'FAIL', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>FAIL</span>
+                                    <Tag className="m-0 rounded-full bg-red-50 text-red-600 border-none font-bold px-2">{failedCount}</Tag>
+                                </div>
+                            )
+                        },
+                    ]}
+                />
+            </Card>
 
             {/* Table */}
             <Card className="page-card-flush">
@@ -256,7 +292,7 @@ const MidtermEvaluation = () => {
                     <Empty description="Không có nhóm nào cần đánh giá giữa kỳ" className="py-12" />
                 ) : (
                     <Table
-                        dataSource={registrations || []}
+                        dataSource={filteredRegistrations}
                         columns={columns}
                         rowKey="id"
                         pagination={{ pageSize: 10, className: 'px-6 py-4' }}

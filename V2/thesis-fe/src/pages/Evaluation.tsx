@@ -12,16 +12,17 @@ import { GradingApi } from '@/api/grading';
 import DefensePivotModal from '@/components/DefensePivotModal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { 
-  canSupervisorGrade, 
-  canReviewerGrade, 
-  canCommitteeGrade, 
-  isSemesterCompleted 
+import {
+  canSupervisorGrade,
+  canReviewerGrade,
+  canCommitteeGrade,
+  isSemesterCompleted
 } from '@/utils/semester-rules';
 import GlobalSearch from '@/components/GlobalSearch';
 import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
+import { RaterRole, GradeScore } from '@/types';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -46,7 +47,6 @@ const Evaluation = () => {
   // HOD Department dashboard state
   const [deptSearch, setDeptSearch] = useState('');
   const debouncedDeptSearch = useDebounce(deptSearch, 300);
-  const [activeSubTab, setActiveSubTab] = useState('missing_s');
 
   const [lecturerSearch, setLecturerSearch] = useState('');
   const debouncedLecturerSearch = useDebounce(lecturerSearch, 300);
@@ -86,7 +86,7 @@ const Evaluation = () => {
   });
 
   const finalizePivotMutation = useMutation({
-    mutationFn: (data: { topicId: string; isEligible: boolean; defenseType?: string }) => 
+    mutationFn: (data: { topicId: string; isEligible: boolean; defenseType?: string }) =>
       TopicsApi.finalizeDefensePivot(data.topicId, { isEligible: data.isEligible, defenseType: data.defenseType }),
     onSuccess: (res) => {
       notify.success(res.message || 'Cập nhật thành công');
@@ -119,17 +119,17 @@ const Evaluation = () => {
   const { data: myGradesData, isLoading: isLoadingMyGrades } = useQuery({
     queryKey: ['my-grades', topicId, getRaterRole(), currentAssignment?.reviewer_order, currentAssignment?.committee_role],
     queryFn: () => GradingApi.getMyGrades(
-        topicId!, 
-        getRaterRole(), 
-        currentAssignment?.reviewer_order, 
-        currentAssignment?.committee_role
+      topicId!,
+      getRaterRole(),
+      currentAssignment?.reviewer_order,
+      currentAssignment?.committee_role
     ),
     enabled: !!topicId,
   });
 
-  const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({ 
+  const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({
     criteriaType: 'FINAL',
-    topicId: topicId || undefined 
+    topicId: topicId || undefined
   });
 
   const criteria = useMemo(() => {
@@ -156,7 +156,7 @@ const Evaluation = () => {
 
   // Use permissions from backend
   const permissions = myGradesData?.permissions;
-  
+
   const getPermissionForActiveTab = () => {
     if (!permissions) return { allowed: true, code: 'LOADING' };
     if (activeTab === 'advisor') return { allowed: permissions.grade_supervisor, code: permissions.grade_supervisor_code, reason: permissions.grade_supervisor_reason };
@@ -196,7 +196,7 @@ const Evaluation = () => {
         if (!gradesUpdate[sData.studentId]) gradesUpdate[sData.studentId] = {};
         sData.grades.forEach((g: any) => {
           gradesUpdate[sData.studentId][g.criterionId] = g.score;
-          notesUpdate[g.criterionId] = g.comment; 
+          notesUpdate[g.criterionId] = g.comment;
         });
       });
       form.setFieldsValue({ grades: gradesUpdate, notes: notesUpdate });
@@ -213,7 +213,7 @@ const Evaluation = () => {
     try {
       // Use validateFields without popover messages to keep UI clean
       const values = await form.validateFields();
-      
+
       const submissions = students.map(student => {
         const studentGrades = values.grades?.[student.id];
         if (!studentGrades) throw new Error(`Thiếu điểm cho sinh viên ${student.name}`);
@@ -318,7 +318,8 @@ const Evaluation = () => {
               columns={[
                 { title: 'STT', key: 'idx', width: 60, align: 'center', render: (_, __, i) => i + 1 },
                 { title: 'Tiêu chí LO', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
-                { title: 'Kết quả', children: students.map((s, i) => ({
+                {
+                  title: 'Kết quả', children: students.map((s, i) => ({
                     title: `SV ${i + 1}`, key: `sv_${s.id}`, width: 120, align: 'center',
                     render: (_, r) => (
                       <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0">
@@ -327,11 +328,13 @@ const Evaluation = () => {
                     )
                   }))
                 },
-                { title: 'Ghi Chú', key: 'note', render: (_, r) => (
-                  <Form.Item name={['notes', r.id]} className="mb-0">
-                    <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
-                  </Form.Item>
-                )}
+                {
+                  title: 'Ghi Chú', key: 'note', render: (_, r) => (
+                    <Form.Item name={['notes', r.id]} className="mb-0">
+                      <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
+                    </Form.Item>
+                  )
+                }
               ]}
               summary={() => (
                 <>
@@ -371,7 +374,8 @@ const Evaluation = () => {
             )}
           </Form>
         </Card>
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           .grading-table .ant-table-thead > tr > th { background: #f0f7ff !important; font-weight: bold; text-align: center; }
           .pass-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #52c41a; border-color: #52c41a; }
           .fail-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #ff4d4f; border-color: #ff4d4f; }
@@ -383,18 +387,19 @@ const Evaluation = () => {
   // Shared columns for Advisor / Reviewer / Council tabs
   const dashboardColumns = [
     { title: 'STT', key: 'stt', width: 60, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
-    { 
-      title: 'Mã ĐT', 
-      dataIndex: 'code', 
-      key: 'code', 
-      width: 100, 
+    {
+      title: 'Mã ĐT',
+      dataIndex: 'code',
+      key: 'code',
+      width: 100,
       render: (t: string) => (
         <Tag className="font-mono">
           <HighlightText text={t} keyword={debouncedLecturerSearch} />
         </Tag>
-      ) 
+      )
     },
-    { title: 'Tên đề tài', dataIndex: 'title', key: 'title', render: (t: string, r: any) => (
+    {
+      title: 'Tên đề tài', dataIndex: 'title', key: 'title', render: (t: string, r: any) => (
         <div>
           <div className="font-medium text-base">
             <HighlightText text={t} keyword={debouncedLecturerSearch} />
@@ -403,8 +408,10 @@ const Evaluation = () => {
             GVHD: <HighlightText text={r.supervisor?.full_name} keyword={debouncedLecturerSearch} />
           </div>
         </div>
-    )},
-    { title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
+      )
+    },
+    {
+      title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
         const m = r.registrations?.[0]?.group?.members || [];
         return (
           <Space direction="vertical" size={0}>
@@ -420,11 +427,14 @@ const Evaluation = () => {
             </div>
           </Space>
         );
-    }},
+      }
+    },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => renderTopicStatus(s) },
-    { title: 'Hành động', key: 'action', render: (_: any, r: any) => (
-      <Button type="primary" onClick={() => setSearchParams({ topicId: r.id })}>Xem & Chấm điểm</Button>
-    )},
+    {
+      title: 'Hành động', key: 'action', render: (_: any, r: any) => (
+        <Button type="primary" onClick={() => setSearchParams({ topicId: r.id })}>Xem & Chấm điểm</Button>
+      )
+    },
   ];
 
   const filterLecturerData = (data: any[]) => {
@@ -441,10 +451,6 @@ const Evaluation = () => {
     if (!summaryData) return null;
 
     const allTopics = summaryData.allTopics || [];
-    const readyTopics = summaryData.ready || [];
-    const missingSupervisorTopics = summaryData.missingSupervisor || [];
-    const missingReviewerTopics = summaryData.missingReviewer || [];
-    const finalizedTopics = summaryData.finalized || [];
     const getFilteredData = (data: any[]) => {
       if (!debouncedDeptSearch) return data;
       return data.filter(r =>
@@ -459,28 +465,20 @@ const Evaluation = () => {
       );
     };
 
-    const tabData: Record<string, any[]> = {
-      all: allTopics,
-      missing_s: missingSupervisorTopics,
-      missing_r: missingReviewerTopics,
-      ready: readyTopics,
-      finalized: finalizedTopics,
-    };
 
-    const currentData = getFilteredData(tabData[activeSubTab] || []);
 
     const columns = [
       { title: '#', key: 'idx', width: 48, align: 'center' as const, render: (_: any, __: any, i: number) => <Text type="secondary" className="text-xs">{i + 1}</Text> },
-      { 
-        title: 'Mã đề tài', 
-        dataIndex: 'code', 
-        key: 'code', 
-        width: 130, 
+      {
+        title: 'Mã đề tài',
+        dataIndex: 'code',
+        key: 'code',
+        width: 130,
         render: (t: string) => (
           <Tag className="font-mono text-xs">
             <HighlightText text={t} keyword={debouncedDeptSearch} />
           </Tag>
-        ) 
+        )
       },
       {
         title: 'Tên đề tài', dataIndex: 'title', key: 'title',
@@ -515,10 +513,10 @@ const Evaluation = () => {
         title: 'GVHD', key: 'supervisor', width: 160,
         render: (_: any, r: any) => r.supervisor
           ? <div className="text-xs">
-              <div className="font-medium">
-                <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
-              </div>
+            <div className="font-medium">
+              <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
             </div>
+          </div>
           : <Tag color="red" className="text-xs">Chưa có GVHD</Tag>
       },
       {
@@ -561,70 +559,13 @@ const Evaluation = () => {
       },
     ];
 
-    const subTabConfig = [
-      { key: 'missing_s', icon: <CloseCircleOutlined />, color: '#ff4d4f', label: `Thiếu GVHD (${missingSupervisorTopics.length})`, data: missingSupervisorTopics },
-      { key: 'missing_r', icon: <WarningOutlined />, color: '#fa8c16', label: `Thiếu phản biện (${missingReviewerTopics.length})`, data: missingReviewerTopics },
-      { key: 'ready', icon: <CheckCircleOutlined />, color: '#52c41a', label: `Sẵn sàng xét (${readyTopics.length})`, data: readyTopics },
-      { key: 'finalized', icon: <FlagOutlined />, color: '#1677ff', label: `Đã quyết định (${finalizedTopics.length})`, data: finalizedTopics },
-    ];
+
+    const currentData = getFilteredData(allTopics);
 
     return (
       <div>
-        {/* Summary stat cards */}
-        <Row gutter={[16, 16]} className="mb-6">
-          {[
-            { key: 'missing_s', icon: <CloseCircleOutlined style={{ fontSize: 28, color: '#ff4d4f' }} />, label: 'Thiếu GVHD', count: missingSupervisorTopics.length, desc: 'Chưa có điểm của giảng viên hướng dẫn', color: '#fff1f0', border: '#ffccc7', textColor: '#cf1322' },
-            { key: 'missing_r', icon: <WarningOutlined style={{ fontSize: 28, color: '#fa8c16' }} />, label: 'Thiếu phản biện', count: missingReviewerTopics.length, desc: 'Chưa đủ điểm của phản biện', color: '#fff7e6', border: '#ffd591', textColor: '#d46b08' },
-            { key: 'ready', icon: <CheckCircleOutlined style={{ fontSize: 28, color: '#52c41a' }} />, label: 'Sẵn sàng xét', count: readyTopics.length, desc: 'Đã đủ điểm, chờ phân loại', color: '#f6ffed', border: '#b7eb8f', textColor: '#389e0d' },
-            { key: 'finalized', icon: <FlagOutlined style={{ fontSize: 28, color: '#1677ff' }} />, label: 'Đã quyết định', count: finalizedTopics.length, desc: 'Đã phân loại (Oral/Poster/Không đạt)', color: '#e6f4ff', border: '#91caff', textColor: '#0958d9' },
-          ].map(card => (
-            <Col xs={24} sm={12} lg={6} key={card.key}>
-              <div
-                className="rounded-xl p-4 cursor-pointer transition-all hover:shadow-md"
-                style={{ background: card.color, border: `1.5px solid ${card.border}` }}
-                onClick={() => setActiveSubTab(card.key)}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="mt-1">{card.icon}</div>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium" style={{ color: card.textColor }}>{card.label}</div>
-                    <div className="text-4xl font-bold mt-0.5" style={{ color: card.textColor }}>{card.count}</div>
-                    <div className="text-xs text-gray-500 mt-1">Đề tài</div>
-                  </div>
-                </div>
-                <div className="text-xs mt-3" style={{ color: card.textColor, opacity: 0.8 }}>{card.desc} <span className="ml-1">›</span></div>
-              </div>
-            </Col>
-          ))}
-        </Row>
-
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {subTabConfig.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveSubTab(tab.key)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border"
-              style={activeSubTab === tab.key
-                ? { background: tab.color, color: '#fff', borderColor: tab.color }
-                : { background: '#fff', color: '#555', borderColor: '#d9d9d9' }}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Sub-tab description */}
-        <div className="text-xs text-gray-500 mb-3">
-          {activeSubTab === 'missing_s' && 'Danh sách đề tài chưa có điểm của Giảng viên hướng dẫn'}
-          {activeSubTab === 'missing_r' && 'Danh sách đề tài chưa đủ điểm của Giảng viên phản biện được phân công'}
-          {activeSubTab === 'ready' && 'Danh sách đề tài đã đủ điểm GVHD + Phản biện, chờ Trưởng bộ môn phân loại'}
-          {activeSubTab === 'finalized' && 'Danh sách đề tài đã được phân loại hình thức bảo vệ'}
-        </div>
-
-        {/* Search + Filter bar */}
-        <div className="flex gap-3 mb-4 flex-wrap items-center">
+        {/* Search bar */}
+        <div className="flex gap-3 mb-4 items-center">
           <GlobalSearch
             value={deptSearch}
             onChange={setDeptSearch}
@@ -640,33 +581,10 @@ const Evaluation = () => {
           rowKey="id"
           columns={columns}
           pagination={{ pageSize: 10, showTotal: (total) => `Hiển thị 1 - ${Math.min(10, total)} của ${total} đề tài`, showSizeChanger: false }}
-          className="rounded-lg overflow-hidden"
+          className="rounded-lg overflow-hidden border border-gray-100 shadow-sm"
           rowClassName="hover:bg-blue-50 transition-colors"
           locale={{ emptyText: <div className="py-10 text-gray-400 text-center">Không có đề tài nào trong mục này</div> }}
         />
-
-        {/* Legend */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-          <div className="text-xs font-semibold text-gray-500 mb-3">Giải thích trạng thái xét</div>
-          <Row gutter={16}>
-            {[
-              { icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />, title: 'Thiếu GVHD', desc: 'Chưa có điểm của Giảng viên hướng dẫn' },
-              { icon: <WarningOutlined style={{ color: '#fa8c16' }} />, title: 'Thiếu phản biện', desc: 'Chưa đủ điểm của tất cả phản biện được phân công' },
-              { icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />, title: 'Sẵn sàng xét', desc: 'Đã đủ điểm (GVHD + tất cả phản biện), chờ Trưởng bộ môn phân loại' },
-              { icon: <FlagOutlined style={{ color: '#1677ff' }} />, title: 'Đã quyết định', desc: 'Đã được phân loại (Oral/Poster/Không đạt), chờ bước Hội đồng' },
-            ].map((item, i) => (
-              <Col xs={24} sm={12} lg={6} key={i}>
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 text-base">{item.icon}</span>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-700">{item.title}</div>
-                    <div className="text-xs text-gray-500 leading-snug">{item.desc}</div>
-                  </div>
-                </div>
-              </Col>
-            ))}
-          </Row>
-        </div>
       </div>
     );
   };
@@ -685,24 +603,30 @@ const Evaluation = () => {
           </div>
         </Card>
 
-        <Card className="page-card-flush">
+        <Card className="page-card-flush pt-2">
           <Tabs
             activeKey={activeTab}
             onChange={(key) => {
               setActiveTab(key);
               setSearchParams({ type: key });
             }}
-            className="sys-tabs"
-            tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
+            type="card"
+            size="small"
+            className="sys-tabs-filter"
+            tabBarStyle={{ paddingLeft: '24px', marginBottom: '0' }}
             items={[
-              ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Quản lý Bộ môn', children: <div className="p-6">{renderDepartmentTab()}</div> }] : []),
+              { 
+                key: 'department', 
+                label: 'Quản lý Bộ môn', 
+                children: <div className="p-6 bg-white">{renderDepartmentTab()}</div> 
+              },
               { 
                 key: 'advisor', 
                 label: 'Hướng dẫn', 
                 children: (
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(advisorTopics?.topics || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                    <Table dataSource={filterLecturerData(advisorTopics?.topics || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10 }} />
                   </div>
                 ) 
               },
@@ -710,9 +634,9 @@ const Evaluation = () => {
                 key: 'reviewer', 
                 label: 'Phản biện', 
                 children: (
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                    <Table dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10 }} />
                   </div>
                 )
               },
@@ -720,9 +644,9 @@ const Evaluation = () => {
                 key: 'council', 
                 label: 'Hội đồng', 
                 children: (
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                    <Table dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10 }} />
                   </div>
                 )
               },

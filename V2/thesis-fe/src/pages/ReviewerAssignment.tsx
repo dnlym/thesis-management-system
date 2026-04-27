@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Input } from 'antd';
+import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Input, Tabs } from 'antd';
 import { notify } from '@/utils/notification';
 import { 
     UserOutlined, CheckCircleOutlined, PlusOutlined, 
@@ -68,23 +68,45 @@ const ReviewerAssignment = () => {
 
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 300);
+    const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
     const filteredTopics = useMemo(() => {
         if (!topics) return [];
-        if (!debouncedSearch) return topics;
-        return topics.filter(t => {
-            const reviewerNames = t.assignments.map(a => a.reviewer?.full_name);
-            const studentNames = t.registrations?.map(r => r.student?.full_name);
-            return matchKeyword(
-                debouncedSearch, 
-                t.title, 
-                t.code, 
-                t.supervisor?.full_name,
-                ...reviewerNames,
-                ...studentNames
-            );
-        });
-    }, [topics, debouncedSearch]);
+        let result = topics;
+
+        // Search logic
+        if (debouncedSearch) {
+            result = result.filter(t => {
+                const reviewerNames = t.assignments.map(a => a.reviewer?.full_name);
+                const studentNames = t.registrations?.map(r => r.student?.full_name);
+                return matchKeyword(
+                    debouncedSearch, 
+                    t.title, 
+                    t.code, 
+                    t.supervisor?.full_name,
+                    ...(reviewerNames || []),
+                    ...(studentNames || [])
+                );
+            });
+        }
+
+        // Status filter logic
+        if (filterStatus !== 'ALL') {
+            result = result.filter(t => t.assignmentStatus === filterStatus);
+        }
+
+        return result;
+    }, [topics, debouncedSearch, filterStatus]);
+
+    const stats = useMemo(() => {
+        if (!topics) return { ALL: 0, NOT_ASSIGNED: 0, PARTIALLY_ASSIGNED: 0, FULLY_ASSIGNED: 0 };
+        return {
+            ALL: topics.length,
+            NOT_ASSIGNED: topics.filter(t => t.assignmentStatus === 'NOT_ASSIGNED').length,
+            PARTIALLY_ASSIGNED: topics.filter(t => t.assignmentStatus === 'PARTIALLY_ASSIGNED').length,
+            FULLY_ASSIGNED: topics.filter(t => t.assignmentStatus === 'FULLY_ASSIGNED').length,
+        };
+    }, [topics]);
 
     const getAvailableReviewersForTopic = (topic: TopicForReviewer) => {
         if (!lecturers) return [];
@@ -421,33 +443,52 @@ const ReviewerAssignment = () => {
                     </div>
                 </Card>
 
-            {/* Statistics */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gray-50">
-                    <div className="text-center">
-                        <div className="font-bold text-gray-600">
-                            {topics?.filter(t => t.assignmentStatus === 'NOT_ASSIGNED').length || 0}
-                        </div>
-                        <div className="text-gray-500">{t('reviewerAssignment.notAssigned')}</div>
-                    </div>
-                </Card>
-                <Card className="bg-blue-50">
-                    <div className="text-center">
-                        <div className="font-bold text-blue-600">
-                            {topics?.filter(t => t.assignmentStatus === 'PARTIALLY_ASSIGNED').length || 0}
-                        </div>
-                        <div className="text-gray-500">{t('reviewerAssignment.partiallyAssigned')}</div>
-                    </div>
-                </Card>
-                <Card className="bg-green-50">
-                    <div className="text-center">
-                        <div className="font-bold text-green-600">
-                            {topics?.filter(t => t.assignmentStatus === 'FULLY_ASSIGNED').length || 0}
-                        </div>
-                        <div className="text-gray-500">{t('reviewerAssignment.fullyAssigned')}</div>
-                    </div>
-                </Card>
-            </div>
+            {/* Filter Tabs */}
+            <Card className="page-toolbar-card !mb-4">
+                <Tabs 
+                    activeKey={filterStatus} 
+                    onChange={setFilterStatus}
+                    className="sys-tabs"
+                    items={[
+                        { 
+                            key: 'ALL', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>{t('common.all')}</span>
+                                    <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">{stats.ALL}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'NOT_ASSIGNED', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>{t('reviewerAssignment.notAssigned')}</span>
+                                    <Tag className="m-0 rounded-full bg-orange-50 text-orange-600 border-none font-bold px-2">{stats.NOT_ASSIGNED}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'PARTIALLY_ASSIGNED', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>{t('reviewerAssignment.partiallyAssigned')}</span>
+                                    <Tag className="m-0 rounded-full bg-blue-50 text-blue-600 border-none font-bold px-2">{stats.PARTIALLY_ASSIGNED}</Tag>
+                                </div>
+                            )
+                        },
+                        { 
+                            key: 'FULLY_ASSIGNED', 
+                            label: (
+                                <div className="flex items-center gap-2">
+                                    <span>{t('reviewerAssignment.fullyAssigned')}</span>
+                                    <Tag className="m-0 rounded-full bg-green-50 text-green-600 border-none font-bold px-2">{stats.FULLY_ASSIGNED}</Tag>
+                                </div>
+                            )
+                        },
+                    ]}
+                />
+            </Card>
 
             {/* Table */}
             <Card className="page-card-flush">
