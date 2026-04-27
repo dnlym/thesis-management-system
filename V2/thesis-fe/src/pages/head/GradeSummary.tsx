@@ -138,10 +138,12 @@ const GradeSummary = () => {
         {/* List of Cards */}
         <div className="space-y-3 pb-12">
           {filteredTopics.length > 0 ? (
-            filteredTopics.map((topic: any) => (
+            filteredTopics.map((topic: any, idx: number) => (
               <TopicCard
                 key={topic.id}
+                index={idx + 1}
                 topic={topic}
+                keyword={debouncedSearch}
                 onViewDetails={() => setSelectedTopicId(topic.id)}
                 onFinalize={() => finalizeMutation.mutate(topic.id)}
                 isFinalizing={finalizeMutation.isPending && selectedTopicId === topic.id}
@@ -194,7 +196,7 @@ const GradeSummary = () => {
 /**
  * Layer 1: Topic Card Component
  */
-const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
+const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinalizing }: any) => {
   const gs = topic.gradingStatus;
   const isComplete = gs?.isReadyForDecision;
   const isFinalized = gs?.isFinalized;
@@ -220,21 +222,26 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
   return (
     <Card className={`rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-0 topic-summary-card ${statusClass}`}>
       <Row align="middle" gutter={20} className="p-4 px-5">
+        {/* Index Number */}
+        <div className="absolute top-0 left-0 bg-slate-100 text-slate-400 text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-br-lg border-r border-b border-slate-200/50 z-10">
+          {index}
+        </div>
+
         {/* Info Column */}
         <Col span={8}>
           <div className="flex gap-2 mb-2 items-center">
             <Text className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-mono font-bold text-slate-500">
-              <HighlightText text={topic.code} keyword={debouncedSearch} />
+              <HighlightText text={topic.code} keyword={keyword} />
             </Text>
             {getStatusBadge()}
           </div>
           <Title level={5} className="!mb-1.5 line-clamp-1 !text-[16px] font-black text-slate-800 tracking-tight">
-            <HighlightText text={topic.title} keyword={debouncedSearch} />
+            <HighlightText text={topic.title} keyword={keyword} />
           </Title>
           <div className="flex items-center gap-2">
             <Avatar size={18} icon={<UserOutlined />} className="bg-slate-200" />
             <Text type="secondary" className="text-[11px] font-bold italic">
-              GVHD: <HighlightText text={topic.supervisor?.full_name} keyword={debouncedSearch} />
+              GVHD: <HighlightText text={topic.supervisor?.full_name} keyword={keyword} />
             </Text>
           </div>
         </Col>
@@ -252,10 +259,10 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
                 </Avatar>
                 <div className="flex flex-col overflow-hidden">
                   <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">
-                    <HighlightText text={s.full_name} keyword={debouncedSearch} />
+                    <HighlightText text={s.full_name} keyword={keyword} />
                   </Text>
                   <Text className="text-[10px] text-slate-400 font-mono font-bold">
-                    <HighlightText text={s.student_code} keyword={debouncedSearch} />
+                    <HighlightText text={s.student_code} keyword={keyword} />
                   </Text>
                 </div>
               </div>

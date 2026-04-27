@@ -76,6 +76,13 @@ const Users = () => {
 
   const columns = [
     {
+      title: 'STT',
+      key: 'stt',
+      width: 60,
+      align: 'center' as const,
+      render: (_: any, __: any, index: number) => index + 1,
+    },
+    {
       title: t('users.fullName'),
       key: 'fullName',
       sorter: (a: UserDisplay, b: UserDisplay) => a.fullName.localeCompare(b.fullName),

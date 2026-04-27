@@ -116,6 +116,14 @@ export default function ExtraPointRequests() {
         return Array.from(unique);
     }, [requests]);
 
+    const indexColumn = {
+        title: 'STT',
+        key: 'stt',
+        width: 60,
+        align: 'center' as const,
+        render: (_: any, __: any, index: number) => index + 1,
+    };
+
     // Common columns
     const studentColumn = {
         title: 'Sinh viên',
@@ -180,6 +188,7 @@ export default function ExtraPointRequests() {
     };
 
     const pendingColumns = [
+        indexColumn,
         studentColumn,
         topicColumn,
         semesterColumn,
@@ -227,6 +236,7 @@ export default function ExtraPointRequests() {
     ];
 
     const processedColumns = [
+        indexColumn,
         studentColumn,
         topicColumn,
         semesterColumn,

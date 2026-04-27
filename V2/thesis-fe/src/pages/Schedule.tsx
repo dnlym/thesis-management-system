@@ -138,6 +138,9 @@ const Schedule = () => {
                                 dataSource={todayEvents}
                                 renderItem={(item: DefenseSchedule) => (
                                     <List.Item className="border-none px-0">
+                                        <div className="mr-3 bg-blue-50 text-blue-600 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
+                                            {events.indexOf(item) + 1}
+                                        </div>
                                         <div className="w-full">
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className="font-medium text-foreground">{item.topicTitle}</span>
@@ -174,6 +177,9 @@ const Schedule = () => {
                             dataSource={upcomingEvents}
                             renderItem={(item: DefenseSchedule) => (
                                 <List.Item className="border-none px-0">
+                                    <div className="mr-3 bg-slate-50 text-slate-400 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
+                                        {events.indexOf(item) + 1}
+                                    </div>
                                     <div className="w-full">
                                         <div className="font-medium text-foreground mb-1">{item.topicTitle}</div>
                                         <div className="text-sm text-muted-foreground space-y-1">

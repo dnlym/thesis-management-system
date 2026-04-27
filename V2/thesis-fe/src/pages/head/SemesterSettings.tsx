@@ -458,6 +458,13 @@ const SemesterSettings = () => {
                     rowKey="id"
                     columns={[
                         {
+                            title: 'STT',
+                            key: 'stt',
+                            width: 60,
+                            align: 'center',
+                            render: (_: any, __: any, index: number) => index + 1,
+                        },
+                        {
                             title: 'Hạn mới',
                             dataIndex: 'extended_until',
                             render: (val) => dayjs(val).format('DD/MM/YYYY HH:mm'),

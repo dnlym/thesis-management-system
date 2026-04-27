@@ -77,6 +77,13 @@ const HeadFinalizeGrades = () => {
 
     const columns = [
         {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
+        {
             title: 'Đề tài',
             dataIndex: 'title',
             key: 'title',
