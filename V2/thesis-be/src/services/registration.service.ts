@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { RegistrationStatus, TopicStatus, StudentProgressStatus, UserRole, SemesterPhase } from '@prisma/client';
+import { RegistrationStatus, StudentProgressStatus, TopicStatus, Prisma, TopicRegistration, UserRole, SemesterPhase } from '@prisma/client';
 import { ERROR_CODES } from '../constants';
 import notificationService from './notification.service';
 import { SemesterGuard } from '../utils/semester-guard';
@@ -85,7 +85,7 @@ export class RegistrationService {
 
       // Atomic increment & Potential Status Update
       const newCount = (topic.current_students || 0) + 1;
-      const updateData: any = { current_students: newCount };
+      const updateData: Prisma.TopicUpdateInput = { current_students: newCount };
       if (newCount >= topic.max_students) {
         updateData.status = TopicStatus.REGISTERED;
       }
@@ -96,18 +96,18 @@ export class RegistrationService {
       });
 
       return { type: 'NEW', data: registration };
-    });
+    }) as { type: 'EXISTING' | 'NEW'; data: TopicRegistration };
 
     if (result.type === 'EXISTING') {
       // Return refreshed data
       const refreshed = await prisma.topicRegistration.findUnique({
-        where: { id: (result.data as any).id },
+        where: { id: result.data.id },
         include: { topic: { include: { supervisor: { select: { id: true, full_name: true, email: true, avatar_url: true } } } } },
       });
       return refreshed!;
     }
 
-    const reg = result.data as any;
+    const reg = result.data;
 
     // 3. Post-transaction: Audit & Notifications
     await prisma.auditLog.create({
@@ -596,6 +596,11 @@ export class RegistrationService {
     }
     if (filters?.semesterId) {
       where.semester_id = filters.semesterId;
+    } else {
+      const activeSem = await (await import('./semester.service')).default.getActiveSemester();
+      if (activeSem) {
+        where.semester_id = activeSem.id;
+      }
     }
     if (filters?.topicId) {
       where.topic_id = filters.topicId;

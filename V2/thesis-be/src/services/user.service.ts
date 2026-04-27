@@ -19,7 +19,7 @@ export class UserService {
                 // STUDENTS: Can only search for other students BY EXACT STUDENT CODE
                 where.role = UserRole.STUDENT;
                 where.student_code = filters.search; // Exact match only
-                
+
                 // Also default to same department unless it's a cross-dept search
                 if (!filters.departmentId) {
                     // where.departmentId = currentUser.departmentId; // Optional: restrict to same dept search
@@ -79,6 +79,7 @@ export class UserService {
                 role: data.role,
                 departmentId: data.departmentId,
                 student_code: data.studentCode,
+                class_name: data.className || data.class_name,
                 phone: data.phone,
             },
         });
@@ -94,6 +95,7 @@ export class UserService {
                 role: data.role,
                 departmentId: data.departmentId,
                 student_code: data.studentCode,
+                class_name: data.className || data.class_name,
                 phone: data.phone,
                 active: data.active,
             },

@@ -71,19 +71,19 @@ const studentProgressConfig: Record<StudentProgressStatus, { labelKey: string; c
 };
 
 const semesterPhaseConfig: Record<SemesterPhase, { labelKey: string; color: string }> = {
-    PLANNING: { labelKey: 'PLANNING', color: 'default' },
-    PREVIEW: { labelKey: 'PREVIEW', color: 'blue' },
-    REGISTRATION: { labelKey: 'REGISTRATION', color: 'cyan' },
-    WORK: { labelKey: 'WORK', color: 'processing' },
-    REVIEWING: { labelKey: 'REVIEWING', color: 'warning' },
-    DEFENSE: { labelKey: 'DEFENSE', color: 'purple' },
-    FINAL: { labelKey: 'FINAL', color: 'success' },
+    PLANNING: { labelKey: 'status.semester.PLANNING', color: 'default' },
+    PREVIEW: { labelKey: 'status.semester.PREVIEW', color: 'blue' },
+    REGISTRATION: { labelKey: 'status.semester.REGISTRATION', color: 'cyan' },
+    WORK: { labelKey: 'status.semester.WORK', color: 'processing' },
+    REVIEWING: { labelKey: 'status.semester.REVIEWING', color: 'warning' },
+    DEFENSE: { labelKey: 'status.semester.DEFENSE', color: 'purple' },
+    FINAL: { labelKey: 'status.semester.FINAL', color: 'success' },
 };
 
 const semesterStatusConfig: Record<SemesterStatus, { labelKey: string; color: string }> = {
-    PLANNING: { labelKey: 'PLANNING', color: 'default' },
-    ACTIVE: { labelKey: 'ACTIVE', color: 'processing' },
-    COMPLETED: { labelKey: 'COMPLETED', color: 'success' },
+    PLANNING: { labelKey: 'status.semester.PLANNING', color: 'default' },
+    ACTIVE: { labelKey: 'status.semester.ACTIVE', color: 'processing' },
+    COMPLETED: { labelKey: 'status.semester.COMPLETED', color: 'success' },
 };
 
 // --- DOMAIN-SPECIFIC COMPONENTS ---

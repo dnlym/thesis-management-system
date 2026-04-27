@@ -1,6 +1,6 @@
 import dayjs from '../config/dayjs';
 import prisma from '../config/database';
-import { SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
+import { Semester, SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 
 // ─── Phase Order (for transition validation only) ────────────────────────────
 export const PHASES_ORDER: SemesterPhase[] = [
@@ -33,7 +33,7 @@ export class SemesterGuard {
    * Calculate the effective phase of a semester based on real-time dates.
    * Locked to Asia/Ho_Chi_Minh timezone.
    */
-  static calculateCurrentPhase(semester: any): SemesterPhase | null {
+  static calculateCurrentPhase(semester: Semester): SemesterPhase | null {
     // Priority 1: If Admin marked as COMPLETED -> Phase is definitively FINAL
     if (semester.status === SemesterStatus.COMPLETED) {
       return SemesterPhase.FINAL;
@@ -50,6 +50,7 @@ export class SemesterGuard {
     // [1] PREVIEW: topic_viewing_start → topic_registration_start
     if (
       semester.topic_viewing_start &&
+      now.isSameOrAfter(dayjs(semester.topic_viewing_start)) &&
       now.isBefore(dayjs(semester.topic_registration_start))
     ) {
       return SemesterPhase.PREVIEW;
@@ -58,7 +59,7 @@ export class SemesterGuard {
     // [2] REGISTRATION: topic_registration_start → topic_registration_end
     if (
       semester.topic_registration_start &&
-      now.isAfter(dayjs(semester.topic_registration_start).subtract(1, 'ms')) &&
+      now.isSameOrAfter(dayjs(semester.topic_registration_start)) &&
       now.isBefore(dayjs(semester.topic_registration_end))
     ) {
       return SemesterPhase.REGISTRATION;
@@ -67,7 +68,7 @@ export class SemesterGuard {
     // [3] WORK: topic_registration_end → proposal_deadline
     if (
       semester.topic_registration_end &&
-      now.isAfter(dayjs(semester.topic_registration_end).subtract(1, 'ms')) &&
+      now.isSameOrAfter(dayjs(semester.topic_registration_end)) &&
       now.isBefore(dayjs(semester.proposal_deadline))
     ) {
       return SemesterPhase.WORK;
@@ -76,7 +77,7 @@ export class SemesterGuard {
     // [4] REVIEWING: proposal_deadline → defense_start
     if (
       semester.proposal_deadline &&
-      now.isAfter(dayjs(semester.proposal_deadline).subtract(1, 'ms')) &&
+      now.isSameOrAfter(dayjs(semester.proposal_deadline)) &&
       now.isBefore(dayjs(semester.defense_start))
     ) {
       return SemesterPhase.REVIEWING;
@@ -85,7 +86,7 @@ export class SemesterGuard {
     // [5] DEFENSE: defense_start → defense_end
     if (
       semester.defense_start &&
-      now.isAfter(dayjs(semester.defense_start).subtract(1, 'ms')) &&
+      now.isSameOrAfter(dayjs(semester.defense_start)) &&
       now.isBefore(dayjs(semester.defense_end))
     ) {
       return SemesterPhase.DEFENSE;
@@ -99,7 +100,7 @@ export class SemesterGuard {
    * Get the full timeline context for this semester at the current moment.
    * This is the single object passed to PolicyEngine.
    */
-  static getTimelineContext(semester: any): TimelineContext {
+  static getTimelineContext(semester: Semester): TimelineContext {
     const phase = this.calculateCurrentPhase(semester);
     const now = new Date();
 

@@ -227,7 +227,7 @@ const TopicDetailSupervisor = () => {
                                     <div>
                                         <div className="font-medium">{registration.student?.full_name || 'N/A'}</div>
                                         <div className="text-sm text-gray-500">
-                                            {registration.student?.student_code || ''} • {registration.student?.email || ''}
+                                            {registration.student?.student_code || ''} • {registration.student?.class_name || 'N/A'} • {registration.student?.email || ''}
                                         </div>
                                     </div>
                                 </div>

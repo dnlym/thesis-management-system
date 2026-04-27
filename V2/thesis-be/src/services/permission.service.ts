@@ -7,7 +7,7 @@ export class PermissionService {
 
     async seedPermissions() {
         console.log('Seeding permissions...');
-        
+
         // 1. Create all permissions
         for (const p of ALL_PERMISSIONS) {
             await prisma.permission.upsert({
@@ -29,7 +29,7 @@ export class PermissionService {
         // 2. Map default permissions to roles
         for (const [role, permissionCodes] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
             const userRole = role as UserRole;
-            
+
             // Get permission IDs
             const permissions = await prisma.permission.findMany({
                 where: {
@@ -54,7 +54,7 @@ export class PermissionService {
                 });
             }
         }
-        
+
         console.log('Permissions seeded successfully.');
         this.clearCache();
     }
@@ -71,7 +71,7 @@ export class PermissionService {
             });
 
             const permissionSet = new Set<string>(rolePermissions.map((rp: any) => rp.permission.code));
-            
+
             // If DB returns empty, fallback to defaults
             if (permissionSet.size === 0) {
                 console.warn(`No permissions found for role ${role} in DB, falling back to defaults.`);
@@ -93,14 +93,14 @@ export class PermissionService {
     async hasPermission(role: UserRole, permissionCode: string): Promise<boolean> {
         // ADMIN always has all permissions (Sovereignty)
         if (role === UserRole.ADMIN) return true;
-        
+
         const permissions = await this.getRolePermissions(role);
         return permissions.has(permissionCode);
     }
 
     async getPermissionMatrix() {
         const roles = Object.values(UserRole);
-        
+
         try {
             // Use (prisma as any) to avoid TS errors if client not generated yet
             let permissions = await (prisma as any).permission.findMany({

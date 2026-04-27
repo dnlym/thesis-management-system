@@ -60,7 +60,7 @@ export class DashboardService {
             'PLANNING': 'Lập kế hoạch học kỳ',
             'PREVIEW': 'Đề xuất & Công bố đề tài',
             'REGISTRATION': 'Sinh viên đăng ký đề tài',
-            'WORK': 'Thực hiện & Nộp báo cáo',
+            'WORK': 'Thực hiện khóa luận',
             'REVIEWING': 'Chấm phản biện',
             'DEFENSE': 'Bảo vệ Hội đồng',
             'FINAL': 'Tổng kết học kỳ'
@@ -75,10 +75,10 @@ export class DashboardService {
         const items = [
             { title: 'Công bố đề tài', date: semester.topic_viewing_start, type: 'VIEWING' },
             { title: 'Mở đăng ký đề tài', date: semester.topic_registration_start, type: 'REGISTRATION_START' },
-            { title: 'Hạn nộp đề cương', date: semester.midterm_end, type: 'MIDTERM' },
-            { title: 'Hạn nộp khóa luận', date: semester.proposal_deadline, type: 'PROPOSAL' },
-            { title: 'Hạn chấm phản biện', date: semester.thesis_deadline, type: 'REVIEW' },
-            { title: 'Bắt đầu bảo vệ', date: semester.defense_start, type: 'DEFENSE_START' },
+            { title: 'Kết thúc giai đoạn đề cương', date: semester.midterm_end, type: 'MIDTERM' },
+            { title: 'Kết thúc thực hiện khóa luận', date: semester.proposal_deadline, type: 'PROPOSAL' },
+            { title: 'Hạn chốt chấm phản biện', date: semester.thesis_deadline, type: 'REVIEW' },
+            { title: 'Bắt đầu bảo vệ Hội đồng', date: semester.defense_start, type: 'DEFENSE_START' },
             { title: 'Kết thúc học kỳ', date: semester.end_date, type: 'SEMESTER_END' },
         ].filter(item => item.date);
 
@@ -194,6 +194,36 @@ export class DashboardService {
             reviewAssignmentsCount: 0,
             totalTopics,
             completionRate: totalTopics > 0 ? (completedCount / totalTopics) * 100 : 0,
+        };
+    }
+
+    async getCharts(userId: string, semesterId?: string) {
+        const where: any = {};
+        if (semesterId) where.semester_id = semesterId;
+
+        // Topic status distribution
+        const statusDistribution = await prisma.topic.groupBy({
+            by: ['status'],
+            where,
+            _count: { id: true }
+        });
+
+        // Student progress distribution
+        const progressDistribution = await prisma.topicRegistration.groupBy({
+            by: ['status'],
+            where: semesterId ? { semester_id: semesterId } : {},
+            _count: { id: true }
+        });
+
+        return {
+            topicStatus: statusDistribution.map(s => ({
+                status: s.status,
+                count: s._count.id
+            })),
+            studentProgress: progressDistribution.map(p => ({
+                status: p.status,
+                count: p._count.id
+            }))
         };
     }
 }

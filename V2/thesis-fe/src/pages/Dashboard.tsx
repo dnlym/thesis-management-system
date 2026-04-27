@@ -11,6 +11,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   Flame,
+  CheckCircle2,
   AlertCircle,
   ClipboardCheck,
   Search
@@ -90,7 +91,7 @@ const Dashboard = () => {
   const getQuickActions = () => {
     if (isStudent) {
       return [
-        { title: 'Nộp báo cáo', icon: FileText, color: 'bg-blue-50 text-blue-600', path: '/progress' },
+        { title: 'Theo dõi tiến độ', icon: FileText, color: 'bg-blue-50 text-blue-600', path: '/progress' },
         { title: 'Xem điểm', icon: Star, color: 'bg-amber-50 text-amber-600', path: '/my-topic' },
         { title: 'Tìm đề tài', icon: Search, color: 'bg-emerald-50 text-emerald-600', path: '/topics' },
       ];

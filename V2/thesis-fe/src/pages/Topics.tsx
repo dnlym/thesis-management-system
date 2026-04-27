@@ -182,7 +182,7 @@ const Topics = () => {
       render: (text: string, record: any) => (
         <a
           onClick={() => navigate(`/topics/${record.id}`)}
-          className="text-academic-primary hover:text-academic-primary-dark font-medium cursor-pointer"
+          className="text-academic-primary hover:text-academic-primary-dark font-medium cursor-pointer hover:underline transition-all"
         >
           {text}
         </a>

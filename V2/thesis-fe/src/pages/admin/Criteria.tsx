@@ -192,6 +192,7 @@ const Criteria = () => {
                         activeKey={activeTab}
                         onChange={(key) => setActiveTab(key)}
                         className="sys-tabs"
+                        tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
                     >
                         <TabPane tab={t('role.advisor')} key="SUPERVISOR">
                             <Table

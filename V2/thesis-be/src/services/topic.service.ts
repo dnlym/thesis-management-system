@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { TopicStatus, UserRole, SemesterPhase } from '@prisma/client';
+import { Prisma, TopicStatus, UserRole, SemesterPhase, AssignmentStatus, AssignmentType, InterdisciplinaryStatus } from '@prisma/client';
 import { canEditTopic } from '../utils/permission.utils';
 import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
@@ -16,8 +16,78 @@ import notificationService from './notification.service';
 import semesterService from './semester.service';
 import { normalizeTitle } from '../utils/string';
 import { ApiError } from '../utils/errors';
-import { Prisma } from '@prisma/client';
 
+
+type TopicDetailsPayload = Prisma.TopicGetPayload<{
+  include: {
+    supervisor: {
+      select: {
+        id: true,
+        full_name: true,
+        avatar_url: true,
+      },
+    },
+    semester: true,
+    department: true,
+    secondary_department: true,
+    co_supervisor: {
+      select: {
+        id: true,
+        full_name: true,
+        email: true,
+      }
+    },
+    source_topic: {
+      include: {
+        semester: true
+      }
+    },
+    registrations: {
+      include: {
+        student: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            avatar_url: true,
+            student_code: true,
+          },
+        },
+        group: {
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    full_name: true,
+                    email: true,
+                    avatar_url: true,
+                    student_code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    defense_schedule: {
+      include: {
+        committee: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    },
+    final_scores: true,
+    grades: true,
+    assignments: true,
+  }
+}>;
 
 
 export class TopicService {
@@ -497,7 +567,7 @@ export class TopicService {
     const updatedTopic = await prisma.topic.update({
       where: { id: topicId },
       data: {
-        status: nextStatus as any,
+        status: nextStatus,
         approved_at: new Date(),
         approved_by: userId,
       },
@@ -720,6 +790,18 @@ export class TopicService {
     const where: any = {};
     const andConditions: any[] = [];
 
+    // --- SEAMLESS SEMESTER ISOLATION ---
+    // If no specific semester is requested, ALWAYS default to the ACTIVE one.
+    // This prevents "messy" data mixing where topics from HK1 and HK2 show up together.
+    if (!filter.semesterId) {
+      const activeSem = await semesterService.getActiveSemester();
+      if (activeSem) {
+        where.semester_id = activeSem.id;
+      }
+    } else {
+      where.semester_id = filter.semesterId;
+    }
+
     // Role-based filtering
     // DRAFT topics are only visible to their owner (GVHD who created them)
     // HIDDEN topics are only visible to their owner (GVHD who created them)
@@ -753,7 +835,7 @@ export class TopicService {
     } else if (user.role === UserRole.LECTURER) {
       // Find committee assignments
       const committeeAssignments = await prisma.assignment.findMany({
-        where: { reviewer_id: userId, status: { in: ['ACCEPTED', 'AUTO_ACCEPTED'] as any } },
+        where: { reviewer_id: userId, status: { in: [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED] } },
         select: { topic_id: true }
       });
       const committeeTopicIds = committeeAssignments.map(a => a.topic_id);
@@ -874,19 +956,20 @@ export class TopicService {
               avatar_url: true,
             },
           },
-          semester: {
+          semester: true,
+          department: true,
+          secondary_department: true,
+          co_supervisor: {
             select: {
               id: true,
-              name: true,
-              code: true,
-            },
+              full_name: true,
+              email: true,
+            }
           },
-          department: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-            },
+          source_topic: {
+            include: {
+              semester: true
+            }
           },
           registrations: {
             // When filtering by midterm status, only include registrations with that status
@@ -940,7 +1023,7 @@ export class TopicService {
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
-      }),
+      }) as Promise<TopicDetailsPayload[]>,
       prisma.topic.count({ where }),
     ]);
 
@@ -949,7 +1032,7 @@ export class TopicService {
       if (user.role === UserRole.STUDENT) {
         // Students only see the count, not the actual registrations
         // We carefully return a clean object without sensitive relations
-        const { registrations, groups, final_scores, assignments, ...cleanTopic } = topic as any;
+        const { registrations, final_scores, assignments, ...cleanTopic } = topic;
         return {
           ...cleanTopic,
           registrations: [], // Hide registrations from students
@@ -958,19 +1041,19 @@ export class TopicService {
       }
       // LECTURER, HEAD, ADMIN can see full registrations
       const students = topic.registrations?.map(reg => {
-        const student = reg.student as any;
-        const finalScore = (topic as any).final_scores?.find((fs: any) => fs.student_id === student.id);
+        const student = reg.student;
+        const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
         return {
           ...student,
           finalScore,
         };
       }) || [];
 
-      const room = (topic.assignments[0] as any)?.room || null;
+      const room = topic.assignments[0]?.room || null;
 
       return {
         ...topic,
-        committee: (topic as any).defense_schedule?.committee || null,
+        committee: topic.defense_schedule?.committee || null,
         students,
         room,
       };
@@ -1061,7 +1144,7 @@ export class TopicService {
           where: { grader_id: userId }
         },
       },
-    });
+    }) as unknown as TopicDetailsPayload | null;
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
@@ -1078,10 +1161,10 @@ export class TopicService {
     // Hide registrations from students - they can only see their own registration
     if (user && user.role === UserRole.STUDENT) {
       // Filter to only show their own registration (if they have one)
-      const myRegistration = (topic as any).registrations.filter((r: any) => r.student_id === userId);
+      const myRegistration = topic.registrations.filter(r => r.student_id === userId);
 
       // Mask other sensitive relations for students
-      const { registrations, groups, final_scores, assignments, ...cleanTopic } = topic as any;
+      const { registrations, final_scores, assignments, ...cleanTopic } = topic;
 
       return {
         ...cleanTopic,
@@ -1091,20 +1174,21 @@ export class TopicService {
     }
 
     // LECTURER, HEAD, ADMIN can see all registrations
-    const students = (topic as any).registrations?.map((reg: any) => {
-      const student = reg.student as any;
-      const finalScore = (topic as any).final_scores?.find((fs: any) => fs.student_id === student.id);
+    const students = topic.registrations?.map(reg => {
+      const student = reg.student;
+      const finalScore = topic.final_scores?.find(fs => fs.student_id === student.id);
       return {
         ...student,
         finalScore,
       };
     }) || [];
 
-    const room = (topic.assignments[0] as any)?.room || null;
+    const room = topic.assignments[0]?.room || null;
 
     return {
       ...topic,
-      committee: (topic as any).defense_schedule?.committee || null,
+      committee: topic.defense_schedule?.committee || null,
+      registrations: topic.registrations || [],
       students,
       room,
     };
@@ -1226,10 +1310,10 @@ export class TopicService {
       newValue: log.new_value,
       // Extract status change
       statusChange: {
-        from: (log.old_value as any)?.status || null,
-        to: (log.new_value as any)?.status || null,
+        from: (log.old_value as { status?: string })?.status || null,
+        to: (log.new_value as { status?: string })?.status || null,
       },
-      reason: (log.new_value as any)?.rejection_reason || '',
+      reason: (log.new_value as { rejection_reason?: string })?.rejection_reason || '',
     }));
 
     return {
@@ -1419,7 +1503,7 @@ export class TopicService {
     // FALLBACK LOGIC: If REJECTED, the topic reverts to APPROVED (for primary department only)
     // and is_interdisciplinary flag is cleared.
     const isActuallyApproved = status === 'APPROVED';
-    const nextInterStatus = status as any;
+    const nextInterStatus = status as InterdisciplinaryStatus;
 
     let nextTopicStatus = topic.status;
     let nextIsInter = topic.is_interdisciplinary;
@@ -1583,7 +1667,7 @@ export class TopicService {
       if (!topic) throw new ApiError(404, ERROR_CODES.TOPIC_NOT_FOUND, 'Không tìm thấy đề tài yêu cầu.');
 
       // Lock check: once decided, cannot change easily without reset
-      if ((topic as any).is_eligible_for_defense !== null) {
+      if (topic.is_eligible_for_defense !== null) {
         throw new ApiError(400, ERROR_CODES.VALIDATION_ERROR, 'Quyết định xét bảo vệ của đề tài này đã được chốt trước đó.');
       }
 
@@ -1597,7 +1681,7 @@ export class TopicService {
       }
 
       // Dependency check: All assigned reviewers must have graded
-      const totalReviewersRequired = (topic as any).reviewer_required_count || topic.assignments.length;
+      const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.length;
       const gradedReviewerIds = [...new Set(topic.grades.filter((g) => g.rater_role.startsWith('REVIEWER')).map((g) => g.grader_id))];
 
       if (gradedReviewerIds.length < totalReviewersRequired) {
@@ -1612,7 +1696,7 @@ export class TopicService {
           defense_type: data.isEligible ? (data.defenseType || 'ORAL') : null,
           progress_stage: data.isEligible ? 'READY_FOR_DEFENSE' : 'DONE', // If fail, move to DONE/COMPLETED
           status: data.isEligible ? TopicStatus.REGISTERED : TopicStatus.COMPLETED,
-        } as any,
+        },
       });
 
       // Audit log

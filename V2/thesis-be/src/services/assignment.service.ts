@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole, ProgressStage } from '@prisma/client';
+import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole, ProgressStage, CommitteeRole } from '@prisma/client';
 import { CreateAssignmentRequest, CreateDefenseScheduleRequest } from '../types';
 import { ERROR_CODES } from '../constants';
 import { SemesterGuard } from '../utils/semester-guard';
@@ -380,7 +380,7 @@ export class AssignmentService {
           topic_id: data.topicId,
           reviewer_id: member.reviewer_id,
           assignment_type: AssignmentType.COMMITTEE,
-          committee_role: member.role as any, // CHAIR, SECRETARY, MEMBER
+          committee_role: member.role as CommitteeRole, // CHAIR, SECRETARY, MEMBER
           assigned_by: userId,
           deadline_at: data.defenseDate,
           status: AssignmentStatus.AUTO_ACCEPTED,
@@ -461,6 +461,11 @@ export class AssignmentService {
     }
 
     const where: any = {};
+    // --- SEMESTER ISOLATION ---
+    const activeSem = await (await import('./semester.service')).default.getActiveSemester();
+    if (activeSem) {
+      where.semester_id = activeSem.id;
+    }
 
     // Role-based filtering
     if (user.role === UserRole.STUDENT) {
@@ -540,6 +545,13 @@ export class AssignmentService {
     }
 
     const where: any = {};
+    if (!filters?.topicId) {
+      // Default to active semester if not filtering for a specific topic
+      const activeSem = await (await import('./semester.service')).default.getActiveSemester();
+      if (activeSem) {
+        where.topic = { semester_id: activeSem.id };
+      }
+    }
 
     // Apply filters
     if (filters?.topicId) {
@@ -699,6 +711,8 @@ export class AssignmentService {
     const topics = await prisma.topic.findMany({
       where: {
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
+        // --- SEMESTER ISOLATION ---
+        semester_id: (await (await import('./semester.service')).default.getActiveSemester())?.id,
         // Only topics with PASS midterm registrations
         registrations: {
           some: {
@@ -788,6 +802,8 @@ export class AssignmentService {
             TopicStatus.FINALIZED,
           ],
         },
+        // --- SEMESTER ISOLATION ---
+        semester_id: (await (await import('./semester.service')).default.getActiveSemester())?.id,
       },
       include: topicForCommitteeAssignmentInclude,
       orderBy: { created_at: 'desc' },

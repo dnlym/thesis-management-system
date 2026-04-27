@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { ERROR_CODES } from '../constants';
-import { SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
+import { Prisma, Semester, SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 import { SemesterGuard } from '../utils/semester-guard';
 import dayjs from '../config/dayjs';
 
@@ -164,6 +164,10 @@ export class SemesterService {
       throw new Error(ERROR_CODES.NOT_FOUND);
     }
 
+    if (semester.status === SemesterStatus.COMPLETED) {
+      throw new Error('Học kỳ đã kết thúc, không được phép chỉnh sửa thông tin.');
+    }
+
     // Resolve final values (merge incoming with existing)
     const final_start_date = toDate(data.start_date) ?? semester.start_date;
     const final_end_date = toEndDate(data.end_date) ?? semester.end_date;
@@ -194,7 +198,7 @@ export class SemesterService {
     // Check for semester overlapping
     await this.checkOverlap(final_start_date, final_end_date, semesterId);
 
-    const updateData: any = {
+    const updateData: Prisma.SemesterUpdateInput = {
       name: data.name,
       start_date: toDate(data.start_date),
       end_date: toEndDate(data.end_date),
@@ -260,15 +264,26 @@ export class SemesterService {
   }
 
   async getActiveSemester() {
-    // Usually the one that is currently REGISTRATION or TOPIC_PROPOSAL or IMPLEMENTATION
-    // For simplicity, we can still use a flag or just find the "most active" one
+    // 1. Priority 1: Strictly find the semester marked as ACTIVE
+    const activeSemester = await prisma.semester.findFirst({
+      where: { status: SemesterStatus.ACTIVE }
+    });
+
+    if (activeSemester) {
+      return {
+        ...activeSemester,
+        calculated_phase: SemesterGuard.calculateCurrentPhase(activeSemester)
+      };
+    }
+
+    // 2. Priority 2: If no ACTIVE semester, fallback to the most recent one that is in a valid phase
     const semesters = await prisma.semester.findMany({
       orderBy: { start_date: 'desc' }
     });
 
     for (const sem of semesters) {
       const phase = SemesterGuard.calculateCurrentPhase(sem);
-      if (phase) {
+      if (phase && phase !== SemesterPhase.FINAL) {
         return {
           ...sem,
           calculated_phase: phase
@@ -276,6 +291,7 @@ export class SemesterService {
       }
     }
 
+    // 3. Last resort: just the latest one
     return semesters[0] || null;
   }
 
@@ -430,7 +446,20 @@ export class SemesterService {
    * Validates that the timeline is consistent and non-overlapping.
    * Preview < Registration < Work < Review < Defense
    */
-  private validateTimelineIntegrity(data: any) {
+  private validateTimelineIntegrity(data: {
+    start_date: Date;
+    end_date: Date;
+    topic_viewing_start?: Date | null;
+    topic_viewing_end?: Date | null;
+    topic_registration_start?: Date | null;
+    topic_registration_end?: Date | null;
+    proposal_deadline: Date;
+    thesis_deadline: Date;
+    defense_start?: Date | null;
+    defense_end?: Date | null;
+    midterm_start?: Date | null;
+    midterm_end?: Date | null;
+  }) {
     const {
       start_date,
       end_date,
@@ -466,16 +495,20 @@ export class SemesterService {
 
     // 2. Strict Sequential Validator (Must dynamically increment or equal over time)
     for (let i = 0; i < timeline.length - 1; i++) {
-      if (timeline[i].date > timeline[i + 1].date) {
-        throw new Error(`Trật tự thời gian không hợp lệ: Mốc [${timeline[i].name}] phải diễn ra trước hoặc bằng [${timeline[i + 1].name}].`);
+      const current = dayjs(timeline[i].date!);
+      const next = dayjs(timeline[i + 1].date!);
+      
+      // Compare by day to allow same-day transitions (ignore 23:59 vs 00:00)
+      if (current.isAfter(next, 'day')) {
+        throw new Error(`Trật tự thời gian không hợp lệ: Mốc [${timeline[i].name}] phải diễn ra trước hoặc cùng ngày với [${timeline[i + 1].name}].`);
       }
     }
 
     // 3. Strict Boundary Anchor Checks (Phase Extreme Ends must perfectly match Global Bounds)
-    if (timeline[1].date.getTime() !== timeline[0].date.getTime()) {
+    if (timeline[1].date!.getTime() !== timeline[0].date!.getTime()) {
       throw new Error('Timeline must start from semester start (Giai đoạn Xem đề tài phải bắt đầu cùng ngày Khai giảng học kỳ).');
     }
-    if (timeline[7].date.getTime() !== timeline[8].date.getTime()) {
+    if (timeline[7].date!.getTime() !== timeline[8].date!.getTime()) {
       throw new Error('Timeline must end at semester end (Giai đoạn Bảo vệ phải kết thúc cùng ngày Bế giảng học kỳ).');
     }
 
@@ -485,14 +518,17 @@ export class SemesterService {
       if (!midterm_start || !midterm_end) {
         throw new Error('Ngày chấm giữa kỳ bắt buộc phải có đủ điểm Bắt đầu và Kết thúc.');
       }
-      if (midterm_start > midterm_end) {
-        throw new Error('Thời gian kết thúc giữa kỳ phải sau hoặc bằng thời gian bắt đầu giữa kỳ.');
+      const mStart = dayjs(midterm_start);
+      const mEnd = dayjs(midterm_end);
+
+      if (mStart.isAfter(mEnd, 'day')) {
+        throw new Error('Thời gian kết thúc giữa kỳ phải sau hoặc cùng ngày thời gian bắt đầu giữa kỳ.');
       }
-      if (topic_registration_end && midterm_start < topic_registration_end) {
-        throw new Error('Giai đoạn chấm giữa kỳ phải bắt đầu sau khi sinh viên bắt đầu Thực hiện khóa luận.');
+      if (topic_registration_end && mStart.isBefore(dayjs(topic_registration_end), 'day')) {
+        throw new Error('Giai đoạn chấm giữa kỳ phải bắt đầu sau hoặc cùng ngày với khi sinh viên bắt đầu Thực hiện khóa luận.');
       }
-      if (proposal_deadline && midterm_end > proposal_deadline) {
-        throw new Error('Giai đoạn chấm giữa kỳ phải kết thúc trước hạn nộp báo cáo (kết thúc giai đoạn Thực hiện).');
+      if (proposal_deadline && mEnd.isAfter(dayjs(proposal_deadline), 'day')) {
+        throw new Error('Giai đoạn chấm giữa kỳ phải kết thúc trước hoặc cùng ngày hạn nộp báo cáo (kết thúc giai đoạn Thực hiện).');
       }
     }
   }

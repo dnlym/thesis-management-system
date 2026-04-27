@@ -378,8 +378,18 @@ const AdminSettings = () => {
 
   /* ====== TABLE COLUMNS ====== */
   const semesterColumns = [
-    { title: t('settings.semesterName'), dataIndex: 'name', key: 'name' },
-    { title: 'Mã', dataIndex: 'code', key: 'code' },
+    { 
+      title: t('settings.semesterName'), 
+      dataIndex: 'name', 
+      key: 'name',
+      render: (text: string) => (
+        <div className="flex items-center gap-2 font-semibold text-slate-700">
+          <CalendarOutlined className="text-blue-500" />
+          {text}
+        </div>
+      )
+    },
+    { title: 'Mã', dataIndex: 'code', key: 'code', render: (code: string) => <Tag className="rounded-md font-mono">{code}</Tag> },
     {
       title: t('common.duration'),
       key: 'duration',
@@ -392,9 +402,17 @@ const AdminSettings = () => {
     },
     {
       title: t('common.status'),
-      dataIndex: 'calculated_phase',
-      key: 'calculated_phase',
-      render: (phase: SemesterStatus | SemesterPhase | "DRAFT") => <StatusBadge type="semester" status={phase} />,
+      key: 'status_display',
+      render: (_: any, record: Semester) => {
+        if (record.status === 'COMPLETED') {
+          return <StatusBadge type="semesterStatus" status="COMPLETED" />;
+        }
+        if (record.status === 'PLANNING') {
+          return <StatusBadge type="semesterStatus" status="PLANNING" />;
+        }
+        // If ACTIVE, show the current phase
+        return <StatusBadge type="semesterPhase" status={record.calculated_phase as any} />;
+      },
     },
     {
       title: 'Thao tác',
@@ -411,9 +429,11 @@ const AdminSettings = () => {
               Tổng kết Học kỳ
             </Button>
           )}
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEditSemester(record)}>
-            {t('common.edit')}
-          </Button>
+          {record.status !== 'COMPLETED' && (
+            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEditSemester(record)}>
+              {t('common.edit')}
+            </Button>
+          )}
         </div>
       ),
     },
@@ -459,8 +479,9 @@ const AdminSettings = () => {
                         activeKey={activeTab}
                         onChange={setActiveTab}
                         className="sys-tabs"
+                        tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
                         tabBarExtraContent={
-                            <div className="px-6 py-2">
+                            <div className="px-6">
                                 {activeTab === 'semesters' ? (
                                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSemester}>
                                         {t('settings.addSemester')}

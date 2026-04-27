@@ -198,7 +198,9 @@
       "WORK": "Thực hiện KLTN",
       "REVIEWING": "Phản biện",
       "DEFENSE": "Bảo vệ",
-      "FINAL": "Đã hoàn thành"
+      "FINAL": "Tổng kết học kỳ",
+      "ACTIVE": "Đang diễn ra",
+      "COMPLETED": "Đã kết thúc"
     },
     "registration": {
       "PENDING": "Chờ xác nhận",

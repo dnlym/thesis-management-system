@@ -27,6 +27,7 @@ export class DefenseService {
                         id: true,
                         title: true,
                         status: true,
+                        defense_type: true,
                         supervisor: {
                             select: {
                                 full_name: true
@@ -43,13 +44,13 @@ export class DefenseService {
         return schedules.map(s => ({
             id: s.id,
             topicId: s.topic_id,
-            topicTitle: s.topic.title,
-            supervisor: s.topic.supervisor.full_name,
+            topicTitle: s.topic?.title || 'N/A',
+            supervisor: s.topic?.supervisor?.full_name || 'N/A',
             date: s.defense_date,
             time: s.defense_time,
             room: s.room,
-            status: s.topic.status,
-            type: 'Hội đồng' // Defaulting as per previous discussion, or could be inferred
+            status: s.topic?.status,
+            type: s.topic?.defense_type || 'DEFENSE'
         }));
     }
 }

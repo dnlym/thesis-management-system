@@ -75,6 +75,7 @@ export interface User {
   department_id?: string;
   avatar_url?: string | null;
   student_code?: string;
+  class_name?: string;
   joined_at?: string;
   finalScore?: FinalScore;
 }

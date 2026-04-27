@@ -372,7 +372,7 @@ export default function ExtraPointRequests() {
 
             {/* Table */}
             <Card className="page-card-flush">
-                <Tabs items={tabItems} className="px-4" />
+                <Tabs items={tabItems} className="sys-tabs" tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }} />
             </Card>
 
             {/* Approve Modal */}

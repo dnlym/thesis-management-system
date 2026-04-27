@@ -75,6 +75,7 @@ model User {
   password_hash           String                     @db.VarChar(255)
   phone                   String?                    @db.VarChar(20)
   student_code            String?                    @unique @db.VarChar(50)
+  class_name              String?                    @db.VarChar(50)
   updated_at              DateTime                   @updatedAt
   assigner_assignments    Assignment[]               @relation("AssignerAssignments")
   reviewer_assignments    Assignment[]               @relation("ReviewerAssignments")

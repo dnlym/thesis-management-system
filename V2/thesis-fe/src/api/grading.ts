@@ -5,6 +5,7 @@ export interface CriteriaFilters {
     role?: string;
     topicId?: string;
     departmentId?: string;
+    criteriaType?: string;
 }
 
 export const GradingApi = {

@@ -114,7 +114,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.createTopic',
       icon: BookOutlined,
-      roles: ['LECTURER'],
+      roles: ['LECTURER', 'HEAD', 'ADMIN'],
       hideInMenu: true,
     },
   },

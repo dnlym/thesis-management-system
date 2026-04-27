@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Input, Select, Form } from 'antd';
-import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, UsergroupAddOutlined, FormOutlined, HistoryOutlined } from '@ant-design/icons';
+import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Input, Select, Form, Avatar } from 'antd';
+import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, UsergroupAddOutlined, FormOutlined, HistoryOutlined, UserOutlined } from '@ant-design/icons';
 import { useTopic, useApproveTopic, useRejectTopic, useRequireEdit } from '@/hooks/useTopics';
 import { useAssignReviewer } from '@/hooks/useAssignments';
 import { useUsers } from '@/hooks/useUsers';
@@ -238,6 +238,50 @@ const TopicDetailGeneral = () => {
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
+
+            {/* Registered Students Section */}
+            {((topic.registrations && topic.registrations.length > 0) || (topic.students && topic.students.length > 0)) && (
+                <Card 
+                    title={
+                        <Space>
+                            <UsergroupAddOutlined className="text-academic-primary" />
+                            <span>Sinh viên đăng ký ({topic.current_students || 0} / {topic.max_students || 0})</span>
+                        </Space>
+                    }
+                    className="shadow-soft mt-6"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(topic.registrations || topic.students).map((item: any) => {
+                            // Handle both registration objects and student objects
+                            const student = item.student || item;
+                            
+                            return (
+                                <Card key={student.id} size="small" className="bg-slate-50/50 hover:border-academic-primary/30 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <Avatar 
+                                            size={48} 
+                                            src={student.avatar_url} 
+                                            icon={<UserOutlined />}
+                                            className="bg-academic-primary/10 text-academic-primary"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-slate-800 truncate">
+                                                {student.full_name || 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-slate-500 font-medium">
+                                                MSSV: {student.student_code || student.studentCode || 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-slate-400 truncate">
+                                                {student.email || 'N/A'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
 
             {/* Reject Modal */}
             <Modal

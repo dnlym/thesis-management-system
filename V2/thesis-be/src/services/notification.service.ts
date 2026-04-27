@@ -281,7 +281,7 @@ export class NotificationService {
       studentId,
       approved ? NOTIFICATION_TYPES.EXTRA_POINT_APPROVED : NOTIFICATION_TYPES.EXTRA_POINT_REJECTED,
       `Yêu cầu điểm cộng đã được ${approved ? 'duyệt' : 'từ chối'}`,
-      approved 
+      approved
         ? `Yêu cầu điểm cộng của bạn đã được duyệt với ${points} điểm.`
         : `Yêu cầu điểm cộng của bạn đã bị từ chối.${reason ? ` Lý do: ${reason}` : ''}`,
       ''

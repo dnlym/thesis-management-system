@@ -122,7 +122,7 @@ const Evaluation = () => {
   });
 
   const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({ 
-    criteriaType: 'FINAL' as any,
+    criteriaType: 'FINAL',
     topicId: topicId || undefined 
   });
 
@@ -139,6 +139,7 @@ const Evaluation = () => {
       id: reg.student.id,
       name: reg.student.full_name,
       code: reg.student.student_code || 'N/A',
+      class: reg.student.class_name || 'N/A',
       avatar: reg.student.avatar_url
     }));
   }, [selectedTopic]);
@@ -298,7 +299,7 @@ const Evaluation = () => {
                   {students.map((s, i) => (
                     <div key={s.id} className="flex gap-2">
                       <Tag color="blue">{i + 1}</Tag>
-                      <Text strong>{s.name} ({s.code})</Text>
+                      <Text strong>{s.name} ({s.code} - {s.class})</Text>
                     </div>
                   ))}
                 </div>
@@ -438,7 +439,7 @@ const Evaluation = () => {
               {regs.slice(0, 2).map((reg: any) => (
                 <div key={reg.student?.id} className="text-xs leading-tight">
                   <div className="font-medium">{reg.student?.full_name}</div>
-                  <div className="text-gray-400">MSSV: {reg.student?.student_code || 'N/A'}</div>
+                  <div className="text-gray-400">MSSV: {reg.student?.student_code || 'N/A'} • {reg.student?.class_name || 'N/A'}</div>
                 </div>
               ))}
             </div>
@@ -624,7 +625,8 @@ const Evaluation = () => {
               setActiveTab(key);
               setSearchParams({ type: key });
             }}
-            className="px-6 pt-2"
+            className="sys-tabs"
+            tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
             items={[
               ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Quản lý Bộ môn', children: <div className="p-6">{renderDepartmentTab()}</div> }] : []),
               { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },

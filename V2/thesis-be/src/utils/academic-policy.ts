@@ -10,12 +10,12 @@ export enum AcademicAction {
   UPDATE_TOPIC = 'UPDATE_TOPIC',
   DELETE_TOPIC = 'DELETE_TOPIC',
   APPROVE_TOPIC = 'APPROVE_TOPIC',
-  
+
   // Registration related
   REGISTER_TOPIC = 'REGISTER_TOPIC',
   JOIN_GROUP = 'JOIN_GROUP',
   CANCEL_REGISTRATION = 'CANCEL_REGISTRATION',
-  
+
   // Work & Extra Points
   SUBMIT_EXTRA_POINTS = 'SUBMIT_EXTRA_POINTS',
 
@@ -42,9 +42,9 @@ export interface PolicyResult {
  * AcademicPolicy — The Modular Gatekeeper.
  */
 export class AcademicPolicy {
-  
+
   // ─── Core Helpers ─────────────────────────────────────────────────────────
-  
+
   static isActive(semester: any): boolean {
     return semester.status === SemesterStatus.ACTIVE;
   }
@@ -71,8 +71,8 @@ export class AcademicPolicy {
   ): PolicyResult {
     // 0. Global Lock: Block all mutations if COMPLETED
     if (this.isCompleted(semester)) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         reason: 'Học kỳ này đã kết thúc và được lưu trữ. Dữ liệu đã được khóa.',
         code: 'SEMESTER_COMPLETED'
       };
@@ -80,8 +80,8 @@ export class AcademicPolicy {
 
     // 1. Global Lock: Only Admin can see/act if PLANNING
     if (this.isPlanning(semester) && user.role !== UserRole.ADMIN) {
-      return { 
-        allowed: false, 
+      return {
+        allowed: false,
         reason: 'Học kỳ đang chuẩn bị, hiện chưa công bố cho người dùng.',
         code: 'SEMESTER_PLANNING'
       };

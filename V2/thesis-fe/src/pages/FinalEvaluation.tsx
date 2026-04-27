@@ -50,7 +50,7 @@ const FinalEvaluation = () => {
 
     // Fetch FINAL criteria (10 LOs)
     const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({ 
-        criteriaType: 'FINAL' as any,
+        criteriaType: 'FINAL',
         topicId: topicId || undefined
     });
 
@@ -262,7 +262,8 @@ const FinalEvaluation = () => {
                 <Tabs
                     activeKey={activeRole}
                     onChange={(key) => setActiveRole(key as any)}
-                    className="mb-8"
+                    className="sys-tabs"
+                    tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
                     items={[
                         { key: 'SUPERVISOR', label: 'GV Hướng dẫn' },
                         { key: 'REVIEWER', label: 'GV Phản biện' },

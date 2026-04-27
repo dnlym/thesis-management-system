@@ -102,10 +102,10 @@ export class ExtraPointsService {
 
     // Send notification to HEAD
     const student = await prisma.user.findUnique({ where: { id: userId } });
-    const head = await prisma.user.findFirst({ 
-      where: { role: 'HEAD', departmentId: student?.departmentId } 
+    const head = await prisma.user.findFirst({
+      where: { role: 'HEAD', departmentId: student?.departmentId }
     });
-    
+
     if (head) {
       await notificationService.createNotification(
         head.id,
@@ -277,7 +277,7 @@ export class ExtraPointsService {
       where: { id: requestId },
       include: { topic: true }
     });
-    
+
     await notificationService.createNotification(
       request.student_id,
       'EXTRA_POINT_REJECTED',

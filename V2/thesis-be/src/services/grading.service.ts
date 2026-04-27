@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus, ProgressStage } from '@prisma/client';
+import { Prisma, RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus, ProgressStage } from '@prisma/client';
 import { isSupervisor, isReviewer as isReviewerPermission, isCommitteeMember } from '../utils/permission.utils';
 import { SemesterGuard } from '../utils/semester-guard';
 import { SubmitGradeRequest, CreateGradingCriterionRequest, UpdateGradingCriterionRequest } from '../types';
@@ -18,6 +18,29 @@ import {
 import { logger } from '../utils/logger';
 import notificationService from './notification.service';
 
+type TopicWithRelations = Prisma.TopicGetPayload<{
+  include: {
+    assignments: true,
+    registrations: true,
+    grades: true,
+  }
+}>;
+
+type TopicSummaryPayload = Prisma.TopicGetPayload<{
+  include: {
+    supervisor: { select: { id: true, full_name: true, avatar_url: true } },
+    semester: { select: { id: true, name: true } },
+    registrations: {
+      include: {
+        student: { select: { id: true, full_name: true, student_code: true, avatar_url: true } },
+      },
+    },
+    grades: { include: { criterion: true } },
+    assignments: { where: { assignment_type: 'REVIEWER' } },
+    final_scores: true,
+  }
+}>;
+
 
 export class GradingService {
   async submitGrade(userId: string, data: SubmitGradeRequest, raterRole: RaterRole) {
@@ -29,7 +52,7 @@ export class GradingService {
         registrations: true,
         grades: true,
       },
-    });
+    }) as TopicWithRelations | null;
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
@@ -69,7 +92,7 @@ export class GradingService {
 
     // [PRODUCTION GUARD] Dependency Chain
     if (isReviewer(raterRole)) {
-      const hasSupervisor = (topic as any).grades.some((g: any) =>
+      const hasSupervisor = topic.grades.some((g: any) =>
         g.rater_role === RaterRole.SUPERVISOR && g.student_id === (data.studentId || null)
       );
       if (!hasSupervisor) {
@@ -78,13 +101,13 @@ export class GradingService {
     }
 
     if (isCommittee(raterRole)) {
-      if (!(topic as any).is_eligible_for_defense) {
+      if (!topic.is_eligible_for_defense) {
         throw new Error('Đề tài chưa được duyệt đủ điều kiện bảo vệ hoặc chưa có quyết định từ Trưởng bộ môn.');
       }
     }
 
     // Get defense type from topic
-    const defenseType = (topic as any).defense_type || 'ORAL';
+    const defenseType = topic.defense_type || 'ORAL';
 
     // Validate rater role against defense type
     if (defenseType === 'ORAL' && raterRole === RaterRole.POSTER_COMMITTEE) {
@@ -501,7 +524,7 @@ export class GradingService {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
-    const topics = await prisma.topic.findMany({
+    const topics = (await prisma.topic.findMany({
       where: {
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         status: {
@@ -525,7 +548,7 @@ export class GradingService {
         final_scores: true,
       },
       orderBy: { updated_at: 'desc' },
-    });
+    })) as TopicSummaryPayload[];
 
     const topicIds = topics.map(t => t.id);
     const extraPoints = await prisma.extraPointRequest.findMany({
@@ -535,7 +558,7 @@ export class GradingService {
     const summaryData = topics.map(topic => {
       const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
       const reviewerAssignments = topic.assignments.filter(a => a.assignment_type === AssignmentType.REVIEWER);
-      const totalReviewersRequired = (topic as any).reviewer_required_count || reviewerAssignments.length;
+      const totalReviewersRequired = topic.reviewer_required_count || reviewerAssignments.length;
 
       const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
       const reviewerGradedCount = reviewerGraderIds.length;
@@ -544,7 +567,7 @@ export class GradingService {
       const committeeGradedIds = [...new Set(topic.grades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
 
       const students = topic.registrations.map(reg => {
-        let fs = topic.final_scores.find(s => s.student_id === reg.student_id);
+        let fs: any = topic.final_scores.find(s => s.student_id === reg.student_id);
 
         if (!fs) {
           const studentGrades = topic.grades.filter(g => g.student_id === reg.student_id);
@@ -569,7 +592,7 @@ export class GradingService {
             pre_defense_score: preDefenseScore,
             extra_points: ep?.points_requested || 0,
             finalized: false,
-          } as any;
+          };
         }
 
         return { ...reg.student, finalScore: fs };
@@ -581,7 +604,7 @@ export class GradingService {
         title: topic.title,
         status: topic.status,
         defense_type: topic.defense_type,
-        is_eligible_for_defense: (topic as any).is_eligible_for_defense,
+        is_eligible_for_defense: topic.is_eligible_for_defense,
         supervisor: topic.supervisor,
         students,
         gradingStatus: {
@@ -744,8 +767,8 @@ export class GradingService {
         action: 'UPDATE_CRITERION',
         entity_type: 'GradingCriterion',
         entity_id: id,
-        old_value: existing as any,
-        new_value: updated as any,
+        old_value: existing as Prisma.InputJsonValue,
+        new_value: updated as Prisma.InputJsonValue,
       },
     });
 
@@ -810,7 +833,7 @@ export class GradingService {
       departmentId = topic?.departmentId;
     }
 
-    const where: any = { active: true };
+    const where: Prisma.GradingCriterionWhereInput = { active: true };
     where.departmentId = departmentId || null;
 
     if (roleFilter) {
@@ -829,6 +852,8 @@ export class GradingService {
 
       if (group) {
         where.role = { in: getRolesByGroup(group as RoleGroup) };
+      } else if (roleFilter === 'FINAL') {
+        where.criteria_type = 'FINAL';
       } else {
         where.role = roleFilter;
       }
@@ -959,7 +984,7 @@ export class GradingService {
     throw new Error(`Không tìm thấy tiêu chí chấm điểm cho vai trò ${role}`);
   }
 
-  private validateCriteriaWeights(criteria: any[]) {
+  private validateCriteriaWeights(criteria: GradingCriterion[]) {
     const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
     // Use float tolerance for weight validation
     if (Math.abs(totalWeight - 1.0) > 0.001) {
@@ -1387,7 +1412,7 @@ export class GradingService {
 
   async getMyGrades(userId: string, topicId: string, raterRole?: RaterRole) {
     // Fetch grades by this grader for this topic (filtered by role if provided)
-    const where: any = {
+    const where: Prisma.GradeWhereInput = {
       topic_id: topicId,
       grader_id: userId,
     };

@@ -21,6 +21,7 @@ const Users = () => {
     departmentName: string;
     avatarUrl?: string;
     createdAt: string;
+    className?: string;
   }
 
   const { data, isLoading } = useQuery({
@@ -35,6 +36,7 @@ const Users = () => {
         departmentName: u.department?.name || '',
         avatarUrl: u.avatar_url || u.avatarUrl || undefined,
         createdAt: u.created_at || new Date().toISOString(),
+        className: u.class_name || u.className || '',
       })) || [];
     },
   });
@@ -83,6 +85,12 @@ const Users = () => {
       title: t('users.department'),
       dataIndex: 'departmentName',
       key: 'departmentName',
+    },
+    {
+      title: 'Lớp',
+      dataIndex: 'className',
+      key: 'className',
+      render: (text: string) => text || '-',
     },
     {
       title: t('topics.createdAt'),
@@ -202,6 +210,13 @@ const Users = () => {
               rules={[{ required: true, message: t('users.fullNameRequired') }]}
             >
               <Input placeholder={t('users.enterFullName')} />
+            </Form.Item>
+
+            <Form.Item
+              label="Lớp"
+              name="class_name"
+            >
+              <Input placeholder="Nhập tên lớp (ví dụ: DHHTTT17A)" />
             </Form.Item>
 
             <Form.Item
