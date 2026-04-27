@@ -84,8 +84,7 @@ const getMenuSections = (role: string): MenuSection[] => {
       {
         title: 'PHẢN BIỆN / HỘI ĐỒNG',
         items: [
-          { key: '/reviewer/assignments', label: 'Đề tài cần phản biện', icon: <BookOutlined /> },
-          { key: '/evaluation?type=reviewer', label: 'Phiếu đánh giá phản biện', icon: <CheckCircleOutlined /> },
+          { key: '/evaluation?type=reviewer', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
         ]
       },
       {

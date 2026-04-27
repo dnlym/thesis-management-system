@@ -38,7 +38,6 @@ const MyRegisteredTopic = lazy(() => import('@/pages/MyRegisteredTopic'));
 const SupervisorCreateTopic = lazy(() => import('@/pages/supervisor/CreateTopic'));
 const ManageRegistrations = lazy(() => import('@/pages/supervisor/ManageRegistrations'));
 
-const Assignments = lazy(() => import('@/pages/reviewer/Assignments'));
 const ApproveTopics = lazy(() => import('@/pages/head/ApproveTopics'));
 const ReviewerAssignment = lazy(() => import('@/pages/ReviewerAssignment'));
 const ExtraPointRequests = lazy(() => import('@/pages/head/ExtraPointRequests'));
@@ -127,16 +126,6 @@ export const routes: RouteConfig[] = [
     },
   },
 
-  {
-    path: '/reviewer/assignments',
-    element: Assignments,
-    meta: {
-      title: 'navigation.assignments',
-      icon: BookOutlined,
-      roles: ['LECTURER'],
-      hideInMenu: true,
-    },
-  },
   {
     path: '/topics/:id',
     element: TopicDetail,
@@ -397,7 +386,6 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <SafetyCertificateOutlined />,
         label: 'navigation.reviewerCouncil',
         children: [
-          { key: '/reviewer/assignments', label: 'navigation.reviewerAssignments', icon: <BookOutlined /> },
           { key: '/evaluation?type=reviewer', label: 'navigation.reviewerForm', icon: <CheckCircleOutlined /> },
         ],
       },
