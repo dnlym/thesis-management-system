@@ -6,6 +6,10 @@ import { useState, useMemo } from 'react';
 import { ExtraPointsApi } from '@/api/extraPoints';
 import { ExtraPoints } from '@/types';
 import dayjs from 'dayjs';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { Option } = Select;
 
@@ -20,6 +24,7 @@ export default function ExtraPointRequests() {
 
     // Filter states
     const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 300);
     const [selectedSemester, setSelectedSemester] = useState<string | null>(null);
     const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
@@ -74,14 +79,18 @@ export default function ExtraPointRequests() {
     const filteredRequests = useMemo(() => {
         if (!requests) return [];
         return requests.filter(r => {
-            const matchSearch =
-                (r.student?.full_name?.toLowerCase() || '').includes(searchText.toLowerCase()) ||
-                (r.topic?.title?.toLowerCase() || '').includes(searchText.toLowerCase());
+            const matchSearch = matchKeyword(
+                debouncedSearch,
+                r.student?.full_name,
+                r.student?.student_code,
+                r.topic?.title,
+                r.topic?.code
+            );
             const matchSemester = selectedSemester ? r.topic?.semester?.id === selectedSemester : true;
             const matchReason = selectedReason ? r.reason === selectedReason : true;
             return matchSearch && matchSemester && matchReason;
         });
-    }, [requests, searchText, selectedSemester, selectedReason]);
+    }, [requests, debouncedSearch, selectedSemester, selectedReason]);
 
     const pendingRequests = filteredRequests.filter(r => r.status === 'PENDING');
     const processedRequests = filteredRequests.filter(r => r.status !== 'PENDING');
@@ -114,19 +123,26 @@ export default function ExtraPointRequests() {
         width: 180,
         render: (_: any, record: any) => (
             <div>
-                <div className="font-medium text-blue-600">{record.student?.full_name}</div>
-                <div className="text-xs text-gray-500">{record.student?.student_code}</div>
+                <div className="font-medium text-blue-600">
+                    <HighlightText text={record.student?.full_name} keyword={debouncedSearch} />
+                </div>
+                <div className="text-xs text-gray-500">
+                    MSSV: <HighlightText text={record.student?.student_code} keyword={debouncedSearch} />
+                </div>
             </div>
         ),
     };
 
     const topicColumn = {
         title: 'Đề tài',
-        dataIndex: ['topic', 'title'],
-        key: 'topic',
-        width: 280,
-        ellipsis: true,
-        render: (title: string) => <div className="font-medium text-gray-800">{title}</div>
+        render: (title: string, record: any) => (
+            <div className="font-medium text-gray-800">
+                <HighlightText text={title} keyword={debouncedSearch} />
+                <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+                    <HighlightText text={record.topic?.code} keyword={debouncedSearch} />
+                </div>
+            </div>
+        )
     };
 
     const semesterColumn = {
@@ -330,13 +346,10 @@ export default function ExtraPointRequests() {
             <Card className="page-toolbar-card">
                 <Row gutter={[16, 0]} align="middle">
                     <Col xs={24} md={8}>
-                        <div className="text-sm text-gray-500 mb-1">Tìm kiếm</div>
-                        <Input
-                            placeholder="Tìm theo tên sinh viên hoặc đề tài"
-                            prefix={<SearchOutlined className="text-gray-400" />}
+                        <GlobalSearch
+                            placeholder="Tìm theo tên sinh viên, MSSV, đề tài..."
                             value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
+                            onChange={setSearchText}
                         />
                     </Col>
                     <Col xs={24} md={8}>

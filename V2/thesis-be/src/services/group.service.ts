@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { ERROR_CODES, VALIDATION } from '../constants';
 import notificationService from './notification.service';
+import { generateGroupName } from '../utils/group-utils';
 
 
 export class GroupService {
@@ -46,10 +47,26 @@ export class GroupService {
       throw new Error('Group name already exists in this semester');
     }
 
+    // Get user department
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { departmentId: true }
+    });
+
+    if (!user?.departmentId) {
+      throw new Error('User department not found');
+    }
+
+    // Auto-generate group name if not provided or following old format
+    let finalName = data.name;
+    if (!finalName || finalName.startsWith('Nhóm')) {
+      finalName = await generateGroupName(prisma, user.departmentId, data.semesterId);
+    }
+
     // Create group
     const group = await prisma.group.create({
       data: {
-        name: data.name,
+        name: finalName,
         leader_id: userId,
         semester_id: data.semesterId,
       },

@@ -1,11 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker } from 'antd';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Input } from 'antd';
 import { notify } from '@/utils/notification';
-import { UserOutlined, CheckCircleOutlined, PlusOutlined, ClockCircleOutlined, SaveOutlined } from '@ant-design/icons';
+import { 
+    UserOutlined, CheckCircleOutlined, PlusOutlined, 
+    ClockCircleOutlined, SaveOutlined, SearchOutlined 
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AssignmentsApi } from '@/api/assignments';
 import dayjs from 'dayjs';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface TopicForReviewer {
     id: string;
@@ -58,6 +65,26 @@ const ReviewerAssignment = () => {
         queryKey: ['lecturers'],
         queryFn: () => AssignmentsApi.getAvailableReviewersForDepartment(),
     });
+
+    const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 300);
+
+    const filteredTopics = useMemo(() => {
+        if (!topics) return [];
+        if (!debouncedSearch) return topics;
+        return topics.filter(t => {
+            const reviewerNames = t.assignments.map(a => a.reviewer?.full_name);
+            const studentNames = t.registrations?.map(r => r.student?.full_name);
+            return matchKeyword(
+                debouncedSearch, 
+                t.title, 
+                t.code, 
+                t.supervisor?.full_name,
+                ...reviewerNames,
+                ...studentNames
+            );
+        });
+    }, [topics, debouncedSearch]);
 
     const getAvailableReviewersForTopic = (topic: TopicForReviewer) => {
         if (!lecturers) return [];
@@ -172,19 +199,25 @@ const ReviewerAssignment = () => {
             title: t('topics.code'),
             dataIndex: 'code',
             key: 'code',
-            width: 90,
-            render: (text: string) => <Tag>{text || 'N/A'}</Tag>,
+            width: 100,
+            render: (text: string) => (
+                <Tag color="blue" className="font-mono">
+                    <HighlightText text={text} keyword={debouncedSearch} />
+                </Tag>
+            ),
         },
         {
             title: t('common.name'),
             dataIndex: 'title',
             key: 'title',
-            width: 200,
+            width: 250,
             render: (text: string, record: TopicForReviewer) => (
                 <div>
-                    <div className="font-medium text-sm">{text}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                        {t('topics.supervisor')}: {record.supervisor?.full_name}
+                    <div className="font-medium text-sm leading-tight">
+                        <HighlightText text={text} keyword={debouncedSearch} />
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-1">
+                        {t('topics.supervisor')}: <HighlightText text={record.supervisor?.full_name} keyword={debouncedSearch} />
                     </div>
                 </div>
             ),
@@ -361,16 +394,25 @@ const ReviewerAssignment = () => {
     return (
         <div className="page-container">
             <div className="page-inner">
-            {/* Header */}
-            <Card className="page-header-card">
-                <div className="flex items-center gap-3">
-                    <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
-                    <div>
-                        <div className="page-header-title">{t('reviewerAssignment.title')}</div>
-                        <div className="page-header-subtitle">{t('reviewerAssignment.description')}</div>
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">{t('navigation.reviewerAssignment')}</div>
+                                <div className="page-header-subtitle">{t('reviewerAssignment.subtitle')}</div>
+                            </div>
+                        </div>
+
+                        <GlobalSearch 
+                            value={search} 
+                            onChange={setSearch} 
+                            className="w-full md:w-80" 
+                            placeholder="Tìm đề tài, GV, mã ĐT..."
+                        />
                     </div>
-                </div>
-            </Card>
+                </Card>
 
             {/* Statistics */}
             <div className="grid grid-cols-3 gap-4 mb-6">

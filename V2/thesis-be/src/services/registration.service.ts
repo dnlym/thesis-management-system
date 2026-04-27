@@ -4,6 +4,7 @@ import { ERROR_CODES } from '../constants';
 import notificationService from './notification.service';
 import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
+import { generateGroupName } from '../utils/group-utils';
 
 export class RegistrationService {
   // =====================================================
@@ -396,9 +397,10 @@ export class RegistrationService {
     const maxGroupSize = dept?.max_group_size || 2;
 
     // Create group
-    const group = await prisma.group.create({
+    const groupName = await generateGroupName(tx || prisma, topic.departmentId, topic.semester_id);
+    const group = await (tx || prisma).group.create({
       data: {
-        name: `Nhóm ${topic.code || topicId.substring(0, 8)}`,
+        name: groupName,
         topic_id: topicId,
         leader_id: userId, // Creator becomes leader
         semester_id: topic.semester_id,

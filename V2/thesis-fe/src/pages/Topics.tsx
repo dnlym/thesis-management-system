@@ -12,6 +12,8 @@ import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
 
 import { RegistrationsApi } from '@/api/registrations';
 import type { TopicStatus } from '@/types';
@@ -173,20 +175,40 @@ const Topics = () => {
       dataIndex: 'code',
       key: 'code',
       width: 140,
-      render: (code: string) => <Tag color="blue" className="font-mono">{code || 'N/A'}</Tag>,
+      render: (code: string) => (
+        <Tag color="blue" className="font-mono">
+          <HighlightText text={code} keyword={debouncedSearch} />
+        </Tag>
+      ),
     },
     {
       title: t('topics.topicTitle'),
       dataIndex: 'title',
       key: 'title',
-      render: (text: string, record: any) => (
-        <a
-          onClick={() => navigate(`/topics/${record.id}`)}
-          className="text-academic-primary hover:text-academic-primary-dark font-medium cursor-pointer hover:underline transition-all"
-        >
-          {text}
-        </a>
-      ),
+      render: (text: string, record: any) => {
+        const students = record.registrations?.map((r: any) => r.student) || [];
+        return (
+          <div className="flex flex-col gap-1 py-1">
+            <a
+              onClick={() => navigate(`/topics/${record.id}`)}
+              className="text-academic-primary hover:text-academic-primary-dark font-semibold cursor-pointer hover:underline transition-all leading-snug"
+            >
+              <HighlightText text={text} keyword={debouncedSearch} />
+            </a>
+            {students.length > 0 && (
+              <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-400">
+                <span className="font-medium text-slate-500">SV:</span>
+                {students.map((s: any, idx: number) => (
+                  <span key={s.id}>
+                    <HighlightText text={`${s.full_name} (${s.student_code})`} keyword={debouncedSearch} />
+                    {idx < students.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: t('topics.supervisor'),
@@ -194,8 +216,10 @@ const Topics = () => {
       key: 'supervisor',
       render: (supervisor: any) => (
         <div className="flex items-center gap-2">
-          <Avatar src={supervisor?.avatar_url} icon={<UserOutlined />} size="small" />
-          <span>{supervisor?.full_name || 'N/A'}</span>
+          <Avatar src={supervisor?.avatar_url} icon={<UserOutlined />} size="small" className="flex-shrink-0" />
+          <span className="text-xs font-medium">
+            <HighlightText text={supervisor?.full_name} keyword={debouncedSearch} />
+          </span>
         </div>
       ),
     },

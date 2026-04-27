@@ -926,10 +926,28 @@ export class TopicService {
     }
 
     if (filter.search) {
-      where.OR = [
-        { title: { contains: filter.search, mode: 'insensitive' } },
-        { description: { contains: filter.search, mode: 'insensitive' } },
-      ];
+      const searchTokens = filter.search.split(' ').filter(t => t.length > 0);
+      if (searchTokens.length > 0) {
+        const andSearchConditions = searchTokens.map(token => {
+          const normalizedToken = normalizeTitle(token);
+          return {
+            OR: [
+              { title: { contains: token, mode: 'insensitive' as const } },
+              { normalized_title: { contains: normalizedToken, mode: 'insensitive' as const } },
+              { code: { contains: token, mode: 'insensitive' as const } },
+              { supervisor: { full_name: { contains: token, mode: 'insensitive' as const } } },
+              { registrations: { some: { student: { full_name: { contains: token, mode: 'insensitive' as const } } } } },
+              { registrations: { some: { student: { student_code: { contains: token, mode: 'insensitive' as const } } } } },
+            ],
+          };
+        });
+
+        if (where.AND) {
+          (where.AND as any[]).push(...andSearchConditions);
+        } else {
+          where.AND = andSearchConditions;
+        }
+      }
     }
     // Filter by midterm status - only return topics where at least one registration has this status
     if (filter.midtermStatus) {

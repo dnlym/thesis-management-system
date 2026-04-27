@@ -14,6 +14,10 @@ import {
 import { GradingApi } from '@/api/grading';
 import { notify } from '@/utils/notification';
 import { useNavigate } from 'react-router-dom';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { Title, Text } = Typography;
 
@@ -21,6 +25,7 @@ const GradeSummary = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState('all');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
@@ -54,16 +59,20 @@ const GradeSummary = () => {
     if (filter === 'finalized') result = result.filter((t: any) => t.gradingStatus?.isFinalized);
 
     // Search
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
       result = result.filter((t: any) =>
-        t.title?.toLowerCase().includes(q) ||
-        t.code?.toLowerCase().includes(q) ||
-        t.students?.some((s: any) => s.full_name?.toLowerCase().includes(q) || s.student_code?.includes(q))
+        matchKeyword(
+          debouncedSearch,
+          t.title,
+          t.code,
+          t.supervisor?.full_name,
+          ...t.students?.map((s: any) => s.full_name),
+          ...t.students?.map((s: any) => s.student_code)
+        )
       );
     }
     return result;
-  }, [topics, filter, search]);
+  }, [topics, filter, debouncedSearch]);
 
   const stats = useMemo(() => ({
     total: topics.length,
@@ -115,13 +124,11 @@ const GradeSummary = () => {
             </div>
             <div className="flex items-center gap-3 h-10">
                <Divider type="vertical" className="h-5 bg-slate-200 hidden lg:block m-0" />
-               <Input
-                 placeholder="Tìm mã số, tên đề tài, sinh viên..."
-                 prefix={<SearchOutlined className="text-slate-400" />}
-                 className="rounded-lg h-10 border-slate-200 w-full lg:w-[320px] shadow-none text-sm"
+               <GlobalSearch
+                 placeholder="Tìm mã số, tên đề tài, sinh viên, GVHD..."
+                 className="w-full lg:w-[320px]"
                  value={search}
-                 onChange={e => setSearch(e.target.value)}
-                 allowClear
+                 onChange={setSearch}
                />
                <Button icon={<FilterOutlined />} className="h-10 rounded-lg flex items-center justify-center w-10 p-0 border-slate-200 shadow-none" />
             </div>
@@ -216,13 +223,19 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
         {/* Info Column */}
         <Col span={8}>
           <div className="flex gap-2 mb-2 items-center">
-            <Text className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-mono font-bold text-slate-500">{topic.code}</Text>
+            <Text className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-mono font-bold text-slate-500">
+              <HighlightText text={topic.code} keyword={debouncedSearch} />
+            </Text>
             {getStatusBadge()}
           </div>
-          <Title level={5} className="!mb-1.5 line-clamp-1 !text-[16px] font-black text-slate-800 tracking-tight">{topic.title}</Title>
+          <Title level={5} className="!mb-1.5 line-clamp-1 !text-[16px] font-black text-slate-800 tracking-tight">
+            <HighlightText text={topic.title} keyword={debouncedSearch} />
+          </Title>
           <div className="flex items-center gap-2">
             <Avatar size={18} icon={<UserOutlined />} className="bg-slate-200" />
-            <Text type="secondary" className="text-[11px] font-bold italic">GVHD: {topic.supervisor?.full_name}</Text>
+            <Text type="secondary" className="text-[11px] font-bold italic">
+              GVHD: <HighlightText text={topic.supervisor?.full_name} keyword={debouncedSearch} />
+            </Text>
           </div>
         </Col>
 
@@ -238,8 +251,12 @@ const TopicCard = ({ topic, onViewDetails, onFinalize, isFinalizing }: any) => {
                    {s.full_name?.charAt(0)}
                 </Avatar>
                 <div className="flex flex-col overflow-hidden">
-                  <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">{s.full_name}</Text>
-                  <Text className="text-[10px] text-slate-400 font-mono font-bold">{s.student_code}</Text>
+                  <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">
+                    <HighlightText text={s.full_name} keyword={debouncedSearch} />
+                  </Text>
+                  <Text className="text-[10px] text-slate-400 font-mono font-bold">
+                    <HighlightText text={s.student_code} keyword={debouncedSearch} />
+                  </Text>
                 </div>
               </div>
             ))}

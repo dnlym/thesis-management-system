@@ -10,9 +10,7 @@ import { TopicsApi } from '@/api/topics';
 import { AssignmentsApi } from '@/api/assignments';
 import { GradingApi } from '@/api/grading';
 import DefensePivotModal from '@/components/DefensePivotModal';
-import { useMutation } from '@tanstack/react-query';
-import type { GradeScore, RaterRole } from '@/types';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { 
   canSupervisorGrade, 
@@ -20,6 +18,10 @@ import {
   canCommitteeGrade, 
   isSemesterCompleted 
 } from '@/utils/semester-rules';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -43,7 +45,11 @@ const Evaluation = () => {
 
   // HOD Department dashboard state
   const [deptSearch, setDeptSearch] = useState('');
+  const debouncedDeptSearch = useDebounce(deptSearch, 300);
   const [activeSubTab, setActiveSubTab] = useState('missing_s');
+
+  const [lecturerSearch, setLecturerSearch] = useState('');
+  const debouncedLecturerSearch = useDebounce(lecturerSearch, 300);
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -377,19 +383,57 @@ const Evaluation = () => {
   // Shared columns for Advisor / Reviewer / Council tabs
   const dashboardColumns = [
     { title: 'STT', key: 'stt', width: 60, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
-    { title: 'Mã ĐT', dataIndex: 'code', key: 'code', width: 100, render: (t: string) => <Tag>{t || 'N/A'}</Tag> },
+    { 
+      title: 'Mã ĐT', 
+      dataIndex: 'code', 
+      key: 'code', 
+      width: 100, 
+      render: (t: string) => (
+        <Tag className="font-mono">
+          <HighlightText text={t} keyword={debouncedLecturerSearch} />
+        </Tag>
+      ) 
+    },
     { title: 'Tên đề tài', dataIndex: 'title', key: 'title', render: (t: string, r: any) => (
-        <div><div className="font-medium text-base">{t}</div><div className="text-xs text-gray-500">GVHD: {r.supervisor?.full_name}</div></div>
+        <div>
+          <div className="font-medium text-base">
+            <HighlightText text={t} keyword={debouncedLecturerSearch} />
+          </div>
+          <div className="text-xs text-gray-500">
+            GVHD: <HighlightText text={r.supervisor?.full_name} keyword={debouncedLecturerSearch} />
+          </div>
+        </div>
     )},
     { title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
         const m = r.registrations?.[0]?.group?.members || [];
-        return <Avatar.Group>{m.map((mi: any) => <Avatar key={mi.user.id} src={mi.user.avatar_url}>{mi.user.full_name?.[0]}</Avatar>)}</Avatar.Group>;
+        return (
+          <Space direction="vertical" size={0}>
+            <Avatar.Group size="small">
+              {m.map((mi: any) => <Avatar key={mi.user.id} src={mi.user.avatar_url}>{mi.user.full_name?.[0]}</Avatar>)}
+            </Avatar.Group>
+            <div className="text-[10px] text-gray-400 mt-1">
+              {m.map((mi: any) => (
+                <div key={mi.user.id}>
+                  <HighlightText text={mi.user.full_name} keyword={debouncedLecturerSearch} />
+                </div>
+              ))}
+            </div>
+          </Space>
+        );
     }},
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => renderTopicStatus(s) },
     { title: 'Hành động', key: 'action', render: (_: any, r: any) => (
       <Button type="primary" onClick={() => setSearchParams({ topicId: r.id })}>Xem & Chấm điểm</Button>
     )},
   ];
+
+  const filterLecturerData = (data: any[]) => {
+    if (!debouncedLecturerSearch) return data;
+    return data.filter(r => {
+      const studentNames = (r.registrations?.[0]?.group?.members || []).map((m: any) => m.user.full_name);
+      return matchKeyword(debouncedLecturerSearch, r.title, r.code, r.supervisor?.full_name, ...studentNames);
+    });
+  };
 
   // Department dashboard
   const renderDepartmentTab = () => {
@@ -402,13 +446,16 @@ const Evaluation = () => {
     const missingReviewerTopics = summaryData.missingReviewer || [];
     const finalizedTopics = summaryData.finalized || [];
     const getFilteredData = (data: any[]) => {
-      if (!deptSearch) return data;
-      const q = deptSearch.toLowerCase();
+      if (!debouncedDeptSearch) return data;
       return data.filter(r =>
-        r.title?.toLowerCase().includes(q) ||
-        r.code?.toLowerCase().includes(q) ||
-        r.supervisor?.full_name?.toLowerCase().includes(q) ||
-        r.registrations?.some((reg: any) => reg.student?.full_name?.toLowerCase().includes(q) || reg.student?.student_code?.includes(q))
+        matchKeyword(
+          debouncedDeptSearch,
+          r.title,
+          r.code,
+          r.supervisor?.full_name,
+          ...r.registrations?.map((reg: any) => reg.student?.full_name),
+          ...r.registrations?.map((reg: any) => reg.student?.student_code)
+        )
       );
     };
 
@@ -424,10 +471,24 @@ const Evaluation = () => {
 
     const columns = [
       { title: '#', key: 'idx', width: 48, align: 'center' as const, render: (_: any, __: any, i: number) => <Text type="secondary" className="text-xs">{i + 1}</Text> },
-      { title: 'Mã đề tài', dataIndex: 'code', key: 'code', width: 130, render: (t: string) => <Tag className="font-mono text-xs">{t || 'N/A'}</Tag> },
+      { 
+        title: 'Mã đề tài', 
+        dataIndex: 'code', 
+        key: 'code', 
+        width: 130, 
+        render: (t: string) => (
+          <Tag className="font-mono text-xs">
+            <HighlightText text={t} keyword={debouncedDeptSearch} />
+          </Tag>
+        ) 
+      },
       {
         title: 'Tên đề tài', dataIndex: 'title', key: 'title',
-        render: (t: string) => <Text className="font-medium text-sm leading-snug" style={{ display: 'block', maxWidth: 280 }}>{t}</Text>
+        render: (t: string) => (
+          <Text className="font-medium text-sm leading-snug" style={{ display: 'block', maxWidth: 280 }}>
+            <HighlightText text={t} keyword={debouncedDeptSearch} />
+          </Text>
+        )
       },
       {
         title: 'Sinh viên', key: 'students', width: 160,
@@ -438,8 +499,12 @@ const Evaluation = () => {
             <div className="space-y-1">
               {regs.slice(0, 2).map((reg: any) => (
                 <div key={reg.student?.id} className="text-xs leading-tight">
-                  <div className="font-medium">{reg.student?.full_name}</div>
-                  <div className="text-gray-400">MSSV: {reg.student?.student_code || 'N/A'} • {reg.student?.class_name || 'N/A'}</div>
+                  <div className="font-medium">
+                    <HighlightText text={reg.student?.full_name} keyword={debouncedDeptSearch} />
+                  </div>
+                  <div className="text-gray-400">
+                    MSSV: <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} /> • {reg.student?.class_name || 'N/A'}
+                  </div>
                 </div>
               ))}
             </div>
@@ -449,7 +514,11 @@ const Evaluation = () => {
       {
         title: 'GVHD', key: 'supervisor', width: 160,
         render: (_: any, r: any) => r.supervisor
-          ? <div className="text-xs"><div className="font-medium">{r.supervisor.full_name}</div></div>
+          ? <div className="text-xs">
+              <div className="font-medium">
+                <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
+              </div>
+            </div>
           : <Tag color="red" className="text-xs">Chưa có GVHD</Tag>
       },
       {
@@ -556,13 +625,11 @@ const Evaluation = () => {
 
         {/* Search + Filter bar */}
         <div className="flex gap-3 mb-4 flex-wrap items-center">
-          <Input
-            prefix={<SearchOutlined className="text-gray-400" />}
-            placeholder="Tìm kiếm theo tên đề tài, mã đề tài, sinh viên..."
+          <GlobalSearch
             value={deptSearch}
-            onChange={e => setDeptSearch(e.target.value)}
-            allowClear
+            onChange={setDeptSearch}
             className="flex-1 min-w-52 max-w-md"
+            placeholder="Tìm theo tên đề tài, mã số, sinh viên, giảng viên..."
           />
           <Button icon={<DownloadOutlined />} className="ml-auto">Xuất Excel</Button>
         </div>
@@ -629,9 +696,36 @@ const Evaluation = () => {
             tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
             items={[
               ...(user?.role === 'HEAD' ? [{ key: 'department', label: 'Quản lý Bộ môn', children: <div className="p-6">{renderDepartmentTab()}</div> }] : []),
-              { key: 'advisor', label: 'Hướng dẫn', children: <Table dataSource={advisorTopics?.topics || []} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
-              { key: 'reviewer', label: 'Phản biện', children: <Table dataSource={reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
-              { key: 'council', label: 'Hội đồng', children: <Table dataSource={councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || []} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} /> },
+              { 
+                key: 'advisor', 
+                label: 'Hướng dẫn', 
+                children: (
+                  <div className="p-6 space-y-4">
+                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                    <Table dataSource={filterLecturerData(advisorTopics?.topics || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                  </div>
+                ) 
+              },
+              { 
+                key: 'reviewer', 
+                label: 'Phản biện', 
+                children: (
+                  <div className="p-6 space-y-4">
+                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                    <Table dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                  </div>
+                )
+              },
+              { 
+                key: 'council', 
+                label: 'Hội đồng', 
+                children: (
+                  <div className="p-6 space-y-4">
+                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                    <Table dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10, className: 'px-6 py-4' }} />
+                  </div>
+                )
+              },
             ]}
           />
         </Card>

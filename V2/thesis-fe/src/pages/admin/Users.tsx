@@ -6,6 +6,11 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { User } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { UsersApi } from '@/api/users';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useMemo } from 'react';
 
 const Users = () => {
   const { t } = useTranslation();
@@ -22,6 +27,7 @@ const Users = () => {
     avatarUrl?: string;
     createdAt: string;
     className?: string;
+    userCode?: string;
   }
 
   const { data, isLoading } = useQuery({
@@ -37,9 +43,21 @@ const Users = () => {
         avatarUrl: u.avatar_url || u.avatarUrl || undefined,
         createdAt: u.created_at || new Date().toISOString(),
         className: u.class_name || u.className || '',
+        userCode: u.student_code || u.user_code || '',
       })) || [];
     },
   });
+
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+    if (!debouncedSearch) return data;
+    return data.filter((u: UserDisplay) =>
+      matchKeyword(debouncedSearch, u.fullName, u.email, u.userCode, u.className, u.departmentName)
+    );
+  }, [data, debouncedSearch]);
 
   const getRoleTag = (role: string) => {
     const roleConfig: Record<string, { color: string; text: string }> = {
@@ -59,14 +77,26 @@ const Users = () => {
   const columns = [
     {
       title: t('users.fullName'),
-      dataIndex: 'fullName',
       key: 'fullName',
       sorter: (a: UserDisplay, b: UserDisplay) => a.fullName.localeCompare(b.fullName),
+      render: (_: any, r: UserDisplay) => (
+        <div className="flex flex-col">
+          <span className="font-medium">
+            <HighlightText text={r.fullName} keyword={debouncedSearch} />
+          </span>
+          {r.userCode && (
+            <span className="text-[10px] text-gray-400 font-mono">
+              ID: <HighlightText text={r.userCode} keyword={debouncedSearch} />
+            </span>
+          )}
+        </div>
+      )
     },
     {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      render: (email: string) => <HighlightText text={email} keyword={debouncedSearch} />,
     },
     {
       title: t('common.role'),
@@ -163,7 +193,7 @@ const Users = () => {
       <div className="page-inner">
         {/* Header */}
         <Card className="page-header-card">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="page-header-icon"><PlusOutlined className="text-base" /></div>
               <div>
@@ -171,20 +201,30 @@ const Users = () => {
                 <div className="page-header-subtitle">{t('users.subtitle')}</div>
               </div>
             </div>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleCreate}
-            >
-              {t('users.addUser')}
-            </Button>
+            
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <GlobalSearch 
+                value={search} 
+                onChange={setSearch} 
+                className="w-full md:w-64" 
+                placeholder="Tìm tên, email, MSSV..."
+              />
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleCreate}
+                className="flex-shrink-0"
+              >
+                {t('users.addUser')}
+              </Button>
+            </div>
           </div>
         </Card>
 
         <Card className="page-card-flush">
           <Table
             columns={columns}
-            dataSource={data}
+            dataSource={filteredData}
             rowKey="id"
             loading={isLoading}
             className="sys-table"

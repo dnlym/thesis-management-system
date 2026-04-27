@@ -4,6 +4,10 @@ import { Table, Card, Tag, Input, Typography, Button, Radio, Avatar, Dropdown } 
 import { SearchOutlined, UserOutlined, FileTextOutlined, DownOutlined, FileExcelOutlined, FileOutlined } from '@ant-design/icons';
 import { TopicsApi } from '@/api/topics';
 import { Topic } from '@/types';
+import GlobalSearch from '@/components/GlobalSearch';
+import HighlightText from '@/components/HighlightText';
+import { matchKeyword } from '@/utils/search';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { Title, Text } = Typography;
 
@@ -55,6 +59,7 @@ const exportExcel = async (data: Topic[]) => {
 
 const FinalResults = () => {
     const [searchText, setSearchText] = useState('');
+    const debouncedSearch = useDebounce(searchText, 300);
     const [councilFilter, setCouncilFilter] = useState<'ALL' | 'ORAL' | 'POSTER'>('ALL');
 
     const { data: results, isLoading } = useQuery({
@@ -68,19 +73,19 @@ const FinalResults = () => {
         if (councilFilter !== 'ALL') {
             filtered = filtered.filter(item => item.defense_type === councilFilter);
         }
-        if (searchText) {
-            const q = searchText.toLowerCase();
+        if (debouncedSearch) {
             filtered = filtered.filter(item =>
-                item.title?.toLowerCase().includes(q) ||
-                item.code?.toLowerCase().includes(q) ||
-                item.students?.some((s: any) =>
-                    s.full_name?.toLowerCase().includes(q) ||
-                    s.student_code?.toLowerCase().includes(q)
+                matchKeyword(
+                    debouncedSearch,
+                    item.title,
+                    item.code,
+                    ...item.students?.map((s: any) => s.full_name),
+                    ...item.students?.map((s: any) => s.student_code)
                 )
             );
         }
         return filtered;
-    }, [results, councilFilter, searchText]);
+    }, [results, councilFilter, debouncedSearch]);
 
     const exportMenuItems = [
         {
@@ -113,7 +118,9 @@ const FinalResults = () => {
             key: 'code',
             width: 75,
             render: (code: string) => (
-                <Tag color="blue" className="font-mono text-xs">{code}</Tag>
+                <Tag color="blue" className="font-mono text-xs">
+                    <HighlightText text={code} keyword={debouncedSearch} />
+                </Tag>
             ),
         },
         {
@@ -122,7 +129,9 @@ const FinalResults = () => {
             key: 'title',
             ellipsis: true,
             render: (title: string) => (
-                <span className="font-semibold text-slate-800">{title}</span>
+                <span className="font-semibold text-slate-800">
+                    <HighlightText text={title} keyword={debouncedSearch} />
+                </span>
             ),
         },
         {
@@ -140,7 +149,9 @@ const FinalResults = () => {
                                 icon={<UserOutlined />}
                                 className="bg-slate-200 flex-shrink-0"
                             />
-                            <Text className="text-[12px] text-slate-700 leading-tight">{s.full_name}</Text>
+                            <Text className="text-[12px] text-slate-700 leading-tight">
+                                <HighlightText text={s.full_name} keyword={debouncedSearch} />
+                            </Text>
                         </div>
                     ))}
                 </div>
@@ -263,13 +274,11 @@ const FinalResults = () => {
                             <Radio.Button value="POSTER">Poster</Radio.Button>
                         </Radio.Group>
 
-                        <Input
+                        <GlobalSearch
                             placeholder="Tìm theo mã, tên đề tài, sinh viên..."
-                            prefix={<SearchOutlined className="text-slate-400" />}
-                            className="rounded-lg h-9 border-slate-200 flex-1"
+                            className="flex-1"
                             value={searchText}
-                            onChange={e => setSearchText(e.target.value)}
-                            allowClear
+                            onChange={setSearchText}
                         />
                     </div>
                 </Card>
