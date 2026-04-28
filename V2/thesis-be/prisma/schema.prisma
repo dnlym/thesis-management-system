@@ -66,7 +66,7 @@ model User {
   email                   String                     @unique @db.VarChar(255)
   role                    UserRole
   active                  Boolean                    @default(true)
-  avatar_url              String?                    @db.VarChar(500)
+  avatar_url              String?                    @db.Text
   created_at              DateTime                   @default(now())
   departmentId            String                     @map("department_id")
   full_name               String                     @db.VarChar(255)

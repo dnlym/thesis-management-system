@@ -109,6 +109,59 @@ export class UserController {
             });
         }
     }
+
+    async uploadAvatar(req: AuthRequest, res: Response) {
+        try {
+            const id = req.params.id as string;
+
+            if (req.user?.id !== id && req.user?.role !== 'ADMIN') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Forbidden: You can only update your own avatar',
+                });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No file uploaded',
+                });
+            }
+
+            const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+            const avatarUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
+
+            // Delete old avatar if exists
+            const user = await userService.getUserById(id);
+            if (user?.avatar_url && user.avatar_url.includes('/uploads/avatars/')) {
+                const fs = require('fs');
+                const path = require('path');
+                try {
+                    const filename = user.avatar_url.split('/').pop();
+                    if (filename) {
+                        const oldPath = path.join(__dirname, '../../uploads/avatars', filename);
+                        if (fs.existsSync(oldPath)) {
+                            fs.unlinkSync(oldPath);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error deleting old avatar:', e);
+                }
+            }
+
+            const updatedUser = await userService.updateUser(id, { avatar_url: avatarUrl });
+
+            res.json({
+                success: true,
+                data: updatedUser,
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    }
 }
 
 export default new UserController();

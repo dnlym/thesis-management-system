@@ -88,17 +88,30 @@ export class UserService {
     }
 
     async updateUser(id: string, data: any) {
+        const updateData: any = {};
+        
+        if (data.fullName !== undefined) updateData.full_name = data.fullName;
+        if (data.full_name !== undefined) updateData.full_name = data.full_name;
+        
+        if (data.role !== undefined) updateData.role = data.role;
+        
+        if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
+        if (data.department_id !== undefined) updateData.departmentId = data.department_id;
+        
+        if (data.studentCode !== undefined) updateData.student_code = data.studentCode;
+        if (data.student_code !== undefined) updateData.student_code = data.student_code;
+        
+        if (data.className !== undefined) updateData.class_name = data.className;
+        if (data.class_name !== undefined) updateData.class_name = data.class_name;
+        
+        if (data.phone !== undefined) updateData.phone = data.phone;
+        if (data.active !== undefined) updateData.active = data.active;
+        if (data.email !== undefined) updateData.email = data.email;
+        if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
+
         const user = await prisma.user.update({
             where: { id },
-            data: {
-                full_name: data.fullName,
-                role: data.role,
-                departmentId: data.departmentId,
-                student_code: data.studentCode,
-                class_name: data.className || data.class_name,
-                phone: data.phone,
-                active: data.active,
-            },
+            data: updateData,
         });
 
         return user;

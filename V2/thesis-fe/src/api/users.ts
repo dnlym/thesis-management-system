@@ -34,4 +34,12 @@ export const UsersApi = {
     const res = await api.get<ApiResponse<Array<{ id: string; userCount: number }>>>('/users/roles/summary');
     return res.data.data;
   },
+
+  async uploadAvatar(id: string, formData: FormData) {
+    return (await api.post<ApiResponse<UserResponse>>(`/users/${id}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })).data;
+  },
 };

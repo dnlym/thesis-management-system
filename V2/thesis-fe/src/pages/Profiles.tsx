@@ -1,17 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Form, Input, Button, Avatar, Space } from 'antd';
 import { notify } from '@/utils/notification';
 import { useAuthStore } from '@/store/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UsersApi } from '@/api/users';
-import { UserOutlined } from '@ant-design/icons';
+import { UserOutlined, UploadOutlined, LoadingOutlined, CameraOutlined } from '@ant-design/icons';
+import { Upload, message } from 'antd';
+import type { UploadProps } from 'antd';
+import type { RcFile } from 'antd/es/upload/interface';
+import ImgCrop from 'antd-img-crop';
 
 const Profiles = () => {
   const { user, updateUser } = useAuthStore();
   const queryClient = useQueryClient();
 
   const [form] = Form.useForm<{ full_name: string; email: string; avatar_url?: string }>();
-
+  const [imageUrl, setImageUrl] = useState<string>();
+  const [uploading, setUploading] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ['profile', user?.id],
     enabled: !!user?.id,
@@ -28,8 +33,29 @@ const Profiles = () => {
         email: data.email,
         avatar_url: data.avatar_url || '',
       });
+      if (data.avatar_url) {
+        setImageUrl(data.avatar_url);
+      }
     }
   }, [data, form]);
+
+  const beforeUpload = (file: RcFile) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+    if (!isJpgOrPng) {
+      message.error('Chỉ hỗ trợ file JPG/PNG!');
+      return Upload.LIST_IGNORE;
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error('Kích thước ảnh phải nhỏ hơn 2MB!');
+      return Upload.LIST_IGNORE;
+    }
+    
+    // Khi dùng ImgCrop, file ở đây là file gốc, nhưng chúng ta return false 
+    // để ImgCrop xử lý, sau đó ImgCrop sẽ gọi lại onChange/customRequest với file đã crop.
+    return true; 
+  };
+
 
   const mutation = useMutation({
     mutationFn: async (values: { full_name: string; email: string; avatar_url?: string }) => {
@@ -52,7 +78,7 @@ const Profiles = () => {
   });
 
   const onFinish = (values: { full_name: string; email: string; avatar_url?: string }) => {
-    mutation.mutate(values);
+    mutation.mutate({ ...values, avatar_url: imageUrl || user?.avatar_url || '' });
   };
 
   return (
@@ -71,9 +97,64 @@ const Profiles = () => {
 
         <Card className="max-w-2xl mx-auto page-card-flush p-8" loading={isLoading}>
           <Space align="start" size={32} className="w-full">
-            <Avatar size={100} src={user?.avatar_url} icon={<UserOutlined />} className="shadow-soft" />
+            <div className="flex flex-col items-center gap-2">
+              <ImgCrop rotationSlider aspect={1} cropShape="round" quality={0.8}>
+                <Upload
+                  name="avatar"
+                  showUploadList={false}
+                  beforeUpload={beforeUpload}
+                  customRequest={async ({ file, onSuccess, onError }) => {
+                    try {
+                      setUploading(true);
+                      const formData = new FormData();
+                      formData.append('avatar', file as Blob);
+                      const res = await UsersApi.uploadAvatar(user!.id, formData);
+                      
+                      if (res.success && res.data && res.data.avatar_url) {
+                        const newUrl = res.data.avatar_url;
+                        setImageUrl(newUrl);
+                        form.setFieldsValue({ avatar_url: newUrl });
+                        // Update global state immediately
+                        updateUser({
+                            ...user,
+                            avatar_url: newUrl
+                        });
+                        message.success('Đổi ảnh đại diện thành công!');
+                        onSuccess?.(res);
+                      }
+                    } catch (err: any) {
+                        console.error(err);
+                        message.error('Lỗi khi tải ảnh: ' + (err.message || 'Server Error'));
+                        onError?.(err);
+                    } finally {
+                        setUploading(false);
+                    }
+                  }}
+                  className="cursor-pointer group block"
+                >
+                  <div className="relative inline-block rounded-full overflow-hidden shadow-soft transition-all ring-4 ring-white">
+                    <Avatar 
+                      size={120} 
+                      src={imageUrl ? `${imageUrl}?t=${Date.now()}` : (user?.avatar_url ? `${user.avatar_url}?t=${Date.now()}` : undefined)} 
+                      icon={<UserOutlined />} 
+                      className="transition-opacity group-hover:opacity-70"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploading ? <LoadingOutlined className="text-white text-2xl mb-1" /> : <CameraOutlined className="text-white text-2xl mb-1" />}
+                      <span className="text-white text-xs font-medium">Đổi ảnh</span>
+                    </div>
+                  </div>
+                </Upload>
+              </ImgCrop>
+            </div>
             <div className="flex-1">
+
               <Form form={form} layout="vertical" onFinish={onFinish}>
+                {/* Ẩn trường url, nhận dữ liệu ngầm từ Upload */}
+                <Form.Item name="avatar_url" hidden>
+                  <Input />
+                </Form.Item>
+
                 <Form.Item
                   label="Họ và tên"
                   name="full_name"
@@ -97,19 +178,16 @@ const Profiles = () => {
                   <Input placeholder="Nhập email" className="h-10" />
                 </Form.Item>
 
-                <Form.Item label="Ảnh đại diện (URL)" name="avatar_url">
-                  <Input placeholder="https://..." className="h-10" />
-                </Form.Item>
-
                 <Form.Item className="mb-0 mt-6">
                   <Button type="primary" htmlType="submit" loading={mutation.isPending} size="large" className="px-8">
-                    Cập nhật
+                    Lưu thay đổi
                   </Button>
                 </Form.Item>
               </Form>
             </div>
           </Space>
         </Card>
+
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import { FILE_UPLOAD } from '../constants';
 
 const storage = multer.memoryStorage();
@@ -54,3 +56,37 @@ export const uploadExtraPointEvidence = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
 });
+
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(__dirname, '../../uploads/avatars');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `avatar_${crypto.randomUUID()}${ext}`;
+    cb(null, filename);
+  },
+});
+
+const avatarFileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only images are allowed.'));
+  }
+};
+
+export const uploadAvatar = multer({
+  storage: avatarStorage,
+  fileFilter: avatarFileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB limit
+  },
+});
+
