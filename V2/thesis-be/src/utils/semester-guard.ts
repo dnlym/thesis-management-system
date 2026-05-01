@@ -1,6 +1,7 @@
 import dayjs from '../config/dayjs';
 import prisma from '../config/database';
 import { Semester, SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
+import { DeadlineResolver } from './deadline-resolver';
 
 // ─── Phase Order (for transition validation only) ────────────────────────────
 export const PHASES_ORDER: SemesterPhase[] = [
@@ -15,37 +16,27 @@ export const PHASES_ORDER: SemesterPhase[] = [
 // ─── Timeline Context Object ─────────────────────────────────────────────────
 export interface TimelineContext {
   phase: SemesterPhase | null;
+  isRegistrationActive: boolean;
   isMidtermActive: boolean;
-  midtermStart: Date | null;
-  midtermEnd: Date | null;
+  isDefenseActive: boolean;
+  effectiveRegistrationEnd: dayjs.Dayjs | null;
 }
 
 /**
- * SemesterGuard — Pure Context Provider
- * -----------------------------------------------
- * This class is responsible for:
- *   1. Resolving the current phase from real-time dates (calculateCurrentPhase)
- *   2. Providing the full timeline context (getTimelineContext)
- *   3. Validating phase transitions
+ * SemesterGuard — The Centralized Domain Gatekeeper.
+ * It determines the operational state (Phase) of the academic system.
  */
 export class SemesterGuard {
   /**
    * Calculate the effective phase of a semester based on real-time dates.
    * Locked to Asia/Ho_Chi_Minh timezone.
    */
-  static calculateCurrentPhase(semester: Semester): SemesterPhase | null {
-    // Priority 1: If Admin marked as COMPLETED -> Phase is definitively FINAL
-    if (semester.status === SemesterStatus.COMPLETED) {
-      return SemesterPhase.FINAL;
-    }
+  static calculateCurrentPhase(semester: any): SemesterPhase | null {
+    if (semester.status === SemesterStatus.COMPLETED) return SemesterPhase.FINAL;
+    if (semester.status !== SemesterStatus.ACTIVE) return null;
 
-    // Priority 2: If the semester is not ACTIVE, it doesn't have an operational phase
-    if (semester.status !== SemesterStatus.ACTIVE) {
-      return null;
-    }
-
-    // Priority 3: Timeline-driven phase calculation
     const now = dayjs();
+    const timeline = DeadlineResolver.getEffectiveTimeline(semester);
 
     // [1] PREVIEW: topic_viewing_start → topic_registration_start
     if (
@@ -56,19 +47,22 @@ export class SemesterGuard {
       return SemesterPhase.PREVIEW;
     }
 
-    // [2] REGISTRATION: topic_registration_start → topic_registration_end
+    // [2] REGISTRATION: topic_registration_start → Effective Registration End OR Override Active
+    const isOverrideActive = (semester as any).is_registration_override === true;
+    
     if (
       semester.topic_registration_start &&
       now.isSameOrAfter(dayjs(semester.topic_registration_start)) &&
-      now.isBefore(dayjs(semester.topic_registration_end))
+      (isOverrideActive || (timeline.registrationEnd && now.isBefore(timeline.registrationEnd)))
     ) {
       return SemesterPhase.REGISTRATION;
     }
 
-    // [3] WORK: topic_registration_end → proposal_deadline
+    // [3] WORK: Registration End → proposal_deadline
     if (
-      semester.topic_registration_end &&
-      now.isSameOrAfter(dayjs(semester.topic_registration_end)) &&
+      timeline.registrationEnd &&
+      now.isSameOrAfter(timeline.registrationEnd) &&
+      semester.proposal_deadline &&
       now.isBefore(dayjs(semester.proposal_deadline))
     ) {
       return SemesterPhase.WORK;
@@ -78,6 +72,7 @@ export class SemesterGuard {
     if (
       semester.proposal_deadline &&
       now.isSameOrAfter(dayjs(semester.proposal_deadline)) &&
+      semester.defense_start &&
       now.isBefore(dayjs(semester.defense_start))
     ) {
       return SemesterPhase.REVIEWING;
@@ -87,58 +82,61 @@ export class SemesterGuard {
     if (
       semester.defense_start &&
       now.isSameOrAfter(dayjs(semester.defense_start)) &&
+      semester.defense_end &&
       now.isBefore(dayjs(semester.defense_end))
     ) {
       return SemesterPhase.DEFENSE;
     }
 
-    // Final Fallback: If we passed defense_end, we stay in FINAL phase
     return SemesterPhase.FINAL;
   }
 
   /**
-   * Get the full timeline context for this semester at the current moment.
-   * This is the single object passed to PolicyEngine.
+   * Phase Lock Policy: Determines if a timeline shift is allowed.
    */
-  static getTimelineContext(semester: Semester): TimelineContext {
+  static canShiftTimeline(semester: any): { allowed: boolean; reason?: string } {
     const phase = this.calculateCurrentPhase(semester);
-    const now = new Date();
+    
+    // Critical Lock: Cannot shift if we are already in Defense or Final phase
+    if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
+      return { 
+        allowed: false, 
+        reason: 'Lộ trình đã bước vào giai đoạn Bảo vệ hoặc Tổng kết, không thể tịnh tiến thời gian.' 
+      };
+    }
 
-    const isMidtermActive =
-      !!semester.midterm_start &&
-      !!semester.midterm_end &&
-      now >= new Date(semester.midterm_start) &&
-      now <= new Date(semester.midterm_end);
+    return { allowed: true };
+  }
+
+  /**
+   * Get the full timeline context for this semester at the current moment.
+   */
+  static getTimelineContext(semester: any): TimelineContext {
+    const phase = this.calculateCurrentPhase(semester);
+    const timeline = DeadlineResolver.getEffectiveTimeline(semester);
+    const now = dayjs();
 
     return {
       phase,
-      isMidtermActive,
-      midtermStart: semester.midterm_start ? new Date(semester.midterm_start) : null,
-      midtermEnd: semester.midterm_end ? new Date(semester.midterm_end) : null,
+      isRegistrationActive: phase === SemesterPhase.REGISTRATION,
+      isMidtermActive: phase === SemesterPhase.WORK && 
+                       !!timeline.midtermStart && !!timeline.midtermEnd &&
+                       now.isSameOrAfter(timeline.midtermStart) && now.isBefore(timeline.midtermEnd),
+      isDefenseActive: phase === SemesterPhase.DEFENSE,
+      effectiveRegistrationEnd: timeline.registrationEnd
     };
   }
 
   /**
-   * Get the effective deadline for registration, considering extensions.
+   * Compatibility helper for older parts of the system.
    */
   static async getEffectiveDeadline(semesterId: string): Promise<Date> {
     const semester = await prisma.semester.findUnique({
-      where: { id: semesterId },
-      include: {
-        registration_extensions: {
-          orderBy: { created_at: 'desc' },
-          take: 1,
-        },
-      },
+      where: { id: semesterId }
     });
-
     if (!semester) throw new Error('Semester not found');
-
-    const originalDeadline = semester.topic_registration_end || semester.proposal_deadline;
-    const latestExtension = semester.registration_extensions[0]?.extended_until;
-
-    if (!latestExtension) return originalDeadline as Date;
-    return latestExtension > (originalDeadline as Date) ? latestExtension : (originalDeadline as Date);
+    const deadline = DeadlineResolver.resolveRegistrationDeadline(semester);
+    return deadline ? deadline.toDate() : new Date();
   }
 
   /**

@@ -50,6 +50,7 @@ const Evaluation = () => {
 
   const [lecturerSearch, setLecturerSearch] = useState('');
   const debouncedLecturerSearch = useDebounce(lecturerSearch, 300);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -580,7 +581,13 @@ const Evaluation = () => {
           dataSource={currentData}
           rowKey="id"
           columns={columns}
-          pagination={{ pageSize: 10, showTotal: (total) => `Hiển thị 1 - ${Math.min(10, total)} của ${total} đề tài`, showSizeChanger: false }}
+          pagination={{ 
+            pageSize: pageSize, 
+            showSizeChanger: true, 
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onShowSizeChange: (_, size) => setPageSize(size),
+            showTotal: (total) => `Hiển thị các đề tài của bộ môn (${total} đề tài)` 
+          }}
           className="rounded-lg overflow-hidden border border-gray-100 shadow-sm"
           rowClassName="hover:bg-blue-50 transition-colors"
           locale={{ emptyText: <div className="py-10 text-gray-400 text-center">Không có đề tài nào trong mục này</div> }}
@@ -626,7 +633,19 @@ const Evaluation = () => {
                 children: (
                   <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(advisorTopics?.topics || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingAdvisor} className="sys-table" pagination={{ pageSize: 10 }} />
+                    <Table 
+                      dataSource={filterLecturerData(advisorTopics?.topics || [])} 
+                      columns={dashboardColumns} 
+                      rowKey="id" 
+                      loading={isLoadingAdvisor} 
+                      className="sys-table" 
+                      pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                      }} 
+                    />
                   </div>
                 ) 
               },
@@ -636,7 +655,19 @@ const Evaluation = () => {
                 children: (
                   <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingReviewer} className="sys-table" pagination={{ pageSize: 10 }} />
+                    <Table 
+                      dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} 
+                      columns={dashboardColumns} 
+                      rowKey="id" 
+                      loading={isLoadingReviewer} 
+                      className="sys-table" 
+                      pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                      }} 
+                    />
                   </div>
                 )
               },
@@ -646,7 +677,19 @@ const Evaluation = () => {
                 children: (
                   <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} columns={dashboardColumns} rowKey="id" loading={isLoadingCouncil} className="sys-table" pagination={{ pageSize: 10 }} />
+                    <Table 
+                      dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} 
+                      columns={dashboardColumns} 
+                      rowKey="id" 
+                      loading={isLoadingCouncil} 
+                      className="sys-table" 
+                      pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                      }} 
+                    />
                   </div>
                 )
               },

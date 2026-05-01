@@ -111,14 +111,14 @@ const getMenuSections = (role: string): MenuSection[] => {
           { key: '/reviewer-assignment', label: 'Phân công phản biện', icon: <SafetyCertificateOutlined /> },
           { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
-          { key: '/head/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+          { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
           { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
         ]
       },
       {
         title: 'BÁO CÁO - THỐNG KÊ',
         items: [
-          { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
+          { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
           { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
@@ -148,14 +148,14 @@ const getMenuSections = (role: string): MenuSection[] => {
         { key: '/reviewer-assignment', label: 'Phân công phản biện', icon: <SafetyCertificateOutlined /> },
         { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
         { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
-        { key: '/head/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+        { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
         { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
       ]
     },
     {
       title: 'BÁO CÁO - THỐNG KÊ',
       items: [
-        { key: '/head/grade-summary', label: 'Tổng kết & Xác nhận', icon: <BarChartOutlined /> },
+        { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
         { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
       ]
     },
@@ -170,6 +170,7 @@ const getMenuSections = (role: string): MenuSection[] => {
     {
       title: 'HỆ THỐNG',
       items: [
+        { key: '/head/semester-settings', label: 'Vận hành học kỳ', icon: <SettingOutlined /> },
         { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
         { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
       ]
@@ -245,7 +246,7 @@ const AppLayout = () => {
   const { user, logout } = useAuthStore();
   const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(false);
-  const [siderWidth, setSiderWidth] = useState(220);
+  const [siderWidth, setSiderWidth] = useState(240);
   const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {

@@ -209,7 +209,7 @@ export const routes: RouteConfig[] = [
     path: '/head/extra-points',
     element: ExtraPointRequests,
     meta: {
-      title: 'navigation.extraPoints',
+      title: 'Duyệt điểm cộng',
       icon: SafetyCertificateOutlined,
       roles: ['HEAD', 'ADMIN'],
     },

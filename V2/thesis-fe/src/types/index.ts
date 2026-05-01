@@ -109,6 +109,7 @@ export interface Semester {
   defense_start: string;
   defense_end: string;
   status: SemesterStatus;
+  is_registration_override?: boolean;
   calculated_phase?: SemesterPhase | null;
   allowedActions?: Record<string, ActionPermission>;
   created_at: string;

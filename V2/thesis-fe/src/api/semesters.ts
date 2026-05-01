@@ -81,21 +81,16 @@ export const SemestersApi = {
     },
 
 
-    /**
-     * Create a registration extension
-     * POST /registration-extensions
-     */
-    async createRegistrationExtension(data: { semesterId: string; extendedUntil: string; reason: string }) {
-        const res = await api.post<ApiResponse<any>>('/registration-extensions', data);
+    async toggleRegistrationOverride(semesterId: string, override: boolean, reason: string) {
+        const res = await api.post<ApiResponse<any>>(`/semesters/${semesterId}/toggle-registration-override`, {
+            override,
+            reason
+        });
         return res.data.data;
     },
 
-    /**
-     * Get registration extension history for a semester
-     * GET /registration-extensions/semester/:semesterId
-     */
-    async getRegistrationExtensions(semesterId: string) {
-        const res = await api.get<ApiResponse<any[]>>(`/registration-extensions/semester/${semesterId}`);
+    async getOverrideLogs(semesterId: string) {
+        const res = await api.get<ApiResponse<any[]>>(`/semesters/${semesterId}/override-logs`);
         return res.data.data;
     },
 };

@@ -325,6 +325,62 @@ export class SemesterController {
       });
     }
   }
+
+  async toggleRegistrationOverride(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const semesterId = req.params.semesterId as string;
+      const { override, reason } = req.body;
+
+      const semester = await semesterService.toggleRegistrationOverride(userId, semesterId, override, reason);
+
+      res.json({
+        success: true,
+        data: semester,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  async getOverrideLogs(req: AuthRequest, res: Response) {
+    try {
+      const semesterId = req.params.semesterId as string;
+      const logs = await prisma.auditLog.findMany({
+        where: {
+          entity_type: 'Semester',
+          entity_id: semesterId,
+          action: {
+            in: ['REGISTRATION_OVERRIDE_ENABLED', 'REGISTRATION_OVERRIDE_DISABLED']
+          }
+        },
+        include: {
+          user: {
+            select: {
+              full_name: true,
+              role: true
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      });
+
+      res.json({
+        success: true,
+        data: logs,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default new SemesterController();

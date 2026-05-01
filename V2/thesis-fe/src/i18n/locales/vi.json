@@ -10,6 +10,7 @@
     "search": "Tìm kiếm",
     "filter": "Lọc",
     "status": "Trạng thái",
+    "all": "Tất cả",
     "actions": "Thao tác",
     "duration": "Thời gian",
     "loading": "Đang tải...",
@@ -513,6 +514,7 @@
   },
   "reviewerAssignment": {
     "title": "Phân công phản biện",
+    "subtitle": "Phân công Giảng viên phản biện cho các đề tài đã hoàn thành",
     "assignBoth": "Phân công cả 2",
     "noReviewersSelected": "Vui lòng chọn ít nhất 1 giảng viên phản biện!",
     "assignSuccess": "Phân công thành công!",
@@ -673,6 +675,24 @@
     "semesterNameRequired": "Vui lòng nhập tên học kỳ",
     "semesterCodeRequired": "Vui lòng nhập mã",
     "deptNameRequired": "Vui lòng nhập tên bộ môn"
+  },
+  "extraPointManagement": {
+    "title": "Duyệt điểm cộng",
+    "subtitle": "Xem xét và phê duyệt yêu cầu điểm cộng của sinh viên",
+    "pendingTab": "Chờ duyệt",
+    "processedTab": "Kết quả duyệt"
+  },
+  "gradeSummary": {
+    "title": "Tổng kết điểm",
+    "subtitle": "Xem và quản lý điểm số của tất cả các đề tài",
+    "tabs": {
+      "all": "Tất cả",
+      "ready": "Sẵn sàng",
+      "missingSupervisor": "Thiếu GVHD",
+      "missingReviewer": "Thiếu PB",
+      "missingCommittee": "Thiếu HĐ",
+      "finalized": "Đã chốt"
+    }
   },
   "defenseSchedule": {
     "room": "Phòng",

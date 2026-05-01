@@ -129,8 +129,8 @@ const Roles: React.FC = () => {
             <Lock className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Quản lý Vai trò & Phân quyền</h1>
-            <p className="text-muted-foreground flex items-center gap-1.5 mt-0.5">
+            <h1 className="text-[17px] font-bold tracking-tight">Quản lý Vai trò & Phân quyền</h1>
+            <p className="text-[12px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
               Thiết lập và kiểm soát quyền truy cập cho từng nhóm người dùng
             </p>
           </div>
@@ -182,9 +182,9 @@ const Roles: React.FC = () => {
                       selectedRoleId === role.id ? "bg-white animate-pulse" : "bg-muted-foreground/30"
                     )} />
                     <div>
-                      <div className="font-semibold">{role.name}</div>
+                      <div className="text-[14px] font-bold">{role.name}</div>
                       <div className={cn(
-                        "text-xs mt-0.5",
+                        "text-[11px] mt-0.5",
                         selectedRoleId === role.id ? "text-primary-foreground/70" : "text-muted-foreground"
                       )}>
                         {getUserCount(role.id)} người dùng
@@ -223,13 +223,13 @@ const Roles: React.FC = () => {
                   <Shield className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-[15px] font-bold uppercase tracking-tight">
                     PHÂN QUYỀN: <span className="text-primary">{selectedRole?.name}</span>
                   </h2>
-                  <p className="text-sm text-muted-foreground">{selectedRole?.description}</p>
+                  <p className="text-[12px] text-muted-foreground">{selectedRole?.description}</p>
                 </div>
               </div>
-              <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20 text-sm font-medium">
+              <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20 text-[11px] font-bold uppercase">
                 {currentPermissions.length} quyền đã chọn
               </Badge>
             </div>

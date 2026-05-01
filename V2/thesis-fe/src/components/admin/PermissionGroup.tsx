@@ -39,7 +39,7 @@ const PermissionGroup: React.FC<PermissionGroupProps> = ({
       <div className="flex items-center justify-between bg-muted/30 px-6 py-3 border-b border-border/50">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             {title}
           </h3>
         </div>
@@ -52,7 +52,7 @@ const PermissionGroup: React.FC<PermissionGroupProps> = ({
           />
           <Label
             htmlFor={`toggle-all-${title}`}
-            className="text-xs font-medium cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+            className="text-[11px] font-bold uppercase cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
           >
             Chọn tất cả
           </Label>
@@ -74,12 +74,12 @@ const PermissionGroup: React.FC<PermissionGroupProps> = ({
             <div className="grid gap-1.5 leading-none">
               <Label
                 htmlFor={permission.code}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer group-hover:text-primary transition-colors"
+                className="text-[13px] font-bold leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer group-hover:text-primary transition-colors"
               >
                 {permission.name}
               </Label>
               {permission.description && (
-                <p className="text-xs text-muted-foreground line-clamp-1">
+                <p className="text-[11px] text-muted-foreground line-clamp-1 italic">
                   {permission.description}
                 </p>
               )}

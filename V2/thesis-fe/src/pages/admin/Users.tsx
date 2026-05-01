@@ -17,6 +17,7 @@ const Users = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
+  const [pageSize, setPageSize] = useState(10);
 
   interface UserDisplay {
     id: string;
@@ -93,7 +94,7 @@ const Users = () => {
           </span>
           {r.userCode && (
             <span className="text-[10px] text-gray-400 font-mono">
-              ID: <HighlightText text={r.userCode} keyword={debouncedSearch} />
+              <HighlightText text={r.userCode} keyword={debouncedSearch} />
             </span>
           )}
         </div>
@@ -236,8 +237,11 @@ const Users = () => {
             loading={isLoading}
             className="sys-table"
             pagination={{
-              pageSize: 10,
+              current: undefined, // Let Antd handle current page internally or add state if needed
+              pageSize: pageSize,
               showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              onShowSizeChange: (_, size) => setPageSize(size),
               className: 'px-6 py-4'
             }}
           />

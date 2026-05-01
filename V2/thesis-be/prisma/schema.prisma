@@ -49,10 +49,10 @@ model Semester {
   topic_viewing_end        DateTime?
   midterm_start            DateTime?
   midterm_end              DateTime?
+  is_registration_override Boolean                 @default(false)
   committees               Committee[]
   defense_schedules        DefenseSchedule[]
   groups                   Group[]
-  registration_extensions  RegistrationExtension[]
   topic_registrations      TopicRegistration[]
   topics                   Topic[]
   workload_limits          UserWorkloadLimit[]
@@ -66,7 +66,7 @@ model User {
   email                   String                     @unique @db.VarChar(255)
   role                    UserRole
   active                  Boolean                    @default(true)
-  avatar_url              String?                    @db.Text
+  avatar_url              String?
   created_at              DateTime                   @default(now())
   departmentId            String                     @map("department_id")
   full_name               String                     @db.VarChar(255)
@@ -75,8 +75,8 @@ model User {
   password_hash           String                     @db.VarChar(255)
   phone                   String?                    @db.VarChar(20)
   student_code            String?                    @unique @db.VarChar(50)
-  class_name              String?                    @db.VarChar(50)
   updated_at              DateTime                   @updatedAt
+  class_name              String?                    @db.VarChar(50)
   assigner_assignments    Assignment[]               @relation("AssignerAssignments")
   reviewer_assignments    Assignment[]               @relation("ReviewerAssignments")
   audit_logs              AuditLog[]                 @relation("UserAuditLogs")
@@ -95,7 +95,6 @@ model User {
   owned_groups            Group[]                    @relation("GroupLeader")
   notifications           Notification[]             @relation("UserNotifications")
   refresh_tokens          RefreshToken[]
-  created_extensions      RegistrationExtension[]    @relation("ExtensionCreator")
   updated_configs         SystemConfig[]             @relation("ConfigUpdater")
   topic_registrations     TopicRegistration[]        @relation("StudentRegistrations")
   co_supervised_topics    Topic[]                    @relation("CoSupervisorTopics")
@@ -347,20 +346,20 @@ model Assignment {
 }
 
 model GradingCriterion {
-  id           String      @id @default(uuid())
-  name         String      @db.VarChar(255)
-  description  String
-  weight       Float
-  max_score    Float
-  min_score    Float       @default(0)
-  order_index  Int         @default(0)
-  active       Boolean     @default(true)
-  created_at   DateTime    @default(now())
+  id            String      @id @default(uuid())
+  name          String      @db.VarChar(255)
+  description   String
+  weight        Float
+  max_score     Float
+  min_score     Float       @default(0)
+  order_index   Int         @default(0)
+  active        Boolean     @default(true)
+  created_at    DateTime    @default(now())
   departmentId  String?     @map("department_id")
   role          RaterRole   @default(SUPERVISOR)
   criteria_type String?     @db.VarChar(50)
-  grades       Grade[]     @relation("CriterionGrades")
-  department   Department? @relation(fields: [departmentId], references: [id])
+  grades        Grade[]     @relation("CriterionGrades")
+  department    Department? @relation(fields: [departmentId], references: [id])
 
   @@index([active])
   @@index([role])
@@ -598,22 +597,6 @@ model RolePermission {
   @@id([role, permissionId], name: "role_permissionId")
   @@map("role_permissions")
 }
-
-model RegistrationExtension {
-  id             String   @id @default(uuid())
-  semester_id    String
-  extended_until DateTime
-  reason         String
-  created_by     String
-  created_at     DateTime @default(now())
-  creator        User     @relation("ExtensionCreator", fields: [created_by], references: [id], onDelete: Cascade)
-  semester       Semester @relation(fields: [semester_id], references: [id], onDelete: Cascade)
-
-  @@index([semester_id])
-  @@index([created_by])
-  @@map("registration_extensions")
-}
-
 enum UserRole {
   STUDENT
   LECTURER

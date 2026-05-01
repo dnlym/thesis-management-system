@@ -13,7 +13,7 @@ import semesterRoutes from './semester.routes';
 import dashboardRoutes from './dashboard.routes';
 import defenseRoutes from './defense.routes';
 import committeeRoutes from './committee.routes';
-import registrationExtensionRoutes from './registration-extension.routes';
+
 import permissionRoutes from './permission.routes';
 
 
@@ -33,7 +33,7 @@ router.use('/departments', departmentRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/defenses', defenseRoutes);
 router.use('/committees', committeeRoutes);
-router.use('/registration-extensions', registrationExtensionRoutes);
+
 router.use('/permissions', permissionRoutes);
 
 export default router;

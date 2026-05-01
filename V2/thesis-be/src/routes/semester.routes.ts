@@ -88,5 +88,23 @@ router.patch(
   semesterController.updateDefenseDate.bind(semesterController)
 );
 
+router.post(
+  '/:semesterId/toggle-registration-override',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  validate([
+    param('semesterId').isUUID().withMessage('Invalid semester ID'),
+    body('override').isBoolean().withMessage('Override must be a boolean'),
+    body('reason').notEmpty().withMessage('Reason is required'),
+  ]),
+  semesterController.toggleRegistrationOverride.bind(semesterController)
+);
+
+router.get(
+  '/:semesterId/override-logs',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
+  semesterController.getOverrideLogs.bind(semesterController)
+);
+
 
 export default router;

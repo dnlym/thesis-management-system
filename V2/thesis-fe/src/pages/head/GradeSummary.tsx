@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card, Tag, Button, Typography, Space, Progress,
   Row, Col, Input, Drawer,
-  Empty, Spin, Avatar, Tabs, Popconfirm, Divider
+  Empty, Spin, Avatar, Tabs, Popconfirm, Divider, Flex
 } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircleOutlined, ClockCircleOutlined,
   LockOutlined, SearchOutlined, TrophyOutlined,
@@ -22,6 +23,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 const { Title, Text } = Typography;
 
 const GradeSummary = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -94,10 +96,10 @@ const GradeSummary = () => {
         <Card className="page-header-card">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="page-header-icon w-11 h-11"><TrophyOutlined className="text-xl" /></div>
+              <div className="page-header-icon"><TrophyOutlined className="text-base" /></div>
               <div>
-                <div className="page-header-title text-lg font-black">Tổng kết &amp; Xác nhận điểm</div>
-                <div className="page-header-subtitle text-sm">Học kỳ 2 (2025-2026) • Cập nhật: {new Date().toLocaleDateString('vi-VN')}</div>
+                <div className="page-header-title">{t('gradeSummary.title')}</div>
+                <div className="page-header-subtitle">{t('gradeSummary.subtitle')}</div>
               </div>
             </div>
           </div>
@@ -112,13 +114,30 @@ const GradeSummary = () => {
                 onChange={setFilter}
                 className="border-none grade-tabs !mb-0"
                 size="small"
+                tabBarGutter={4}
                 items={[
-                  { key: 'all', label: `Tất cả (${stats.total})` },
-                  { key: 'ready', label: `Sẵn sàng (${stats.ready})` },
-                  { key: 'missing_supervisor', label: `Thiếu GVHD` },
-                  { key: 'missing_reviewer', label: `Thiếu PB` },
-                  { key: 'missing_committee', label: `Thiếu HĐ` },
-                  { key: 'more', label: `...` },
+                  { 
+                    key: 'all', 
+                    label: (
+                      <Flex gap="small" align="center">
+                        <span className="whitespace-nowrap">{t('gradeSummary.tabs.all')}</span>
+                        <Tag className="m-0 rounded-full bg-slate-50 text-slate-500 border-none font-bold px-2">{stats.total}</Tag>
+                      </Flex>
+                    ) 
+                  },
+                  { 
+                    key: 'ready', 
+                    label: (
+                      <Flex gap="small" align="center">
+                        <span className="whitespace-nowrap">{t('gradeSummary.tabs.ready')}</span>
+                        <Tag className="m-0 rounded-full bg-green-50 text-green-600 border-none font-bold px-2">{stats.ready}</Tag>
+                      </Flex>
+                    ) 
+                  },
+                  { key: 'missing_supervisor', label: <span className="whitespace-nowrap">{t('gradeSummary.tabs.missingSupervisor')}</span> },
+                  { key: 'missing_reviewer', label: <span className="whitespace-nowrap">{t('gradeSummary.tabs.missingReviewer')}</span> },
+                  { key: 'missing_committee', label: <span className="whitespace-nowrap">{t('gradeSummary.tabs.missingCommittee')}</span> },
+                  { key: 'finalized', label: <span className="whitespace-nowrap">{t('gradeSummary.tabs.finalized')}</span> },
                 ]}
               />
             </div>
@@ -178,12 +197,15 @@ const GradeSummary = () => {
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .grade-tabs .ant-tabs-nav { margin-bottom: 0 !important; }
         .grade-tabs .ant-tabs-nav::before { border-bottom: none !important; }
-        .grade-tabs .ant-tabs-tab { border-radius: 8px !important; margin-right: 16px !important; transition: all 0.2s; padding: 8px 14px !important; border: 1px solid transparent !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-        .grade-tabs .ant-tabs-tab-btn { font-size: 14px !important; font-weight: 500; line-height: 1 !important; }
+        .grade-tabs .ant-tabs-tab { border-radius: 8px !important; margin-right: 0 !important; transition: all 0.2s; padding: 4px 10px !important; border: 1px solid transparent !important; margin-top: 0 !important; margin-bottom: 0 !important; }
+        .grade-tabs .ant-tabs-tab-btn { font-size: 12px !important; font-weight: 600; color: #64748b !important; }
         .grade-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn { color: #0284c7 !important; }
         .grade-tabs .ant-tabs-tab-active { background: #f0f9ff !important; border: 1px solid #e0f2fe !important; }
         .grade-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #0284c7 !important; font-weight: 700 !important; }
         .grade-tabs .ant-tabs-ink-bar { display: none !important; }
+        .grade-tabs .ant-tabs-nav-operations { display: none !important; } /* Hide the '...' menu */
+        .grade-tabs .ant-tabs-nav-wrap { overflow: auto !important; } /* Allow horizontal scroll if needed */
+        .grade-tabs .ant-tabs-nav-wrap::-webkit-scrollbar { display: none; }
         .grade-tabs .ant-tabs-nav-list { display: flex; align-items: center; }
         
         .topic-summary-card { transition: all 0.25s ease; position: relative; }
@@ -235,7 +257,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
             </Text>
             {getStatusBadge()}
           </div>
-          <Title level={5} className="!mb-1.5 line-clamp-1 !text-[16px] font-black text-slate-800 tracking-tight">
+          <Title level={5} className="!mb-1.5 line-clamp-1 !text-[15px] font-bold text-slate-800 tracking-tight">
             <HighlightText text={topic.title} keyword={keyword} />
           </Title>
           <div className="flex items-center gap-2">
@@ -254,7 +276,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
           <div className="space-y-2">
             {topic.students?.map((s: any) => (
               <div key={s.id} className="flex items-center gap-3 group">
-                <Avatar size={24} className="bg-blue-50 text-blue-600 font-black text-[10px] border border-blue-100">
+                <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100">
                    {s.full_name?.charAt(0)}
                 </Avatar>
                 <div className="flex flex-col overflow-hidden">
@@ -352,7 +374,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
                   <Button 
                     type="primary" 
                     size="middle"
-                    className="bg-blue-600 rounded-lg h-9 shadow-lg shadow-blue-100 font-black text-[12px] uppercase tracking-wide" 
+                    className="bg-blue-600 rounded-lg h-9 shadow-lg shadow-blue-100 font-bold text-[12px] uppercase tracking-wide" 
                     loading={isFinalizing}
                   >
                     Chốt điểm

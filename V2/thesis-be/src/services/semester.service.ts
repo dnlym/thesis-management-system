@@ -532,6 +532,31 @@ export class SemesterService {
       }
     }
   }
+
+  async toggleRegistrationOverride(userId: string, semesterId: string, override: boolean, reason: string) {
+    const semester = await prisma.semester.findUnique({
+      where: { id: semesterId }
+    });
+
+    if (!semester) throw new Error('Semester not found');
+
+    const updatedSemester = await prisma.semester.update({
+      where: { id: semesterId },
+      data: { is_registration_override: override } as any
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        user_id: userId,
+        action: override ? 'REGISTRATION_OVERRIDE_ENABLED' : 'REGISTRATION_OVERRIDE_DISABLED',
+        entity_type: 'Semester',
+        entity_id: semesterId,
+        new_value: { override, reason }
+      }
+    });
+
+    return updatedSemester;
+  }
 }
 
 

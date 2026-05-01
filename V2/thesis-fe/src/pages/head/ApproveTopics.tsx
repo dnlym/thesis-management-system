@@ -19,6 +19,7 @@ const HeadApproveTopics = () => {
     const [rejectionReason, setRejectionReason] = useState('');
     const [editNotes, setEditNotes] = useState('');
     const [activeTab, setActiveTab] = useState('PENDING_APPROVAL');
+    const [pageSize, setPageSize] = useState(10);
 
     const { data: topicsData, isLoading } = useTopics({ status: activeTab as any });
     const { data: stats } = useTopicStats();
@@ -216,11 +217,12 @@ const HeadApproveTopics = () => {
                                 size="middle"
                                 className="sys-table"
                                 pagination={{
-                                    pageSize: 10,
-                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+                                    pageSize: pageSize,
                                     showSizeChanger: true,
+                                    pageSizeOptions: ['10', '20', '50', '100'],
+                                    onShowSizeChange: (_, size) => setPageSize(size),
+                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
                                     showQuickJumper: true,
-                                    pageSizeOptions: ['10', '20', '50'],
                                 }}
                                 locale={{ emptyText: t('approveTopics.emptyPending') }}
                             />
@@ -244,11 +246,12 @@ const HeadApproveTopics = () => {
                                 dataSource={topics}
                                 rowKey="id"
                                 pagination={{
-                                    pageSize: 10,
-                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+                                    pageSize: pageSize,
                                     showSizeChanger: true,
+                                    pageSizeOptions: ['10', '20', '50', '100'],
+                                    onShowSizeChange: (_, size) => setPageSize(size),
+                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
                                     showQuickJumper: true,
-                                    pageSizeOptions: ['10', '20', '50'],
                                 }}
                                 locale={{ emptyText: t('approveTopics.emptyRequireEdit') }}
                             />
@@ -272,11 +275,12 @@ const HeadApproveTopics = () => {
                                 dataSource={topics}
                                 rowKey="id"
                                 pagination={{
-                                    pageSize: 10,
-                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+                                    pageSize: pageSize,
                                     showSizeChanger: true,
+                                    pageSizeOptions: ['10', '20', '50', '100'],
+                                    onShowSizeChange: (_, size) => setPageSize(size),
+                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
                                     showQuickJumper: true,
-                                    pageSizeOptions: ['10', '20', '50'],
                                 }}
                                 locale={{ emptyText: t('approveTopics.emptyApproved') }}
                             />
@@ -300,11 +304,12 @@ const HeadApproveTopics = () => {
                                 dataSource={topics}
                                 rowKey="id"
                                 pagination={{
-                                    pageSize: 10,
-                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+                                    pageSize: pageSize,
                                     showSizeChanger: true,
+                                    pageSizeOptions: ['10', '20', '50', '100'],
+                                    onShowSizeChange: (_, size) => setPageSize(size),
+                                    showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
                                     showQuickJumper: true,
-                                    pageSizeOptions: ['10', '20', '50'],
                                 }}
                                 locale={{ emptyText: t('approveTopics.emptyRejected') }}
                             />

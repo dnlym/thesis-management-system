@@ -1,9 +1,11 @@
-import { Card, Table, Tag, Button, Modal, Space, Input, Tooltip, InputNumber, Tabs, Select, Empty, Row, Col } from 'antd';
+import { Card, Table, Tag, Button, Modal, Space, Input, Tooltip, InputNumber, Tabs, Select, Empty, Row, Col, Flex } from 'antd';
 import { notify } from '@/utils/notification';
-import { CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, SearchOutlined, InfoCircleOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ExtraPointsApi } from '@/api/extraPoints';
+import { SemestersApi } from '@/api/semesters';
 import { ExtraPoints } from '@/types';
 import dayjs from 'dayjs';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -14,6 +16,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 const { Option } = Select;
 
 export default function ExtraPointRequests() {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [approveModalVisible, setApproveModalVisible] = useState(false);
@@ -21,12 +24,12 @@ export default function ExtraPointRequests() {
     const [selectedRequest, setSelectedRequest] = useState<ExtraPoints | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [approvedPoints, setApprovedPoints] = useState<number>(0);
+    const [pageSize, setPageSize] = useState(10);
 
     // Filter states
     const [searchText, setSearchText] = useState('');
     const debouncedSearch = useDebounce(searchText, 300);
     const [selectedSemester, setSelectedSemester] = useState<string | null>(null);
-    const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
     // Fetch all requests
     const { data: requests, isLoading } = useQuery({
@@ -76,9 +79,20 @@ export default function ExtraPointRequests() {
     };
 
     // Filter logic
+    // Fetch all semesters for the filter
+    const { data: allSemestersData } = useQuery({
+        queryKey: ['semesters'],
+        queryFn: () => SemestersApi.getAll(),
+    });
+
+    const semesters = useMemo(() => {
+        const data = Array.isArray(allSemestersData) ? allSemestersData : [];
+        return data.map(s => ({ id: s.id, name: s.name }));
+    }, [allSemestersData]);
+
     const filteredRequests = useMemo(() => {
-        if (!requests) return [];
-        return requests.filter(r => {
+        const data = Array.isArray(requests) ? requests : [];
+        return data.filter(r => {
             const matchSearch = matchKeyword(
                 debouncedSearch,
                 r.student?.full_name,
@@ -87,34 +101,14 @@ export default function ExtraPointRequests() {
                 r.topic?.code
             );
             const matchSemester = selectedSemester ? r.topic?.semester?.id === selectedSemester : true;
-            const matchReason = selectedReason ? r.reason === selectedReason : true;
-            return matchSearch && matchSemester && matchReason;
+            return matchSearch && matchSemester;
         });
-    }, [requests, debouncedSearch, selectedSemester, selectedReason]);
+    }, [requests, debouncedSearch, selectedSemester]);
 
-    const pendingRequests = filteredRequests.filter(r => r.status === 'PENDING');
-    const processedRequests = filteredRequests.filter(r => r.status !== 'PENDING');
+    const pendingRequests = useMemo(() => filteredRequests.filter(r => r.status === 'PENDING'), [filteredRequests]);
+    const processedRequests = useMemo(() => filteredRequests.filter(r => r.status !== 'PENDING'), [filteredRequests]);
 
-    // Extract unique semesters and reasons for filters
-    const semesters = useMemo(() => {
-        if (!requests) return [];
-        const unique = new Map();
-        requests.forEach(r => {
-            if (r.topic?.semester) {
-                unique.set(r.topic.semester.id, r.topic.semester.name);
-            }
-        });
-        return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
-    }, [requests]);
 
-    const reasons = useMemo(() => {
-        if (!requests) return [];
-        const unique = new Set<string>();
-        requests.forEach(r => {
-            if (r.reason) unique.add(r.reason);
-        });
-        return Array.from(unique);
-    }, [requests]);
 
     const indexColumn = {
         title: 'STT',
@@ -305,7 +299,12 @@ export default function ExtraPointRequests() {
     const tabItems = [
         {
             key: 'pending',
-            label: `Chờ duyệt (Pending) - ${pendingRequests.length}`,
+            label: (
+                <Flex gap="small" align="center">
+                    <span>{t('extraPointManagement.pendingTab')}</span>
+                    <Tag className="m-0 rounded-full bg-orange-50 text-orange-600 border-none font-bold px-2">{pendingRequests.length}</Tag>
+                </Flex>
+            ),
             children: (
                 <Table
                     dataSource={pendingRequests}
@@ -314,7 +313,12 @@ export default function ExtraPointRequests() {
                     loading={isLoading}
                     size="middle"
                     className="sys-table"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                    }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: renderEmptyPending() }}
                 />
@@ -322,7 +326,12 @@ export default function ExtraPointRequests() {
         },
         {
             key: 'processed',
-            label: 'Kết quả duyệt (Processed)',
+            label: (
+                <Flex gap="small" align="center">
+                    <span>{t('extraPointManagement.processedTab')}</span>
+                    <Tag className="m-0 rounded-full bg-blue-50 text-blue-600 border-none font-bold px-2">{processedRequests.length}</Tag>
+                </Flex>
+            ),
             children: (
                 <Table
                     dataSource={processedRequests}
@@ -331,7 +340,12 @@ export default function ExtraPointRequests() {
                     loading={isLoading}
                     size="middle"
                     className="sys-table"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                    }}
                     scroll={{ x: 'max-content' }}
                     locale={{ emptyText: renderEmptyProcessed() }}
                 />
@@ -343,54 +357,58 @@ export default function ExtraPointRequests() {
         <div className="page-container">
             <div className="page-inner">
             {/* Header */}
-            <Card className="page-header-card">
-                <div className="flex items-center gap-3">
-                    <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
-                    <div>
-                        <div className="page-header-title">Duyệt Điểm Cộng NCKH</div>
-                        <div className="page-header-subtitle">Xem xét và phê duyệt yêu cầu điểm cộng của sinh viên</div>
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><SafetyCertificateOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('extraPointManagement.title')}</div>
+                            <div className="page-header-subtitle">{t('extraPointManagement.subtitle')}</div>
+                        </div>
                     </div>
-                </div>
-            </Card>
+                </Card>
             {/* Filter Toolbar */}
             <Card className="page-toolbar-card">
-                <Row gutter={[16, 0]} align="middle">
-                    <Col xs={24} md={8}>
+                <Flex gap="middle" wrap="nowrap" align="center" className="w-full">
+                    <div style={{ flex: 2 }}>
                         <GlobalSearch
                             placeholder="Tìm theo tên sinh viên, MSSV, đề tài..."
                             value={searchText}
                             onChange={setSearchText}
+                            className="w-full"
                         />
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <div className="text-sm text-gray-500 mb-1">Học kỳ</div>
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
                         <Select
                             placeholder="Chọn học kỳ"
                             style={{ width: '100%' }}
                             value={selectedSemester}
                             onChange={(val) => setSelectedSemester(val)}
                             allowClear
+                            showSearch
+                            filterOption={(input, option) =>
+                                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                            }
                         >
                             {semesters.map(s => (
                                 <Option key={s.id} value={s.id}>{s.name}</Option>
                             ))}
                         </Select>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <div className="text-sm text-gray-500 mb-1">Loại thành tích</div>
-                        <Select
-                            placeholder="Chọn loại thành tích"
-                            style={{ width: '100%' }}
-                            value={selectedReason}
-                            onChange={(val) => setSelectedReason(val)}
-                            allowClear
+                    </div>
+                    
+                    {(searchText || selectedSemester) && (
+                        <Button 
+                            type="link" 
+                            onClick={() => {
+                                setSearchText('');
+                                setSelectedSemester(null);
+                            }}
+                            className="px-0"
                         >
-                            {reasons.map(r => (
-                                <Option key={r} value={r}>{r}</Option>
-                            ))}
-                        </Select>
-                    </Col>
-                </Row>
+                            Xóa bộ lọc
+                        </Button>
+                    )}
+                </Flex>
             </Card>
 
             {/* Table */}

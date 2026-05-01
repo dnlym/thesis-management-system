@@ -35,6 +35,7 @@ interface TopicForCommittee {
 const CommitteeAssignment = () => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
+    const [pageSize, setPageSize] = useState(10);
     const { data: activeSemester } = useActiveSemester();
     const semesterId = activeSemester?.id;
 
@@ -219,7 +220,12 @@ const CommitteeAssignment = () => {
                     rowKey="id"
                     size="middle"
                     className="sys-table"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ 
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                    }}
                 />
             </Card>
 

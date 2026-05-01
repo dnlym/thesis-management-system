@@ -174,7 +174,7 @@ const Topics = () => {
       title: 'Mã ĐT',
       dataIndex: 'code',
       key: 'code',
-      width: 140,
+      width: 100,
       render: (code: string) => (
         <Tag color="blue" className="font-mono">
           <HighlightText text={code} keyword={debouncedSearch} />
