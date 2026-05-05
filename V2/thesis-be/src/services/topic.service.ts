@@ -791,14 +791,13 @@ export class TopicService {
     const andConditions: any[] = [];
 
     // --- SEAMLESS SEMESTER ISOLATION ---
-    // If no specific semester is requested, ALWAYS default to the ACTIVE one.
-    // This prevents "messy" data mixing where topics from HK1 and HK2 show up together.
-    if (!filter.semesterId) {
+    // If no specific semester is requested and not includeAll, ALWAYS default to the ACTIVE one.
+    if (!filter.semesterId && !filter.includeAll) {
       const activeSem = await semesterService.getActiveSemester();
       if (activeSem) {
         where.semester_id = activeSem.id;
       }
-    } else {
+    } else if (filter.semesterId) {
       where.semester_id = filter.semesterId;
     }
 
@@ -806,16 +805,21 @@ export class TopicService {
     // DRAFT topics are only visible to their owner (GVHD who created them)
     // HIDDEN topics are only visible to their owner (GVHD who created them)
     if (user.role === UserRole.STUDENT) {
-      // Use semester for viewing window
-      const semester = await semesterService.getActiveSemester();
-      const now = new Date();
-      if (semester?.topic_viewing_start && now < semester.topic_viewing_start) {
-        return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+      // Tái sử dụng semester đã được set (không query DB lần 2)
+      // Controller đã resolve semester_id, nên where.semester_id đã có giá trị
+      if (where.semester_id) {
+        const semester = await prisma.semester.findUnique({
+          where: { id: where.semester_id },
+          select: { topic_viewing_start: true, topic_viewing_end: true }
+        });
+        const now = new Date();
+        if (semester?.topic_viewing_start && now < semester.topic_viewing_start) {
+          return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        }
+        if (semester?.topic_viewing_end && now > semester.topic_viewing_end) {
+          return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        }
       }
-      if (semester?.topic_viewing_end && now > semester.topic_viewing_end) {
-        return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
-      }
-
       // Students see only APPROVED (fully signed off) topics
       andConditions.push({ status: TopicStatus.APPROVED });
       if (user.departmentId) {
@@ -912,17 +916,11 @@ export class TopicService {
       where.supervisor_id = filter.supervisorId;
     }
 
-    // Semester filtering logic
+    // [NOTE] Semester filter đã được set ở đầu hàm từ dữ liệu Controller đã resolve.
+    // Không cần fetch lại ACTIVE semester ở đây (tránh duplicate query).
     if (filter.includeAll) {
-      // Don't filter by semester
-    } else if (filter.semesterId) {
-      where.semester_id = filter.semesterId;
-    } else {
-      // Default: show only active semester topics
-      const activeSemester = await semesterService.getActiveSemester();
-      if (activeSemester) {
-        where.semester_id = activeSemester.id;
-      }
+      // Xóa semester filter để lấy tất cả - chỉ dùng cho Admin
+      delete where.semester_id;
     }
 
     if (filter.search) {

@@ -26,9 +26,8 @@ export function useTopics(filters?: TopicFilters & { includeAll?: boolean }) {
             return response;
         },
         placeholderData: (previousData) => previousData,
-        // Only run the query if we have a semester filter OR we are specifically including all
-        // This prevents "flickering" or loading current semester topics prematurely
-        enabled: !!(filters?.semesterId || filters?.includeAll || !filters),
+        // Enable the query if we have a semester filter, includeAll, OR if we're filtering by status (common for HEAD/ADMIN)
+        enabled: !!(filters?.semesterId || filters?.includeAll || filters?.status || !filters),
     });
 }
 

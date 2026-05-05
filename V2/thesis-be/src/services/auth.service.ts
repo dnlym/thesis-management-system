@@ -39,7 +39,10 @@ export class AuthService {
       include: { department: true },
     });
 
-    if (!user || !user.active) {
+    if (!user) {
+      throw new Error(ERROR_CODES.INVALID_CREDENTIALS);
+    }
+    if (!user.active) {
       throw new Error(ERROR_CODES.INVALID_CREDENTIALS);
     }
 

@@ -91,7 +91,7 @@ const HeadApproveTopics = () => {
 
     const columns = [
         {
-            title: 'STT',
+            title: t('common.stt'),
             key: 'stt',
             width: 60,
             align: 'center' as const,
@@ -325,7 +325,7 @@ const HeadApproveTopics = () => {
                 onCancel={() => setDetailModalVisible(false)}
                 footer={[
                     <Button key="close" onClick={() => setDetailModalVisible(false)}>
-                        {t('common.cancel')}
+                        {t('common.close')}
                     </Button>,
                     <Button 
                         key="history" 
@@ -405,7 +405,7 @@ const HeadApproveTopics = () => {
 
                         {selectedTopic.objectives && (
                             <div>
-                                <h4 className="font-semibold mb-2">Mục tiêu:</h4>
+                                <h4 className="font-semibold mb-2">{t('topics.objectives')}:</h4>
                                 <div
                                     className="prose max-w-none p-4 bg-gray-50 rounded"
                                     dangerouslySetInnerHTML={{ __html: selectedTopic.objectives }}
@@ -415,7 +415,7 @@ const HeadApproveTopics = () => {
 
                         {selectedTopic.requirements && (
                             <div>
-                                <h4 className="font-semibold mb-2">Yêu cầu:</h4>
+                                <h4 className="font-semibold mb-2">{t('topics.requirements')}:</h4>
                                 <div
                                     className="prose max-w-none p-4 bg-gray-50 rounded"
                                     dangerouslySetInnerHTML={{ __html: selectedTopic.requirements }}

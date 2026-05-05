@@ -519,13 +519,16 @@ export class GradingService {
   /**
    * Get Grade Summary list for HEAD — topics ready for finalization or in progress
    * Shows topics from UNDER_REVIEW to FINALIZED
+   * @param semesterId - ID học kỳ đã được resolve ở Controller (KHÔNG null)
    */
-  async getGradeSummary(userId: string) {
+  async getGradeSummary(userId: string, semesterId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
     const topics = (await prisma.topic.findMany({
       where: {
+        // [SEMESTER ISOLATION] Filter theo học kỳ - tránh mix data giữa các năm
+        semester_id: semesterId,
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         status: {
           in: [

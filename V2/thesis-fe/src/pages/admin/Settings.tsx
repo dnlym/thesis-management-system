@@ -222,33 +222,6 @@ const AdminSettings = () => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: date };
 
-      // Khóa điểm giáp ranh (Chaining) để đồng bộ Backend. Nếu sửa Đầu của 1 Phase, thì Đuôi của Phase trước đó cũng phải chạy theo, và ngược lại.
-      if (field === 'end' && index < 4 && next[index + 1]) {
-        // Đảm bảo không vượt quá Ngày Bế giảng học kỳ
-        const maxDate = semesterDates[1] || date;
-        let newNextStart = date; // Thay vì +1 ngày cứng nhắc, ta cho phép trùng ngày để linh hoạt cho học kỳ ngắn
-        if (newNextStart.isAfter(maxDate)) newNextStart = maxDate;
-
-        next[index + 1] = { ...next[index + 1], start: newNextStart };
-
-        // Cấp cứu: Nếu start mới lỡ "vượt mặt" end cũ của chính phase đó
-        if (next[index + 1].start.isAfter(next[index + 1].end)) {
-          next[index + 1].end = next[index + 1].start;
-        }
-      }
-      if (field === 'start' && index > 0 && next[index - 1]) {
-        const minDate = semesterDates[0] || date;
-        let newPrevEnd = date;
-        if (newPrevEnd.isBefore(minDate)) newPrevEnd = minDate;
-
-        next[index - 1] = { ...next[index - 1], end: newPrevEnd };
-
-        // Cấp cứu: Nếu end mới lỡ "thụt lùi" sau start cũ của chính phase đó
-        if (next[index - 1].end.isBefore(next[index - 1].start)) {
-          next[index - 1].start = next[index - 1].end;
-        }
-      }
-
       // Tự động neo lại điểm Midterm nếu Admin thay đổi thời gian của phase WORK (index 2)
       if (index === 2) {
         const workStart = field === 'start' ? date : next[2].start;

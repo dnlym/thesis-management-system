@@ -5,6 +5,7 @@ import notificationService from './notification.service';
 import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
 import { generateGroupName } from '../utils/group-utils';
+import semesterService from './semester.service';
 
 export class RegistrationService {
   // =====================================================
@@ -397,8 +398,8 @@ export class RegistrationService {
     const maxGroupSize = dept?.max_group_size || 2;
 
     // Create group
-    const groupName = await generateGroupName(tx || prisma, topic.departmentId, topic.semester_id);
-    const group = await (tx || prisma).group.create({
+    const groupName = await generateGroupName(prisma, topic.departmentId, topic.semester_id);
+    const group = await prisma.group.create({
       data: {
         name: groupName,
         topic_id: topicId,
@@ -596,10 +597,12 @@ export class RegistrationService {
     if (filters?.status) {
       where.status = filters.status;
     }
+    // [SEMESTER ISOLATION] semesterId được Controller resolve và truyền xuống.
+    // Nếu vẫn chưa có (lời gọi từ nội bộ), fallback về ACTIVE.
     if (filters?.semesterId) {
       where.semester_id = filters.semesterId;
     } else {
-      const activeSem = await (await import('./semester.service')).default.getActiveSemester();
+      const activeSem = await semesterService.getActiveSemester();
       if (activeSem) {
         where.semester_id = activeSem.id;
       }

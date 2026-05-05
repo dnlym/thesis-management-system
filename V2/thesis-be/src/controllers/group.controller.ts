@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import groupService from '../services/group.service';
+import { SemesterResolver } from '../utils/semester-resolver';
 
 /**
  * @swagger
@@ -322,16 +323,20 @@ export class GroupController {
   async getMyGroups(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const semesterId = req.query.semesterId as string;
-      const groups = await groupService.getMyGroups(userId, semesterId);
+      // [CONTROLLER RESOLUTION] Default về học kỳ ACTIVE nếu không có semesterId
+      const semesterId = await SemesterResolver.resolve(
+        req.query.semesterId as string | undefined,
+        { required: true }
+      );
+      const groups = await groupService.getMyGroups(userId, semesterId!);
       res.json({
         success: true,
         data: groups,
       });
     } catch (error: any) {
-      res.status(400).json({
+      res.status(error.statusCode || 400).json({
         success: false,
-        error: error.message,
+        error: error.error || error.message,
       });
     }
   }
@@ -436,22 +441,20 @@ export class GroupController {
   async getAvailableGroups(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const semesterId = req.query.semesterId as string;
-      if (!semesterId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Semester ID is required',
-        });
-      }
-      const groups = await groupService.getAvailableGroups(userId, semesterId);
+      // [CONTROLLER RESOLUTION] Fallback về ACTIVE semester
+      const semesterId = await SemesterResolver.resolve(
+        req.query.semesterId as string | undefined,
+        { required: true }
+      );
+      const groups = await groupService.getAvailableGroups(userId, semesterId!);
       res.json({
         success: true,
         data: groups,
       });
     } catch (error: any) {
-      res.status(400).json({
+      res.status(error.statusCode || 400).json({
         success: false,
-        error: error.message,
+        error: error.error || error.message,
       });
     }
   }
@@ -462,22 +465,20 @@ export class GroupController {
   async getGroupsNeedingMembers(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const semesterId = req.query.semesterId as string;
-      if (!semesterId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Semester ID is required',
-        });
-      }
-      const groups = await groupService.getGroupsNeedingMembers(userId, semesterId);
+      // [CONTROLLER RESOLUTION] Fallback về ACTIVE semester
+      const semesterId = await SemesterResolver.resolve(
+        req.query.semesterId as string | undefined,
+        { required: true }
+      );
+      const groups = await groupService.getGroupsNeedingMembers(userId, semesterId!);
       res.json({
         success: true,
         data: groups,
       });
     } catch (error: any) {
-      res.status(400).json({
+      res.status(error.statusCode || 400).json({
         success: false,
-        error: error.message,
+        error: error.error || error.message,
       });
     }
   }

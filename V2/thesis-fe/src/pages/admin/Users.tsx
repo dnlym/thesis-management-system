@@ -63,6 +63,7 @@ const Users = () => {
   const getRoleTag = (role: string) => {
     const roleConfig: Record<string, { color: string; text: string }> = {
       STUDENT: { color: 'blue', text: t('roles.STUDENT') },
+      LECTURER: { color: 'green', text: t('roles.LECTURER') },
       SUPERVISOR: { color: 'green', text: t('roles.SUPERVISOR') },
       HEAD: { color: 'purple', text: t('roles.HEAD') },
       REVIEWER: { color: 'cyan', text: t('roles.REVIEWER') },
@@ -77,7 +78,7 @@ const Users = () => {
 
   const columns = [
     {
-      title: 'STT',
+      title: t('common.stt'),
       key: 'stt',
       width: 60,
       align: 'center' as const,
@@ -101,7 +102,7 @@ const Users = () => {
       )
     },
     {
-      title: 'Email',
+      title: t('auth.email'),
       dataIndex: 'email',
       key: 'email',
       render: (email: string) => <HighlightText text={email} keyword={debouncedSearch} />,
@@ -113,7 +114,7 @@ const Users = () => {
       render: (role: string) => getRoleTag(role),
       filters: [
         { text: t('roles.STUDENT'), value: 'STUDENT' },
-        { text: t('roles.SUPERVISOR'), value: 'SUPERVISOR' },
+        { text: t('roles.LECTURER'), value: 'LECTURER' },
         { text: t('roles.HEAD'), value: 'HEAD' },
         { text: t('roles.ADMIN'), value: 'ADMIN' },
       ],
@@ -125,7 +126,7 @@ const Users = () => {
       key: 'departmentName',
     },
     {
-      title: 'Lớp',
+      title: t('common.class'),
       dataIndex: 'className',
       key: 'className',
       render: (text: string) => text || '-',
@@ -288,9 +289,8 @@ const Users = () => {
             >
               <Select placeholder={t('users.selectRole')}>
                 <Select.Option value="STUDENT">{t('roles.STUDENT')}</Select.Option>
-                <Select.Option value="SUPERVISOR">{t('roles.SUPERVISOR')}</Select.Option>
+                <Select.Option value="LECTURER">{t('roles.LECTURER')}</Select.Option>
                 <Select.Option value="HEAD">{t('roles.HEAD')}</Select.Option>
-                <Select.Option value="REVIEWER">{t('roles.REVIEWER')}</Select.Option>
                 <Select.Option value="ADMIN">{t('roles.ADMIN')}</Select.Option>
               </Select>
             </Form.Item>

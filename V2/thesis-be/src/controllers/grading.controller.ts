@@ -3,6 +3,7 @@ import { AuthRequest } from '../types';
 import gradingService from '../services/grading.service';
 import { RaterRole, MidtermStatus } from '@prisma/client';
 import prisma from '../config/database';
+import { SemesterResolver } from '../utils/semester-resolver';
 
 class GradingController {
   /**
@@ -222,11 +223,16 @@ class GradingController {
   async getGradeSummary(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const summary = await gradingService.getGradeSummary(userId);
+      // [CONTROLLER RESOLUTION] Resolve học kỳ tại đây - Admin được xem tất cả, còn lại buộc phải có ACTIVE
+      const semesterId = await SemesterResolver.resolve(
+        req.query.semesterId as string | undefined,
+        { required: true }
+      );
+      const summary = await gradingService.getGradeSummary(userId, semesterId!);
       res.json({ success: true, data: summary });
     } catch (error: any) {
-      const status = error.message?.includes('FORBIDDEN') ? 403 : 400;
-      res.status(status).json({ success: false, error: error.message });
+      const status = error.statusCode || (error.message?.includes('FORBIDDEN') ? 403 : 400);
+      res.status(status).json({ success: false, error: error.error || error.message });
     }
   }
 

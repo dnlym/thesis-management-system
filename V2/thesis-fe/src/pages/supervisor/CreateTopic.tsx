@@ -28,6 +28,7 @@ const SupervisorCreateTopic = () => {
 
     // Reuse Topic Modal State
     const [reuseModalVisible, setReuseModalVisible] = useState(false);
+    const [previewTopic, setPreviewTopic] = useState<any>(null);
     const { data: allMyTopics, isLoading: isLoadingOld } = useTopics({ 
         supervisorId: user?.id, 
         includeAll: true 
@@ -56,7 +57,11 @@ const SupervisorCreateTopic = () => {
             // Find PREVIEW or PLANNING semester
             const activeSemester = semesters?.find(s => canCreateTopic(s));
             if (!activeSemester) {
-                notify.error('Không tìm thấy học kỳ đang trong giai đoạn đề xuất hoặc chuẩn bị');
+                const activeSem = semesters?.find(s => s.status === 'ACTIVE');
+                const phaseMsg = activeSem?.calculated_phase === 'REGISTRATION' 
+                    ? 'Hiện đang trong giai đoạn Sinh viên đăng ký, hệ thống đã khóa chức năng thêm đề tài mới.'
+                    : 'Hệ thống hiện không trong giai đoạn cho phép đề xuất đề tài mới.';
+                notify.error(phaseMsg);
                 return;
             }
 
@@ -93,7 +98,11 @@ const SupervisorCreateTopic = () => {
     const handleClone = (topicId: string) => {
         const activeSemester = semesters?.find(s => canCreateTopic(s));
         if (!activeSemester) {
-            notify.error('Không tìm thấy học kỳ đang trong giai đoạn đề xuất');
+            const activeSem = semesters?.find(s => s.status === 'ACTIVE');
+            const phaseMsg = activeSem?.calculated_phase === 'REGISTRATION' 
+                ? 'Hiện đang trong giai đoạn Sinh viên đăng ký, hệ thống đã khóa chức năng tái sử dụng đề tài.'
+                : 'Hệ thống hiện không trong giai đoạn cho phép đề xuất hoặc tái sử dụng đề tài cũ.';
+            notify.error(phaseMsg);
             return;
         }
 
@@ -306,24 +315,25 @@ const SupervisorCreateTopic = () => {
                                 <div 
                                     key={topic.id} 
                                     className="p-4 mb-3 border rounded-lg hover:border-academic-primary group cursor-pointer transition-all flex justify-between items-center"
-                                    onClick={() => handleClone(topic.id)}
+                                    onClick={() => setPreviewTopic(topic)}
                                 >
                                     <div className="flex-1 mr-4">
                                         <div className="flex items-center space-x-2 mb-1">
                                             <Tag color="blue">{topic.semester?.name}</Tag>
                                             <span className="text-xs text-gray-400">Mã: {topic.code}</span>
                                         </div>
-                                        <h4 className="font-semibold text-base mb-1 group-hover:text-academic-primary transition-colors">
+                                        <h4 className="font-semibold text-base mb-0 group-hover:text-academic-primary transition-colors">
                                             {topic.title}
                                         </h4>
-                                        <div className="text-xs text-gray-500 line-clamp-2">
-                                            {topic.description?.replace(/<[^>]*>?/gm, '')}
-                                        </div>
                                     </div>
                                     <Button 
                                         type="primary" 
                                         ghost 
                                         icon={<CopyOutlined />}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleClone(topic.id);
+                                        }}
                                         loading={cloneMutation.isPending && cloneMutation.variables?.topicId === topic.id}
                                     >
                                         Sử dụng
@@ -333,6 +343,60 @@ const SupervisorCreateTopic = () => {
                         </div>
                     )}
                 </div>
+            </Modal>
+            
+            {/* Topic Detail Preview Modal */}
+            <Modal
+                title="Chi tiết đề tài cũ"
+                open={!!previewTopic}
+                onCancel={() => setPreviewTopic(null)}
+                footer={[
+                    <Button key="back" onClick={() => setPreviewTopic(null)}>
+                        Quay lại
+                    </Button>,
+                    <Button 
+                        key="submit" 
+                        type="primary" 
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                            handleClone(previewTopic.id);
+                            setPreviewTopic(null);
+                        }}
+                        loading={cloneMutation.isPending}
+                    >
+                        Sử dụng đề tài này
+                    </Button>
+                ]}
+                width={700}
+            >
+                {previewTopic && (
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex items-center space-x-2 mb-2">
+                                <Tag color="blue">{previewTopic.semester?.name}</Tag>
+                                <span className="text-gray-500">Mã: {previewTopic.code}</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">{previewTopic.title}</h3>
+                        </div>
+                        
+                        <Divider className="my-2" />
+                        
+                        <div>
+                            <h4 className="font-semibold text-gray-700 mb-1">Mô tả:</h4>
+                            <div className="text-gray-600 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTopic.description || '' }} />
+                        </div>
+                        
+                        <div>
+                            <h4 className="font-semibold text-gray-700 mb-1">Mục tiêu:</h4>
+                            <div className="text-gray-600 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTopic.objectives || '' }} />
+                        </div>
+                        
+                        <div>
+                            <h4 className="font-semibold text-gray-700 mb-1">Yêu cầu:</h4>
+                            <div className="text-gray-600 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTopic.requirements || '' }} />
+                        </div>
+                    </div>
+                )}
             </Modal>
             </div>
         </div>

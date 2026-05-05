@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { TopicStatus, ProgressStage } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import topicService from '../services/topic.service';
+import { SemesterResolver } from '../utils/semester-resolver';
 
 /**
  * @swagger
@@ -171,13 +172,23 @@ export class TopicController {
   async getTopics(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
+      const includeAll = req.query.includeAll === 'true';
+      const inputSemesterId = req.query.semesterId as string | undefined;
+
+      // [CONTROLLER RESOLUTION] Xác định học kỳ tại cửa ngõ - chỉ query DB 1 lần
+      // Admin/includeAll: không bắt buộc có semester
+      // Các role khác: nếu không có ACTIVE semester → throw lỗi rõ ràng
+      const resolvedSemesterId = includeAll
+        ? await SemesterResolver.resolveForAdmin(inputSemesterId)
+        : await SemesterResolver.resolve(inputSemesterId, { required: !req.query.status });
+
       const filters = {
         status: req.query.status as any,
-        semesterId: req.query.semesterId as string,
+        semesterId: resolvedSemesterId || undefined,
         departmentId: req.query.departmentId as string,
         search: req.query.search as string,
         supervisorId: req.query.supervisorId as string,
-        includeAll: req.query.includeAll === 'true',
+        includeAll,
         midtermStatus: req.query.midtermStatus as 'PASS' | 'FAIL' | undefined,
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
         limit: req.query.size ? parseInt(req.query.size as string) : undefined,

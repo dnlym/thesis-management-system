@@ -52,24 +52,24 @@ async function main() {
   }
 
   // 2. SEMESTERS
-  console.log('📅 Tạo học kỳ...');
+  console.log('📅 Tạo học kỳ hiện tại...');
   const semester = await prisma.semester.upsert({
-    where: { code: 'HK2_2023_2024' },
+    where: { code: 'HK2_2025_2026' },
     update: { status: SemesterStatus.ACTIVE },
     create: {
-      code: 'HK2_2023_2024',
-      name: 'Học kỳ 2 năm 2023-2024',
+      code: 'HK2_2025_2026',
+      name: 'Học kỳ 2 2025-2026',
       status: SemesterStatus.ACTIVE,
-      start_date: new Date('2024-01-01'),
-      end_date: new Date('2024-07-15'),
-      topic_viewing_start: new Date('2024-01-01'),
-      topic_viewing_end: new Date('2024-01-15'),
-      topic_registration_start: new Date('2024-01-16'),
-      topic_registration_end: new Date('2024-01-30'),
-      proposal_deadline: new Date('2024-03-31'),
-      thesis_deadline: new Date('2024-06-30'),
-      defense_start: new Date('2024-07-05'),
-      defense_end: new Date('2024-07-15'),
+      start_date: new Date('2026-05-05'),
+      end_date: new Date('2026-07-15'),
+      topic_viewing_start: new Date('2026-05-05'),
+      topic_viewing_end: new Date('2026-05-10'),
+      topic_registration_start: new Date('2026-05-11'),
+      topic_registration_end: new Date('2026-05-20'),
+      proposal_deadline: new Date('2026-06-15'),
+      thesis_deadline: new Date('2026-07-01'),
+      defense_start: new Date('2026-07-05'),
+      defense_end: new Date('2026-07-15'),
     },
   });
 
@@ -154,67 +154,11 @@ async function main() {
     }
   });
 
-  // 5. SAMPLE STUDENTS & TOPICS (IS FOCUS)
+  // 5. SAMPLE STUDENTS & TOPICS (Optional - Commented out to keep DB clean)
+  /*
   console.log('🎓 Tạo sinh viên và đề tài mẫu...');
-  const isLecturers = facultyMap['IS'];
-  const rawStudentData = [
-    { masv: "22653531", hoDem: "Nguyễn Trần", ten: "Thành", deTai: "Xây dựng hệ thống thi trực tuyến tích hợp AI nhận diện khuôn mặt chống gian lận" },
-    { masv: "21077161", hoDem: "Nguyễn Thanh", ten: "Phới", deTai: "Tìm hiểu hệ thống Odoo và ứng dụng vào quá trình tạo và quản lý 1 hệ thống thông tin quản lý cụ thể." },
-    { masv: "21105841", hoDem: "Đào Hoa Anh", ten: "Thư", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
-    { masv: "21128931", hoDem: "Cao Bình", ten: "Uy", deTai: "Hệ thống quản lý rạp chiếu phim" },
-    { masv: "21079291", hoDem: "Lê Minh", ten: "Khánh", deTai: "Xây dựng ứng dụng website đặt và quản lý tour du lịch" },
-    { masv: "21092831", hoDem: "Mã Đan", ten: "Ly", deTai: "Xây dựng hệ thống quản lý quá trình đăng ký và thực hiện Khóa luận tốt nghiệp tại trường Đại học Công nghiệp Thành phố Hồ Chí Minh" },
-  ];
-
-  for (let i = 0; i < rawStudentData.length; i++) {
-    const s = rawStudentData[i];
-    const supervisor = isLecturers[i % isLecturers.length];
-    
-    const topic = await prisma.topic.upsert({
-      where: { code_semester_id: { code: `IS-2023-HK2-${(i + 1).toString().padStart(3, '0')}`, semester_id: semester.id } },
-      update: { title: s.deTai, supervisor_id: supervisor.id },
-      create: {
-        code: `IS-2023-HK2-${(i + 1).toString().padStart(3, '0')}`,
-        title: s.deTai,
-        normalized_title: removeAccents(s.deTai).toLowerCase(),
-        description: `Mô tả cho đề tài: ${s.deTai}`,
-        objectives: "Mục tiêu nghiên cứu và hiện thực hệ thống.",
-        requirements: "Có kiến thức về lập trình và chuyên ngành.",
-        max_students: 2,
-        status: TopicStatus.REGISTERED,
-        progress_stage: ProgressStage.WORKING,
-        supervisor_id: supervisor.id,
-        departmentId: deptMap['IS'].id,
-        semester_id: semester.id,
-        approved_at: new Date(),
-        approved_by: isLecturers.find(l => l.role === UserRole.HEAD)?.id || isLecturers[0].id,
-      }
-    });
-
-    const studentEmail = `${s.masv}@student.iuh.edu.vn`;
-    const studentUser = await prisma.user.upsert({
-      where: { student_code: s.masv },
-      update: { email: studentEmail },
-      create: {
-        email: studentEmail, password_hash: commonPassword,
-        full_name: `${s.hoDem} ${s.ten}`, role: UserRole.STUDENT,
-        student_code: s.masv, departmentId: deptMap['IS'].id, active: true
-      }
-    });
-
-      await prisma.topicRegistration.upsert({
-        where: { student_id_semester_id: { student_id: studentUser.id, semester_id: semester.id } },
-        update: { topic_id: topic.id },
-        create: {
-          student_id: studentUser.id,
-          topic_id: topic.id,
-          semester_id: semester.id,
-          status: RegistrationStatus.CONFIRMED,
-          student_progress_status: StudentProgressStatus.HAS_TOPIC,
-          confirmed_at: new Date(),
-        }
-      });
-  }
+  ...
+  */
 
   // 6. GRADING CRITERIA
   console.log('📊 Tạo tiêu chí đánh giá...');
