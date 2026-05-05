@@ -32,13 +32,10 @@ const TopicDetailGeneral = () => {
     const requireEditMutation = useRequireEdit();
     const assignReviewerMutation = useAssignReviewer();
 
-    // Fetch reviewers
-    const { data: reviewers } = useUsers({ role: 'REVIEWER' });
 
     // Local state
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
-    const [assignReviewerModalVisible, setAssignReviewerModalVisible] = useState(false);
     const [requireEditModalVisible, setRequireEditModalVisible] = useState(false);
     const [editNotes, setEditNotes] = useState('');
     const [historyModalVisible, setHistoryModalVisible] = useState(false);
@@ -101,25 +98,11 @@ const TopicDetailGeneral = () => {
         );
     };
 
-    const handleAssignReviewer = () => {
-        form.validateFields().then((values) => {
-            assignReviewerMutation.mutate(
-                { topicId: topic.id, reviewerId: values.reviewerId, reviewerOrder: 1, deadlineAt: dayjs().add(14, 'day').toDate() },
-                {
-                    onSuccess: () => {
-                        setAssignReviewerModalVisible(false);
-                        form.resetFields();
-                    },
-                }
-            );
-        });
-    };
 
     // Permission Checks
     const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN';
     const canApprove = isHead && topic.status === 'PENDING_APPROVAL';
     const canRequireEdit = isHead && topic.status === 'PENDING_APPROVAL';
-    const canAssignReviewer = isHead && ['APPROVED', 'REGISTERED', 'UNDER_REVIEW'].includes(topic.status);
     const isFull = (topic.current_students || 0) >= (topic.max_students || 0);
 
     return (
@@ -178,15 +161,6 @@ const TopicDetailGeneral = () => {
                                 </Button>
                             )}
 
-                            {/* Assign Reviewer */}
-                            {canAssignReviewer && (
-                                <Button
-                                    icon={<UsergroupAddOutlined />}
-                                    onClick={() => setAssignReviewerModalVisible(true)}
-                                >
-                                    {t('topics.selectReviewer')}
-                                </Button>
-                            )}
                         </Space>
                     </div>
                 </Card>
@@ -333,39 +307,6 @@ const TopicDetailGeneral = () => {
                 />
             </Modal>
 
-            {/* Assign Reviewer Modal */}
-            <Modal
-                title={t('topics.selectReviewer')}
-                open={assignReviewerModalVisible}
-                onOk={handleAssignReviewer}
-                onCancel={() => {
-                    setAssignReviewerModalVisible(false);
-                    form.resetFields();
-                }}
-                confirmLoading={assignReviewerMutation.isPending}
-                okText={t('common.save')}
-                cancelText={t('common.cancel')}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item
-                        name="reviewerId"
-                        label={t('topics.selectReviewer')}
-                        rules={[{ required: true, message: t('topics.selectReviewerRequired') }]}
-                    >
-                        <Select
-                            placeholder={t('topics.selectReviewerPlaceholder')}
-                            showSearch
-                            optionFilterProp="children"
-                        >
-                            {reviewers?.map((reviewer: any) => (
-                                <Option key={reviewer.id} value={reviewer.id}>
-                                    {reviewer.full_name} ({reviewer.email})
-                                </Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                </Form>
-            </Modal>
 
             {/* History Modal */}
             <TopicHistoryModal

@@ -29,9 +29,9 @@ export interface TimelineContext {
 export class SemesterGuard {
   /**
    * Calculate the effective phase of a semester based on real-time dates.
-   * Locked to Asia/Ho_Chi_Minh timezone.
+   * Supports department-specific overrides (fallback: Dept Config -> Semester Config).
    */
-  static calculateCurrentPhase(semester: any): SemesterPhase | null {
+  static calculateCurrentPhase(semester: any, deptConfig?: any): SemesterPhase | null {
     if (semester.status === SemesterStatus.COMPLETED) return SemesterPhase.FINAL;
     if (semester.status !== SemesterStatus.ACTIVE) return null;
 
@@ -47,8 +47,11 @@ export class SemesterGuard {
       return SemesterPhase.PREVIEW;
     }
 
-    // [2] REGISTRATION: topic_registration_start → Effective Registration End OR Override Active
-    const isOverrideActive = (semester as any).is_registration_override === true;
+    // [2] REGISTRATION Rule (User Refined): 
+    // If is_registration_open (dept) or is_registration_override (global) is true -> allow registration
+    const isDeptOpen = deptConfig?.is_registration_open === true;
+    const isGlobalOverride = (semester as any).is_registration_override === true;
+    const isOverrideActive = isDeptOpen || isGlobalOverride;
     
     if (
       semester.topic_registration_start &&
@@ -79,11 +82,15 @@ export class SemesterGuard {
     }
 
     // [5] DEFENSE: defense_start → defense_end
+    // Fallback: Dept Defense Date -> Global Defense Start
+    const effectiveDefenseStart = deptConfig?.defense_date || semester.defense_start;
+    const effectiveDefenseEnd = deptConfig?.defense_date || semester.defense_end;
+
     if (
-      semester.defense_start &&
-      now.isSameOrAfter(dayjs(semester.defense_start)) &&
-      semester.defense_end &&
-      now.isBefore(dayjs(semester.defense_end))
+      effectiveDefenseStart &&
+      now.isSameOrAfter(dayjs(effectiveDefenseStart)) &&
+      effectiveDefenseEnd &&
+      now.isBefore(dayjs(effectiveDefenseEnd).endOf('day'))
     ) {
       return SemesterPhase.DEFENSE;
     }

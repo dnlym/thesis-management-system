@@ -197,7 +197,6 @@ const Topics = () => {
             </a>
             {students.length > 0 && (
               <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-400">
-                <span className="font-medium text-slate-500">SV:</span>
                 {students.map((s: any, idx: number) => (
                   <span key={s.id}>
                     <HighlightText text={`${s.full_name} (${s.student_code})`} keyword={debouncedSearch} />

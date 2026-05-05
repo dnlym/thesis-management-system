@@ -28,6 +28,7 @@ model Department {
   @@index([code])
   @@index([active])
   @@map("departments")
+  semester_configs                      DepartmentSemesterConfig[]
 }
 
 model Semester {
@@ -59,6 +60,24 @@ model Semester {
 
   @@index([code])
   @@map("semesters")
+  department_configs       DepartmentSemesterConfig[]
+}
+
+model DepartmentSemesterConfig {
+  id                    String     @id @default(uuid())
+  department_id         String
+  semester_id           String
+  defense_date          DateTime?
+  is_registration_open  Boolean    @default(false)
+  updated_by            String
+  updated_at            DateTime   @updatedAt
+  department            Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  semester              Semester   @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+
+  @@unique([department_id, semester_id])
+  @@index([department_id])
+  @@index([semester_id])
+  @@map("department_semester_configs")
 }
 
 model User {

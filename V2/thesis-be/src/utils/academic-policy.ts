@@ -58,7 +58,8 @@ export class AcademicPolicy {
   }
 
   static getPhase(semester: any): SemesterPhase | null {
-    return SemesterGuard.calculateCurrentPhase(semester);
+    // Priority: deptConfig attached to semester object -> global semester dates
+    return SemesterGuard.calculateCurrentPhase(semester, semester.deptConfig);
   }
 
   // ─── Main Policy logic ────────────────────────────────────────────────────

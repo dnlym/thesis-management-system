@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Card, DatePicker, Button, Alert, Space, Typography, Tag, Divider,
-    Spin, Steps, Tooltip, Badge, Modal, Form, Input, Table, Empty, Checkbox
+    Spin, Steps, Tooltip, Badge, Modal, Form, Input, Table, Empty, Checkbox, Select
 } from 'antd';
 import { notify } from '@/utils/notification';
 import {
@@ -28,6 +28,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Flame } from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
+import { DepartmentsApi } from '@/api/departments';
 import { SemestersApi } from '@/api/semesters';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
 import dayjs from 'dayjs';
@@ -90,24 +92,57 @@ const PHASES_ORDER: string[] = [
     'FINAL'
 ];
 
-const getPhaseTimeRange = (phase: any, semester: any) => {
+const getPhaseTimeRange = (phase: any, semester: any, deptConfig: any) => {
     const format = 'DD/MM/YYYY';
-    const start = (d: any) => d ? dayjs(d).format(format) : 'Chưa thiết lập';
-    const sPlus = (d: any, days: number) => d ? dayjs(d).add(days, 'day').format(format) : '...';
+    const formatD = (d: any) => d ? dayjs(d).format(format) : 'Chưa thiết lập';
+    
+    // Ưu tiên ngày bảo vệ của bộ môn từ deptConfig truyền vào
+    const currentDefenseStart = deptConfig?.defense_date || semester.defense_start;
+    const globalDefenseStart = semester.defense_start;
+
+    const renderRange = (currentStart: any, currentEnd: any, globalStart: any, globalEnd: any) => {
+        const isDifferent = dayjs(currentStart).isSame(globalStart, 'day') === false || 
+                          dayjs(currentEnd).isSame(globalEnd, 'day') === false;
+        
+        return (
+            <div className="flex flex-col">
+                <span className="font-bold text-blue-600">{formatD(currentStart)} - {formatD(currentEnd)}</span>
+                {isDifferent && (
+                    <span className="text-[10px] text-slate-400 font-normal">
+                        (Lịch chung: {formatD(globalStart)} - {formatD(globalEnd)})
+                    </span>
+                )}
+            </div>
+        );
+    };
 
     switch (phase) {
         case 'PREVIEW':
-            return `${start(semester.topic_viewing_start)} - ${start(semester.topic_viewing_end)}`;
+            return renderRange(semester.topic_viewing_start, semester.topic_viewing_end, semester.topic_viewing_start, semester.topic_viewing_end);
         case 'REGISTRATION':
-            return `${start(semester.topic_registration_start)} - ${start(semester.topic_registration_end)}`;
+            return renderRange(semester.topic_registration_start, semester.topic_registration_end, semester.topic_registration_start, semester.topic_registration_end);
         case 'WORK':
-            return `${start(semester.topic_registration_end)} - ${start(semester.proposal_deadline)}`;
+            return renderRange(semester.topic_registration_end, semester.proposal_deadline, semester.topic_registration_end, semester.proposal_deadline);
         case 'REVIEWING':
-            return `${start(semester.proposal_deadline)} - ${start(semester.thesis_deadline)}`;
+            return renderRange(semester.proposal_deadline, semester.thesis_deadline, semester.proposal_deadline, semester.thesis_deadline);
         case 'DEFENSE':
-            return `${start(semester.defense_start)} - ${start(semester.defense_end)}`;
+            const deptDate = deptConfig?.defense_date;
+            const isDifferent = deptDate && dayjs(deptDate).isSame(semester.defense_start, 'day') === false;
+            
+            return (
+                <div className="flex flex-col">
+                    <span className="font-bold text-blue-600">
+                        {deptDate ? formatD(deptDate) : `${formatD(semester.defense_start)} - ${formatD(semester.defense_end)}`}
+                    </span>
+                    {deptDate && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                            (Lịch chung: {formatD(semester.defense_start)} - {formatD(semester.defense_end)})
+                        </span>
+                    )}
+                </div>
+            );
         case 'FINAL':
-            return `${start(semester.defense_end)} - ${start(semester.end_date)}`;
+            return renderRange(semester.defense_end, semester.end_date, semester.defense_end, semester.end_date);
         default:
             return '';
     }
@@ -116,27 +151,50 @@ const getPhaseTimeRange = (phase: any, semester: any) => {
 const SemesterSettings = () => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
+    const { user } = useAuthStore();
+    const isAdmin = user?.role === 'ADMIN';
+
     const { data: activeSemester, isLoading } = useActiveSemester();
+    const [selectedDeptId, setSelectedDeptId] = useState<string | undefined>(user?.department_id || undefined);
     const [defenseDate, setDefenseDate] = useState<dayjs.Dayjs | null>(null);
 
-    useEffect(() => {
-        if (activeSemester?.defense_start) {
-            setDefenseDate(dayjs(activeSemester.defense_start));
-        }
-    }, [activeSemester]);
+    // Fetch departments for Admin dropdown
+    const { data: departments = [] } = useQuery({
+        queryKey: ['departments'],
+        queryFn: () => DepartmentsApi.getAll(),
+        enabled: isAdmin,
+    });
 
     const updateDateMutation = useMutation({
-        mutationFn: (date: string) => SemestersApi.updateDefenseDate(activeSemester!.id, date),
+        mutationFn: (date: string) => SemestersApi.updateDeptConfig(activeSemester!.id, { 
+            defense_date: date,
+            departmentId: selectedDeptId
+        }),
         onSuccess: () => {
-            notify.success(t('semesterSettings.updateSuccess', 'Cập nhật ngày bảo vệ thành công'));
+            notify.success(t('semesterSettings.updateSuccess', 'Cập nhật ngày bảo vệ bộ môn thành công'));
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
+            queryClient.invalidateQueries({ queryKey: ['dept-semester-config', activeSemester?.id, selectedDeptId] });
         },
         onError: (error: any) => {
             notify.error(error?.response?.data?.error || t('semesterSettings.updateError', 'Lỗi khi cập nhật ngày bảo vệ'));
         },
     });
 
+    const { data: deptConfig, isLoading: loadingDeptConfig } = useQuery({
+        queryKey: ['dept-semester-config', activeSemester?.id, selectedDeptId],
+        queryFn: () => SemestersApi.getDeptConfig(activeSemester!.id, selectedDeptId),
+        enabled: !!activeSemester?.id && (!!selectedDeptId || !isAdmin),
+    });
 
+    useEffect(() => {
+        if (deptConfig?.defense_date) {
+            setDefenseDate(dayjs(deptConfig.defense_date));
+        } else if (activeSemester?.defense_start) {
+            setDefenseDate(dayjs(activeSemester.defense_start));
+        } else {
+            setDefenseDate(null);
+        }
+    }, [deptConfig, activeSemester]);
 
     const { data: overrideLogs = [], isLoading: loadingOverrideLogs } = useQuery({
         queryKey: ['registration-override-logs', activeSemester?.id],
@@ -144,18 +202,20 @@ const SemesterSettings = () => {
         enabled: !!activeSemester?.id,
     });
 
-
     const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
     const toggleOverrideMutation = useMutation({
-        mutationFn: ({ override, reason }: { override: boolean, reason: string }) => 
-            SemestersApi.toggleRegistrationOverride(activeSemester.id, override, reason),
+        mutationFn: ({ open, reason }: { open: boolean, reason: string }) =>
+            SemestersApi.updateDeptConfig(activeSemester.id, { 
+                is_registration_open: open,
+                departmentId: selectedDeptId
+            }),
         onSuccess: () => {
-            notify.success('Cập nhật trạng thái hệ thống thành công');
+            notify.success('Cập nhật trạng thái mở đăng ký thành công');
             setIsOverrideModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['active-semester'] });
-            queryClient.invalidateQueries({ queryKey: ['registration-override-logs', activeSemester?.id] });
+            queryClient.invalidateQueries({ queryKey: ['dept-semester-config', activeSemester?.id, selectedDeptId] });
         },
         onError: (error: any) => {
             notify.error(error.response?.data?.message || 'Lỗi khi cập nhật trạng thái');
@@ -183,10 +243,10 @@ const SemesterSettings = () => {
 
     const isLocked = activeSemester.status === 'COMPLETED';
 
-    // Override Mode Logic
-    const isOverrideActive = activeSemester.is_registration_override === true;
-    const canOverride = activeSemester.status === 'ACTIVE' && 
-                      currentPhase !== 'FINAL';
+    // Override Mode Logic (Department Specific)
+    const isOverrideActive = deptConfig?.is_registration_open === true;
+    const canOverride = activeSemester.status === 'ACTIVE' &&
+        currentPhase !== 'FINAL';
 
     const originalDeadline = activeSemester.topic_registration_end;
     const now = dayjs();
@@ -194,7 +254,7 @@ const SemesterSettings = () => {
 
     let statusTag = <Tag color="default">CHƯA BẮT ĐẦU</Tag>;
     if (originalDeadline) {
-        if (isOverrideActive) statusTag = <Tag color="error">OVERRIDE: MỞ</Tag>;
+        if (isOverrideActive) statusTag = <Tag color="error">ĐANG MỞ ĐĂNG KÝ (BỘ MÔN)</Tag>;
         else if (isExpired) statusTag = <Tag color="red">ĐÃ ĐÓNG</Tag>;
         else statusTag = <Tag color="green">ĐANG TRONG HẠN</Tag>;
     }
@@ -212,8 +272,29 @@ const SemesterSettings = () => {
                                 <div className="page-header-subtitle">{t('semesterSettings.description', 'Quản lý lộ trình và điều phối hoạt động học kỳ')}</div>
                             </div>
                         </div>
+
+                        {isAdmin && (
+                            <div className="flex items-center gap-3 bg-blue-50/50 p-2 pl-4 rounded-xl border border-blue-100/50">
+                                <span className="text-[13px] font-bold text-blue-600 uppercase tracking-wider">Bộ môn:</span>
+                                <Select
+                                    placeholder="Chọn bộ môn cấu hình"
+                                    className="w-64"
+                                    variant="borderless"
+                                    value={selectedDeptId}
+                                    onChange={setSelectedDeptId}
+                                    options={departments.map(d => ({ label: d.name, value: d.id }))}
+                                    showSearch
+                                    popupClassName="rounded-xl shadow-lg border-none"
+                                    style={{ fontWeight: 600 }}
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
+                            </div>
+                        )}
                     </div>
                 </Card>
+                    <div className="max-w-[1200px] mx-auto space-y-6">
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left: Phase Status (Non-interactive) */}
@@ -260,9 +341,11 @@ const SemesterSettings = () => {
                                                 </div>
                                             }
                                             subTitle={
-                                                <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-bold bg-slate-100/80 px-2.5 py-1 rounded-full mt-1">
-                                                    <ClockCircleOutlined style={{ fontSize: '10px' }} />
-                                                    {getPhaseTimeRange(phase, activeSemester)}
+                                                <div className="flex items-center gap-1.5 -mt-4">
+                                                    <ClockCircleOutlined className="text-[11px] text-slate-400" />
+                                                    <div className="text-[12px] leading-tight">
+                                                        {getPhaseTimeRange(phase, activeSemester, deptConfig)}
+                                                    </div>
                                                 </div>
                                             }
                                             description={PHASES_ORDER[currentStepIndex] === phase ? (
@@ -297,16 +380,30 @@ const SemesterSettings = () => {
 
                     {/* Right: Controls */}
                     <div className="lg:col-span-5 space-y-6">
-                        {/* Panel 2: Registration Override Management */}
+                        {isAdmin && !selectedDeptId ? (
+                            <Card className="page-card h-full flex items-center justify-center py-20 bg-slate-50/50 border-dashed border-2">
+                                <Empty
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    description={
+                                        <div className="text-center">
+                                            <p className="text-slate-500 font-bold">Chế độ xem chung</p>
+                                            <p className="text-xs text-slate-400">Vui lòng chọn bộ môn ở phía trên để<br/>thiết lập cấu hình riêng hoặc mở đăng ký.</p>
+                                        </div>
+                                    }
+                                />
+                            </Card>
+                        ) : (
+                            <>
+                                {/* Panel 2: Registration Override Management */}
                         <Card
                             title={
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cơ chế Mở đăng ký</h2>
+                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cơ chế mở đăng ký bổ sung (Bộ môn)</h2>
                                     </div>
                                     {isOverrideActive ? (
-                                        <Tag color="error" className="rounded-full px-3 border-none font-bold animate-pulse">OVERRIDE: MỞ</Tag>
+                                        <Tag color="error" className="rounded-full px-3 border-none font-bold animate-pulse">MỞ ĐĂNG KÝ</Tag>
                                     ) : statusTag}
                                 </div>
                             }
@@ -340,7 +437,7 @@ const SemesterSettings = () => {
                                         disabled={!canOverride}
                                         className={`h-12 rounded-xl shadow-md font-bold transition-all hover:scale-[1.02] ${!isOverrideActive ? 'bg-blue-600 border-none' : ''}`}
                                     >
-                                        {isOverrideActive ? 'Thiết lập Đóng đăng ký' : 'Thiết lập Mở đăng ký'}
+                                        {isOverrideActive ? 'Thiết lập Đóng đăng ký' : 'Thiết lập mở đăng ký'}
                                     </Button>
                                     <Button
                                         icon={<HistoryOutlined />}
@@ -370,7 +467,7 @@ const SemesterSettings = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình Thời gian chung</h2>
+                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình thời gian bảo vệ (Bộ môn)</h2>
                                     </div>
                                 </div>
                             }
@@ -381,7 +478,7 @@ const SemesterSettings = () => {
                                 <div className="bg-gray-50 p-4 rounded-xl space-y-3">
                                     <div className="space-y-2">
                                         <label className="section-label">
-                                            Ngày bảo vệ học kỳ (dự kiến)
+                                            Ngày bảo vệ dự kiến (riêng Bộ môn)
                                         </label>
                                         <DatePicker
                                             className="w-full h-12 rounded-xl border-gray-200"
@@ -418,15 +515,17 @@ const SemesterSettings = () => {
                             className="rounded-xl border border-blue-100 bg-blue-50/50"
                             icon={<InfoCircleOutlined className="text-blue-400" />}
                             showIcon
-                            message={<span className="text-blue-700 font-medium">Lưu ý về quy tắc gia hạn</span>}
+                            message={<span className="text-blue-700 font-medium">Lưu ý về quy tắc mở đăng ký</span>}
                             description={
                                 <ul className="text-xs text-blue-600/80 mt-1 list-disc pl-4 space-y-1">
-                                    <li>Chỉ SV chưa đăng ký mới được phép đăng ký trong thời gian gia hạn.</li>
-                                    <li>Không thể gia hạn lùi thời gian so với hạn hiện tại.</li>
-                                    <li>Lịch sử gia hạn sẽ được lưu vĩnh viễn để phục vụ thanh tra.</li>
+                                    <li>Chỉ SV chưa đăng ký mới được phép đăng ký trong thời gian mở đăng ký.</li>
+                                    <li>Không thể mở đăng ký lùi thời gian so với hạn hiện tại.</li>
+                                    <li>Lịch sử mở đăng ký sẽ được lưu vĩnh viễn để phục vụ thanh tra.</li>
                                 </ul>
                             }
                         />
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -450,7 +549,7 @@ const SemesterSettings = () => {
                             notify.warning('Vui lòng nhập lý do thực hiện');
                             return;
                         }
-                        toggleOverrideMutation.mutate({ override: !isOverrideActive, reason });
+                        toggleOverrideMutation.mutate({ open: !isOverrideActive, reason });
                     }}
                     confirmLoading={toggleOverrideMutation.isPending}
                     okText={isOverrideActive ? 'Xác nhận Đóng' : 'Xác nhận Mở'}
@@ -464,9 +563,9 @@ const SemesterSettings = () => {
                             type={isOverrideActive ? 'info' : 'warning'}
                             message={<span className="font-bold">{isOverrideActive ? 'Quy trình đóng đăng ký' : 'Cảnh báo rủi ro tiến độ'}</span>}
                             description={
-                                isOverrideActive 
-                                ? "Hệ thống sẽ quay về tuân thủ timeline gốc. Sinh viên quá hạn sẽ không thể đăng ký thêm."
-                                : "Việc mở lại đăng ký có thể làm giảm thời gian thực hiện khóa luận của sinh viên và ảnh hưởng đến tiến độ chung của học kỳ."
+                                isOverrideActive
+                                    ? "Hệ thống sẽ quay về tuân thủ timeline gốc. Sinh viên quá hạn sẽ không thể đăng ký thêm."
+                                    : "Việc mở lại đăng ký có thể làm giảm thời gian thực hiện khóa luận của sinh viên và ảnh hưởng đến tiến độ chung của học kỳ."
                             }
                             showIcon
                             className="mb-6 rounded-xl"
@@ -478,9 +577,9 @@ const SemesterSettings = () => {
                                 label={<span className="font-bold text-slate-700">Lý do thực hiện</span>}
                                 rules={[{ required: true, message: 'Vui lòng nhập lý do' }]}
                             >
-                                <Input.TextArea 
+                                <Input.TextArea
                                     placeholder={isOverrideActive ? "Ví dụ: Đã hết đợt đăng ký bổ sung..." : "Ví dụ: Hỗ trợ các nhóm gặp sự cố kỹ thuật..."}
-                                    rows={3} 
+                                    rows={3}
                                     className="rounded-xl"
                                 />
                             </Form.Item>
@@ -533,18 +632,19 @@ const SemesterSettings = () => {
                     />
                 </Modal>
             </div>
+            </div>
             <style>{`
                 .semester-steps-readonly .ant-steps-item {
-                    padding-bottom: 8px !important;
+                    padding-bottom: 28px !important;
                 }
                 .semester-steps-readonly .ant-steps-item-container {
-                    padding-bottom: 8px !important;
+                    padding-bottom: 0 !important;
                 }
                 .semester-steps-readonly .ant-steps-item-content {
                     min-height: unset !important;
                 }
                 .semester-steps-readonly .ant-steps-item-tail {
-                    padding: 8px 0 !important;
+                    padding: 16px 0 !important;
                 }
             `}</style>
         </div>

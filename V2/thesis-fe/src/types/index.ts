@@ -92,6 +92,16 @@ export interface Department {
 export type SemesterPhase = 'PLANNING' | 'PREVIEW' | 'REGISTRATION' | 'WORK' | 'REVIEWING' | 'DEFENSE' | 'FINAL';
 export type SemesterStatus = 'PLANNING' | 'ACTIVE' | 'COMPLETED';
 
+export interface DepartmentSemesterConfig {
+  id: string;
+  department_id: string;
+  semester_id: string;
+  defense_date?: string;
+  is_registration_open: boolean;
+  updated_by: string;
+  updated_at: string;
+}
+
 export interface Semester {
   id: string;
   name: string;
@@ -110,6 +120,7 @@ export interface Semester {
   defense_end: string;
   status: SemesterStatus;
   is_registration_override?: boolean;
+  deptConfig?: DepartmentSemesterConfig;
   calculated_phase?: SemesterPhase | null;
   allowedActions?: Record<string, ActionPermission>;
   created_at: string;

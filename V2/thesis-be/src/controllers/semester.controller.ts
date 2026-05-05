@@ -179,6 +179,27 @@ export class SemesterController {
         });
       }
 
+      // 2. Fetch Department-specific config for the user
+      const userData = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { departmentId: true }
+      });
+
+      let deptConfig = null;
+      if (userData?.departmentId) {
+        deptConfig = await prisma.departmentSemesterConfig.findUnique({
+          where: {
+            department_id_semester_id: {
+              department_id: userData.departmentId,
+              semester_id: semester.id
+            }
+          }
+        });
+      }
+
+      // Attach to semester for AcademicPolicy
+      (semester as any).deptConfig = deptConfig;
+
       // Resolve student registration if applicable
       let registration = null;
       if (user.role === UserRole.STUDENT) {

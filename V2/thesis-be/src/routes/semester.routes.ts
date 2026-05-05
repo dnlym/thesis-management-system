@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import semesterController from '../controllers/semester.controller';
+import deptSemesterConfigController from '../controllers/dept-semester-config.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { body, param } from 'express-validator';
 import { validate } from '../middleware/validator.middleware';
@@ -104,6 +105,25 @@ router.get(
   authorize(UserRole.HEAD, UserRole.ADMIN),
   validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
   semesterController.getOverrideLogs.bind(semesterController)
+);
+
+// Department-specific configuration
+router.get(
+  '/:semesterId/dept-config',
+  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.LECTURER, UserRole.STUDENT),
+  validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
+  deptSemesterConfigController.getConfig.bind(deptSemesterConfigController)
+);
+
+router.post(
+  '/:semesterId/dept-config',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  validate([
+    param('semesterId').isUUID().withMessage('Invalid semester ID'),
+    body('defense_date').optional().isISO8601().withMessage('Invalid defense date'),
+    body('is_registration_open').optional().isBoolean().withMessage('is_registration_open must be a boolean'),
+  ]),
+  deptSemesterConfigController.updateConfig.bind(deptSemesterConfigController)
 );
 
 

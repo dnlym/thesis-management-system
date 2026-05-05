@@ -111,11 +111,12 @@ export class TopicService {
    * Format: DT-{semester_code}-{sequence_number}
    * Example: DT-HK1-2025-001
    */
-  private async generateTopicCode(semesterId: string, departmentId: string): Promise<string> {
+  private async generateTopicCode(semesterId: string, departmentId: string, tx?: any): Promise<string> {
+    const client = tx || prisma;
     // Get semester and department info
     const [semester, department] = await Promise.all([
-      prisma.semester.findUnique({ where: { id: semesterId } }),
-      prisma.department.findUnique({ where: { id: departmentId } })
+      client.semester.findUnique({ where: { id: semesterId } }),
+      client.department.findUnique({ where: { id: departmentId } })
     ]);
 
     if (!semester || !department) {
@@ -134,7 +135,7 @@ export class TopicService {
     let attempts = 0;
     while (attempts < 5) {
       // Find the topic with the highest sequence number for this department and semester
-      const latestTopic = await prisma.topic.findFirst({
+      const latestTopic = await client.topic.findFirst({
         where: {
           semester_id: semesterId,
           departmentId: departmentId,
@@ -154,10 +155,10 @@ export class TopicService {
         }
       }
 
-      const code = `${prefix}${String(nextSeq).padStart(3, '0')}`;
+      const code = `${prefix}${nextSeq}`;
 
       // Final check for uniqueness within same semester (scoped unique)
-      const existing = await prisma.topic.findFirst({
+      const existing = await client.topic.findFirst({
         where: { code, semester_id: semesterId }
       });
 
@@ -1608,9 +1609,7 @@ export class TopicService {
     // 4. Transaction for atomicity
     return await prisma.$transaction(async (tx) => {
       // Generate new topic code for target semester
-      const topicCount = await tx.topic.count({ where: { semester_id: newSemesterId } });
-      const sequence = String(topicCount + 1).padStart(3, '0');
-      const newCode = `DT-${targetSemester.code}-${sequence}`;
+      const newCode = await this.generateTopicCode(newSemesterId, oldTopic.departmentId, tx);
 
       const newTopic = await tx.topic.create({
         data: {

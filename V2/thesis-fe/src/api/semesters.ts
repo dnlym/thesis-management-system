@@ -93,4 +93,16 @@ export const SemestersApi = {
         const res = await api.get<ApiResponse<any[]>>(`/semesters/${semesterId}/override-logs`);
         return res.data.data;
     },
+
+    async getDeptConfig(semesterId: string, departmentId?: string) {
+        const res = await api.get<ApiResponse<any>>(`/semesters/${semesterId}/dept-config`, {
+            params: { departmentId }
+        });
+        return res.data.data;
+    },
+
+    async updateDeptConfig(semesterId: string, data: { defense_date?: string; is_registration_open?: boolean; departmentId?: string }) {
+        const res = await api.post<ApiResponse<any>>(`/semesters/${semesterId}/dept-config`, data);
+        return res.data.data;
+    },
 };
