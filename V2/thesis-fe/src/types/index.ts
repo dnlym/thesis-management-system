@@ -73,6 +73,7 @@ export interface User {
   email: string;
   role: UserRole;
   department_id?: string;
+  department?: Department;
   avatar_url?: string | null;
   student_code?: string;
   class_name?: string;
@@ -149,6 +150,7 @@ export interface Topic {
     full_name: string;
     email: string;
     avatar_url?: string;
+    department?: Department;
   };
   semester?: Semester;
   department?: Department;

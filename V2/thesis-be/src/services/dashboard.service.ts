@@ -9,7 +9,7 @@ export class DashboardService {
         if (!user) throw new Error('User not found');
 
         let activeSemester: any = await semesterService.getActiveSemester();
-        
+
         // Safety Fallback: If no ACTIVE semester found, get the most recent one with topics
         if (!activeSemester) {
             const mostRecentWithTopics = await prisma.topic.findFirst({
@@ -17,8 +17,8 @@ export class DashboardService {
                 select: { semester_id: true }
             });
             if (mostRecentWithTopics) {
-                activeSemester = await prisma.semester.findUnique({ 
-                    where: { id: mostRecentWithTopics.semester_id } 
+                activeSemester = await prisma.semester.findUnique({
+                    where: { id: mostRecentWithTopics.semester_id }
                 });
             }
         }
@@ -71,13 +71,14 @@ export class DashboardService {
     private getMilestones(semester: any) {
         if (!semester) return [];
         const now = new Date();
-        
+
         const items = [
-            { title: 'Công bố đề tài', date: semester.topic_viewing_start, type: 'VIEWING' },
-            { title: 'Mở đăng ký đề tài', date: semester.topic_registration_start, type: 'REGISTRATION_START' },
-            { title: 'Kết thúc giai đoạn đề cương', date: semester.midterm_end, type: 'MIDTERM' },
+            { title: 'Công bố danh sách đề tài', date: semester.topic_viewing_start, type: 'VIEWING' },
+            { title: 'Bắt đầu đăng ký đề tài', date: semester.topic_registration_start, type: 'REGISTRATION_START' },
+            { title: 'Kết thúc đợt đăng ký', date: semester.topic_registration_end, type: 'REGISTRATION_END' },
+            { title: 'Hạn chót chấm giữa kỳ', date: semester.midterm_end, type: 'MIDTERM' },
             { title: 'Kết thúc thực hiện khóa luận', date: semester.proposal_deadline, type: 'PROPOSAL' },
-            { title: 'Hạn chốt chấm phản biện', date: semester.thesis_deadline, type: 'REVIEW' },
+            { title: 'Hạn chót chấm phản biện', date: semester.thesis_deadline, type: 'REVIEW' },
             { title: 'Bắt đầu bảo vệ Hội đồng', date: semester.defense_start, type: 'DEFENSE_START' },
             { title: 'Kết thúc học kỳ', date: semester.end_date, type: 'SEMESTER_END' },
         ].filter(item => item.date);
@@ -100,10 +101,10 @@ export class DashboardService {
                 group: { members: { some: { user_id: userId, status: 'ACCEPTED' } } },
                 ...(semesterId ? { semester_id: semesterId } : {})
             },
-            include: { 
+            include: {
                 topic: {
                     include: { supervisor: { select: { full_name: true } } }
-                } 
+                }
             }
         });
 
@@ -126,17 +127,17 @@ export class DashboardService {
         const supervisedTopicsCount = await prisma.topic.count({ where });
 
         const pendingRegistrationsCount = await prisma.topicRegistration.count({
-            where: { 
-                topic: { supervisor_id: userId }, 
+            where: {
+                topic: { supervisor_id: userId },
                 status: RegistrationStatus.PENDING,
                 ...(semesterId ? { semester_id: semesterId } : {})
             }
         });
 
         const reviewAssignmentsCount = await prisma.assignment.count({
-            where: { 
-                reviewer_id: userId, 
-                assignment_type: 'REVIEWER', 
+            where: {
+                reviewer_id: userId,
+                assignment_type: 'REVIEWER',
                 status: AssignmentStatus.PENDING,
                 ...(semesterId ? { topic: { semester_id: semesterId } } : {})
             }
@@ -157,10 +158,10 @@ export class DashboardService {
         if (semesterId) where.semester_id = semesterId;
 
         const totalTopics = await prisma.topic.count({ where });
-        const pendingApprovalTopics = await prisma.topic.count({ 
-            where: { ...where, status: TopicStatus.PENDING_APPROVAL } 
+        const pendingApprovalTopics = await prisma.topic.count({
+            where: { ...where, status: TopicStatus.PENDING_APPROVAL }
         });
-        
+
         const completedCount = await prisma.topic.count({
             where: { ...where, status: { in: [TopicStatus.COMPLETED, TopicStatus.FINALIZED] } }
         });
@@ -179,12 +180,12 @@ export class DashboardService {
         if (semesterId) where.semester_id = semesterId;
 
         const totalUsers = await prisma.user.count();
-        const pendingApprovalTopics = await prisma.topic.count({ 
-            where: { ...where, status: TopicStatus.PENDING_APPROVAL } 
+        const pendingApprovalTopics = await prisma.topic.count({
+            where: { ...where, status: TopicStatus.PENDING_APPROVAL }
         });
         const totalTopics = await prisma.topic.count({ where });
-        const completedCount = await prisma.topic.count({ 
-            where: { ...where, status: { in: [TopicStatus.COMPLETED, TopicStatus.FINALIZED] } } 
+        const completedCount = await prisma.topic.count({
+            where: { ...where, status: { in: [TopicStatus.COMPLETED, TopicStatus.FINALIZED] } }
         });
 
         return {

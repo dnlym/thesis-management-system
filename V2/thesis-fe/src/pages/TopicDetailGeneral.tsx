@@ -182,7 +182,9 @@ const TopicDetailGeneral = () => {
 
                     <Descriptions.Item label={t('topics.supervisor')}>
                         <div className="flex flex-col">
-                            <span className="font-medium">{topic.supervisor?.full_name || 'N/A'}</span>
+                            <span className="font-medium">
+                                {topic.supervisor?.full_name || 'N/A'}
+                            </span>
                             {topic.supervisor?.email && <span className="text-gray-500 text-sm">{topic.supervisor.email}</span>}
                         </div>
                     </Descriptions.Item>

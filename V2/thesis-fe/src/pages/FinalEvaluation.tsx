@@ -15,7 +15,7 @@ const { TextArea } = Input;
 
 /**
  * Final Evaluation Form - Multi-Student Side-by-Side Grading
- * Cấu trúc chuẩn: STT | LO | Kết quả (SV1 | SV2 | SV3) | Ghi Chú
+ * Cấu trúc chuẩn: STT | LO | Kết quả (SV1 | SV2 | SV3) | Ghi chú
  */
 const FinalEvaluation = () => {
     const { user } = useAuthStore();
@@ -34,7 +34,7 @@ const FinalEvaluation = () => {
     });
 
     const selectedTopic = (gradingContext as any)?.topic || gradingContext?.finalScores?.[0]?.topic || (gradingContext as any)?.permissions?.topic;
-    
+
     // permissions object from backend
     const permissions = gradingContext?.permissions;
 
@@ -49,7 +49,7 @@ const FinalEvaluation = () => {
     const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveRole();
 
     // Fetch FINAL criteria (10 LOs)
-    const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({ 
+    const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({
         criteriaType: 'FINAL',
         topicId: topicId || undefined
     });
@@ -58,7 +58,7 @@ const FinalEvaluation = () => {
     const criteria = useMemo(() => {
         if (!criteriaData) return [];
         if (Array.isArray(criteriaData)) return criteriaData;
-        
+
         const data = criteriaData as any;
         // In the fixed version, we only expect 'FINAL' criteria
         return data.FINAL || data.SUPERVISOR || Object.values(data)[0] || [];
@@ -121,7 +121,7 @@ const FinalEvaluation = () => {
             calculateAverages();
         }
     }, [criteria, students]);
-    
+
     const getRaterRole = (): RaterRole => {
         return activeRole as RaterRole;
     };
@@ -129,7 +129,7 @@ const FinalEvaluation = () => {
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
-            
+
             const submissions = students.map(student => {
                 const gradeScores: GradeScore[] = criteria.map(criterion => ({
                     criterion_id: criterion.id,
@@ -208,7 +208,7 @@ const FinalEvaluation = () => {
             })),
         },
         {
-            title: 'Ghi Chú',
+            title: 'Ghi chú',
             key: 'comment',
             width: 200,
             render: (_: any, record: any) => (
@@ -239,125 +239,126 @@ const FinalEvaluation = () => {
 
                 <Card className="shadow-lg border-t-4 border-t-blue-600 rounded-2xl">
                     <div className="bg-blue-50 p-6 rounded-xl mb-6 border border-blue-100">
-                    <Row gutter={32}>
-                        <Col span={14}>
-                            <Text type="secondary" className="block text-xs uppercase mb-1 font-bold opacity-70">Tên đề tài</Text>
-                            <Text strong className="text-xl leading-relaxed text-blue-900">{selectedTopic?.title}</Text>
-                        </Col>
-                        <Col span={10} className="border-l border-blue-200">
-                            <Text type="secondary" className="block text-xs uppercase mb-2 font-bold opacity-70">Danh sách sinh viên</Text>
-                            <div className="space-y-2">
-                                {students.map((s, i) => (
-                                    <div key={s.id} className="flex items-center gap-2">
-                                        <Tag color="blue">{i + 1}</Tag>
-                                        <Text strong>{s.name}</Text>
-                                        <Text type="secondary">({s.code})</Text>
-                                    </div>
-                                ))}
-                            </div>
-                        </Col>
-                    </Row>
-                </div>
+                        <Row gutter={32}>
+                            <Col span={14}>
+                                <Text type="secondary" className="block text-xs uppercase mb-1 font-bold opacity-70">Tên đề tài</Text>
+                                <Text strong className="text-xl leading-relaxed text-blue-900">{selectedTopic?.title}</Text>
+                            </Col>
+                            <Col span={10} className="border-l border-blue-200">
+                                <Text type="secondary" className="block text-xs uppercase mb-2 font-bold opacity-70">Danh sách sinh viên</Text>
+                                <div className="space-y-2">
+                                    {students.map((s, i) => (
+                                        <div key={s.id} className="flex items-center gap-2">
+                                            <Tag color="blue">{i + 1}</Tag>
+                                            <Text strong>{s.name}</Text>
+                                            <Text type="secondary">({s.code})</Text>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Col>
+                        </Row>
+                    </div>
 
-                <Tabs
-                    activeKey={activeRole}
-                    onChange={(key) => setActiveRole(key as any)}
-                    className="sys-tabs"
-                    tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
-                    items={[
-                        { key: 'SUPERVISOR', label: 'GV Hướng dẫn' },
-                        { key: 'REVIEWER', label: 'GV Phản biện' },
-                        { key: 'COMMITTEE', label: 'Hội đồng' },
-                    ]}
-                />
-
-                {!isPhaseAllowed && phaseError && (
-                    <Alert
-                        message="Thông báo về quyền chấm điểm"
-                        description={phaseError}
-                        type="info"
-                        showIcon
-                        className="mb-8 border-l-4 border-l-blue-500 shadow-sm"
+                    <Tabs
+                        activeKey={activeRole}
+                        onChange={(key) => setActiveRole(key as any)}
+                        className="sys-tabs"
+                        tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
+                        items={[
+                            { key: 'SUPERVISOR', label: 'GV Hướng dẫn' },
+                            { key: 'REVIEWER', label: 'GV Phản biện' },
+                            { key: 'COMMITTEE', label: 'Hội đồng' },
+                        ]}
                     />
-                )}
 
-                {isLoadingCriteria ? (
-                    <Skeleton active paragraph={{ rows: 12 }} />
-                ) : criteria.length > 0 ? (
-                    <Form form={form} onValuesChange={calculateAverages}>
-                        <Table
-                            dataSource={criteria}
-                            columns={gradingColumns}
-                            pagination={false}
-                            rowKey="id"
-                            bordered
-                            size="middle"
-                            className="sys-table bg-white"
-                            summary={() => (
-                                <>
-                                    <Table.Summary.Row className="bg-gray-100 font-bold">
-                                        <Table.Summary.Cell index={0} colSpan={2} className="text-right">
-                                            TRUNG BÌNH
-                                        </Table.Summary.Cell>
-                                        {students.map(student => (
-                                            <Table.Summary.Cell key={`avg_${student.id}`} index={2} className="text-center">
-                                                <Text strong className="text-blue-600 text-lg">
-                                                    {(averages[student.id] || 0).toFixed(2)}
-                                                </Text>
-                                            </Table.Summary.Cell>
-                                        ))}
-                                        <Table.Summary.Cell index={3} />
-                                    </Table.Summary.Row>
-
-                                    <Table.Summary.Row className="bg-white font-bold h-24">
-                                        <Table.Summary.Cell index={0} colSpan={2} className="text-right">
-                                            KẾT QUẢ
-                                        </Table.Summary.Cell>
-                                        {students.map(student => {
-                                            const isPass = (averages[student.id] || 0) >= 5.0;
-                                            return (
-                                                <Table.Summary.Cell key={`res_${student.id}`} index={2} className="text-center">
-                                                    <div className="flex flex-col items-center gap-3 px-4">
-                                                        <Checkbox checked={isPass} disabled className="pass-checkbox pointer-events-none">
-                                                            <Text strong={isPass} type={isPass ? 'success' : undefined}>Đạt</Text>
-                                                        </Checkbox>
-                                                        <Checkbox checked={!isPass} disabled className="fail-checkbox pointer-events-none">
-                                                            <Text strong={!isPass} type={!isPass ? 'danger' : undefined}>Không đạt</Text>
-                                                        </Checkbox>
-                                                    </div>
-                                                </Table.Summary.Cell>
-                                            );
-                                        })}
-                                        <Table.Summary.Cell index={3} />
-                                    </Table.Summary.Row>
-                                </>
-                            )}
+                    {!isPhaseAllowed && phaseError && (
+                        <Alert
+                            message="Thông báo về quyền chấm điểm"
+                            description={phaseError}
+                            type="info"
+                            showIcon
+                            className="mb-8 border-l-4 border-l-blue-500 shadow-sm"
                         />
+                    )}
 
-                        <div className="flex justify-end gap-3 mt-10 no-print pb-4">
-                            <Button size="large" icon={<SaveOutlined />} onClick={() => form.resetFields()} disabled={isLocked}>
-                                Nhập lại từ đầu
-                            </Button>
-                            <Tooltip title={isLocked ? phaseError : ''}>
-                                <Button
-                                    size="large"
-                                    type="primary"
-                                    icon={<CheckCircleOutlined />}
-                                    onClick={handleSubmit}
-                                    loading={submitGradeMutation.isPending}
-                                    disabled={isLocked}
-                                >
-                                    Lưu và Gửi Phiếu Đánh Giá Nhóm
+                    {isLoadingCriteria ? (
+                        <Skeleton active paragraph={{ rows: 12 }} />
+                    ) : criteria.length > 0 ? (
+                        <Form form={form} onValuesChange={calculateAverages}>
+                            <Table
+                                dataSource={criteria}
+                                columns={gradingColumns}
+                                pagination={false}
+                                rowKey="id"
+                                bordered
+                                size="middle"
+                                className="sys-table bg-white"
+                                summary={() => (
+                                    <>
+                                        <Table.Summary.Row className="bg-gray-100 font-bold">
+                                            <Table.Summary.Cell index={0} colSpan={2} className="text-right">
+                                                TRUNG BÌNH
+                                            </Table.Summary.Cell>
+                                            {students.map(student => (
+                                                <Table.Summary.Cell key={`avg_${student.id}`} index={2} className="text-center">
+                                                    <Text strong className="text-blue-600 text-lg">
+                                                        {(averages[student.id] || 0).toFixed(2)}
+                                                    </Text>
+                                                </Table.Summary.Cell>
+                                            ))}
+                                            <Table.Summary.Cell index={3} />
+                                        </Table.Summary.Row>
+
+                                        <Table.Summary.Row className="bg-white font-bold h-24">
+                                            <Table.Summary.Cell index={0} colSpan={2} className="text-right">
+                                                KẾT QUẢ
+                                            </Table.Summary.Cell>
+                                            {students.map(student => {
+                                                const isPass = (averages[student.id] || 0) >= 5.0;
+                                                return (
+                                                    <Table.Summary.Cell key={`res_${student.id}`} index={2} className="text-center">
+                                                        <div className="flex flex-col items-center gap-3 px-4">
+                                                            <Checkbox checked={isPass} disabled className="pass-checkbox pointer-events-none">
+                                                                <Text strong={isPass} type={isPass ? 'success' : undefined}>Đạt</Text>
+                                                            </Checkbox>
+                                                            <Checkbox checked={!isPass} disabled className="fail-checkbox pointer-events-none">
+                                                                <Text strong={!isPass} type={!isPass ? 'danger' : undefined}>Không đạt</Text>
+                                                            </Checkbox>
+                                                        </div>
+                                                    </Table.Summary.Cell>
+                                                );
+                                            })}
+                                            <Table.Summary.Cell index={3} />
+                                        </Table.Summary.Row>
+                                    </>
+                                )}
+                            />
+
+                            <div className="flex justify-end gap-3 mt-10 no-print pb-4">
+                                <Button size="large" icon={<SaveOutlined />} onClick={() => form.resetFields()} disabled={isLocked}>
+                                    Nhập lại từ đầu
                                 </Button>
-                            </Tooltip>
-                        </div>
-                    </Form>
-                ) : (
-                    <Alert message="Không tìm thấy tiêu chí đánh giá. Vui lòng liên hệ bộ môn để thiết lập 10 tiêu chí LO." type="warning" showIcon />
-                )}
-            </Card>
+                                <Tooltip title={isLocked ? phaseError : ''}>
+                                    <Button
+                                        size="large"
+                                        type="primary"
+                                        icon={<CheckCircleOutlined />}
+                                        onClick={handleSubmit}
+                                        loading={submitGradeMutation.isPending}
+                                        disabled={isLocked}
+                                    >
+                                        Lưu và Gửi Phiếu Đánh Giá Nhóm
+                                    </Button>
+                                </Tooltip>
+                            </div>
+                        </Form>
+                    ) : (
+                        <Alert message="Không tìm thấy tiêu chí đánh giá. Vui lòng liên hệ bộ môn để thiết lập 10 Tiêu chí đánh giá." type="warning" showIcon />
+                    )}
+                </Card>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+                <style dangerouslySetInnerHTML={{
+                    __html: `
                 .grading-table .ant-table-thead > tr > th {
                     background: #f0f7ff !important;
                     font-weight: bold;

@@ -10,6 +10,13 @@ import type { UploadProps } from 'antd';
 import type { RcFile } from 'antd/es/upload/interface';
 import ImgCrop from 'antd-img-crop';
 
+const roleMap: Record<string, string> = {
+  STUDENT: 'Sinh viên',
+  LECTURER: 'Giảng viên',
+  HEAD: 'Trưởng bộ môn',
+  ADMIN: 'Quản trị viên',
+};
+
 const Profiles = () => {
   const { user, updateUser } = useAuthStore();
   const queryClient = useQueryClient();
@@ -61,17 +68,17 @@ const Profiles = () => {
     mutationFn: async (values: { full_name: string; email: string; avatar_url?: string }) => {
       return await UsersApi.update(user!.id, values);
     },
-    onSuccess: (res) => {
-      if (res.success && res.data) {
+    onSuccess: (res: any) => {
+      if (res) {
         updateUser({
-          full_name: res.data.full_name,
-          email: res.data.email,
-          avatar_url: res.data.avatar_url || undefined,
+          full_name: res.full_name,
+          email: res.email,
+          avatar_url: res.avatar_url || undefined,
         });
         queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
         notify.success('Cập nhật thông tin cá nhân thành công');
       } else {
-        notify.error(res.message || 'Cập nhật thất bại');
+        notify.error('Cập nhật thất bại');
       }
     },
     onError: () => notify.error('Cập nhật thất bại'),
@@ -163,12 +170,18 @@ const Profiles = () => {
                   <Input placeholder="Nhập họ và tên" className="h-10" />
                 </Form.Item>
 
-                {/* Student Code - only shown for students, read-only */}
-                {data?.student_code && (
-                  <Form.Item label="Mã số sinh viên">
-                    <Input value={data.student_code} disabled className="h-10 bg-gray-50 font-mono" />
+                <Form.Item label="Mã số (MSV/MGV)">
+                  <Input value={data?.student_code || 'N/A'} disabled className="h-10 bg-gray-50 font-mono" />
+                </Form.Item>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item label="Chức vụ">
+                    <Input value={data?.role ? roleMap[data.role] || data.role : 'N/A'} disabled className="h-10 bg-gray-50" />
                   </Form.Item>
-                )}
+                  <Form.Item label="Bộ môn">
+                    <Input value={data?.department?.name || 'N/A'} disabled className="h-10 bg-gray-50" />
+                  </Form.Item>
+                </div>
 
                 <Form.Item
                   label="Email"

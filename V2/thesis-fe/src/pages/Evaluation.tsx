@@ -318,7 +318,7 @@ const Evaluation = () => {
             <Table dataSource={criteria} rowKey="id" pagination={false} bordered size="middle" className="grading-table"
               columns={[
                 { title: 'STT', key: 'idx', width: 60, align: 'center', render: (_, __, i) => i + 1 },
-                { title: 'Tiêu chí LO', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
+                { title: 'Tiêu chí đánh giá', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
                 {
                   title: 'Kết quả', children: students.map((s, i) => ({
                     title: `SV ${i + 1}`, key: `sv_${s.id}`, width: 120, align: 'center',
@@ -330,7 +330,7 @@ const Evaluation = () => {
                   }))
                 },
                 {
-                  title: 'Ghi Chú', key: 'note', render: (_, r) => (
+                  title: 'Ghi chú', key: 'note', render: (_, r) => (
                     <Form.Item name={['notes', r.id]} className="mb-0">
                       <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
                     </Form.Item>
@@ -503,6 +503,11 @@ const Evaluation = () => {
                   </div>
                   <div className="text-gray-400">
                     MSSV: <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} /> • {reg.student?.class_name || 'N/A'}
+                    {reg.student?.department?.name && (
+                      <div className="text-[10px] italic">
+                        {reg.student.department.name}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -517,6 +522,11 @@ const Evaluation = () => {
             <div className="font-medium">
               <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
             </div>
+            {r.supervisor.department?.name && (
+              <div className="text-gray-400 text-[10px]">
+                {r.supervisor.department.name}
+              </div>
+            )}
           </div>
           : <Tag color="red" className="text-xs">Chưa có GVHD</Tag>
       },
@@ -581,12 +591,12 @@ const Evaluation = () => {
           dataSource={currentData}
           rowKey="id"
           columns={columns}
-          pagination={{ 
-            pageSize: pageSize, 
-            showSizeChanger: true, 
+          pagination={{
+            pageSize: pageSize,
+            showSizeChanger: true,
             pageSizeOptions: ['10', '20', '50', '100'],
             onShowSizeChange: (_, size) => setPageSize(size),
-            showTotal: (total) => `Hiển thị các đề tài của bộ môn (${total} đề tài)` 
+            showTotal: (total) => `Hiển thị các đề tài của bộ môn (${total} đề tài)`
           }}
           className="rounded-lg overflow-hidden border border-gray-100 shadow-sm"
           rowClassName="hover:bg-blue-50 transition-colors"
@@ -622,73 +632,73 @@ const Evaluation = () => {
             className="sys-tabs-filter"
             tabBarStyle={{ paddingLeft: '24px', marginBottom: '0' }}
             items={[
-              { 
-                key: 'department', 
-                label: 'Quản lý Bộ môn', 
-                children: <div className="p-6 bg-white">{renderDepartmentTab()}</div> 
-              },
-              { 
-                key: 'advisor', 
-                label: 'Hướng dẫn', 
+              ...(user?.role === 'HEAD' ? [{
+                key: 'department',
+                label: 'Quản lý Bộ môn',
+                children: <div className="p-6 bg-white">{renderDepartmentTab()}</div>
+              }] : []),
+              {
+                key: 'advisor',
+                label: 'Hướng dẫn',
                 children: (
                   <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table 
-                      dataSource={filterLecturerData(advisorTopics?.topics || [])} 
-                      columns={dashboardColumns} 
-                      rowKey="id" 
-                      loading={isLoadingAdvisor} 
-                      className="sys-table" 
-                      pagination={{ 
+                    <Table
+                      dataSource={filterLecturerData(advisorTopics?.topics || [])}
+                      columns={dashboardColumns}
+                      rowKey="id"
+                      loading={isLoadingAdvisor}
+                      className="sys-table"
+                      pagination={{
                         pageSize: pageSize,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
                         onShowSizeChange: (_, size) => setPageSize(size)
-                      }} 
-                    />
-                  </div>
-                ) 
-              },
-              { 
-                key: 'reviewer', 
-                label: 'Phản biện', 
-                children: (
-                  <div className="p-6 space-y-4 bg-white">
-                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table 
-                      dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])} 
-                      columns={dashboardColumns} 
-                      rowKey="id" 
-                      loading={isLoadingReviewer} 
-                      className="sys-table" 
-                      pagination={{ 
-                        pageSize: pageSize,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        onShowSizeChange: (_, size) => setPageSize(size)
-                      }} 
+                      }}
                     />
                   </div>
                 )
               },
-              { 
-                key: 'council', 
-                label: 'Hội đồng', 
+              {
+                key: 'reviewer',
+                label: 'Phản biện',
                 children: (
                   <div className="p-6 space-y-4 bg-white">
                     <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table 
-                      dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])} 
-                      columns={dashboardColumns} 
-                      rowKey="id" 
-                      loading={isLoadingCouncil} 
-                      className="sys-table" 
-                      pagination={{ 
+                    <Table
+                      dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])}
+                      columns={dashboardColumns}
+                      rowKey="id"
+                      loading={isLoadingReviewer}
+                      className="sys-table"
+                      pagination={{
                         pageSize: pageSize,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
                         onShowSizeChange: (_, size) => setPageSize(size)
-                      }} 
+                      }}
+                    />
+                  </div>
+                )
+              },
+              {
+                key: 'council',
+                label: 'Hội đồng',
+                children: (
+                  <div className="p-6 space-y-4 bg-white">
+                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                    <Table
+                      dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])}
+                      columns={dashboardColumns}
+                      rowKey="id"
+                      loading={isLoadingCouncil}
+                      className="sys-table"
+                      pagination={{
+                        pageSize: pageSize,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
+                        onShowSizeChange: (_, size) => setPageSize(size)
+                      }}
                     />
                   </div>
                 )

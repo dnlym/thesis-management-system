@@ -197,11 +197,10 @@ const Topics = () => {
             </a>
             {students.length > 0 && (
               <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-400">
-                {students.map((s: any, idx: number) => (
-                  <span key={s.id}>
-                    <HighlightText text={`${s.full_name} (${s.student_code})`} keyword={debouncedSearch} />
-                    {idx < students.length - 1 ? ', ' : ''}
-                  </span>
+                {students.map((s: any) => (
+                    <div key={s.id} className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                        {s.full_name} ({s.student_code})
+                    </div>
                 ))}
               </div>
             )}
@@ -213,12 +212,13 @@ const Topics = () => {
       title: t('topics.supervisor'),
       dataIndex: 'supervisor',
       key: 'supervisor',
-      render: (supervisor: any) => (
+      render: (supervisor: any, record: any) => (
         <div className="flex items-center gap-2">
           <Avatar src={supervisor?.avatar_url} icon={<UserOutlined />} size="small" className="flex-shrink-0" />
-          <span className="text-xs font-medium">
-            <HighlightText text={supervisor?.full_name} keyword={debouncedSearch} />
-          </span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-slate-800 leading-tight">{record.supervisor?.full_name || 'N/A'}</span>
+            <span className="text-[11px] text-slate-400 font-medium tracking-wide mt-0.5">{record.supervisor?.email}</span>
+          </div>
         </div>
       ),
     },

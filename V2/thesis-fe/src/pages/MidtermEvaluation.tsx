@@ -96,7 +96,7 @@ const MidtermEvaluation = () => {
             key: 'students',
             render: (_: any, record: MidtermRegistration) => (
                 <div className="space-y-1">
-                    {record.group ? (
+                    {record.group && record.group.members ? (
                         record.group.members.map((m) => (
                             <div key={m.user.id} className="flex items-center gap-2">
                                 <Avatar size="small" src={m.user.avatar_url} icon={<UserOutlined />} />
@@ -185,6 +185,17 @@ const MidtermEvaluation = () => {
         },
     ];
 
+    const pendingCount = registrations?.filter((r: MidtermRegistration) => !r.midterm_status).length || 0;
+    const passedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length || 0;
+    const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
+
+    const filteredRegistrations = useMemo(() => {
+        if (!registrations) return [];
+        if (filterStatus === 'ALL') return registrations;
+        if (filterStatus === 'PENDING') return registrations.filter(r => !r.midterm_status);
+        return registrations.filter(r => r.midterm_status === filterStatus);
+    }, [registrations, filterStatus]);
+
     if (isLoading) {
         return (
             <div className="p-12 flex justify-center items-center">
@@ -200,17 +211,6 @@ const MidtermEvaluation = () => {
             </div>
         );
     }
-
-    const pendingCount = registrations?.filter((r: MidtermRegistration) => !r.midterm_status).length || 0;
-    const passedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length || 0;
-    const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
-
-    const filteredRegistrations = useMemo(() => {
-        if (!registrations) return [];
-        if (filterStatus === 'ALL') return registrations;
-        if (filterStatus === 'PENDING') return registrations.filter(r => !r.midterm_status);
-        return registrations.filter(r => r.midterm_status === filterStatus);
-    }, [registrations, filterStatus]);
 
     return (
         <div className="page-container">
@@ -334,7 +334,7 @@ const MidtermEvaluation = () => {
 
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <div className="text-sm text-gray-500 mb-2">Sinh viên</div>
-                            {selectedRegistration.group ? (
+                            {selectedRegistration.group && selectedRegistration.group.members ? (
                                 selectedRegistration.group.members.map((m) => (
                                     <div key={m.user.id} className="flex items-center gap-2 mb-1">
                                         <Avatar size="small" src={m.user.avatar_url} icon={<UserOutlined />} />

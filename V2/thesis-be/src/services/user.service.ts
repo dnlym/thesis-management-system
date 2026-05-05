@@ -66,7 +66,16 @@ export class UserService {
         });
 
         if (existingUser) {
-            throw new Error('Email already exists');
+            throw new Error('Email đã tồn tại trong hệ thống');
+        }
+
+        if (data.studentCode) {
+            const existingCode = await prisma.user.findUnique({
+                where: { student_code: data.studentCode },
+            });
+            if (existingCode) {
+                throw new Error('Mã số sinh viên/giảng viên này đã tồn tại');
+            }
         }
 
         const hashedPassword = await bcrypt.hash(data.password || '123456', 10);
@@ -98,15 +107,39 @@ export class UserService {
         if (data.departmentId !== undefined) updateData.departmentId = data.departmentId;
         if (data.department_id !== undefined) updateData.departmentId = data.department_id;
         
-        if (data.studentCode !== undefined) updateData.student_code = data.studentCode;
-        if (data.student_code !== undefined) updateData.student_code = data.student_code;
+         if (data.studentCode !== undefined || data.student_code !== undefined) {
+            const newCode = data.studentCode || data.student_code;
+            if (newCode) {
+                const existingCode = await prisma.user.findFirst({
+                    where: { 
+                        student_code: newCode,
+                        id: { not: id } 
+                    },
+                });
+                if (existingCode) {
+                    throw new Error('Mã số sinh viên/giảng viên này đã bị trùng với người dùng khác');
+                }
+            }
+            updateData.student_code = newCode;
+        }
         
         if (data.className !== undefined) updateData.class_name = data.className;
         if (data.class_name !== undefined) updateData.class_name = data.class_name;
         
         if (data.phone !== undefined) updateData.phone = data.phone;
         if (data.active !== undefined) updateData.active = data.active;
-        if (data.email !== undefined) updateData.email = data.email;
+        if (data.email !== undefined) {
+            const existingEmail = await prisma.user.findFirst({
+                where: { 
+                    email: data.email,
+                    id: { not: id }
+                }
+            });
+            if (existingEmail) {
+                throw new Error('Email này đã được sử dụng bởi người dùng khác');
+            }
+            updateData.email = data.email;
+        }
         if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
 
         const user = await prisma.user.update({

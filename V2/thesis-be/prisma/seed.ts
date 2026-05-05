@@ -163,36 +163,57 @@ async function main() {
   // 6. GRADING CRITERIA
   console.log('📊 Tạo tiêu chí đánh giá...');
   const loCriteria = [
-    { name: "Phân tích vấn đề (LO1)", weight: 0.1 },
-    { name: "Giải pháp kỹ thuật (LO2)", weight: 0.1 },
-    { name: "Thiết kế hệ thống (LO3)", weight: 0.1 },
-    { name: "Hiện thực mã nguồn (LO4)", weight: 0.15 },
-    { name: "Đánh giá & Thử nghiệm (LO5)", weight: 0.15 },
-    { name: "Thuyết trình & Phản biện (LO6)", weight: 0.1 },
-    { name: "Thu thập yêu cầu (LO7)", weight: 0.1 },
-    { name: "Báo cáo khóa luận (LO8)", weight: 0.1 },
-    { name: "Làm việc nhóm (LO9)", weight: 0.05 },
-    { name: "Vận hành hệ thống (LO10)", weight: 0.05 },
+    { name: "Phân tích vấn đề và mô hình hóa được yêu cầu của đề tài", weight: 0.1 },
+    { name: "Áp dụng các nguyên tắc, phương pháp chuyên môn để xác định được giải pháp", weight: 0.1 },
+    { name: "Thiết kế được một hệ thống hoặc quy trình đáp ứng yêu cầu", weight: 0.1 },
+    { name: "Hiện thực được một hệ thống hoặc quy trình đáp ứng yêu cầu", weight: 0.1 },
+    { name: "Đánh giá được một hệ thống, quy trình đáp ứng yêu cầu", weight: 0.1 },
+    { name: "Thuyết trình hiệu quả trong các lĩnh vực chuyên môn", weight: 0.1 },
+    { name: "Phỏng vấn theo những lĩnh vực khác nhau để thu thập yêu cầu", weight: 0.1 },
+    { name: "Viết được báo cáo khóa luận tốt nghiệp", weight: 0.1 },
+    { name: "Chứng tỏ được khả năng làm việc hiệu quả với các thành viên trong nhóm", weight: 0.1 },
+    { name: "Khả năng hỗ trợ triển khai và vận hành hệ thống thông tin", weight: 0.1 },
   ];
 
-  for (let i = 0; i < loCriteria.length; i++) {
-    const lo = loCriteria[i];
-    await prisma.gradingCriterion.upsert({
-      where: { id: `LO${i+1}` }, // Not stable but for seeding
-      update: {},
-      create: {
-        id: `LO${i+1}`,
-        name: lo.name,
-        description: `Tiêu chí ${lo.name}`,
-        weight: lo.weight,
-        max_score: 10,
-        min_score: 0,
-        role: 'SUPERVISOR',
-        criteria_type: 'FINAL',
-        order_index: i,
-        active: true,
-      }
-    });
+  const targetRoles = [
+    UserRole.LECTURER, // For generic lookup if needed
+  ];
+  
+  // Real Rater Roles from Prisma
+  const raterRoles = [
+    'SUPERVISOR',
+    'REVIEWER_1',
+    'COMMITTEE_CHAIR'
+  ];
+
+  for (const role of raterRoles) {
+    console.log(`📊 Nạp tiêu chí cho vai trò ${role}...`);
+    for (let i = 0; i < loCriteria.length; i++) {
+      const lo = loCriteria[i];
+      const loId = `${role}_LO${i+1}`;
+      await prisma.gradingCriterion.upsert({
+        where: { id: loId },
+        update: {
+          name: lo.name,
+          description: lo.name,
+          weight: lo.weight,
+          active: true,
+          order_index: i
+        },
+        create: {
+          id: loId,
+          name: lo.name,
+          description: lo.name,
+          weight: lo.weight,
+          max_score: 10,
+          min_score: 0,
+          role: role as any,
+          criteria_type: 'FINAL',
+          order_index: i,
+          active: true,
+        }
+      });
+    }
   }
 
   console.log('✅ Nạp dữ liệu hoàn tất!');

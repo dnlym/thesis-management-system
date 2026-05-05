@@ -304,7 +304,7 @@
     "objectives": "Mục tiêu",
     "requirements": "Yêu cầu",
     "rejectReasonLabel": "Vui lòng nhập lý do từ chối (tối thiểu 20 ký tự):",
-    "editNotesLabel": "Vui lòng nhập ghi chú chỉnh sửa (tối thiểu 20 ký tự):",
+    "editNotesLabel": "Vui lòng nhập Ghi chú chỉnh sửa (tối thiểu 20 ký tự):",
     "selectReviewer": "Chọn giảng viên phản biện",
     "selectReviewerPlaceholder": "Chọn giảng viên",
     "selectReviewerRequired": "Vui lòng chọn giảng viên",

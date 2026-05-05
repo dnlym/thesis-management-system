@@ -817,9 +817,6 @@ export class TopicService {
         if (semester?.topic_viewing_start && now < semester.topic_viewing_start) {
           return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
         }
-        if (semester?.topic_viewing_end && now > semester.topic_viewing_end) {
-          return { topics: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
-        }
       }
       // Students see only APPROVED (fully signed off) topics
       andConditions.push({ status: TopicStatus.APPROVED });

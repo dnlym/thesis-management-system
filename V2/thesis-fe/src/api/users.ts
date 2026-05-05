@@ -26,8 +26,14 @@ export const UsersApi = {
     return (await api.get<ApiResponse<UserResponse>>(`/users/${id}`)).data;
   },
 
-  async update(id: string, data: Partial<{ full_name: string; email: string; avatar_url?: string; phone?: string }>) {
-    return (await api.put<ApiResponse<UserResponse>>(`/users/${id}`, data)).data;
+  async create(data: { fullName: string; email: string; password?: string; role: string; departmentId?: string; studentCode?: string; className?: string }) {
+    const res = await api.post<ApiResponse<UserResponse>>('/users', data);
+    return res.data.data;
+  },
+
+  async update(id: string, data: Partial<{ fullName: string; email: string; role: string; departmentId?: string; studentCode?: string; className?: string; avatar_url?: string; phone?: string }>) {
+    const res = await api.put<ApiResponse<UserResponse>>(`/users/${id}`, data);
+    return res.data.data;
   },
 
   async getRoleSummary() {

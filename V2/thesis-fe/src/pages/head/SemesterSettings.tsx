@@ -58,7 +58,7 @@ const PHASE_CONFIG: Record<string, { label: string; sublabel: string; icon: any;
         sublabel: 'Làm + Giữa kỳ',
         icon: <ClockCircleOutlined />,
         color: 'processing',
-        description: 'Sinh viên thực hiện khóa luận, nộp báo cáo tiến độ và đề cương.'
+        description: 'Sinh viên thực hiện khóa luận, nộp báo cáo tiến độ.'
     },
     REVIEWING: {
         label: 'Phản biện',

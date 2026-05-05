@@ -27,6 +27,11 @@ export class AuthService {
       fullName: user.full_name,
       role: user.role,
       departmentId: user.departmentId,
+      department: user.department ? {
+        id: user.department.id,
+        name: user.department.name,
+        code: user.department.code,
+      } : undefined,
       avatarUrl: user.avatar_url,
     };
   }
@@ -93,6 +98,11 @@ export class AuthService {
         fullName: user.full_name,
         role: user.role,
         departmentId: user.departmentId,
+        department: user.department ? {
+          id: user.department.id,
+          name: user.department.name,
+          code: user.department.code,
+        } : undefined,
       },
     };
   }

@@ -31,6 +31,11 @@ export interface LoginResponse {
     fullName: string;
     role: UserRole;
     departmentId: string;
+    department?: {
+      id: string;
+      name: string;
+      code: string;
+    };
   };
 }
 

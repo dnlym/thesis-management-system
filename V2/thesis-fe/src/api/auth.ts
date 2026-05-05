@@ -10,6 +10,7 @@ export interface LoginResponse {
     email: string;
     role: string;
     departmentId: string;
+    department?: any;
   };
 }
 
@@ -34,12 +35,12 @@ export const AuthApi = {
     return res.data;
   },
 
-  async getProfile() {
-    const res = await api.get<ApiResponse<{
-      id: string; full_name: string; email: string; role: string; avatar_url?: string | null; joined_at?: string;
-    }>>('/auth/profile');
-    return res.data;
-  },
+    async getProfile() {
+        const res = await api.get<ApiResponse<{
+            id: string; full_name: string; email: string; role: string; avatar_url?: string | null; joined_at?: string; department?: any;
+        }>>('/auth/profile');
+        return res.data;
+    },
 
   async updateProfile(data: { fullName?: string; avatarUrl?: string }) {
     const res = await api.put<ApiResponse<User>>('/auth/profile', data);

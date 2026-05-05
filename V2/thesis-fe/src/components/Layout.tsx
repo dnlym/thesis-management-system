@@ -307,7 +307,7 @@ const AppLayout = () => {
               full_name: (res.data as any).full_name || (res.data as any).fullName,
               email: res.data.email,
               role: res.data.role as any,
-              department: '',
+              department: (res.data as any).department,
               avatar_url: (res.data as any).avatar_url || (res.data as any).avatarUrl || undefined,
               joined_at: (res.data as any).created_at || new Date().toISOString(),
             };

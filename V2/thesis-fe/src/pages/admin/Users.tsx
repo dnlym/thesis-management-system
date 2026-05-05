@@ -4,7 +4,8 @@ import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { User } from '@/types';
-import { useQuery } from '@tanstack/react-query';
+import { DepartmentsApi } from '@/api/departments';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UsersApi } from '@/api/users';
 import GlobalSearch from '@/components/GlobalSearch';
 import HighlightText from '@/components/HighlightText';
@@ -16,8 +17,15 @@ const Users = () => {
   const { t } = useTranslation();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form] = Form.useForm();
+   const [form] = Form.useForm();
   const [pageSize, setPageSize] = useState(10);
+  const queryClient = useQueryClient();
+
+  // Fetch departments for the select dropdown
+  const { data: departments } = useQuery({
+    queryKey: ['admin-departments'],
+    queryFn: () => DepartmentsApi.getAll(),
+  });
 
   interface UserDisplay {
     id: string;
@@ -169,9 +177,16 @@ const Users = () => {
     setIsModalVisible(true);
   };
 
-  const handleEdit = (user: User) => {
+   const handleEdit = (user: any) => {
     setEditingUser(user);
-    form.setFieldsValue(user);
+    form.setFieldsValue({
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      departmentId: departments?.find(d => d.name === user.departmentName)?.id,
+      className: user.className,
+      studentCode: user.userCode
+    });
     setIsModalVisible(true);
   };
 
@@ -185,16 +200,24 @@ const Users = () => {
     });
   };
 
-  const handleModalOk = () => {
-    form.validateFields().then(values => {
+   const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
       if (editingUser) {
+        await UsersApi.update(editingUser.id, values);
         notify.success(t('users.updateSuccess'));
       } else {
+        await UsersApi.create(values);
         notify.success(t('users.createSuccess'));
       }
       setIsModalVisible(false);
       form.resetFields();
-    });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    } catch (error: any) {
+      if (error.errorFields) return; // Form validation error
+      const errorMsg = error.response?.data?.error || error.message || 'Có lỗi xảy ra';
+      notify.error(errorMsg);
+    }
   };
 
   return (
@@ -256,17 +279,25 @@ const Users = () => {
           width={600}
         >
           <Form form={form} layout="vertical">
-            <Form.Item
+             <Form.Item
               label={t('users.fullName')}
-              name="name"
+              name="fullName"
               rules={[{ required: true, message: t('users.fullNameRequired') }]}
             >
               <Input placeholder={t('users.enterFullName')} />
             </Form.Item>
 
             <Form.Item
+              label="Mã số (MSSV/MSGV)"
+              name="studentCode"
+              rules={[{ required: true, message: 'Vui lòng nhập mã số' }]}
+            >
+              <Input placeholder="Nhập mã số sinh viên hoặc giảng viên" />
+            </Form.Item>
+
+            <Form.Item
               label="Lớp"
-              name="class_name"
+              name="className"
             >
               <Input placeholder="Nhập tên lớp (ví dụ: DHHTTT17A)" />
             </Form.Item>
@@ -297,14 +328,18 @@ const Users = () => {
 
             <Form.Item
               label={t('users.department')}
-              name="department"
+              name="departmentId"
               rules={[{ required: true, message: t('users.departmentRequired') }]}
             >
-              <Select placeholder={t('users.selectDepartment')}>
-                <Select.Option value="CNTT">{t('departments.CNTT')}</Select.Option>
-                <Select.Option value="DTVT">{t('departments.DTVT')}</Select.Option>
-                <Select.Option value="KTMT">{t('departments.KTMT')}</Select.Option>
-                <Select.Option value="HTTT">{t('departments.HTTT')}</Select.Option>
+              <Select 
+                placeholder={t('users.selectDepartment')}
+                loading={!departments}
+              >
+                {departments?.map(dept => (
+                  <Select.Option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </Select.Option>
+                ))}
               </Select>
             </Form.Item>
 
