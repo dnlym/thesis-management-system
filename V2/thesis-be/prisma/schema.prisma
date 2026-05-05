@@ -31,25 +31,25 @@ model Department {
 }
 
 model Semester {
-  id                       String                  @id @default(uuid())
-  name                     String                  @db.VarChar(100)
-  code                     String                  @unique @db.VarChar(50)
-  status                   SemesterStatus          @default(PLANNING)
+  id                       String              @id @default(uuid())
+  name                     String              @db.VarChar(100)
+  code                     String              @unique @db.VarChar(50)
+  status                   SemesterStatus      @default(PLANNING)
   start_date               DateTime
   end_date                 DateTime
   proposal_deadline        DateTime
   thesis_deadline          DateTime
   defense_start            DateTime?
   defense_end              DateTime?
-  created_at               DateTime                @default(now())
-  updated_at               DateTime                @updatedAt
+  created_at               DateTime            @default(now())
+  updated_at               DateTime            @updatedAt
   topic_registration_end   DateTime?
   topic_registration_start DateTime?
   topic_viewing_start      DateTime?
   topic_viewing_end        DateTime?
   midterm_start            DateTime?
   midterm_end              DateTime?
-  is_registration_override Boolean                 @default(false)
+  is_registration_override Boolean             @default(false)
   committees               Committee[]
   defense_schedules        DefenseSchedule[]
   groups                   Group[]
@@ -597,6 +597,7 @@ model RolePermission {
   @@id([role, permissionId], name: "role_permissionId")
   @@map("role_permissions")
 }
+
 enum UserRole {
   STUDENT
   LECTURER

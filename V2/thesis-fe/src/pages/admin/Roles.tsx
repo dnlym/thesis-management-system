@@ -9,8 +9,10 @@ import {
   ChevronRight,
   Users,
   Lock,
-  Info
+  Info,
+  Plus
 } from 'lucide-react';
+import { Card } from 'antd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -122,39 +124,37 @@ const Roles: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background/50 p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-            <Lock className="h-6 w-6" />
+      {/* Header Section */}
+      <Card className="page-header-card">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="page-header-icon"><Lock className="h-4 w-4" /></div>
+            <div>
+              <div className="page-header-title">Quản lý Vai trò & Phân quyền</div>
+              <div className="page-header-subtitle">Thiết lập và kiểm soát quyền truy cập cho từng nhóm người dùng</div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-[17px] font-bold tracking-tight">Quản lý Vai trò & Phân quyền</h1>
-            <p className="text-[12px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-              Thiết lập và kiểm soát quyền truy cập cho từng nhóm người dùng
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="relative w-48 md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input 
+                placeholder="Tìm kiếm vai trò..." 
+                className="pl-8 bg-muted/30 border-none focus-visible:ring-1 h-9 text-[13px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 h-9 rounded-lg text-[12px] font-bold border-slate-200">
+              <RefreshCcw className="h-3.5 w-3.5" />
+              Làm mới
+            </Button>
+            <Button size="sm" className="gap-1.5 h-9 rounded-lg bg-primary shadow-md shadow-primary/10 text-[12px] font-bold">
+              <Plus className="h-3.5 w-3.5" />
+              Tạo vai trò
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Tìm kiếm vai trò..." 
-              className="pl-9 bg-muted/50 border-none focus-visible:ring-1"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <RefreshCcw className="h-4 w-4" />
-            Làm mới
-          </Button>
-          <Button className="gap-2 bg-primary shadow-lg shadow-primary/20">
-            <Users className="h-4 w-4" />
-            Tạo vai trò mới
-          </Button>
-        </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar - Role List */}
@@ -215,21 +215,21 @@ const Roles: React.FC = () => {
 
         {/* Main Content - Permission Matrix */}
         <div className="col-span-12 lg:col-span-9 space-y-6">
-          <div className="bg-card rounded-2xl border shadow-sm flex flex-col h-[700px] relative overflow-hidden">
+          <div className="bg-card rounded-2xl border shadow-sm flex flex-col h-[650px] relative overflow-hidden">
             {/* Role Header */}
-            <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-card to-muted/20">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Shield className="h-5 w-5" />
+            <div className="px-6 py-4 border-b flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                  <Shield className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-[15px] font-bold uppercase tracking-tight">
+                  <h2 className="text-[14px] font-bold uppercase tracking-tight">
                     PHÂN QUYỀN: <span className="text-primary">{selectedRole?.name}</span>
                   </h2>
-                  <p className="text-[12px] text-muted-foreground">{selectedRole?.description}</p>
+                  <p className="text-[11px] text-muted-foreground">{selectedRole?.description}</p>
                 </div>
               </div>
-              <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20 text-[11px] font-bold uppercase">
+              <Badge variant="outline" className="px-3 py-1 bg-primary/5 text-primary border-primary/20 text-[10px] font-bold uppercase rounded-full">
                 {currentPermissions.length} quyền đã chọn
               </Badge>
             </div>

@@ -80,26 +80,27 @@ const computeAutoFillPhases = (startFrom: dayjs.Dayjs, endAt: dayjs.Dayjs) => {
   // [0] PREVIEW
   let currentEnd = currentStart.add(Math.max(0, previewDays - 1), 'day');
   phases.push({ start: currentStart, end: currentEnd });
-  currentStart = currentEnd.add(1, 'day');
+  currentStart = currentEnd;
 
   // [1] REGISTRATION
   currentEnd = currentStart.add(Math.max(0, registrationDays - 1), 'day');
   phases.push({ start: currentStart, end: currentEnd });
-  currentStart = currentEnd.add(1, 'day');
+  currentStart = currentEnd;
 
   // [2] WORK
   currentEnd = currentStart.add(Math.max(0, workDays - 1), 'day');
   phases.push({ start: currentStart, end: currentEnd });
-  currentStart = currentEnd.add(1, 'day');
+  currentStart = currentEnd;
 
   // [3] REVIEWING
   currentEnd = currentStart.add(Math.max(0, reviewDays - 1), 'day');
   phases.push({ start: currentStart, end: currentEnd });
-  currentStart = currentEnd.add(1, 'day');
+  currentStart = currentEnd;
 
   // [4] DEFENSE
   currentEnd = endAt.startOf('day');
-  phases.push({ start: currentStart, end: currentEnd });
+  const finalDefenseStart = currentStart.isAfter(currentEnd) ? currentEnd : currentStart;
+  phases.push({ start: finalDefenseStart, end: currentEnd });
 
   // [5] FINAL
   phases.push({ start: endAt.startOf('day'), end: endAt.startOf('day') });
