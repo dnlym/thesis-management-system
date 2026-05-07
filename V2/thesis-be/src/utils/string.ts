@@ -22,3 +22,32 @@ export function normalizeTitle(title: string): string {
 
     return result;
 }
+
+/**
+ * Convert snake_case or kebab-case to camelCase
+ */
+export function snakeToCamel(str: string): string {
+    return str.replace(/([-_][a-z0-9])/ig, ($1) => {
+        return $1.toUpperCase()
+            .replace('-', '')
+            .replace('_', '');
+    });
+}
+
+/**
+ * Recursively convert object keys to camelCase
+ */
+export function keysToCamel(obj: any): any {
+    if (Array.isArray(obj)) {
+        return obj.map(v => keysToCamel(v));
+    } else if (obj !== null && obj.constructor === Object) {
+        return Object.keys(obj).reduce(
+            (result, key) => ({
+                ...result,
+                [snakeToCamel(key)]: keysToCamel(obj[key]),
+            }),
+            {},
+        );
+    }
+    return obj;
+}

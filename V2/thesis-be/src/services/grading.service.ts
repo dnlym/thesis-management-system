@@ -16,6 +16,7 @@ import {
   roundScore
 } from '../utils/grading.utils';
 import { logger } from '../utils/logger';
+import { AuditLogger } from '../utils/audit-logger';
 import notificationService from './notification.service';
 
 type TopicWithRelations = Prisma.TopicGetPayload<{
@@ -185,6 +186,20 @@ export class GradingService {
       role: raterRole,
       criteriaCount: grades.length,
       timestamp: new Date().toISOString()
+    });
+
+    // --- AUDIT LOGGING ---
+    await AuditLogger.log({
+      userId,
+      action: 'SUBMIT_GRADE',
+      entityType: 'Grade',
+      entityId: data.topicId,
+      newValue: {
+        studentId: data.studentId,
+        role: raterRole,
+        grades: data.grades
+      },
+      description: `Giảng viên ${userId} đã chấm điểm cho sinh viên ${data.studentId} với vai trò ${raterRole}`
     });
 
     // Update student progress status
@@ -496,14 +511,13 @@ export class GradingService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'FINALIZE_SCORE',
-        entity_type: 'FinalScore',
-        entity_id: topicId,
-        new_value: { finalized: true, studentCount: finalScores.length },
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'FINALIZE_SCORE',
+      entityType: 'FinalScore',
+      entityId: topicId,
+      newValue: { finalized: true, studentCount: finalScores.length },
+      description: `Trưởng bộ môn/Admin ${userId} đã chốt điểm cho đề tài ${topicId}`
     });
 
     // Notify Students
@@ -692,14 +706,13 @@ export class GradingService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'CREATE_CRITERION',
-        entity_type: 'GradingCriterion',
-        entity_id: criterion.id,
-        new_value: criterion,
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'CREATE_CRITERION',
+      entityType: 'GradingCriterion',
+      entityId: criterion.id,
+      newValue: criterion,
+      description: `Người dùng ${userId} đã tạo tiêu chí mới: ${criterion.name}`
     });
 
     return criterion;
@@ -769,15 +782,14 @@ export class GradingService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'UPDATE_CRITERION',
-        entity_type: 'GradingCriterion',
-        entity_id: id,
-        old_value: existing as Prisma.InputJsonValue,
-        new_value: updated as Prisma.InputJsonValue,
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'UPDATE_CRITERION',
+      entityType: 'GradingCriterion',
+      entityId: id,
+      oldValue: existing,
+      newValue: updated,
+      description: `Người dùng ${userId} đã cập nhật tiêu chí: ${existing.name}`
     });
 
     return updated;

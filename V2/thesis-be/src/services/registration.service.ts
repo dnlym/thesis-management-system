@@ -490,6 +490,7 @@ export class RegistrationService {
             supervisor: {
               select: { id: true, full_name: true, email: true, avatar_url: true },
             },
+            semester: true,
           },
         },
         group: {
@@ -508,6 +509,10 @@ export class RegistrationService {
         registered_at: 'desc', // Get most recent registration
       },
     });
+
+    if (registration?.topic?.semester) {
+      (registration.topic.semester as any).calculated_phase = SemesterGuard.calculateCurrentPhase(registration.topic.semester);
+    }
 
     return registration;
   }
@@ -636,6 +641,7 @@ export class RegistrationService {
                 email: true,
               },
             },
+            semester: true,
           },
         },
         student: {
@@ -683,6 +689,16 @@ export class RegistrationService {
       orderBy: { registered_at: 'desc' },
     });
 
+    // [PHASE ENFORCEMENT] Add calculated_phase to each semester for all roles
+    registrations.forEach((reg: any) => {
+      if (reg.topic?.semester) {
+        reg.topic.semester.calculated_phase = SemesterGuard.calculateCurrentPhase(reg.topic.semester);
+      }
+      if (reg.semester) {
+        reg.semester.calculated_phase = SemesterGuard.calculateCurrentPhase(reg.semester);
+      }
+    });
+
     return registrations;
   }
 
@@ -701,6 +717,7 @@ export class RegistrationService {
               },
             },
             department: true,
+            semester: true,
           },
         },
         student: {
@@ -743,6 +760,10 @@ export class RegistrationService {
 
     if (!registration) {
       throw new Error('Registration not found');
+    }
+
+    if (registration.topic?.semester) {
+      (registration.topic.semester as any).calculated_phase = SemesterGuard.calculateCurrentPhase(registration.topic.semester);
     }
 
     return registration;

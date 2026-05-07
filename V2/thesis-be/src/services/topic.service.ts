@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { ERROR_CODES, VALIDATION } from '../constants';
 import notificationService from './notification.service';
+import { AuditLogger } from '../utils/audit-logger';
 import semesterService from './semester.service';
 import { normalizeTitle } from '../utils/string';
 import { ApiError } from '../utils/errors';
@@ -453,6 +454,18 @@ export class TopicService {
           ...updateData,
           ...statusUpdate
         },
+      });
+
+      // --- AUDIT LOGGING ---
+      await AuditLogger.log({
+        userId,
+        action: 'UPDATE_TOPIC',
+        entityType: 'Topic',
+        entityId: topicId,
+        oldValue: topic,
+        newValue: updatedTopic,
+        reason: data.changeReason || 'Cập nhật thông tin đề tài',
+        description: `Người dùng ${userId} đã cập nhật đề tài "${topic.title}"`,
       });
 
       // Create new version if critical fields changed

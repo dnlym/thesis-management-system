@@ -197,7 +197,7 @@ const HeadApproveTopics = () => {
 
                 {/* Topics Table with Tabs */}
                 <Card className="page-card-flush">
-                    <Tabs activeKey={activeTab} onChange={setActiveTab} className="sys-tabs" tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}>
+                    <Tabs activeKey={activeTab} onChange={setActiveTab} className="sys-tabs sys-tabs-capsule" tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}>
                     <TabPane
                         tab={
                             <div className="flex items-center space-x-2">

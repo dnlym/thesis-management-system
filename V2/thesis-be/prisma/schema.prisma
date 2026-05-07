@@ -570,6 +570,8 @@ model AuditLog {
   old_value   Json?
   new_value   Json?
   ip_address  String?  @db.VarChar(50)
+  reason      String?  @db.Text
+  description String?  @db.Text
   created_at  DateTime @default(now())
   user        User?    @relation("UserAuditLogs", fields: [user_id], references: [id])
 

@@ -262,7 +262,7 @@ const FinalEvaluation = () => {
                     <Tabs
                         activeKey={activeRole}
                         onChange={(key) => setActiveRole(key as any)}
-                        className="sys-tabs"
+                        className="sys-tabs sys-tabs-capsule"
                         tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
                         items={[
                             { key: 'SUPERVISOR', label: 'GV Hướng dẫn' },

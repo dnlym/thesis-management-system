@@ -16,6 +16,7 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   CrownOutlined,
+  AuditOutlined,
   LeftOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -162,6 +163,7 @@ const getMenuSections = (role: string): MenuSection[] => {
     {
       title: 'QUẢN TRỊ',
       items: [
+        { key: '/admin/audit-logs', label: 'Nhật ký hoạt động', icon: <AuditOutlined /> },
         { key: '/admin/users', label: 'Người dùng', icon: <UserOutlined /> },
         { key: '/admin/roles', label: 'Vai trò', icon: <TeamOutlined /> },
         { key: '/admin/criteria', label: 'Tiêu chí đánh giá', icon: <SafetyCertificateOutlined /> },

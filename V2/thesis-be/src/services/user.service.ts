@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { AuditLogger } from '../utils/audit-logger';
 
 export class UserService {
     async getUsers(currentUserId: string, filters?: { role?: UserRole; departmentId?: string; search?: string }) {
@@ -60,7 +61,7 @@ export class UserService {
         return user;
     }
 
-    async createUser(data: any) {
+    async createUser(adminId: string, data: any) {
         const existingUser = await prisma.user.findUnique({
             where: { email: data.email },
         });
@@ -93,10 +94,20 @@ export class UserService {
             },
         });
 
+        await AuditLogger.log({
+            userId: adminId,
+            action: 'CREATE_USER',
+            entityType: 'User',
+            entityId: user.id,
+            newValue: user,
+            description: `Admin ${adminId} đã tạo người dùng mới: ${user.full_name} (${user.role})`
+        });
+
         return user;
     }
 
-    async updateUser(id: string, data: any) {
+    async updateUser(adminId: string, id: string, data: any) {
+        const existingUser = await this.getUserById(id);
         const updateData: any = {};
         
         if (data.fullName !== undefined) updateData.full_name = data.fullName;
@@ -147,13 +158,34 @@ export class UserService {
             data: updateData,
         });
 
+        await AuditLogger.log({
+            userId: adminId,
+            action: 'UPDATE_USER',
+            entityType: 'User',
+            entityId: id,
+            oldValue: existingUser,
+            newValue: user,
+            description: `Người dùng ${adminId} đã cập nhật thông tin cho: ${user.full_name}`
+        });
+
         return user;
     }
 
-    async deleteUser(id: string) {
+    async deleteUser(adminId: string, id: string) {
+        const existingUser = await this.getUserById(id);
         await prisma.user.delete({
             where: { id },
         });
+
+        await AuditLogger.log({
+            userId: adminId,
+            action: 'DELETE_USER',
+            entityType: 'User',
+            entityId: id,
+            oldValue: existingUser,
+            description: `Admin ${adminId} đã xóa người dùng: ${existingUser.full_name}`
+        });
+
         return { message: 'User deleted successfully' };
     }
 

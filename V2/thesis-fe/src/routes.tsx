@@ -10,6 +10,7 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   CrownOutlined,
+  AuditOutlined,
 } from '@ant-design/icons';
 import type { UserRole } from '@/types';
 
@@ -30,6 +31,7 @@ const AdminUsers = lazy(() => import('@/pages/admin/Users'));
 const AdminRoles = lazy(() => import('@/pages/admin/Roles'));
 const AdminCriteria = lazy(() => import('@/pages/admin/Criteria'));
 const AdminSettings = lazy(() => import('@/pages/admin/Settings'));
+const AdminAuditLog = lazy(() => import('@/pages/admin/AuditLog'));
 const Login = lazy(() => import('@/pages/auth/Login'));
 const Profiles = lazy(() => import('@/pages/Profiles'));
 
@@ -306,6 +308,15 @@ export const routes: RouteConfig[] = [
       roles: ['ADMIN'],
     },
   },
+  {
+    path: '/admin/audit-logs',
+    element: AdminAuditLog,
+    meta: {
+      title: 'Nhật ký hoạt động',
+      icon: AuditOutlined,
+      roles: ['ADMIN'],
+    },
+  },
   // Auth routes
   {
     path: '/auth/login',
@@ -435,6 +446,39 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/head/semester-settings',
         icon: <SettingOutlined />,
         label: 'navigation.semesterSettings',
+      },
+    ];
+  }
+
+  // Admin menu
+  if (userRole === 'ADMIN') {
+    return [
+      {
+        key: '/dashboard',
+        icon: <DashboardOutlined />,
+        label: 'navigation.dashboard',
+      },
+      {
+        key: 'admin-management',
+        icon: <SettingOutlined />,
+        label: 'Quản trị hệ thống',
+        children: [
+          { key: '/admin/audit-logs', label: 'Nhật ký hoạt động', icon: <AuditOutlined /> },
+          { key: '/admin/users', label: 'navigation.users', icon: <UserOutlined /> },
+          { key: '/admin/roles', label: 'navigation.roles', icon: <TeamOutlined /> },
+          { key: '/admin/criteria', label: 'navigation.criteria', icon: <SafetyCertificateOutlined /> },
+          { key: '/admin/settings', label: 'navigation.settings', icon: <SettingOutlined /> },
+        ],
+      },
+      {
+        key: '/topics',
+        icon: <BookOutlined />,
+        label: 'navigation.topics',
+      },
+      {
+        key: '/schedule',
+        icon: <CalendarOutlined />,
+        label: 'navigation.schedule',
       },
     ];
   }

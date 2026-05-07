@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination } from 'antd';
+import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination, Modal } from 'antd';
 import { notify } from '@/utils/notification';
-import { SaveOutlined, ArrowLeftOutlined, UserOutlined, CheckCircleOutlined, SearchOutlined, DownloadOutlined, WarningOutlined, CloseCircleOutlined, FlagOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
@@ -22,7 +22,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
-import { RaterRole, GradeScore } from '@/types';
+import { RaterRole, GradeScore, GradeHistory } from '@/types';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -31,6 +31,12 @@ const { Title, Text } = Typography;
  * Trang Đánh Giá (Evaluation) - Fix triệt để lỗi Validation
  */
 const Evaluation = () => {
+  // Helper to get last name (First name in VN context)
+  const getFirstName = (fullName: string) => {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(' ');
+    return parts[parts.length - 1];
+  };
   const { user } = useAuthStore();
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -50,7 +56,15 @@ const Evaluation = () => {
 
   const [lecturerSearch, setLecturerSearch] = useState('');
   const debouncedLecturerSearch = useDebounce(lecturerSearch, 300);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedTopicForHistory, setSelectedTopicForHistory] = useState<string | null>(null);
+
+  // Grade History Modal & State
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [reasonModalVisible, setReasonModalVisible] = useState(false);
+  const [submitReason, setSubmitReason] = useState('');
+  const [pendingSubmission, setPendingSubmission] = useState<any>(null);
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -133,11 +147,21 @@ const Evaluation = () => {
     topicId: topicId || undefined
   });
 
+  const { data: gradeHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery({
+    queryKey: ['grade-history', selectedTopicForHistory || topicId],
+    queryFn: () => GradingApi.getGradeHistoryByTopic((selectedTopicForHistory || topicId)!),
+    enabled: !!(selectedTopicForHistory || topicId),
+  });
+
   const criteria = useMemo(() => {
     if (!criteriaData) return [];
     if (Array.isArray(criteriaData)) return criteriaData;
     const data = criteriaData as any;
-    return data.FINAL || data.SUPERVISOR || Object.values(data)[0] || [];
+    if (activeTab === 'reviewer') return data.REVIEWER || data.REVIEWER_1 || [];
+    if (activeTab === 'council') return data.COMMITTEE || data.COUNCIL_MEMBER || [];
+    if (activeTab === 'advisor') return data.SUPERVISOR || [];
+
+    return data.FINAL || data.SUPERVISOR || data.REVIEWER || data.COMMITTEE || Object.values(data)[0] || [];
   }, [criteriaData]);
 
   const students = useMemo(() => {
@@ -167,7 +191,12 @@ const Evaluation = () => {
   };
 
   const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveTab();
-  const isLocked = isConfirmed || !isPhaseAllowed;
+
+  // NEW LOCKING LOGIC: Lock if finalized OR if phase not allowed.
+  // We NO LONGER lock just because it's confirmed (SUBMITTED), unless it's also finalized.
+  const isFinalized = selectedTopic?.status === 'FINALIZED';
+  const isLocked = isFinalized || !isPhaseAllowed;
+  const canEditAfterSubmit = !isFinalized && isPhaseAllowed && user?.role !== 'STUDENT';
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -210,17 +239,22 @@ const Evaluation = () => {
 
   const submitGradeMutation = useSubmitGrade();
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (reason?: string) => {
     try {
-      // Use validateFields without popover messages to keep UI clean
       const values = await form.validateFields();
 
-      const submissions = students.map(student => {
-        const studentGrades = values.grades?.[student.id];
-        if (!studentGrades) throw new Error(`Thiếu điểm cho sinh viên ${student.name}`);
+      // Check if we need a reason (is updating existing grades)
+      const isUpdating = myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
+      if (isUpdating && !reason && user?.role !== 'ADMIN') {
+        setPendingSubmission(values);
+        setReasonModalVisible(true);
+        return;
+      }
 
+      const submissions = students.map(student => {
         const gradeScores: GradeScore[] = criteria.map(criterion => {
-          const score = studentGrades[criterion.id];
+          const studentGrades = values.grades?.[student.id];
+          const score = studentGrades?.[criterion.id];
           if (score === undefined || score === null) {
             throw new Error(`Tiêu chí "${criterion.name}" của SV ${student.name} chưa có điểm`);
           }
@@ -231,28 +265,46 @@ const Evaluation = () => {
           };
         });
 
+        console.log(`[Evaluation] Submitting ${gradeScores.length} scores for student ${student.id} using criteria IDs: ${gradeScores.map(gs => gs.criterion_id).join(', ')}`);
+
         return {
           topic_id: topicId!,
           student_id: student.id,
           rater_role: getRaterRole(),
+          reviewer_order: currentAssignment?.reviewer_order,
+          committee_role: currentAssignment?.committee_role as any,
           scores: gradeScores,
+          reason: reason,
         };
       });
 
       await Promise.all(submissions.map(sub => submitGradeMutation.mutateAsync(sub)));
-      notify.success('Đã gửi phiếu đánh giá thành công!');
+      notify.success('Đã lưu điểm thành công!');
+
+
+      setReasonModalVisible(false);
+      setSubmitReason('');
       queryClient.invalidateQueries({ queryKey: ['my-grades', topicId] });
+      refetchHistory();
     } catch (error: any) {
       console.error('Submission failed:', error);
       notify.error(error.message || 'Vui lòng kiểm tra lại đầy đủ các cột điểm');
     }
   };
 
+  const handleReasonSubmit = () => {
+    if (!submitReason.trim()) {
+      notify.warning('Vui lòng nhập lý do chỉnh sửa');
+      return;
+    }
+    handleSubmit(submitReason);
+  };
+
   const renderTopicStatus = (status: string) => {
     return <TopicStatusBadge status={status as any} />;
   };
 
-  if (topicId) {
+  const renderGradingView = () => {
     if (isLoadingTopic || isLoadingCriteria || isLoadingMyGrades) {
       return <div className="p-12 text-center"><Spin size="large" tip="Đang tải dữ liệu..." /></div>;
     }
@@ -262,152 +314,316 @@ const Evaluation = () => {
 
     return (
       <div className="page-container">
-        <div className="flex items-center justify-between">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => setSearchParams({})}>Quay lại danh sách</Button>
-          {isConfirmed && (
-            <Tag color="green" icon={<CheckCircleOutlined />} className="px-3 py-1 text-sm font-bold uppercase">
-              {activeTab === 'advisor' ? 'Đã xác nhận - Hướng dẫn' : 'Đã xác nhận - Phản biện/Hội đồng'}
-            </Tag>
-          )}
-        </div>
-
-        {isConfirmed && (
-          <Alert
-            message="Đánh giá đã hoàn tất"
-            description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn đang xem ở chế độ chỉ đọc.`}
-            type="success"
-            showIcon
-          />
-        )}
-
-        {!isPhaseAllowed && phaseError && (
-          <Alert
-            message="Thông báo về quyền chấm điểm"
-            description={phaseError}
-            type="info"
-            showIcon
-            className="border-l-4 border-l-blue-500 shadow-sm"
-          />
-        )}
-
-        <Card className="shadow-lg border-t-4 border-t-blue-600">
-          <Title level={3} className="text-center mb-1 uppercase">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
-          <Text type="secondary" className="block text-center mb-6 italic text-blue-500">BỘ TIÊU CHÍ 10 LEARNING OUTCOMES (LO)</Text>
-
-          <div className="bg-blue-50 p-6 rounded-xl mb-6 border border-blue-100">
-            <Row gutter={32}>
-              <Col span={14}>
-                <Text type="secondary" className="block text-xs uppercase mb-1 font-bold">Tên đề tài</Text>
-                <Text strong className="text-lg text-blue-900">{selectedTopic?.title}</Text>
-              </Col>
-              <Col span={10} className="border-l border-blue-200">
-                <Text type="secondary" className="block text-xs uppercase mb-2 font-bold">Nhóm thực hiện</Text>
-                <div className="space-y-1">
-                  {students.map((s, i) => (
-                    <div key={s.id} className="flex gap-2">
-                      <Tag color="blue">{i + 1}</Tag>
-                      <Text strong>{s.name} ({s.code} - {s.class})</Text>
-                    </div>
-                  ))}
-                </div>
-              </Col>
-            </Row>
+        <div className="page-inner">
+          <div className="flex items-center justify-between mb-4 no-print">
+            <Space>
+              <Button
+                icon={<ArrowLeftOutlined />}
+                onClick={() => setSearchParams({})}
+                className="hover:text-blue-600 border-gray-200 shadow-sm"
+              >
+                Quay lại danh sách
+              </Button>
+              <Button
+                icon={<FlagOutlined />}
+                onClick={() => setHistoryModalVisible(true)}
+                className="bg-amber-50 text-amber-700 border-amber-200"
+              >
+                Lịch sử điểm
+              </Button>
+            </Space>
+            <Space>
+              {isFinalized && (
+                <Tag color="error" icon={<CloseCircleOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
+                  Đã chốt kết quả
+                </Tag>
+              )}
+              {isConfirmed && !isFinalized && (
+                <Tag color="processing" icon={<CheckCircleOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
+                  Đã lưu điểm - Có thể sửa
+                </Tag>
+              )}
+              {isConfirmed && isFinalized && (
+                <Tag color="success" icon={<CheckCircleOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
+                  {activeTab === 'advisor' ? 'HĐ đã chốt - Hướng dẫn' : 'HĐ đã chốt - Phản biện/Hội đồng'}
+                </Tag>
+              )}
+            </Space>
           </div>
 
-          <Form form={form} onValuesChange={handleValuesChange} validateMessages={{ required: '' }}>
-            <Table dataSource={criteria} rowKey="id" pagination={false} bordered size="middle" className="grading-table"
-              columns={[
-                { title: 'STT', key: 'idx', width: 60, align: 'center', render: (_, __, i) => i + 1 },
-                { title: 'Tiêu chí đánh giá', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
-                {
-                  title: 'Kết quả', children: students.map((s, i) => ({
-                    title: `SV ${i + 1}`, key: `sv_${s.id}`, width: 120, align: 'center',
-                    render: (_, r) => (
-                      <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0">
-                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isLocked} />
+          {isConfirmed && (
+            <Alert
+              message={<span className="font-bold">Đánh giá đã hoàn tất</span>}
+              description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn đang xem ở chế độ chỉ đọc.`}
+              type="success"
+              showIcon
+              className="mb-6 rounded-xl border-green-100 shadow-sm"
+            />
+          )}
+
+          {!isPhaseAllowed && phaseError && (
+            <Alert
+              message={<span className="font-bold text-blue-800">Thông báo về quyền chấm điểm</span>}
+              description={phaseError}
+              type="info"
+              showIcon
+              className="mb-6 rounded-xl border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50"
+            />
+          )}
+
+          <Card className="page-header-card mb-6 no-print">
+            <div className="text-center w-full">
+              <Title level={3} className="mb-1 uppercase tracking-wide">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
+              <Text type="secondary" className="italic font-medium text-blue-500">BỘ TIÊU CHÍ 10 LEARNING OUTCOMES (LO)</Text>
+            </div>
+          </Card>
+
+          <Card
+            className="shadow-lg border-t-4 border-t-blue-600 rounded-2xl overflow-hidden no-print"
+            styles={{ body: { padding: 0 } }}
+          >
+            <div className="bg-gradient-to-r from-blue-50/80 to-white p-6">
+              <Row gutter={32} align="top">
+                <Col span={15}>
+                  <div className="mb-3">
+                    <Text type="secondary" className="text-[10px] uppercase font-bold tracking-[0.2em] text-blue-400">
+                      Đề tài nghiên cứu
+                    </Text>
+                  </div>
+                  <Title level={5} className="m-0 text-blue-900 leading-relaxed font-semibold italic">
+                    "{selectedTopic?.title}"
+                  </Title>
+                </Col>
+
+                <Col span={9} className="border-l-2 border-blue-100/50 pl-6">
+                  <div className="mb-3">
+                    <Text type="secondary" className="text-[10px] uppercase font-bold tracking-[0.2em] text-blue-400">
+                      Nhóm sinh viên thực hiện
+                    </Text>
+                  </div>
+                  <div className="space-y-2">
+                    {students.map((s, i) => (
+                      <div key={s.id} className="flex items-start gap-2.5 bg-white/60 p-2 rounded-xl border border-blue-50 shadow-sm hover:shadow-md transition-all">
+                        <Avatar
+                          size={28}
+                          src={s.avatar}
+                          className="flex-shrink-0 border border-blue-100"
+                          icon={<UserOutlined />}
+                        />
+                        <div className="flex flex-col">
+                          <Text strong className="text-gray-800 text-[13px] leading-tight">{s.name}</Text>
+                          <Text className="text-[10px] text-gray-500 mt-0.5">
+                            <span className="font-mono bg-blue-50 px-1 rounded text-blue-600">{s.code}</span>
+                            <Divider type="vertical" className="border-gray-300 mx-1" />
+                            <span>{s.class}</span>
+                          </Text>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Col>
+              </Row>
+            </div>
+
+            <Form form={form} onValuesChange={handleValuesChange} validateMessages={{ required: '' }}>
+              <Table dataSource={criteria} rowKey="id" pagination={false} bordered size="middle" className="grading-table"
+                columns={[
+                  { title: 'STT', key: 'idx', width: 60, align: 'center', render: (_, __, i) => i + 1 },
+                  { title: 'Tiêu chí đánh giá', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
+                  {
+                    title: 'Kết quả', children: students.map((s, i) => ({
+                      title: (
+                        <div className="flex flex-col items-center py-1">
+                          <Text className="text-[10px] text-gray-400 font-normal mb-0.5 uppercase">Sinh viên {i + 1}</Text>
+                          <Text strong className="text-blue-600 text-[13px] uppercase tracking-tight">
+                            {getFirstName(s.name)}
+                          </Text>
+                        </div>
+                      ),
+                      key: `sv_${s.id}`, width: 140, align: 'center',
+                      render: (_, r, rowIndex) => (
+                        <Space direction="vertical" size={2} className="w-full">
+                          <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0">
+                            <InputNumber
+                              id={`grade-input-${i}-${rowIndex}`}
+                              min={0}
+                              max={10}
+                              step={0.5}
+                              className="w-full text-center grade-input"
+                              disabled={isLocked}
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  const nextWrapper = document.getElementById(`grade-input-${i}-${rowIndex + 1}`);
+                                  if (nextWrapper) {
+                                    const input = nextWrapper.tagName === 'INPUT' ? nextWrapper : nextWrapper.querySelector('input');
+                                    if (input) (input as HTMLElement).focus();
+                                  }
+                                } else if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  const prevWrapper = document.getElementById(`grade-input-${i}-${rowIndex - 1}`);
+                                  if (prevWrapper) {
+                                    const input = prevWrapper.tagName === 'INPUT' ? prevWrapper : prevWrapper.querySelector('input');
+                                    if (input) (input as HTMLElement).focus();
+                                  }
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                          {gradeHistory?.some((h: any) => {
+                            const hRole = h.grade?.rater_role;
+                            const currentRoleGroup = getRaterRole(); // SUPERVISOR, REVIEWER, COMMITTEE
+
+                            let isSameRoleGroup = false;
+                            if (currentRoleGroup === 'SUPERVISOR') {
+                              isSameRoleGroup = hRole === 'SUPERVISOR';
+                            } else if (currentRoleGroup === 'REVIEWER') {
+                              // Phải khớp đúng vị trí phản biện (1, 2, 3)
+                              if (currentAssignment?.reviewer_order) {
+                                isSameRoleGroup = hRole === `REVIEWER_${currentAssignment.reviewer_order}`;
+                              } else {
+                                isSameRoleGroup = hRole?.startsWith('REVIEWER');
+                              }
+                            } else if (currentRoleGroup === 'COMMITTEE') {
+                              isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
+                            }
+
+                            return h.grade.criterion_id === r.id && h.grade.student_id === s.id && isSameRoleGroup;
+                          }) && (
+                              <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
+                                <Badge status="warning" text={<span className="text-[9px] text-amber-600 font-medium">Đã sửa</span>} className="cursor-help" />
+                              </Tooltip>
+                            )}
+                        </Space>
+                      )
+                    }))
+                  },
+                  {
+                    title: 'Ghi chú', key: 'note', render: (_, r) => (
+                      <Form.Item name={['notes', r.id]} className="mb-0">
+                        <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
                       </Form.Item>
                     )
-                  }))
-                },
-                {
-                  title: 'Ghi chú', key: 'note', render: (_, r) => (
-                    <Form.Item name={['notes', r.id]} className="mb-0">
-                      <TextArea autoSize={{ minRows: 1 }} className="border-none bg-transparent hover:bg-white" placeholder="Không bắt buộc..." disabled={isLocked} />
-                    </Form.Item>
-                  )
-                }
-              ]}
-              summary={() => (
-                <>
-                  <Table.Summary.Row className="bg-gray-50 font-bold">
-                    <Table.Summary.Cell index={0} colSpan={2} className="text-right">TRUNG BÌNH CỘNG</Table.Summary.Cell>
-                    {students.map(s => (
-                      <Table.Summary.Cell key={`avg_${s.id}`} index={2} className="text-center">
-                        <Text strong className="text-blue-600 text-lg">{(averages[s.id] || 0).toFixed(2)}</Text>
-                      </Table.Summary.Cell>
-                    ))}
-                    <Table.Summary.Cell index={3} />
-                  </Table.Summary.Row>
-                  <Table.Summary.Row className="bg-white font-bold h-24">
-                    <Table.Summary.Cell index={0} colSpan={2} className="text-right">XẾP LOẠI</Table.Summary.Cell>
-                    {students.map(s => {
-                      const pass = (averages[s.id] || 0) >= 5.0;
-                      return (
-                        <Table.Summary.Cell key={`res_${s.id}`} index={2} className="text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <Checkbox checked={pass} disabled className="pass-checkbox pointer-events-none">Đạt</Checkbox>
-                            <Checkbox checked={!pass} disabled className="fail-checkbox pointer-events-none">Không đạt</Checkbox>
-                          </div>
+                  }
+                ]}
+                summary={() => (
+                  <>
+                    <Table.Summary.Row className="bg-gray-50 font-bold">
+                      <Table.Summary.Cell index={0} colSpan={2} className="text-right">TRUNG BÌNH CỘNG</Table.Summary.Cell>
+                      {students.map(s => (
+                        <Table.Summary.Cell key={`avg_${s.id}`} index={2} className="text-center">
+                          <Text strong className="text-blue-600 text-lg">{(averages[s.id] || 0).toFixed(2)}</Text>
                         </Table.Summary.Cell>
-                      );
-                    })}
-                    <Table.Summary.Cell index={3} />
-                  </Table.Summary.Row>
-                </>
-              )}
-            />
+                      ))}
+                      <Table.Summary.Cell index={3} />
+                    </Table.Summary.Row>
+                    <Table.Summary.Row className="bg-white font-bold h-24">
+                      <Table.Summary.Cell index={0} colSpan={2} className="text-right">XẾP LOẠI</Table.Summary.Cell>
+                      {students.map(s => {
+                        const pass = (averages[s.id] || 0) >= 5.0;
+                        return (
+                          <Table.Summary.Cell key={`res_${s.id}`} index={2} className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox checked={pass} disabled className="pass-checkbox pointer-events-none">Đạt</Checkbox>
+                              <Checkbox checked={!pass} disabled className="fail-checkbox pointer-events-none">Không đạt</Checkbox>
+                            </div>
+                          </Table.Summary.Cell>
+                        );
+                      })}
+                      <Table.Summary.Cell index={3} />
+                    </Table.Summary.Row>
+                  </>
+                )}
+              />
 
-            {!isLocked && (
-              <div className="flex justify-end gap-3 mt-10 no-print pb-4">
-                <Button size="large" onClick={() => form.resetFields()}>Nhập lại</Button>
-                <Button size="large" type="primary" icon={<CheckCircleOutlined />} onClick={handleSubmit} loading={submitGradeMutation.isPending}>Lưu và Gửi Phiếu Đánh Giá</Button>
-              </div>
-            )}
-          </Form>
-        </Card>
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          .grading-table .ant-table-thead > tr > th { background: #f0f7ff !important; font-weight: bold; text-align: center; }
-          .pass-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #52c41a; border-color: #52c41a; }
-          .fail-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #ff4d4f; border-color: #ff4d4f; }
-        ` }} />
+              {!isLocked && (
+                <div className="flex justify-end gap-3 mt-10 no-print pb-4 px-6">
+                  <Button size="large" onClick={() => form.resetFields()} disabled={submitGradeMutation.isPending}>Hủy thay đổi</Button>
+                  <Button size="large" type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
+                    {isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm'}
+                  </Button>
+                </div>
+              )}
+
+              {/* HOD Finalize Button */}
+              {(user?.role === 'HEAD' || user?.role === 'ADMIN') && !isFinalized && (
+                <div className="flex justify-center mt-8 mb-4 no-print border-t border-dashed border-gray-200 pt-8">
+                  <Card className="bg-blue-50 border-blue-200 shadow-md w-full max-w-2xl text-center">
+                    <Title level={5} className="text-blue-800 mb-4">Xác nhận chốt điểm & Hoàn tất đề tài</Title>
+                    <Text className="block mb-6 text-gray-600">
+                      Hành động này sẽ khóa toàn bộ quyền chỉnh sửa điểm của Giảng viên.
+                      Điểm số sẽ được công bố chính thức cho sinh viên.
+                    </Text>
+                    <Button
+                      size="large"
+                      type="primary"
+                      danger
+                      icon={<CheckCircleOutlined />}
+                      className="px-10 h-12 font-bold shadow-lg"
+                      onClick={() => {
+                        Modal.confirm({
+                          title: 'Xác nhận chốt kết quả khóa luận?',
+                          content: 'Sau khi chốt, Giảng viên không thể thay đổi điểm số. Chỉ Admin mới có quyền điều chỉnh.',
+                          okText: 'Chốt ngay',
+                          cancelText: 'Hủy',
+                          okType: 'danger',
+                          onOk: async () => {
+                            try {
+                              await GradingApi.finalizeGrades(topicId!);
+                              notify.success('Đã chốt điểm thành công!');
+                              queryClient.invalidateQueries({ queryKey: ['topic', topicId] });
+                              queryClient.invalidateQueries({ queryKey: ['grade-summary'] });
+                            } catch (err: any) {
+                              notify.error(err.message || 'Lỗi khi chốt điểm');
+                            }
+                          }
+                        });
+                      }}
+                    >
+                      CHỐT ĐIỂM NGAY
+                    </Button>
+                  </Card>
+                </div>
+              )}
+            </Form>
+          </Card>
+        </div>
       </div>
     );
-  }
+  };
 
   // Shared columns for Advisor / Reviewer / Council tabs
   const dashboardColumns = [
     { title: 'STT', key: 'stt', width: 60, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
     {
-      title: 'Mã ĐT',
+      title: 'Mã nhóm',
       dataIndex: 'code',
       key: 'code',
       width: 100,
-      render: (t: string) => (
-        <Tag className="font-mono">
-          <HighlightText text={t} keyword={debouncedLecturerSearch} />
-        </Tag>
-      )
+      render: (t: string, r: any) => {
+        const groupName = r.registrations?.[0]?.group?.name || t;
+        return (
+          <Tag color="blue" className="font-bold">
+            <HighlightText text={groupName} keyword={debouncedLecturerSearch} />
+          </Tag>
+        );
+      }
     },
     {
-      title: 'Tên đề tài', dataIndex: 'title', key: 'title', render: (t: string, r: any) => (
+      title: 'Tên đề tài',
+      dataIndex: 'title',
+      key: 'title',
+      render: (t: string, r: any) => (
         <div>
-          <div className="font-medium text-base">
+          <div className="font-medium text-sm leading-tight mb-1">
             <HighlightText text={t} keyword={debouncedLecturerSearch} />
           </div>
-          <div className="text-xs text-gray-500">
-            GVHD: <HighlightText text={r.supervisor?.full_name} keyword={debouncedLecturerSearch} />
-          </div>
+          <Space size={4} className="text-[10px] text-gray-400">
+            <Text type="secondary" className="text-[10px]">GVHD: <HighlightText text={r.supervisor?.full_name} keyword={debouncedLecturerSearch} /></Text>
+            <Divider type="vertical" className="m-0 border-gray-300" />
+            <Text type="warning" className="text-[10px]">Hạn chốt: {dayjs(r.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
+          </Space>
         </div>
       )
     },
@@ -430,20 +646,77 @@ const Evaluation = () => {
         );
       }
     },
-    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (s: string) => renderTopicStatus(s) },
     {
-      title: 'Hành động', key: 'action', render: (_: any, r: any) => (
-        <Button type="primary" onClick={() => setSearchParams({ topicId: r.id })}>Xem & Chấm điểm</Button>
+      title: 'Trạng thái',
+      key: 'status_combined',
+      width: 140,
+      render: (_: any, r: any) => {
+        if (r.status === 'FINALIZED') {
+          return <Tag color="error" icon={<LockOutlined />} className="m-0 rounded-full px-3">Đã chốt (Locked)</Tag>;
+        }
+
+        // Logic check if any grades exist for this topic
+        const hasGrades = r.grades?.length > 0;
+        if (hasGrades) {
+          return <Tag color="processing" className="m-0 rounded-full px-3">Đang chấm</Tag>;
+        }
+
+        return <Tag color="default" className="m-0 rounded-full px-3">Chưa chấm</Tag>;
+      }
+    },
+    {
+      title: 'Hành động',
+      key: 'action',
+      width: 180,
+      render: (_: any, r: any) => (
+        <Space>
+          <Button
+            type={r.status === 'FINALIZED' ? "default" : "primary"}
+            size="small"
+            onClick={() => setSearchParams({ topicId: r.id, type: activeTab })}
+            className="text-xs rounded-lg"
+          >
+            {r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm'}
+          </Button>
+          <Tooltip title="Xem nhanh lịch sử sửa điểm">
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTopicForHistory(r.id);
+                setHistoryModalVisible(true);
+              }}
+              className="text-gray-400 hover:text-blue-500 border-none shadow-none"
+            />
+          </Tooltip>
+        </Space>
       )
     },
   ];
 
   const filterLecturerData = (data: any[]) => {
-    if (!debouncedLecturerSearch) return data;
-    return data.filter(r => {
-      const studentNames = (r.registrations?.[0]?.group?.members || []).map((m: any) => m.user.full_name);
-      return matchKeyword(debouncedLecturerSearch, r.title, r.code, r.supervisor?.full_name, ...studentNames);
-    });
+    let filtered = data;
+
+    // Search filter
+    if (debouncedLecturerSearch) {
+      filtered = filtered.filter(r => {
+        const studentNames = (r.registrations?.[0]?.group?.members || []).map((m: any) => m.user.full_name);
+        return matchKeyword(debouncedLecturerSearch, r.title, r.code, r.supervisor?.full_name, ...studentNames);
+      });
+    }
+
+    // Status filter
+    if (statusFilter) {
+      filtered = filtered.filter(r => {
+        if (statusFilter === 'FINALIZED') return r.status === 'FINALIZED';
+        if (statusFilter === 'GRADING') return r.status !== 'FINALIZED' && r.grades?.length > 0;
+        if (statusFilter === 'NOT_GRADED') return r.status !== 'FINALIZED' && (!r.grades || r.grades.length === 0);
+        return true;
+      });
+    }
+
+    return filtered;
   };
 
   // Department dashboard
@@ -471,15 +744,18 @@ const Evaluation = () => {
     const columns = [
       { title: '#', key: 'idx', width: 48, align: 'center' as const, render: (_: any, __: any, i: number) => <Text type="secondary" className="text-xs">{i + 1}</Text> },
       {
-        title: 'Mã đề tài',
+        title: 'Mã nhóm',
         dataIndex: 'code',
         key: 'code',
         width: 130,
-        render: (t: string) => (
-          <Tag className="font-mono text-xs">
-            <HighlightText text={t} keyword={debouncedDeptSearch} />
-          </Tag>
-        )
+        render: (t: string, r: any) => {
+          const groupName = r.registrations?.[0]?.group?.name || t;
+          return (
+            <Tag color="blue" className="font-bold text-xs">
+              <HighlightText text={groupName} keyword={debouncedDeptSearch} />
+            </Tag>
+          );
+        }
       },
       {
         title: 'Tên đề tài', dataIndex: 'title', key: 'title',
@@ -607,121 +883,254 @@ const Evaluation = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-inner">
-        {/* Header */}
-        <Card className="page-header-card">
-          <div className="flex items-center gap-3">
-            <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
-            <div>
-              <div className="page-header-title">Đánh giá khóa luận</div>
-              <div className="page-header-subtitle">Quản lý và theo dõi tiến độ chấm điểm các đề tài</div>
-            </div>
+    <>
+      {topicId ? renderGradingView() : (
+        <div className="page-container">
+          <div className="page-inner">
+            {/* Header */}
+            <Card className="page-header-card">
+              <div className="flex items-center gap-3">
+                <div className="page-header-icon"><CheckCircleOutlined className="text-base" /></div>
+                <div>
+                  <div className="page-header-title">Đánh giá khóa luận</div>
+                  <div className="page-header-subtitle">Quản lý và theo dõi tiến độ chấm điểm các đề tài</div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="page-card-flush pt-2">
+              <Tabs
+                activeKey={activeTab}
+                onChange={(key) => {
+                  setActiveTab(key);
+                  setSearchParams({ type: key });
+                }}
+                className="sys-tabs sys-tabs-capsule !ml-6 !mt-2"
+                items={[
+                  ...(user?.role === 'HEAD' ? [{
+                    key: 'department',
+                    label: 'Quản lý Bộ môn',
+                    children: <div className="p-6 bg-white">{renderDepartmentTab()}</div>
+                  }] : []),
+                  {
+                    key: 'advisor',
+                    label: 'Hướng dẫn',
+                    children: (
+                      <div className="p-6 space-y-4 bg-white">
+                        <div className="flex flex-wrap gap-3 items-center">
+                          <Input
+                            placeholder="Tìm theo tên đề tài, mã số hoặc tên sinh viên..."
+                            prefix={<SearchOutlined className="text-gray-400" />}
+                            className="max-w-md rounded-lg"
+                            value={lecturerSearch}
+                            onChange={(e) => setLecturerSearch(e.target.value)}
+                            allowClear
+                          />
+                          <Select
+                            placeholder="Trạng thái chấm"
+                            className="w-44 rounded-lg"
+                            allowClear
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                            options={[
+                              { label: 'Chưa chấm', value: 'NOT_GRADED' },
+                              { label: 'Đang chấm', value: 'GRADING' },
+                              { label: 'Đã chốt (Khóa)', value: 'FINALIZED' },
+                            ]}
+                          />
+                        </div>
+                        <div className="mt-1">
+                          <Text type="secondary" className="text-[11px] italic">
+                            <InfoCircleOutlined className="mr-1" />
+                            Lưu ý: Dữ liệu sau khi chốt (Locked) sẽ không thể thay đổi trừ khi có yêu cầu phúc khảo từ Quản trị viên.
+                          </Text>
+                        </div>
+                        <Table
+                          dataSource={filterLecturerData(advisorTopics?.topics || [])}
+                          columns={dashboardColumns}
+                          rowKey="id"
+                          loading={isLoadingAdvisor}
+                          className="sys-table"
+                          pagination={{
+                            pageSize: pageSize,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            onShowSizeChange: (_, size) => setPageSize(size)
+                          }}
+                        />
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'reviewer',
+                    label: 'Phản biện',
+                    children: (
+                      <div className="p-6 space-y-4 bg-white">
+                        <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                        <Table
+                          dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])}
+                          columns={dashboardColumns}
+                          rowKey="id"
+                          loading={isLoadingReviewer}
+                          className="sys-table"
+                          pagination={{
+                            pageSize: pageSize,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            onShowSizeChange: (_, size) => setPageSize(size)
+                          }}
+                        />
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'council',
+                    label: 'Hội đồng',
+                    children: (
+                      <div className="p-6 space-y-4 bg-white">
+                        <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                        <Table
+                          dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])}
+                          columns={dashboardColumns}
+                          rowKey="id"
+                          loading={isLoadingCouncil}
+                          className="sys-table"
+                          pagination={{
+                            pageSize: pageSize,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            onShowSizeChange: (_, size) => setPageSize(size)
+                          }}
+                        />
+                      </div>
+                    )
+                  },
+                ]}
+              />
+            </Card>
+
           </div>
-        </Card>
+        </div>
+      )}
 
-        <Card className="page-card-flush pt-2">
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key) => {
-              setActiveTab(key);
-              setSearchParams({ type: key });
-            }}
-            type="card"
-            size="small"
-            className="sys-tabs-filter"
-            tabBarStyle={{ paddingLeft: '24px', marginBottom: '0' }}
-            items={[
-              ...(user?.role === 'HEAD' ? [{
-                key: 'department',
-                label: 'Quản lý Bộ môn',
-                children: <div className="p-6 bg-white">{renderDepartmentTab()}</div>
-              }] : []),
-              {
-                key: 'advisor',
-                label: 'Hướng dẫn',
-                children: (
-                  <div className="p-6 space-y-4 bg-white">
-                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table
-                      dataSource={filterLecturerData(advisorTopics?.topics || [])}
-                      columns={dashboardColumns}
-                      rowKey="id"
-                      loading={isLoadingAdvisor}
-                      className="sys-table"
-                      pagination={{
-                        pageSize: pageSize,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        onShowSizeChange: (_, size) => setPageSize(size)
-                      }}
-                    />
-                  </div>
-                )
-              },
-              {
-                key: 'reviewer',
-                label: 'Phản biện',
-                children: (
-                  <div className="p-6 space-y-4 bg-white">
-                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table
-                      dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])}
-                      columns={dashboardColumns}
-                      rowKey="id"
-                      loading={isLoadingReviewer}
-                      className="sys-table"
-                      pagination={{
-                        pageSize: pageSize,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        onShowSizeChange: (_, size) => setPageSize(size)
-                      }}
-                    />
-                  </div>
-                )
-              },
-              {
-                key: 'council',
-                label: 'Hội đồng',
-                children: (
-                  <div className="p-6 space-y-4 bg-white">
-                    <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
-                    <Table
-                      dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])}
-                      columns={dashboardColumns}
-                      rowKey="id"
-                      loading={isLoadingCouncil}
-                      className="sys-table"
-                      pagination={{
-                        pageSize: pageSize,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        onShowSizeChange: (_, size) => setPageSize(size)
-                      }}
-                    />
-                  </div>
-                )
-              },
-            ]}
-          />
-        </Card>
+      {/* Shared Modals & Styles */}
+      <DefensePivotModal
+        visible={pivotModalVisible}
+        onCancel={() => setPivotModalVisible(false)}
+        topic={selectedTopicForPivot}
+        loading={finalizePivotMutation.isPending}
+        onConfirm={(data) => {
+          finalizePivotMutation.mutate({
+            topicId: selectedTopicForPivot.id,
+            isEligible: data.isEligible,
+            defenseType: data.defenseType,
+          });
+        }}
+      />
 
-        <DefensePivotModal
-          visible={pivotModalVisible}
-          onCancel={() => setPivotModalVisible(false)}
-          topic={selectedTopicForPivot}
-          loading={finalizePivotMutation.isPending}
-          onConfirm={(data) => {
-            finalizePivotMutation.mutate({
-              topicId: selectedTopicForPivot.id,
-              isEligible: data.isEligible,
-              defenseType: data.defenseType,
-            });
-          }}
+      <Modal
+        title={<Space><WarningOutlined className="text-amber-500" /> Xác nhận thay đổi điểm số</Space>}
+        open={reasonModalVisible}
+        onOk={handleReasonSubmit}
+        onCancel={() => {
+          setReasonModalVisible(false);
+          setSubmitReason('');
+        }}
+        okText="Xác nhận lưu"
+        cancelText="Hủy"
+        confirmLoading={submitGradeMutation.isPending}
+      >
+        <div className="mb-4">
+          <Text>Bạn đang thực hiện thay đổi điểm số đã lưu trước đó. Vui lòng nhập lý do điều chỉnh để hệ thống ghi lại nhật ký chuyên môn.</Text>
+        </div>
+        <TextArea
+          rows={4}
+          placeholder="Ví dụ: Nhập nhầm điểm, phúc khảo, giảng viên chấm lại..."
+          value={submitReason}
+          onChange={(e) => setSubmitReason(e.target.value)}
         />
-      </div>
-    </div>
+      </Modal>
+
+      <Modal
+        title={<Title level={4}><Space><FlagOutlined className="text-blue-600" /> Lịch sử biến động điểm</Space></Title>}
+        open={historyModalVisible}
+        onCancel={() => {
+          setHistoryModalVisible(false);
+          setSelectedTopicForHistory(null);
+        }}
+        footer={[<Button key="close" onClick={() => {
+          setHistoryModalVisible(false);
+          setSelectedTopicForHistory(null);
+        }}>Đóng</Button>]}
+        width={1100}
+      >
+        <Table
+          dataSource={gradeHistory}
+          rowKey="id"
+          pagination={{ pageSize: 5 }}
+          columns={[
+            { title: 'Thời gian', dataIndex: 'created_at', key: 'time', width: 140, render: (t) => dayjs(t).format('HH:mm DD/MM/YYYY') },
+            {
+              title: 'Vai trò', key: 'role', width: 120,
+              render: (_, r: GradeHistory) => {
+                const role = r.grade?.rater_role;
+                if (role === 'SUPERVISOR') return <Tag color="blue">Hướng dẫn</Tag>;
+                if (role?.startsWith('REVIEWER')) return <Tag color="cyan">Phản biện {role.split('_')[1] || ''}</Tag>;
+                if (role?.startsWith('COMMITTEE')) return <Tag color="purple">Hội đồng</Tag>;
+                return <Tag>{role}</Tag>;
+              }
+            },
+            { title: 'Sinh viên', key: 'student', width: 160, render: (_, r: GradeHistory) => r.grade?.student?.full_name },
+            { title: 'Tiêu chí', key: 'criterion', width: 250, render: (_, r: GradeHistory) => r.grade?.criterion?.name },
+            {
+              title: 'Biến động', key: 'change', align: 'center', width: 120,
+              render: (_, r: GradeHistory) => (
+                <Space>
+                  <Text delete type="secondary">{r.old_score}</Text>
+                  <Text strong className="text-blue-600">→</Text>
+                  <Text strong className="text-green-600">{r.new_score}</Text>
+                </Space>
+              )
+            },
+            { title: 'Lý do', dataIndex: 'reason', key: 'reason' },
+            { title: 'Người sửa', key: 'user', width: 180, render: (_, r: GradeHistory) => <Tag className="m-0" color={r.user_role === 'ADMIN' ? 'red' : 'blue'}>{r.changed_by?.full_name}</Tag> },
+          ]}
+        />
+      </Modal>
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+      .grading-table .ant-table-thead > tr > th { 
+        background: #f8fafc !important; 
+        font-weight: 800; 
+        text-align: center;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: #64748b;
+      }
+      .grading-table .ant-table-summary .ant-table-cell {
+        background: #f8fafc !important;
+      }
+      .pass-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #22c55e; border-color: #22c55e; }
+      .fail-checkbox .ant-checkbox-checked .ant-checkbox-inner { background-color: #ef4444; border-color: #ef4444; }
+      
+      .grade-input {
+        border-radius: 8px;
+        transition: all 0.3s;
+      }
+      .grade-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+      }
+      
+      @media print {
+        .no-print { display: none !important; }
+        .ant-card { border: none !important; box-shadow: none !important; }
+      }
+    ` }} />
+
+    </>
   );
 };
 

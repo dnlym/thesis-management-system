@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { AuditLogger } from '../utils/audit-logger';
 import { ERROR_CODES } from '../constants';
 import { Prisma, Semester, SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 import { SemesterGuard } from '../utils/semester-guard';
@@ -125,14 +126,13 @@ export class SemesterService {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'CREATE',
-        entity_type: 'Semester',
-        entity_id: semester.id,
-        new_value: semester,
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'CREATE_SEMESTER',
+      entityType: 'Semester',
+      entityId: semester.id,
+      newValue: semester,
+      description: `Admin ${userId} đã tạo học kỳ mới: ${semester.name}`
     });
 
     return semester;
@@ -224,15 +224,14 @@ export class SemesterService {
     const newPhase = SemesterGuard.calculateCurrentPhase(updated);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'UPDATE',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        old_value: semester,
-        new_value: updated,
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'UPDATE_SEMESTER',
+      entityType: 'Semester',
+      entityId: semesterId,
+      oldValue: semester,
+      newValue: updated,
+      description: `Admin ${userId} đã cập nhật thông tin học kỳ: ${semester.name}`
     });
 
     return {
@@ -340,14 +339,13 @@ export class SemesterService {
     });
 
 
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'ACTIVATE_SEMESTER',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        new_value: { status: SemesterStatus.ACTIVE, phase: SemesterPhase.PREVIEW },
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'ACTIVATE_SEMESTER',
+      entityType: 'Semester',
+      entityId: semesterId,
+      newValue: { status: SemesterStatus.ACTIVE, phase: SemesterPhase.PREVIEW },
+      description: `Admin ${userId} đã kích hoạt học kỳ: ${updated.name}`
     });
 
     return {
@@ -383,15 +381,14 @@ export class SemesterService {
 
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'FINALIZE_SEMESTER',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        old_value: { status: semester.status },
-        new_value: { status: SemesterStatus.COMPLETED },
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'FINALIZE_SEMESTER',
+      entityType: 'Semester',
+      entityId: semesterId,
+      oldValue: { status: semester.status },
+      newValue: { status: SemesterStatus.COMPLETED },
+      description: `Admin ${userId} đã kết thúc học kỳ: ${semester.name}`
     });
 
     return {
@@ -425,15 +422,14 @@ export class SemesterService {
     const newPhase = SemesterGuard.calculateCurrentPhase(updated);
 
     // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'UPDATE_DEFENSE_DATE',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        old_value: { defense_start: semester.defense_start },
-        new_value: { defense_start: defenseDate },
-      },
+    await AuditLogger.log({
+      userId,
+      action: 'UPDATE_DEFENSE_DATE',
+      entityType: 'Semester',
+      entityId: semesterId,
+      oldValue: { defense_start: semester.defense_start },
+      newValue: { defense_start: defenseDate },
+      description: `Admin ${userId} đã cập nhật ngày bảo vệ cho học kỳ ${semester.name}`
     });
 
     return {
@@ -545,14 +541,14 @@ export class SemesterService {
       data: { is_registration_override: override } as any
     });
 
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: override ? 'REGISTRATION_OVERRIDE_ENABLED' : 'REGISTRATION_OVERRIDE_DISABLED',
-        entity_type: 'Semester',
-        entity_id: semesterId,
-        new_value: { override, reason }
-      }
+    await AuditLogger.log({
+      userId,
+      action: override ? 'REGISTRATION_OVERRIDE_ENABLED' : 'REGISTRATION_OVERRIDE_DISABLED',
+      entityType: 'Semester',
+      entityId: semesterId,
+      newValue: { override, reason },
+      reason,
+      description: `Admin ${userId} đã ${override ? 'mở khóa' : 'đóng'} ghi đè đăng ký học kỳ ${semester.name}`
     });
 
     return updatedSemester;

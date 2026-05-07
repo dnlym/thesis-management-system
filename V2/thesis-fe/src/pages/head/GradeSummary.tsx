@@ -112,7 +112,7 @@ const GradeSummary = () => {
               <Tabs
                 activeKey={filter}
                 onChange={setFilter}
-                className="border-none grade-tabs !mb-0"
+                className="sys-tabs sys-tabs-capsule !mb-0"
                 size="small"
                 tabBarGutter={4}
                 items={[
@@ -195,19 +195,6 @@ const GradeSummary = () => {
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .grade-tabs .ant-tabs-nav { margin-bottom: 0 !important; }
-        .grade-tabs .ant-tabs-nav::before { border-bottom: none !important; }
-        .grade-tabs .ant-tabs-tab { border-radius: 8px !important; margin-right: 0 !important; transition: all 0.2s; padding: 4px 10px !important; border: 1px solid transparent !important; margin-top: 0 !important; margin-bottom: 0 !important; }
-        .grade-tabs .ant-tabs-tab-btn { font-size: 12px !important; font-weight: 600; color: #64748b !important; }
-        .grade-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn { color: #0284c7 !important; }
-        .grade-tabs .ant-tabs-tab-active { background: #f0f9ff !important; border: 1px solid #e0f2fe !important; }
-        .grade-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: #0284c7 !important; font-weight: 700 !important; }
-        .grade-tabs .ant-tabs-ink-bar { display: none !important; }
-        .grade-tabs .ant-tabs-nav-operations { display: none !important; } /* Hide the '...' menu */
-        .grade-tabs .ant-tabs-nav-wrap { overflow: auto !important; } /* Allow horizontal scroll if needed */
-        .grade-tabs .ant-tabs-nav-wrap::-webkit-scrollbar { display: none; }
-        .grade-tabs .ant-tabs-nav-list { display: flex; align-items: center; }
-        
         .topic-summary-card { transition: all 0.25s ease; position: relative; }
         .topic-summary-card:hover { transform: translateY(-3px); border-color: #3b82f6 !important; box-shadow: 0 12px 24px -6px rgba(59, 130, 246, 0.15) !important; }
       `}</style>

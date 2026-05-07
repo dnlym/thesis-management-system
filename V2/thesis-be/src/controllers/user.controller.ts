@@ -41,7 +41,7 @@ export class UserController {
 
     async createUser(req: AuthRequest, res: Response) {
         try {
-            const user = await userService.createUser(req.body);
+            const user = await userService.createUser(req.user!.id, req.body);
             res.status(201).json({
                 success: true,
                 data: user,
@@ -66,7 +66,7 @@ export class UserController {
                 });
             }
 
-            const user = await userService.updateUser(id, req.body);
+            const user = await userService.updateUser(req.user!.id, id, req.body);
             res.json({
                 success: true,
                 data: user,
@@ -82,7 +82,7 @@ export class UserController {
     async deleteUser(req: AuthRequest, res: Response) {
         try {
             const id = req.params.id as string;
-            const result = await userService.deleteUser(id);
+            const result = await userService.deleteUser(req.user!.id, id);
             res.json({
                 success: true,
                 data: result,
@@ -149,7 +149,7 @@ export class UserController {
                 }
             }
 
-            const updatedUser = await userService.updateUser(id, { avatar_url: avatarUrl });
+            const updatedUser = await userService.updateUser(req.user!.id, id, { avatar_url: avatarUrl });
 
             res.json({
                 success: true,

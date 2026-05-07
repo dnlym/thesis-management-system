@@ -15,6 +15,7 @@ import defenseRoutes from './defense.routes';
 import committeeRoutes from './committee.routes';
 
 import permissionRoutes from './permission.routes';
+import auditLogRoutes from './audit-log.routes';
 
 
 const router = Router();
@@ -35,5 +36,6 @@ router.use('/defenses', defenseRoutes);
 router.use('/committees', committeeRoutes);
 
 router.use('/permissions', permissionRoutes);
+router.use('/audit-logs', auditLogRoutes);
 
 export default router;

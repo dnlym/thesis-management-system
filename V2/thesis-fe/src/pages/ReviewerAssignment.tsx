@@ -22,7 +22,7 @@ interface TopicForReviewer {
     registrations: any[];
     assignments: any[];
     reviewerCount: number;
-    assignmentStatus: 'NOT_ASSIGNED' | 'PARTIALLY_ASSIGNED' | 'FULLY_ASSIGNED';
+    assignmentStatus: 'NOT_ASSIGNED' | 'FULLY_ASSIGNED';
     canAssignMore: boolean;
     room?: string | null;
 }
@@ -100,11 +100,10 @@ const ReviewerAssignment = () => {
     }, [topics, debouncedSearch, filterStatus]);
 
     const stats = useMemo(() => {
-        if (!topics) return { ALL: 0, NOT_ASSIGNED: 0, PARTIALLY_ASSIGNED: 0, FULLY_ASSIGNED: 0 };
+        if (!topics) return { ALL: 0, NOT_ASSIGNED: 0, FULLY_ASSIGNED: 0 };
         return {
             ALL: topics.length,
             NOT_ASSIGNED: topics.filter(t => t.assignmentStatus === 'NOT_ASSIGNED').length,
-            PARTIALLY_ASSIGNED: topics.filter(t => t.assignmentStatus === 'PARTIALLY_ASSIGNED').length,
             FULLY_ASSIGNED: topics.filter(t => t.assignmentStatus === 'FULLY_ASSIGNED').length,
         };
     }, [topics]);
@@ -208,8 +207,6 @@ const ReviewerAssignment = () => {
         switch (status) {
             case 'NOT_ASSIGNED':
                 return <Tag color="default">{t('reviewerAssignment.notAssigned')}</Tag>;
-            case 'PARTIALLY_ASSIGNED':
-                return <Tag color="processing">{t('reviewerAssignment.partiallyAssigned')}</Tag>;
             case 'FULLY_ASSIGNED':
                 return <Tag color="success" icon={<CheckCircleOutlined />}>{t('reviewerAssignment.fullyAssigned')}</Tag>;
             default:
@@ -449,7 +446,7 @@ const ReviewerAssignment = () => {
                 <Tabs 
                     activeKey={filterStatus} 
                     onChange={setFilterStatus}
-                    className="sys-tabs"
+                    className="sys-tabs sys-tabs-capsule"
                     items={[
                         { 
                             key: 'ALL', 
@@ -466,15 +463,6 @@ const ReviewerAssignment = () => {
                                 <div className="flex items-center gap-2">
                                     <span>{t('reviewerAssignment.notAssigned')}</span>
                                     <Tag className="m-0 rounded-full bg-orange-50 text-orange-600 border-none font-bold px-2">{stats.NOT_ASSIGNED}</Tag>
-                                </div>
-                            )
-                        },
-                        { 
-                            key: 'PARTIALLY_ASSIGNED', 
-                            label: (
-                                <div className="flex items-center gap-2">
-                                    <span>{t('reviewerAssignment.partiallyAssigned')}</span>
-                                    <Tag className="m-0 rounded-full bg-blue-50 text-blue-600 border-none font-bold px-2">{stats.PARTIALLY_ASSIGNED}</Tag>
                                 </div>
                             )
                         },
@@ -497,7 +485,7 @@ const ReviewerAssignment = () => {
                     <Empty description={t('reviewerAssignment.noTopics')} className="py-12" />
                 ) : (
                     <Table
-                        dataSource={topics || []}
+                        dataSource={filteredTopics}
                         columns={columns}
                         rowKey="id"
                         pagination={{ 

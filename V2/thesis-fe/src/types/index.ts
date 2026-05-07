@@ -30,18 +30,6 @@ export type ProgressStage =
   | 'DEFENDING'
   | 'DONE';
 
-// Student Progress Status
-export type StudentProgressStatus =
-  | 'NOT_STARTED'
-  | 'HAS_TOPIC'
-  | 'ADVISOR_GRADED'
-  | 'REVIEWER_GRADED'
-  | 'DEFENSE_SCHEDULED'
-  | 'DEFENSE_COMPLETED'
-  | 'COUNCIL_GRADED'
-  | 'COMPLETED';
-
-
 
 // Assignment Types
 export type AssignmentType = 'REVIEWER' | 'COMMITTEE';
@@ -142,7 +130,6 @@ export interface Topic {
   max_students: number;
   current_students: number;
   status: TopicStatus;
-  student_progress_status?: StudentProgressStatus;
   created_at: string;
   updated_at: string;
   supervisor?: {
@@ -280,6 +267,27 @@ export interface GradeScore {
   score: number;
   comment?: string;
 }
+
+export interface GradeHistory {
+  id: string;
+  topic_id: string;
+  grade_id: string;
+  old_score: number;
+  new_score: number;
+  reason: string;
+  changed_by_id: string;
+  user_role: string;
+  created_at: string;
+  grade?: Grade & {
+    criterion?: GradingCriteria;
+    student?: any;
+  };
+  changed_by?: {
+    full_name: string;
+    role: string;
+  };
+}
+
 
 export interface FinalScore {
   id: string;

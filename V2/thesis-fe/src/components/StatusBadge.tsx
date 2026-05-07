@@ -8,7 +8,6 @@ import type {
 
     AssignmentStatus,
     ExtraPointsStatus,
-    StudentProgressStatus,
     SemesterPhase,
     SemesterStatus
 } from '@/types';
@@ -58,17 +57,6 @@ const extraPointsStatusConfig: Record<ExtraPointsStatus, { labelKey: string; col
     WITHDRAWN: { labelKey: 'status.extraPoints.WITHDRAWN', color: 'default' },
 };
 
-const studentProgressConfig: Record<StudentProgressStatus, { labelKey: string; color: string }> = {
-    NOT_STARTED: { labelKey: 'status.progress.NOT_STARTED', color: 'default' },
-    HAS_TOPIC: { labelKey: 'status.progress.HAS_TOPIC', color: 'blue' },
-
-    ADVISOR_GRADED: { labelKey: 'status.progress.ADVISOR_GRADED', color: 'purple' },
-    REVIEWER_GRADED: { labelKey: 'status.progress.REVIEWER_GRADED', color: 'magenta' },
-    DEFENSE_SCHEDULED: { labelKey: 'status.progress.DEFENSE_SCHEDULED', color: 'gold' },
-    DEFENSE_COMPLETED: { labelKey: 'status.progress.DEFENSE_COMPLETED', color: 'orange' },
-    COUNCIL_GRADED: { labelKey: 'status.progress.COUNCIL_GRADED', color: 'volcano' },
-    COMPLETED: { labelKey: 'status.progress.COMPLETED', color: 'green' },
-};
 
 const semesterPhaseConfig: Record<SemesterPhase, { labelKey: string; color: string }> = {
     PLANNING: { labelKey: 'status.semester.PLANNING', color: 'default' },
@@ -155,11 +143,6 @@ export const ExtraPointsStatusBadge = ({ status, className = '' }: { status: Ext
     return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
 };
 
-export const StudentProgressBadge = ({ status, className = '' }: { status: StudentProgressStatus; className?: string }) => {
-    const { t } = useTranslation();
-    const config = studentProgressConfig[status] || { labelKey: '', color: 'default' };
-    return <Tag color={config.color} className={className}>{config.labelKey ? t(config.labelKey) : status}</Tag>;
-};
 
 export const SemesterPhaseBadge = ({ phase, className = '' }: { phase: SemesterPhase; className?: string }) => {
     const { t } = useTranslation();
@@ -202,8 +185,6 @@ export const StatusBadge = ({ type, status, ...props }: LegacyStatusBadgeProps) 
             return <AssignmentStatusBadge status={status} className={props.className} />;
         case 'extraPoints':
             return <ExtraPointsStatusBadge status={status} className={props.className} />;
-        case 'progress':
-            return <StudentProgressBadge status={status} className={props.className} />;
         case 'semesterPhase':
             return <SemesterPhaseBadge phase={status} className={props.className} />;
         case 'semesterStatus':

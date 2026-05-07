@@ -145,4 +145,13 @@ export const GradingApi = {
         const res = await api.put<ApiResponse<any>>(`/grading/midterm/${registrationId}`, data);
         return res.data.data;
     },
+    /**
+     * Get grade history for a topic
+     * GET /grading/:topicId/history
+     */
+    async getGradeHistoryByTopic(topicId: string) {
+        const res = await api.get<ApiResponse<any[]>>(`/grading/${topicId}/history`);
+        return res.data.data;
+    },
 };
+

@@ -21,7 +21,8 @@ import {
   Result,
   Row,
   Col,
-  Modal
+  Modal,
+  Tooltip
 } from 'antd';
 import { notify } from '@/utils/notification';
 import { 
@@ -208,7 +209,12 @@ const MyRegisteredTopic = () => {
     const sentInvites = invitesData?.sentInvites || [];
     const receivedInvites = invitesData?.receivedInvites || [];
 
+    // Phase locking logic: Lock group management when in WORK phase or later
+    const currentPhase = topic?.semester?.calculated_phase;
+    const isPhaseLocked = currentPhase && !['PLANNING', 'PREVIEW', 'REGISTRATION'].includes(currentPhase);
+
     return (
+      <>
         <div className="page-container">
             <div className="page-inner">
                 {/* Header */}
@@ -237,10 +243,13 @@ const MyRegisteredTopic = () => {
                                     okText="Giải tán"
                                     cancelText="Hủy"
                                     okButtonProps={{ danger: true, loading: disbandGroupMutation.isPending }}
+                                    disabled={isPhaseLocked}
                                 >
-                                    <Button danger icon={<DeleteOutlined />}>
-                                        Giải tán nhóm
-                                    </Button>
+                                    <Tooltip title={isPhaseLocked ? "Không thể giải tán nhóm trong giai đoạn thực hiện khóa luận" : ""}>
+                                        <Button danger icon={<DeleteOutlined />} disabled={isPhaseLocked}>
+                                            Giải tán nhóm
+                                        </Button>
+                                    </Tooltip>
                                 </Popconfirm>
                             )}
                         </div>
@@ -249,15 +258,17 @@ const MyRegisteredTopic = () => {
 
             {/* Topic Info Card */}
             <Card className="shadow-soft overflow-hidden border-0">
-                <div className="flex items-center gap-2 mb-4">
-                  <Tag color="blue" className="font-mono">{topic?.code || 'NO-CODE'}</Tag>
+                <div className="flex items-center gap-2 mb-2">
                   {myRegistration.midterm_status === 'PASS' && (
                     <Tag color="success">Đã đạt Giữa kỳ</Tag>
                   )}
                 </div>
                 
+                <Title level={4} className="mb-6 mt-0 text-gray-800">
+                    {topic?.title}
+                </Title>
+                
                 <Descriptions 
-                    title={topic?.title} 
                     bordered 
                     column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
                 >
@@ -279,6 +290,12 @@ const MyRegisteredTopic = () => {
                             {dayjs(myRegistration.registered_at).format('DD/MM/YYYY')}
                         </Space>
                     </Descriptions.Item>
+                    <Descriptions.Item label="Số SV tối đa">
+                        <Space>
+                            <UserOutlined className="text-blue-500" />
+                            <Text strong>{topic?.max_students || 2} sinh viên</Text>
+                        </Space>
+                    </Descriptions.Item>
                     <Descriptions.Item label="Mã nhóm">
                         <Space>
                             <TeamOutlined className="text-blue-500" />
@@ -289,6 +306,28 @@ const MyRegisteredTopic = () => {
                             )}
                         </Space>
                     </Descriptions.Item>
+                    <Descriptions.Item label="Mô tả đề tài" span={2}>
+                        <div 
+                            className="topic-html-content text-gray-600"
+                            dangerouslySetInnerHTML={{ __html: topic?.description || 'Chưa có mô tả' }} 
+                        />
+                    </Descriptions.Item>
+                    {topic?.objectives && (
+                        <Descriptions.Item label="Mục tiêu" span={2}>
+                            <div 
+                                className="topic-html-content text-gray-600"
+                                dangerouslySetInnerHTML={{ __html: topic.objectives }} 
+                            />
+                        </Descriptions.Item>
+                    )}
+                    {topic?.requirements && (
+                        <Descriptions.Item label="Yêu cầu sinh viên" span={2}>
+                            <div 
+                                className="topic-html-content text-gray-600"
+                                dangerouslySetInnerHTML={{ __html: topic.requirements }} 
+                            />
+                        </Descriptions.Item>
+                    )}
                 </Descriptions>
             </Card>
 
@@ -300,13 +339,16 @@ const MyRegisteredTopic = () => {
                     title={<Space><TeamOutlined />Thành viên nhóm</Space>} 
                     className="shadow-soft border-0"
                     extra={!isLeader && (
-                      <Button 
-                        size="small" 
-                        icon={<CrownOutlined />} 
-                        onClick={() => setIsLeaderModalVisible(true)}
-                      >
-                        Đổi trưởng nhóm
-                      </Button>
+                      <Tooltip title={isPhaseLocked ? "Không thể đổi trưởng nhóm trong giai đoạn thực hiện khóa luận" : ""}>
+                        <Button 
+                          size="small" 
+                          icon={<CrownOutlined />} 
+                          onClick={() => setIsLeaderModalVisible(true)}
+                          disabled={isPhaseLocked}
+                        >
+                          Đổi trưởng nhóm
+                        </Button>
+                      </Tooltip>
                     )}
                   >
                     <List
@@ -510,6 +552,28 @@ const MyRegisteredTopic = () => {
             </Modal>
             </div>
         </div>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .topic-html-content {
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .topic-html-content p {
+            margin-bottom: 8px;
+          }
+          .topic-html-content ul, .topic-html-content ol {
+            padding-left: 20px;
+            margin-bottom: 8px;
+          }
+          .topic-html-content ul {
+            list-style-type: disc;
+          }
+          .topic-html-content ol {
+            list-style-type: decimal;
+          }
+        `
+      }} />
+      </>
     );
 };
 

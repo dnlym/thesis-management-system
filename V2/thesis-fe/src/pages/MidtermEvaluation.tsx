@@ -244,7 +244,7 @@ const MidtermEvaluation = () => {
                 <Tabs 
                     activeKey={filterStatus} 
                     onChange={setFilterStatus}
-                    className="sys-tabs"
+                    className="sys-tabs sys-tabs-capsule"
                     items={[
                         { 
                             key: 'ALL', 

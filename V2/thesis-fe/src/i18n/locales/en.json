@@ -64,7 +64,6 @@
     "dashboard": "Dashboard",
     "myGroup": "My Group",
     "topics": "Topics",
-    "progress": "Progress",
     "submissions": "Submissions",
     "evaluation": "Evaluation",
     "schedule": "Schedule",
@@ -129,14 +128,12 @@
     "permissionsList": {
       "STUDENT": [
         "Register topics",
-        "Update progress",
         "Submit work",
         "View schedule",
         "Send messages"
       ],
       "LECTURER": [
         "Create and edit topics",
-        "Evaluate student progress",
         "Enter supervisor scores",
         "Enter reviewer scores",
         "Manage schedule",
@@ -217,19 +214,6 @@
       "APPROVED": "Approved",
       "REJECTED": "Rejected",
       "WITHDRAWN": "Withdrawn"
-    },
-    "progress": {
-      "NOT_STARTED": "Not Started",
-      "PROPOSAL_SUBMITTED": "Proposal Submitted",
-      "PROPOSAL_APPROVED": "Proposal Approved",
-      "THESIS_IN_PROGRESS": "Thesis in Progress",
-      "THESIS_SUBMITTED": "Thesis Submitted",
-      "ADVISOR_GRADED": "Advisor Graded",
-      "REVIEWER_GRADED": "Reviewer Graded",
-      "DEFENSE_SCHEDULED": "Defense Scheduled",
-      "DEFENSE_COMPLETED": "Defended",
-      "COUNCIL_GRADED": "Council Graded",
-      "COMPLETED": "Completed"
     }
   },
   "phases": {
@@ -371,53 +355,6 @@
     "confirmRejectButton": "Confirm Rejection",
     "sendRequestButton": "Send Request",
     "showTotal": "{{range0}}-{{range1}} of {{total}} topics"
-  },
-  "progress": {
-    "submitProgress": "Submit Progress",
-    "steps": {
-      "topicRegistration": "Topic Registration",
-      "topicRegistrationDesc": "Topic and advisor assigned",
-      "outline": "Outline",
-      "outlineDesc": "Submit and approve outline",
-      "execution": "Execution & Submission",
-      "executionDesc": "Submit thesis report",
-      "grading": "Grading & Defense",
-      "gradingDesc": "Advisor, Reviewer, and Council",
-      "completion": "Completion",
-      "completionDesc": "Thesis completed"
-    },
-    "deadline": "Deadline",
-    "detailInfo": "Detailed Information",
-    "group": "Group",
-    "members": "Group Members",
-    "currentStatus": "Current Status",
-    "evaluationFeedback": "Evaluation & Feedback",
-    "notes": "Notes / Comments",
-    "notesPlaceholder": "Enter detailed comments or revision requests...",
-    "approveNextStep": "Approve & Next Step",
-    "requestRevision": "Request Revision",
-    "advisorGrading": "Advisor Grading",
-    "scoreRange": "Evaluation Score (0-10)",
-    "contribution": "Contribution (%)",
-    "contributionPlaceholder": "e.g., Student A: 50%, Student B: 50%",
-    "nextAction": "Next Action",
-    "followAdvisorFeedback": "Please follow advisor feedback and update progress.",
-    "advisorFeedbackTitle": "Advisor Feedback",
-    "activityLog": "Activity History",
-    "time": "Time",
-    "actor": "Performed by",
-    "action": "Action",
-    "details": "Details",
-    "noHistory": "No history data available",
-    "noTopicWarning": "Not registered for a topic",
-    "noTopicDesc": "You don't have a confirmed topic yet. Please register for a topic first.",
-    "viewTopics": "View Topics List",
-    "progressDetail": "Progress Detail",
-    "viewDetail": "View Detail",
-    "phase": "Phase",
-    "approveSuccess": "Approved and moved to next step successfully",
-    "revisionSuccess": "Revision request sent",
-    "revisionRequiredError": "Please enter the revision request content"
   },
   "users": {
     "subtitle": "Manage users in the system",

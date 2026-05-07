@@ -719,6 +719,12 @@ export class AssignmentService {
             midterm_status: 'PASS',
           },
         },
+        // [NEW] Only topics that have been graded by supervisor
+        grades: {
+          some: {
+            rater_role: RaterRole.SUPERVISOR,
+          },
+        },
       },
       include: {
         supervisor: {

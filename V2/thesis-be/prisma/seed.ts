@@ -79,6 +79,11 @@ async function main() {
     create: { code: 'HK2_2025_2026', name: 'Học kỳ 2 2025-2026', status: SemesterStatus.ACTIVE, start_date: new Date('2026-05-05'), end_date: new Date('2026-07-15'), proposal_deadline: new Date('2026-06-15'), thesis_deadline: new Date('2026-07-01') }
   });
 
+  const oldSemester = await prisma.semester.upsert({
+    where: { code: 'HK1_2025_2026' }, update: { status: SemesterStatus.COMPLETED },
+    create: { code: 'HK1_2025_2026', name: 'Học kỳ 1 2025-2026', status: SemesterStatus.COMPLETED, start_date: new Date('2025-09-01'), end_date: new Date('2026-01-15'), proposal_deadline: new Date('2025-10-15'), thesis_deadline: new Date('2026-01-01') }
+  });
+
   // 3. FACULTY
   const rawFacultyData: any = {
     "SE": ["ThS. Phạm Quảng Tri", "TS. Tôn Long Phước", "TS. Nguyễn Thị Hạnh (Trưởng bộ môn)", "ThS. Bùi Đình Tiền", "ThS. Châu Thị Bảo Hà", "TS. Nguyễn Minh Hải", "ThS. Nguyễn Thị Hoàng Khánh", "ThS. Nguyễn Thị Hồng Lương", "TS. Nguyễn Trọng Tiến", "ThS. Nguyễn Văn Thắng", "TS. Nguyễn Vũ Lâm", "TS. Nguyễn Đình Quyền", "ThS. Phạm Thanh Hùng", "ThS. Trần Thế Trung", "ThS. Trần Thị Anh Thi", "ThS. Đặng Thị Thu Hà (Phó bộ môn)", "ThS. Đặng Văn Thuận"],
@@ -98,7 +103,26 @@ async function main() {
     }
   }
 
-  // 4. GROUPS & TOPICS RECOVERY
+  // 3.5. OLD TOPICS SEEDING (2 per Dept in HK1)
+  console.log('🏛️ Nạp 10 đề tài cũ cho Học kỳ 1...');
+  for (const dept of Object.values(deptMap) as any[]) {
+    const lecturer = await prisma.user.findFirst({ where: { departmentId: dept.id, role: { in: [UserRole.LECTURER, UserRole.HEAD] } } });
+    if (lecturer) {
+      for (let i = 1; i <= 2; i++) {
+        const title = `Đề tài cũ ${i} - ${dept.code} (HK1)`;
+        await prisma.topic.create({
+          data: {
+            code: `${dept.code}_OLD_${i}`, title, normalized_title: normalizeTitle(title),
+            description: `Mô tả cho ${title}`, objectives: 'Hoàn thành tốt', requirements: 'Vững kiến thức chuyên môn',
+            status: TopicStatus.COMPLETED, progress_stage: ProgressStage.DONE,
+            max_students: 2, current_students: 0, semester_id: oldSemester.id, departmentId: dept.id, supervisor_id: lecturer.id,
+          }
+        });
+      }
+    }
+  }
+
+  // 4. GROUPS & TOPICS RECOVERY (ACTIVE SEMESTER)
   console.log('📊 Nạp danh sách sinh viên và đề tài (Tách biệt theo nhóm)...');
   const topicsByGroup: Record<string, any[]> = {};
   rawStudentData.forEach(row => {
