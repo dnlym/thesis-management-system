@@ -174,7 +174,7 @@ const Topics = () => {
       title: 'Mã ĐT',
       dataIndex: 'code',
       key: 'code',
-      width: 100,
+      width: 80,
       render: (code: string) => (
         <Tag color="blue" className="font-mono">
           <HighlightText text={code} keyword={debouncedSearch} />
@@ -223,8 +223,9 @@ const Topics = () => {
       ),
     },
     {
-      title: t('topics.numStudents'),
+      title: 'Sinh viên',
       key: 'slots',
+      width: 80,
       render: (_, record: any) => {
         const current = record.current_students || 0;
         const max = record.max_students || 0;

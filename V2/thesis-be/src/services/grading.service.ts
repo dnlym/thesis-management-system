@@ -537,6 +537,11 @@ export class GradingService {
             TopicStatus.FINALIZED,
           ],
         },
+        registrations: {
+          some: {
+            midterm_status: MidtermStatus.PASS,
+          },
+        },
       },
       include: {
         supervisor: { select: { id: true, full_name: true, avatar_url: true } },

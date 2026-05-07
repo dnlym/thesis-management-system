@@ -194,7 +194,6 @@ model Topic {
   supervisor               User                     @relation("SupervisorTopics", fields: [supervisor_id], references: [id], onDelete: Cascade)
 
   @@unique([code, semester_id])
-  @@unique([normalized_title, semester_id, departmentId])
   @@index([code])
   @@index([supervisor_id])
   @@index([departmentId])

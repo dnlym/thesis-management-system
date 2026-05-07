@@ -59,10 +59,12 @@ export enum RoleGroup {
 export const ROLE_GROUP_MAP: Record<RaterRole, RoleGroup> = {
   [RaterRole.SUPERVISOR]: RoleGroup.SUPERVISOR,
 
+  [RaterRole.REVIEWER]: RoleGroup.REVIEWER,
   [RaterRole.REVIEWER_1]: RoleGroup.REVIEWER,
   [RaterRole.REVIEWER_2]: RoleGroup.REVIEWER,
   [RaterRole.REVIEWER_3]: RoleGroup.REVIEWER,
 
+  [RaterRole.COMMITTEE]: RoleGroup.COMMITTEE,
   [RaterRole.COMMITTEE_CHAIR]: RoleGroup.COMMITTEE,
   [RaterRole.COMMITTEE_SECRETARY]: RoleGroup.COMMITTEE,
   [RaterRole.COMMITTEE_MEMBER]: RoleGroup.COMMITTEE,

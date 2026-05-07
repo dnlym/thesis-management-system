@@ -209,6 +209,20 @@ export class TopicService {
     // Process normalized title
     const normalizedTitle = normalizeTitle(data.title);
 
+    // Check for duplicate title in the same semester and department
+    const existingTopic = await prisma.topic.findFirst({
+      where: {
+        normalized_title: normalizedTitle,
+        semester_id: data.semesterId,
+        departmentId: user.departmentId,
+        status: { not: TopicStatus.DRAFT }, // Only check against non-draft topics
+      },
+    });
+
+    if (existingTopic) {
+      throw new ApiError(400, 'DUPLICATE_TITLE', 'Tên đề tài đã tồn tại trong học kỳ này của bộ môn');
+    }
+
     // Determine initial status based on user role and isDraft flag
     // GVHD creates:
     //   - isDraft=true → DRAFT (Lưu bản nháp)
@@ -923,7 +937,16 @@ export class TopicService {
 
     if (filter.search) {
       const searchTokens = filter.search.split(' ').filter(t => t.length > 0);
+      const normalizedSearch = normalizeTitle(filter.search);
+
       if (searchTokens.length > 0) {
+        // Phrase match conditions (higher precision)
+        const phraseConditions = [
+          { title: { contains: filter.search, mode: 'insensitive' as const } },
+          { normalized_title: { contains: normalizedSearch, mode: 'insensitive' as const } },
+        ];
+
+        // Token match conditions (for partial words)
         const andSearchConditions = searchTokens.map(token => {
           const normalizedToken = normalizeTitle(token);
           return {
@@ -934,15 +957,15 @@ export class TopicService {
               { supervisor: { full_name: { contains: token, mode: 'insensitive' as const } } },
               { registrations: { some: { student: { full_name: { contains: token, mode: 'insensitive' as const } } } } },
               { registrations: { some: { student: { student_code: { contains: token, mode: 'insensitive' as const } } } } },
-            ],
+            ]
           };
         });
-
-        if (where.AND) {
-          (where.AND as any[]).push(...andSearchConditions);
-        } else {
-          where.AND = andSearchConditions;
-        }
+        andConditions.push({
+          OR: [
+            ...phraseConditions,
+            { AND: andSearchConditions }
+          ]
+        });
       }
     }
     // Filter by midterm status - only return topics where at least one registration has this status
@@ -1036,7 +1059,7 @@ export class TopicService {
         },
         skip,
         take: limit,
-        orderBy: { created_at: 'desc' },
+        orderBy: { code: 'asc' },
       }) as Promise<TopicDetailsPayload[]>,
       prisma.topic.count({ where }),
     ]);
