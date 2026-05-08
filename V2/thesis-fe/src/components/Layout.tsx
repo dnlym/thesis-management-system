@@ -1,5 +1,5 @@
 import { useState, Suspense, useEffect } from 'react';
-import { Button, Avatar, Dropdown, Spin, Layout, Menu, Tooltip } from 'antd';
+import { Button, Avatar, Dropdown, Spin, Layout, Menu, Tooltip, notification } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { semesterBroadcast } from '@/utils/broadcast';
 import { AuthApi } from '@/api/auth';
+import { useActiveSemester } from '@/hooks/useSemesters';
 import NotificationDropdown from './NotificationDropdown';
 
 const { Header, Content } = Layout;
@@ -35,13 +36,15 @@ interface MenuItem {
   key: string;
   label: string;
   icon: React.ReactNode;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 interface MenuSection {
   title?: string;
   items: MenuItem[];
 }
 
-const getMenuSections = (role: string): MenuSection[] => {
+const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => {
   if (role === 'STUDENT') {
     return [
       {
@@ -98,6 +101,9 @@ const getMenuSections = (role: string): MenuSection[] => {
   }
 
   if (role === 'HEAD') {
+    const isReviewPhase = ['REVIEWING', 'DEFENSE', 'FINAL'].includes(currentPhase || '');
+    const isDefensePhase = ['DEFENSE', 'FINAL'].includes(currentPhase || '');
+
     return [
       {
         items: [
@@ -109,8 +115,20 @@ const getMenuSections = (role: string): MenuSection[] => {
         items: [
           { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
           { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
-          { key: '/reviewer-assignment', label: 'Phân công phản biện', icon: <SafetyCertificateOutlined /> },
-          { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
+          { 
+            key: '/reviewer-assignment', 
+            label: 'Phân công phản biện', 
+            icon: <SafetyCertificateOutlined />,
+            disabled: !isReviewPhase,
+            disabledReason: 'Tính năng chỉ khả dụng từ giai đoạn Phản biện (sau khi có kết quả giữa kỳ).'
+          },
+          { 
+            key: '/committee-assignment', 
+            label: 'Phân công hội đồng', 
+            icon: <CrownOutlined />,
+            disabled: !isDefensePhase,
+            disabledReason: 'Tính năng chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ.'
+          },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
           { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
@@ -213,17 +231,33 @@ const SidebarNav = ({ sections, collapsed, activeKey, onNavigate }: SidebarNavPr
 
               return false;
             })();
+
+            const handleClick = () => {
+              if (item.disabled) {
+                notification.info({
+                  message: 'Tính năng đang khóa',
+                  description: item.disabledReason || 'Tính năng này hiện chưa khả dụng trong giai đoạn này.',
+                  placement: 'topRight',
+                  duration: 4
+                });
+                return;
+              }
+              onNavigate(item.key);
+            };
+
             const btn = (
               <button
                 key={item.key + item.label}
-                onClick={() => onNavigate(item.key)}
+                onClick={handleClick}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 mb-0.5 group
                   ${isActive
                     ? 'bg-blue-50 text-blue-600 font-semibold'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    : item.disabled 
+                      ? 'text-gray-300 cursor-not-allowed' 
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
               >
-                <span className={`text-base flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                <span className={`text-base flex-shrink-0 ${isActive ? 'text-blue-600' : item.disabled ? 'text-gray-200' : 'text-gray-400 group-hover:text-gray-600'}`}>
                   {item.icon}
                 </span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
@@ -321,7 +355,10 @@ const AppLayout = () => {
     bootstrap();
   }, []);
 
-  const sections = getMenuSections(user?.role || 'STUDENT');
+  const { data: activeSemester } = useActiveSemester();
+  const currentPhase = activeSemester?.calculated_phase;
+
+  const sections = getMenuSections(user?.role || 'STUDENT', currentPhase);
   const activeKey = location.pathname + location.search;
 
   const handleNavigate = (key: string) => {

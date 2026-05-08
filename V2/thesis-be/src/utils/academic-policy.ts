@@ -25,6 +25,8 @@ export enum AcademicAction {
   GRADE_REVIEWER = 'GRADE_REVIEWER',
   GRADE_COMMITTEE = 'GRADE_COMMITTEE',
   ASSIGN_DEFENSE_PIVOT = 'ASSIGN_DEFENSE_PIVOT',
+  ASSIGN_REVIEWER = 'ASSIGN_REVIEWER',
+  ASSIGN_COMMITTEE = 'ASSIGN_COMMITTEE',
   FINALIZE_SCORE = 'FINALIZE_SCORE',
 }
 
@@ -62,6 +64,43 @@ export class AcademicPolicy {
     return SemesterGuard.calculateCurrentPhase(semester, semester.deptConfig);
   }
 
+  private static isTopicFailed(phase: SemesterPhase | null, registration: any): { failed: boolean; reason?: string } {
+    if (!registration || !registration.topic) return { failed: false };
+    const topic = registration.topic;
+
+    // 1. Quyết định thủ công từ HOD
+    if (topic.is_eligible_for_defense === false) {
+      return { failed: true, reason: 'Đề tài đã bị Trưởng bộ môn đánh giá không đủ điều kiện bảo vệ.' };
+    }
+
+    // 2. Logic tự động khi bước vào giai đoạn Phản biện trở đi
+    const isAtReviewPhaseOrLater = phase === SemesterPhase.REVIEWING || phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
+    if (isAtReviewPhaseOrLater) {
+      const grades = topic.grades || [];
+      const finalScores = topic.final_scores || [];
+      
+      // 2.1 Check if supervisor has graded (any criterion)
+      const hasSupervisorGraded = grades.some((g: any) => g.rater_role === 'SUPERVISOR');
+
+      if (!hasSupervisorGraded) {
+        return { failed: true, reason: 'Sinh viên bị loại do Giảng viên hướng dẫn không nhập điểm trước giai đoạn Phản biện.' };
+      }
+
+      // 2.2 Check scores from final_scores
+      if (finalScores.length > 0) {
+        const fs = finalScores[0];
+        if (fs.supervisor_score !== null && fs.supervisor_score < 6) {
+          return { failed: true, reason: 'Sinh viên bị loại do điểm hướng dẫn không đạt (Dưới 6.0).' };
+        }
+        if (fs.reviewer_avg_score !== null && fs.reviewer_avg_score < 6) {
+          return { failed: true, reason: 'Sinh viên bị loại do điểm phản biện không đạt (Trung bình dưới 6.0).' };
+        }
+      }
+    }
+
+    return { failed: false };
+  }
+
   // ─── Main Policy logic ────────────────────────────────────────────────────
 
   static canPerform(
@@ -95,6 +134,24 @@ export class AcademicPolicy {
 
     const phase = this.getPhase(semester);
     const timeline = SemesterGuard.getTimelineContext(semester);
+
+    // --- GLOBAL FAILED STATUS CHECK ---
+    // Block subsequent actions if topic is failed
+    const subsequentActions = [
+      AcademicAction.GRADE_REVIEWER,
+      AcademicAction.GRADE_COMMITTEE,
+      AcademicAction.ASSIGN_DEFENSE_PIVOT,
+      AcademicAction.ASSIGN_REVIEWER,
+      AcademicAction.ASSIGN_COMMITTEE,
+      AcademicAction.FINALIZE_SCORE
+    ];
+
+    if (subsequentActions.includes(action)) {
+      const failStatus = this.isTopicFailed(phase, registration);
+      if (failStatus.failed) {
+        return { allowed: false, reason: failStatus.reason, code: 'TOPIC_FAILED' };
+      }
+    }
 
     switch (action) {
       // ─── TOPIC MANAGEMENT ──────────────────────────────────────────────
@@ -201,6 +258,18 @@ export class AcademicPolicy {
       case AcademicAction.ASSIGN_DEFENSE_PIVOT:
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
           return { allowed: false, reason: 'Chỉ được xét duyệt hình thức bảo vệ trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
+        }
+        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+
+      case AcademicAction.ASSIGN_REVIEWER:
+        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'Chỉ được phân công phản biện từ giai đoạn Phản biện trở đi (sau khi có kết quả giữa kỳ).', code: 'INVALID_PHASE' };
+        }
+        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+
+      case AcademicAction.ASSIGN_COMMITTEE:
+        if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'Chỉ được phân công hội đồng trong giai đoạn Bảo vệ cuối kỳ.', code: 'INVALID_PHASE' };
         }
         return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
 

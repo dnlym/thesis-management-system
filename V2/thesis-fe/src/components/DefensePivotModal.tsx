@@ -7,7 +7,7 @@ const { Text, Title, Paragraph } = Typography;
 interface DefensePivotModalProps {
   visible: boolean;
   onCancel: () => void;
-  onConfirm: (data: { isEligible: boolean; defenseType?: 'ORAL' | 'POSTER' }) => void;
+  onConfirm: (data: { isEligible: boolean }) => void;
   topic: any;
   loading: boolean;
 }
@@ -26,7 +26,6 @@ const DefensePivotModal: React.FC<DefensePivotModalProps> = ({ visible, onCancel
     form.validateFields().then(values => {
       onConfirm({
         isEligible: values.isEligible,
-        defenseType: values.isEligible ? values.defenseType : undefined,
       });
     });
   };
@@ -84,7 +83,7 @@ const DefensePivotModal: React.FC<DefensePivotModalProps> = ({ visible, onCancel
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ isEligible: true, defenseType: topic.defense_type || 'ORAL' }}
+          initialValues={{ isEligible: true }}
           onValuesChange={(changed) => {
             if (changed.isEligible !== undefined) setIsEligible(changed.isEligible);
           }}
@@ -119,19 +118,6 @@ const DefensePivotModal: React.FC<DefensePivotModalProps> = ({ visible, onCancel
               </Space>
             </Radio.Group>
           </Form.Item>
-
-          {isEligible && (
-            <Form.Item 
-              name="defenseType" 
-              label={<Text strong>Hình thức bảo vệ</Text>}
-              rules={[{ required: true }]}
-            >
-              <Select size="large">
-                <Select.Option value="ORAL">Bảo vệ Vấn đáp (Oral)</Select.Option>
-                <Select.Option value="POSTER">Bảo vệ Poster</Select.Option>
-              </Select>
-            </Form.Item>
-          )}
 
           {!isEligible && (
             <Alert

@@ -174,7 +174,9 @@ export function useRejectTopic() {
             toast.success('Từ chối đề tài thành công');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Từ chối đề tài thất bại');
+            const data = error?.response?.data;
+            const errorMsg = data?.errors?.[0]?.msg || data?.message || 'Từ chối đề tài thất bại';
+            toast.error(errorMsg);
         },
     });
 }
@@ -194,7 +196,8 @@ export function useSubmitForApproval() {
             toast.success('Đã gửi đề tài chờ duyệt');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Gửi đề tài thất bại');
+            const errorMsg = error?.response?.data?.message || 'Gửi đề tài thất bại';
+            toast.error(errorMsg);
         },
     });
 }
@@ -215,7 +218,9 @@ export function useRequireEdit() {
             toast.success('Đã yêu cầu chỉnh sửa');
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Yêu cầu chỉnh sửa thất bại');
+            const data = error?.response?.data;
+            const errorMsg = data?.errors?.[0]?.msg || data?.message || 'Yêu cầu chỉnh sửa thất bại';
+            toast.error(errorMsg);
         },
     });
 }

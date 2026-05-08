@@ -47,12 +47,8 @@ export class GradingService {
     // Verify topic
     const topic = await prisma.topic.findUnique({
       where: { id: data.topicId },
-      include: {
-        assignments: true,
-        registrations: true,
-        grades: true,
-      },
-    }) as TopicWithRelations | null;
+      include: topicSummaryInclude,
+    }) as TopicSummaryPayload | null;
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
@@ -98,7 +94,7 @@ export class GradingService {
 
     if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
 
-    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester);
+    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, { topic });
 
     // Verify user has permission to grade using helpers
     let hasPermission = false;
@@ -339,6 +335,9 @@ export class GradingService {
 
     // TODO: Send notification
 
+    // 4. Auto-evaluate eligibility for defense
+    await this.autoEvaluateEligibility(data.topicId);
+
     return grades;
   }
 
@@ -512,10 +511,10 @@ export class GradingService {
     // Check academic policy
     const topicCheck = await prisma.topic.findUnique({
       where: { id: topicId },
-      include: { semester: true }
+      include: { semester: true, grades: true }
     });
     if (!topicCheck) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
-    AcademicPolicy.enforce(AcademicAction.FINALIZE_SCORE, { id: userId, role: UserRole.HEAD }, topicCheck.semester);
+    AcademicPolicy.enforce(AcademicAction.FINALIZE_SCORE, { id: userId, role: UserRole.HEAD }, topicCheck.semester, { topic: topicCheck });
 
     // NEW: Proper complete validation before finalizing
     const topic = await prisma.topic.findUnique({
@@ -763,8 +762,12 @@ export class GradingService {
 
         const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
         const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
-        const isReviewerComplete = reviewerGraderIds.length >= (topic.reviewer_required_count || 2);
+        const totalReviewersRequired = topic.reviewer_required_count || 2;
+        const isReviewerComplete = reviewerGraderIds.length >= totalReviewersRequired;
         
+        const committeeGraderIds = [...new Set(topic.grades.filter(g => g.rater_role === RaterRole.COMMITTEE).map(g => g.grader_id))];
+        const isCommitteeComplete = committeeGraderIds.length >= 3;
+
         const isGroupFinalized = studentSummaries.every(s => s.finalScore && 'finalized' in s.finalScore && s.finalScore.finalized);
 
         summaryData.push({
@@ -781,7 +784,11 @@ export class GradingService {
           status: isGroupFinalized ? TopicStatus.FINALIZED : topic.status,
           gradingStatus: {
             supervisorGraded,
+            reviewerGradedCount: reviewerGraderIds.length,
+            totalReviewersRequired,
             isReviewerComplete,
+            committeeGradedCount: committeeGraderIds.length,
+            isCommitteeComplete,
             isReadyForDecision: supervisorGraded && isReviewerComplete,
             isFinalized: isGroupFinalized
           }
@@ -1740,6 +1747,82 @@ export class GradingService {
         details: a.new_value,
       })),
     };
+  }
+  /**
+   * Automatically evaluates if a topic is eligible for defense or should be failed.
+   */
+  private async autoEvaluateEligibility(topicId: string) {
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId },
+      include: {
+        grades: true,
+        final_scores: true,
+        semester: true,
+        assignments: { where: { assignment_type: 'REVIEWER' } },
+      },
+    });
+
+    if (!topic || topic.is_eligible_for_defense !== null) return;
+
+    // 1. Re-compute final scores to get latest averages
+    await this.computeFinalScore(topicId);
+    const updatedTopic = await prisma.topic.findUnique({
+      where: { id: topicId },
+      include: { final_scores: true }
+    });
+
+    if (!updatedTopic) return;
+
+    const fs = updatedTopic.final_scores?.[0];
+    if (!fs) return;
+
+    // 2. Logic: Any score < 6.0 = FAIL immediately if that role has graded
+    const supervisorGraded = topic.grades.some(g => g.rater_role === 'SUPERVISOR');
+    const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
+    const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.length || 2;
+    const isReviewerComplete = reviewerGraderIds.length >= totalReviewersRequired;
+
+    // Immediate Fail check
+    if (supervisorGraded && fs.supervisor_score !== null && fs.supervisor_score < 6) {
+      await this.setTopicEligibility(topicId, false, 'Điểm hướng dẫn dưới 6.0');
+      return;
+    }
+
+    if (isReviewerComplete && fs.reviewer_avg_score !== null && fs.reviewer_avg_score < 6) {
+      await this.setTopicEligibility(topicId, false, 'Điểm trung bình phản biện dưới 6.0');
+      return;
+    }
+
+    // 3. Auto-Pass check: All required grades are in and all are >= 6.0
+    if (supervisorGraded && isReviewerComplete) {
+      if (fs.supervisor_score !== null && fs.supervisor_score >= 6 && 
+          fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6) {
+        await this.setTopicEligibility(topicId, true);
+      }
+    }
+  }
+
+  private async setTopicEligibility(topicId: string, isEligible: boolean, reason?: string) {
+    await prisma.topic.update({
+      where: { id: topicId },
+      data: {
+        is_eligible_for_defense: isEligible,
+        progress_stage: isEligible ? 'READY_FOR_DEFENSE' : 'DONE',
+        status: isEligible ? TopicStatus.REGISTERED : TopicStatus.COMPLETED,
+        defense_type: isEligible ? 'ORAL' : null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        user_id: 'SYSTEM',
+        action: 'AUTO_EVALUATE_ELIGIBILITY',
+        entity_type: 'Topic',
+        entity_id: topicId,
+        new_value: { isEligible, reason },
+        // Note: AuditLogger might be better if it exists in scope, but AuditLog model works
+      }
+    });
   }
 }
 

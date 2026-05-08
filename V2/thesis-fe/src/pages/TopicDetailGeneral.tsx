@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Input, Select, Form, Avatar } from 'antd';
+import { Card, Descriptions, Tag, Button, Spin, Space, Result, Modal, Input, Select, Form, Avatar, Alert, Typography } from 'antd';
 import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, UsergroupAddOutlined, FormOutlined, HistoryOutlined, UserOutlined } from '@ant-design/icons';
 import { useTopic, useApproveTopic, useRejectTopic, useRequireEdit } from '@/hooks/useTopics';
 import { useAssignReviewer } from '@/hooks/useAssignments';
@@ -13,6 +13,7 @@ import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
+const { Text } = Typography;
 
 /**
  * Topic Detail view for HEAD/Admin
@@ -167,52 +168,103 @@ const TopicDetailGeneral = () => {
 
 
 
-            <Card className="shadow-soft">
-                <Descriptions bordered column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}>
-                    <Descriptions.Item label={t('common.status')} span={2}>
-                        <Space>
-                            <TopicStatusBadge status={topic.status} />
-                            {topic.source_topic && (
-                                <Tag color="orange" icon={<HistoryOutlined />}>
-                                    Tái sử dụng từ {topic.source_topic.semester?.name} ({topic.source_topic.code})
-                                </Tag>
-                            )}
-                        </Space>
-                    </Descriptions.Item>
+            <Card className="shadow-soft overflow-hidden">
+                <div className="space-y-6">
+                    {/* Status Alerts */}
+                    {topic.status === 'REJECTED' && topic.rejection_reason && (
+                        <Alert
+                            message={<Text strong className="text-red-700">Lý do từ chối từ Trưởng bộ môn</Text>}
+                            description={topic.rejection_reason}
+                            type="error"
+                            showIcon
+                            className="rounded-lg border-red-100"
+                        />
+                    )}
+                    {topic.status === 'REQUIRE_EDIT' && topic.edit_notes && (
+                        <Alert
+                            message={<Text strong className="text-orange-700">Yêu cầu chỉnh sửa từ Trưởng bộ môn</Text>}
+                            description={topic.edit_notes}
+                            type="warning"
+                            showIcon
+                            className="rounded-lg border-orange-100"
+                        />
+                    )}
 
-                    <Descriptions.Item label={t('topics.supervisor')}>
-                        <div className="flex flex-col">
-                            <span className="font-medium">
-                                {topic.supervisor?.full_name || 'N/A'}
-                            </span>
-                            {topic.supervisor?.email && <span className="text-gray-500 text-sm">{topic.supervisor.email}</span>}
+                    <Descriptions 
+                        bordered 
+                        column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
+                        size="small"
+                        className="sys-descriptions bg-slate-50/30"
+                        labelStyle={{ fontWeight: 600, width: '160px', background: '#f8fafc' }}
+                    >
+                        <Descriptions.Item label={t('common.status')} span={2}>
+                            <Space>
+                                <TopicStatusBadge status={topic.status} />
+                                {topic.source_topic && (
+                                    <Tag color="orange" icon={<HistoryOutlined />}>
+                                        Tái sử dụng từ {topic.source_topic.semester?.name} ({topic.source_topic.code})
+                                    </Tag>
+                                )}
+                            </Space>
+                        </Descriptions.Item>
+
+                        <Descriptions.Item label={t('topics.supervisor')}>
+                            <div className="flex flex-col">
+                                <span className="font-medium text-slate-800">
+                                    {topic.supervisor?.full_name || 'N/A'}
+                                </span>
+                                {topic.supervisor?.email && <span className="text-slate-500 text-xs">{topic.supervisor.email}</span>}
+                            </div>
+                        </Descriptions.Item>
+                        <Descriptions.Item label={t('topics.numStudents')}>
+                            <Tag color={isFull ? 'red' : 'blue'} className="font-bold m-0">
+                                {topic.current_students || 0} / {topic.max_students || 0}
+                            </Tag>
+                        </Descriptions.Item>
+
+                        <Descriptions.Item label={t('topics.createdAt')}>
+                            {dayjs(topic.created_at).format('HH:mm:ss DD/MM/YYYY')}
+                        </Descriptions.Item>
+                        <Descriptions.Item label={t('topics.lastUpdated')}>
+                            {dayjs(topic.updated_at).format('HH:mm:ss DD/MM/YYYY')}
+                        </Descriptions.Item>
+                    </Descriptions>
+
+                    <div className="space-y-6 pt-2">
+                        <div className="content-block">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.description')}</h4>
+                            </div>
+                            <div 
+                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                dangerouslySetInnerHTML={{ __html: topic.description || '' }} 
+                            />
                         </div>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('topics.numStudents')}>
-                        <span className={isFull ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>
-                            {topic.current_students || 0} / {topic.max_students || 0}
-                        </span>
-                    </Descriptions.Item>
 
-                    <Descriptions.Item label={t('topics.description')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.description || '' }} />
-                    </Descriptions.Item>
+                        <div className="content-block">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-1 h-5 bg-green-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.objectives')}</h4>
+                            </div>
+                            <div 
+                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} 
+                            />
+                        </div>
 
-                    <Descriptions.Item label={t('topics.objectives')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} />
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label={t('topics.requirements')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} />
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label={t('topics.createdAt')}>
-                        {dayjs(topic.created_at).format('DD/MM/YYYY')}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={t('topics.lastUpdated')}>
-                        {dayjs(topic.updated_at).format('DD/MM/YYYY')}
-                    </Descriptions.Item>
-                </Descriptions>
+                        <div className="content-block">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-1 h-5 bg-purple-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.requirements')}</h4>
+                            </div>
+                            <div 
+                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} 
+                            />
+                        </div>
+                    </div>
+                </div>
             </Card>
 
             {/* Registered Students Section */}

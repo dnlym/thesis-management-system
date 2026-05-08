@@ -1,9 +1,11 @@
 import prisma from '../config/database';
-import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole, ProgressStage, CommitteeRole } from '@prisma/client';
+import { AssignmentType, AssignmentStatus, TopicStatus, UserRole, Prisma, MidtermStatus, RaterRole, ProgressStage, CommitteeRole, Assignment } from '@prisma/client';
 import { CreateAssignmentRequest, CreateDefenseScheduleRequest } from '../types';
 import { ERROR_CODES } from '../constants';
 import { SemesterGuard } from '../utils/semester-guard';
+import { AcademicPolicy, AcademicAction } from '../utils/academic-policy';
 import notificationService from './notification.service';
+import semesterService from './semester.service';
 
 
 const topicForCommitteeAssignmentInclude = {
@@ -105,18 +107,28 @@ export interface CommitteeAssignmentSummary extends TopicForCommitteeAssignment 
 
 export class AssignmentService {
   async createReviewerAssignment(userId: string, data: CreateAssignmentRequest) {
+    const activeSemester = await semesterService.getActiveSemester();
+    if (!activeSemester) throw new Error('Không tìm thấy học kỳ đang hoạt động');
+
+
+
     // Verify topic exists and is in correct status
     const topic = await prisma.topic.findUnique({
       where: { id: data.topicId },
       include: {
         assignments: true,
         registrations: true,
+        grades: true,
+        final_scores: true,
       },
-    }) as TopicWithAssignmentsPayload | null;
+    }) as any;
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
+
+    // 1. Academic Policy Guard (Phase & Failed Status checking)
+    AcademicPolicy.enforce(AcademicAction.ASSIGN_REVIEWER, { id: userId, role: UserRole.HEAD }, activeSemester, { topic });
 
     // Topics must be REGISTERED to have assignments
     if (topic.status !== TopicStatus.REGISTERED) {
@@ -137,7 +149,7 @@ export class AssignmentService {
 
     // Check for duplicate reviewer in the same group
     const existingAssignment = topic.assignments.find(
-      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
+      (a: Assignment) => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
     );
 
     if (existingAssignment) {
@@ -146,7 +158,7 @@ export class AssignmentService {
 
     if (data.reviewerOrder) {
       const orderExists = topic.assignments.find(
-        a => a.reviewer_order === data.reviewerOrder && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
+        (a: Assignment) => a.reviewer_order === data.reviewerOrder && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
       );
 
       if (orderExists) {
@@ -156,7 +168,7 @@ export class AssignmentService {
 
     // [PRODUCTION GUARD] Check for unique reviewer across all positions for this group
     const reviewerExists = topic.assignments.find(
-      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
+      (a: Assignment) => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
     );
     if (reviewerExists) {
       throw new Error(ERROR_CODES.REVIEWER_DUPLICATE || 'Giảng viên đã được gán phản biện cho đề tài này');
@@ -208,7 +220,7 @@ export class AssignmentService {
     }
 
     // Update topic status if needed
-    const reviewerCount = topic.assignments.filter(a => a.assignment_type === AssignmentType.REVIEWER).length + 1;
+    const reviewerCount = topic.assignments.filter((a: Assignment) => a.assignment_type === AssignmentType.REVIEWER).length + 1;
     if (reviewerCount >= 2) {
       await prisma.topic.update({
         where: { id: data.topicId },
@@ -347,17 +359,27 @@ export class AssignmentService {
   }
 
   async createDefenseSchedule(userId: string, data: CreateDefenseScheduleRequest) {
+    const activeSemester = await semesterService.getActiveSemester();
+    if (!activeSemester) throw new Error('Không tìm thấy học kỳ đang hoạt động');
+
+
+
     // Verify topic
     const topic = await prisma.topic.findUnique({
       where: { id: data.topicId },
       include: {
         grades: true,
+        final_scores: true,
+        assignments: true,
       },
     });
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
+
+    // 1. Academic Policy Guard (Phase & Failed Status checking)
+    AcademicPolicy.enforce(AcademicAction.ASSIGN_COMMITTEE, { id: userId, role: UserRole.HEAD }, activeSemester, { topic });
 
     // Topic must be in READY_FOR_DEFENSE stage
     if (topic.progress_stage !== ProgressStage.READY_FOR_DEFENSE) {

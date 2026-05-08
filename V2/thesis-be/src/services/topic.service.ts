@@ -1780,6 +1780,7 @@ export class TopicService {
         include: {
           assignments: { where: { assignment_type: 'REVIEWER' } },
           grades: true,
+          final_scores: true,
           semester: true,
         },
       });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Descriptions, Tag, Input, Tabs, Spin } from 'antd';
+import { Card, Table, Button, Modal, Descriptions, Tag, Input, Tabs, Spin, Alert, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
@@ -8,6 +8,7 @@ import TopicHistoryModal from '@/components/TopicHistoryModal';
 
 const { TextArea } = Input;
 const { TabPane } = Tabs;
+const { Text } = Typography;
 
 const HeadApproveTopics = () => {
     const { t } = useTranslation();
@@ -73,7 +74,7 @@ const HeadApproveTopics = () => {
     };
 
     const confirmReject = () => {
-        if (!selectedTopic || !rejectionReason.trim()) {
+        if (!selectedTopic || !rejectionReason.trim() || rejectionReason.length < 20) {
             return;
         }
 
@@ -245,6 +246,8 @@ const HeadApproveTopics = () => {
                                 columns={columns}
                                 dataSource={topics}
                                 rowKey="id"
+                                size="middle"
+                                className="sys-table"
                                 pagination={{
                                     pageSize: pageSize,
                                     showSizeChanger: true,
@@ -274,6 +277,8 @@ const HeadApproveTopics = () => {
                                 columns={columns}
                                 dataSource={topics}
                                 rowKey="id"
+                                size="middle"
+                                className="sys-table"
                                 pagination={{
                                     pageSize: pageSize,
                                     showSizeChanger: true,
@@ -303,6 +308,8 @@ const HeadApproveTopics = () => {
                                 columns={columns}
                                 dataSource={topics}
                                 rowKey="id"
+                                size="middle"
+                                className="sys-table"
                                 pagination={{
                                     pageSize: pageSize,
                                     showSizeChanger: true,
@@ -374,18 +381,46 @@ const HeadApproveTopics = () => {
                     ),
                 ]}
                 width={800}
+                centered
+                bodyStyle={{ maxHeight: '70vh', overflowY: 'auto', padding: '24px' }}
             >
                 {selectedTopic && (
-                    <div className="space-y-4">
-                        <Descriptions bordered column={1}>
-                            <Descriptions.Item label={t('topics.topicTitle')}>
-                                {selectedTopic.title}
+                    <div className="space-y-6">
+                        {/* Status Alerts */}
+                        {selectedTopic.status === 'REJECTED' && selectedTopic.rejection_reason && (
+                            <Alert
+                                message={<Text strong className="text-red-700">Lý do từ chối từ Trưởng bộ môn</Text>}
+                                description={selectedTopic.rejection_reason}
+                                type="error"
+                                showIcon
+                                className="rounded-lg border-red-100"
+                            />
+                        )}
+                        {selectedTopic.status === 'REQUIRE_EDIT' && selectedTopic.edit_notes && (
+                            <Alert
+                                message={<Text strong className="text-orange-700">Yêu cầu chỉnh sửa từ Trưởng bộ môn</Text>}
+                                description={selectedTopic.edit_notes}
+                                type="warning"
+                                showIcon
+                                className="rounded-lg border-orange-100"
+                            />
+                        )}
+
+                        <Descriptions 
+                            bordered 
+                            column={2} 
+                            size="small" 
+                            className="sys-descriptions bg-slate-50/30"
+                            labelStyle={{ fontWeight: 600, width: '160px', background: '#f8fafc' }}
+                        >
+                            <Descriptions.Item label={t('topics.topicTitle')} span={2}>
+                                <Text strong className="text-[15px]">{selectedTopic.title}</Text>
                             </Descriptions.Item>
                             <Descriptions.Item label={t('topics.supervisor')}>
                                 {selectedTopic.supervisor?.full_name || 'N/A'}
                             </Descriptions.Item>
                             <Descriptions.Item label={t('approveTopics.maxStudentsLabel')}>
-                                {t('approveTopics.numStudents', { count: selectedTopic.max_students })}
+                                <Tag color="blue" className="m-0">{t('approveTopics.numStudents', { count: selectedTopic.max_students })}</Tag>
                             </Descriptions.Item>
                             <Descriptions.Item label={t('common.status')}>
                                 <TopicStatusBadge status={selectedTopic.status} />
@@ -395,33 +430,44 @@ const HeadApproveTopics = () => {
                             </Descriptions.Item>
                         </Descriptions>
 
-                        <div>
-                            <h4 className="font-semibold mb-2">{t('topics.description')}:</h4>
-                            <div
-                                className="prose max-w-none p-4 bg-gray-50 rounded"
-                                dangerouslySetInnerHTML={{ __html: selectedTopic.description || '-' }}
-                            />
+                        <div className="space-y-4">
+                            <div className="content-block">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                                    <h4 className="font-bold text-slate-800 m-0">{t('topics.description')}</h4>
+                                </div>
+                                <div
+                                    className="p-4 bg-gray-50 border border-gray-100 rounded-lg text-gray-700 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: selectedTopic.description || '-' }}
+                                />
+                            </div>
+
+                            {selectedTopic.objectives && (
+                                <div className="content-block">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-1 h-4 bg-green-500 rounded-full"></div>
+                                        <h4 className="font-bold text-slate-800 m-0">{t('topics.objectives')}</h4>
+                                    </div>
+                                    <div
+                                        className="p-4 bg-gray-50 border border-gray-100 rounded-lg text-gray-700 leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: selectedTopic.objectives }}
+                                    />
+                                </div>
+                            )}
+
+                            {selectedTopic.requirements && (
+                                <div className="content-block">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
+                                        <h4 className="font-bold text-slate-800 m-0">{t('topics.requirements')}</h4>
+                                    </div>
+                                    <div
+                                        className="p-4 bg-gray-50 border border-gray-100 rounded-lg text-gray-700 leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: selectedTopic.requirements }}
+                                    />
+                                </div>
+                            )}
                         </div>
-
-                        {selectedTopic.objectives && (
-                            <div>
-                                <h4 className="font-semibold mb-2">{t('topics.objectives')}:</h4>
-                                <div
-                                    className="prose max-w-none p-4 bg-gray-50 rounded"
-                                    dangerouslySetInnerHTML={{ __html: selectedTopic.objectives }}
-                                />
-                            </div>
-                        )}
-
-                        {selectedTopic.requirements && (
-                            <div>
-                                <h4 className="font-semibold mb-2">{t('topics.requirements')}:</h4>
-                                <div
-                                    className="prose max-w-none p-4 bg-gray-50 rounded"
-                                    dangerouslySetInnerHTML={{ __html: selectedTopic.requirements }}
-                                />
-                            </div>
-                        )}
                     </div>
                 )}
             </Modal>
@@ -439,7 +485,7 @@ const HeadApproveTopics = () => {
                 confirmLoading={rejectMutation.isPending}
                 okText={t('approveTopics.confirmRejectButton')}
                 cancelText={t('common.cancel')}
-                okButtonProps={{ danger: true }}
+                okButtonProps={{ danger: true, disabled: rejectionReason.trim().length < 20 }}
             >
                 <div className="space-y-4 my-4">
                     <p>{t('approveTopics.rejectionReasonLabel')}</p>
@@ -450,8 +496,8 @@ const HeadApproveTopics = () => {
                         placeholder={t('approveTopics.rejectionReasonPlaceholder')}
                         required
                     />
-                    {!rejectionReason.trim() && (
-                        <p className="text-sm text-red-500">{t('approveTopics.rejectionReasonRequired')}</p>
+                    {rejectionReason.trim().length > 0 && rejectionReason.trim().length < 20 && (
+                        <p className="text-sm text-red-500">{t('approveTopics.minCharsError', { count: 20, current: rejectionReason.trim().length })}</p>
                     )}
                 </div>
             </Modal>

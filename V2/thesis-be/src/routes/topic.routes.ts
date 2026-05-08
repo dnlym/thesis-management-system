@@ -61,7 +61,7 @@ router.post(
   checkPermission('TOPIC_REJECT'),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
-    body('rejectionReason').isLength({ min: 20 }).withMessage('Rejection reason must be at least 20 characters'),
+    body('rejectionReason').isLength({ min: 20 }).withMessage('Lý do từ chối phải có ít nhất 20 ký tự'),
   ]),
   topicController.rejectTopic.bind(topicController)
 );

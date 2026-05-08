@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination, Modal } from 'antd';
+import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination, Modal, Popover } from 'antd';
 import { notify } from '@/utils/notification';
 import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
+import { useActiveSemester } from '@/hooks/useSemesters';
 import { TopicsApi } from '@/api/topics';
 import { AssignmentsApi } from '@/api/assignments';
 import { GradingApi } from '@/api/grading';
-import DefensePivotModal from '@/components/DefensePivotModal';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
@@ -25,7 +26,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { RaterRole, GradeScore, GradeHistory } from '@/types';
 
 const { TextArea } = Input;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 /**
  * Trang Đánh Giá (Evaluation) - Fix triệt để lỗi Validation
@@ -46,10 +47,10 @@ const Evaluation = () => {
   const topicId = searchParams.get('topicId');
   const groupId = searchParams.get('groupId');
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' ? 'department' : 'advisor'));
+  const { data: activeSemester } = useActiveSemester();
 
   // HOD Pivot Modal state
-  const [pivotModalVisible, setPivotModalVisible] = useState(false);
-  const [selectedTopicForPivot, setSelectedTopicForPivot] = useState<any>(null);
+
 
   // HOD Department dashboard state
   const [deptSearch, setDeptSearch] = useState('');
@@ -101,16 +102,7 @@ const Evaluation = () => {
     enabled: !!user?.id && activeTab === 'department' && !topicId,
   });
 
-  const finalizePivotMutation = useMutation({
-    mutationFn: (data: { topicId: string; isEligible: boolean; defenseType?: string }) =>
-      TopicsApi.finalizeDefensePivot(data.topicId, { isEligible: data.isEligible, defenseType: data.defenseType }),
-    onSuccess: (res) => {
-      notify.success(res.message || 'Cập nhật thành công');
-      setPivotModalVisible(false);
-      refetchSummary();
-    },
-    onError: (err: any) => notify.error(err.message || 'Lỗi khi chốt quyết định'),
-  });
+
 
   // 2. Grading mode queries
   const { data: selectedTopic, isLoading: isLoadingTopic } = useQuery({
@@ -146,6 +138,12 @@ const Evaluation = () => {
   const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({
     criteriaType: 'FINAL',
     topicId: topicId || undefined
+  });
+
+  const { data: auditLogs } = useQuery({
+    queryKey: ['audit-logs', topicId],
+    queryFn: () => TopicsApi.getAuditLogs('Topic', topicId!),
+    enabled: !!topicId && (user?.role === 'HEAD' || user?.role === 'ADMIN'),
   });
 
   const { data: gradeHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery({
@@ -602,6 +600,47 @@ const Evaluation = () => {
                   </Card>
                 </div>
               )}
+              {/* Audit Log / System Decision History */}
+              {(user?.role === 'HEAD' || user?.role === 'ADMIN') && auditLogs && auditLogs.length > 0 && (
+                <div className="mt-12 bg-gray-50 p-8 rounded-2xl border border-gray-200 shadow-sm mb-10">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <HistoryOutlined className="text-blue-600 text-xl" />
+                    </div>
+                    <div>
+                      <Title level={4} className="m-0 text-gray-800">Nhật ký hệ thống & Quyết định tự động</Title>
+                      <Text type="secondary" className="text-xs">Lịch sử xét duyệt và các tác động từ hệ thống</Text>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {auditLogs.map((log: any, index: number) => (
+                      <div key={log.id || index} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all">
+                        <div className="flex justify-between items-start mb-2">
+                          <Space>
+                            <Text strong className="text-blue-700 uppercase text-xs tracking-wider">
+                              {log.action === 'AUTO_EVALUATE_ELIGIBILITY' ? 'QUYẾT ĐỊNH TỰ ĐỘNG' : log.action}
+                            </Text>
+                            {log.user && (
+                              <Text type="secondary" className="text-xs">| Thực hiện bởi: {log.user.full_name}</Text>
+                            )}
+                          </Space>
+                          <Text type="secondary" className="text-xs italic">{dayjs(log.created_at || log.createdAt).format('HH:mm - DD/MM/YYYY')}</Text>
+                        </div>
+                        <Paragraph className="m-0 text-gray-700 font-medium">
+                          {log.description || (log.new_value?.reason ? `Lý do: ${log.new_value.reason}` : 'Hệ thống đã thực hiện đánh giá tự động dựa trên quy chế.')}
+                        </Paragraph>
+                        {log.new_value?.isEligible !== undefined && (
+                          <div className="mt-3">
+                            <Tag color={log.new_value.isEligible ? "success" : "error"} className="rounded-full px-4 border-none py-0.5 font-bold uppercase text-[10px]">
+                              {log.new_value.isEligible ? "ĐẠT ĐIỀU KIỆN BẢO VỆ" : "KHÔNG ĐẠT"}
+                            </Tag>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Form>
           </Card>
         </div>
@@ -684,34 +723,48 @@ const Evaluation = () => {
       title: 'Hành động',
       key: 'action',
       width: 180,
-      render: (_: any, r: any) => (
-        <Space>
-          <Button
-            type={r.status === 'FINALIZED' ? "default" : "primary"}
-            size="small"
-            onClick={() => setSearchParams({
-              topicId: r.topicId || r.topic_id || r.id,
-              groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id),
-              type: activeTab
-            })}
-            className="text-xs rounded-lg"
-          >
-            {r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm'}
-          </Button>
-          <Tooltip title="Xem nhanh lịch sử sửa điểm">
+      render: (_: any, r: any) => {
+        const currentPhase = activeSemester?.calculated_phase;
+        const isAtReviewPhaseOrLater = currentPhase === 'REVIEWING' || currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
+        const supervisorGraded = r.gradingStatus?.supervisorGraded;
+        const supervisorScore = r.students?.[0]?.finalScore?.supervisor_score;
+        const reviewerScore = r.students?.[0]?.finalScore?.reviewer_avg_score;
+
+        const isAutoFailed = isAtReviewPhaseOrLater && (!supervisorGraded || (supervisorScore !== null && supervisorScore < 6));
+        const isReviewerFailed = r.gradingStatus?.isReviewerComplete && (reviewerScore !== null && reviewerScore < 6);
+        const isManuallyFailed = r.is_eligible_for_defense === false;
+        const isFailed = isAutoFailed || isReviewerFailed || isManuallyFailed;
+
+        return (
+          <Space>
             <Button
+              type={r.status === 'FINALIZED' ? "default" : "primary"}
               size="small"
-              icon={<HistoryOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedTopicForHistory(r.id);
-                setHistoryModalVisible(true);
-              }}
-              className="text-gray-400 hover:text-blue-500 border-none shadow-none"
-            />
-          </Tooltip>
-        </Space>
-      )
+              disabled={isFailed && r.status !== 'FINALIZED'}
+              onClick={() => setSearchParams({
+                topicId: r.topicId || r.topic_id || r.id,
+                groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id),
+                type: activeTab
+              })}
+              className="text-xs rounded-lg"
+            >
+              {isFailed && r.status !== 'FINALIZED' ? 'Bị loại' : (r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm')}
+            </Button>
+            <Tooltip title="Xem nhanh lịch sử sửa điểm">
+              <Button
+                size="small"
+                icon={<HistoryOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTopicForHistory(r.id);
+                  setHistoryModalVisible(true);
+                }}
+                className="text-gray-400 hover:text-blue-500 border-none shadow-none"
+              />
+            </Tooltip>
+          </Space>
+        );
+      }
     },
   ];
 
@@ -762,107 +815,181 @@ const Evaluation = () => {
 
 
     const columns = [
-      { title: '#', key: 'idx', width: 48, align: 'center' as const, render: (_: any, __: any, i: number) => <Text type="secondary" className="text-xs">{i + 1}</Text> },
+      { 
+        title: 'STT', 
+        key: 'idx', 
+        width: 50, 
+        align: 'center' as const, 
+        render: (_: any, __: any, i: number) => <Text className="text-[11px] font-medium text-gray-600">{i + 1}</Text> 
+      },
       {
         title: 'Mã nhóm',
         dataIndex: 'code',
         key: 'code',
-        width: 130,
+        width: 100,
         render: (t: string, r: any) => {
           const groupName = r.registrations?.[0]?.group?.name || t;
           return (
-            <Tag color="blue" className="font-bold text-xs">
+            <Tag color="blue" className="font-bold text-[11px] m-0 border-none bg-blue-50 text-blue-600 px-2">
               <HighlightText text={groupName} keyword={debouncedDeptSearch} />
             </Tag>
           );
         }
       },
       {
-        title: 'Tên đề tài', dataIndex: 'title', key: 'title',
+        title: 'Tên đề tài', 
+        dataIndex: 'title', 
+        key: 'title',
         render: (t: string) => (
-          <Text className="font-medium text-sm leading-snug" style={{ display: 'block', maxWidth: 280 }}>
-            <HighlightText text={t} keyword={debouncedDeptSearch} />
-          </Text>
+          <div className="max-w-[300px]">
+            <Text className="font-semibold text-[13px] leading-tight block mb-1">
+              <HighlightText text={t} keyword={debouncedDeptSearch} />
+            </Text>
+          </div>
         )
       },
       {
-        title: 'Sinh viên', key: 'students', width: 160,
+        title: 'Sinh viên', 
+        key: 'students', 
+        width: 180,
         render: (_: any, r: any) => {
           const regs = r.registrations || [];
           if (regs.length === 0) return <Text type="secondary" className="text-xs">Chưa có SV</Text>;
           return (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {regs.slice(0, 2).map((reg: any) => (
-                <div key={reg.student?.id} className="text-xs leading-tight">
-                  <div className="font-medium">
+                <div key={reg.student?.id} className="flex flex-col">
+                  <Text className="text-[12px] font-medium leading-none">
                     <HighlightText text={reg.student?.full_name} keyword={debouncedDeptSearch} />
-                  </div>
-                  <div className="text-gray-400">
-                    MSSV: <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} /> • {reg.student?.class_name || 'N/A'}
-                    {reg.student?.department?.name && (
-                      <div className="text-[10px] italic">
-                        {reg.student.department.name}
-                      </div>
-                    )}
-                  </div>
+                  </Text>
+                  <Text className="text-[10px] text-gray-400 mt-0.5">
+                    <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} />
+                  </Text>
                 </div>
               ))}
+              {regs.length > 2 && <Text type="secondary" className="text-[10px] italic">+{regs.length - 2} sinh viên khác</Text>}
             </div>
           );
         }
       },
       {
-        title: 'GVHD', key: 'supervisor', width: 160,
+        title: 'GVHD', 
+        key: 'supervisor', 
+        width: 150,
         render: (_: any, r: any) => r.supervisor
-          ? <div className="text-xs">
-            <div className="font-medium">
-              <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
+          ? <div className="flex flex-col">
+              <Text className="text-[12px] font-medium">
+                <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
+              </Text>
+              <Text className="text-[10px] text-gray-400 italic">GV Hướng dẫn</Text>
             </div>
-            {r.supervisor.department?.name && (
-              <div className="text-gray-400 text-[10px]">
-                {r.supervisor.department.name}
-              </div>
-            )}
-          </div>
-          : <Tag color="red" className="text-xs">Chưa có GVHD</Tag>
+          : <Tag color="error" className="text-[10px]">Trống</Tag>
       },
       {
-        title: 'Tiến độ chấm điểm', key: 'progress', width: 180,
+        title: 'Tiến độ chấm điểm', 
+        key: 'progress', 
+        width: 200,
         render: (_: any, r: any) => (
-          <Space direction="vertical" size={6} className="w-full">
-            <div className="flex justify-between items-center">
-              {r.gradingStatus?.supervisorGraded
-                ? <Tag color="green" className="m-0 text-xs">✓ GVHD đã chấm</Tag>
-                : <Tag color="red" className="m-0 text-xs">● Chưa có điểm GVHD</Tag>}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <Badge status={r.gradingStatus?.supervisorGraded ? "success" : "default"} />
+              <Text className={`text-[11px] ${r.gradingStatus?.supervisorGraded ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                Hướng dẫn: {r.gradingStatus?.supervisorGraded ? 'Đã xong' : 'Chưa chấm'}
+              </Text>
             </div>
-            <div className="flex items-center gap-1">
-              <Tag color={r.gradingStatus?.isReviewerComplete ? 'green' : 'orange'} className="m-0 text-xs">
+            <div className="flex items-center gap-2">
+              <Badge status={r.gradingStatus?.isReviewerComplete ? "success" : "warning"} />
+              <Text className={`text-[11px] ${r.gradingStatus?.isReviewerComplete ? 'text-green-600 font-medium' : 'text-orange-500'}`}>
                 Phản biện: {r.gradingStatus?.reviewerGradedCount ?? 0}/{r.gradingStatus?.totalReviewersRequired ?? 2}
-              </Tag>
+              </Text>
             </div>
-          </Space>
+            <div className="flex items-center gap-2">
+              <Badge status={r.gradingStatus?.isCommitteeComplete ? "success" : "processing"} />
+              <Text className={`text-[11px] ${r.gradingStatus?.isCommitteeComplete ? 'text-green-600 font-medium' : 'text-blue-500'}`}>
+                Hội đồng: {r.gradingStatus?.committeeGradedCount ?? 0}/3
+              </Text>
+            </div>
+          </div>
         )
       },
       {
-        title: 'Trạng thái xét', key: 'review_status', width: 160,
+        title: 'Trạng thái xét', 
+        key: 'review_status', 
+        width: 140,
         render: (_: any, r: any) => {
+          const currentPhase = activeSemester?.calculated_phase;
+          
+          // 1. Nếu đã có quyết định chính thức từ HOD
           if (r.is_eligible_for_defense !== null && r.is_eligible_for_defense !== undefined) {
-            return <Tag color="blue" className="text-xs">Đã phân loại</Tag>;
+            return (
+              <Popover 
+                content={(
+                  <div className="max-w-xs">
+                    <div className={`mb-2 font-bold ${r.is_eligible_for_defense ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
+                      {r.is_eligible_for_defense ? <CheckCircleOutlined /> : <CloseCircleOutlined />} 
+                      Kết quả rà soát
+                    </div>
+                    <div className="text-gray-600 text-sm">
+                      {r.is_eligible_for_defense ? 'Đề tài đã đủ điều kiện bảo vệ dựa trên các đầu điểm đạt yêu cầu.' : 'Đề tài không đủ điều kiện bảo vệ do không đạt ngưỡng điểm quy định.'}
+                    </div>
+                  </div>
+                )}
+                trigger="click"
+              >
+                <Tag color={r.is_eligible_for_defense ? "success" : "error"} className="text-[11px] rounded-full px-2 border-none bg-opacity-10 cursor-pointer hover:shadow-sm">
+                  {r.is_eligible_for_defense ? "Đạt điều kiện" : "Không đạt"}
+                </Tag>
+              </Popover>
+            );
           }
+
+          // 2. Logic kiểm tra điều kiện nghiêm ngặt dựa trên giai đoạn và điểm số
+          const firstStudent = r.students?.[0]?.finalScore;
+          const supervisorScore = firstStudent?.supervisor_score;
+          const reviewerScore = firstStudent?.reviewer_avg_score;
+
+          const renderFailedTag = (label: string, reason: string) => (
+            <Popover 
+              content={(
+                <div className="max-w-xs">
+                  <div className="mb-2 font-bold text-red-600 flex items-center gap-1">
+                    <CloseCircleOutlined /> Lý do không đạt
+                  </div>
+                  <div className="text-gray-600 text-sm">{reason}</div>
+                </div>
+              )}
+              trigger="click"
+            >
+              <Tag color="error" className="text-[11px] rounded-full px-2 border-none bg-red-50 text-red-600 cursor-pointer hover:shadow-sm">
+                {label}
+              </Tag>
+            </Popover>
+          );
+
+          // Kiểm tra thiếu điểm GVHD ngay khi bước vào giai đoạn Phản biện trở đi
+          const isAtReviewPhaseOrLater = currentPhase === 'REVIEWING' || currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
+          if (isAtReviewPhaseOrLater && !r.gradingStatus?.supervisorGraded) {
+            return renderFailedTag("Loại (Thiếu điểm GVHD)", "Giảng viên hướng dẫn chưa nhập điểm cho đề tài khi đã đến hạn Phản biện.");
+          }
+
+          // Kiểm tra nếu GVHD chấm rớt (< 6.0)
+          if (r.gradingStatus?.supervisorGraded && supervisorScore !== null && supervisorScore < 6) {
+            return renderFailedTag("Loại (GVHD rớt)", `Điểm hướng dẫn (${supervisorScore.toFixed(2)}) thấp hơn ngưỡng quy định (6.0).`);
+          }
+
+          // Kiểm tra nếu GVPB chấm rớt (< 6.0)
+          if (r.gradingStatus?.isReviewerComplete && reviewerScore !== null && reviewerScore < 6) {
+            return renderFailedTag("Loại (GVPB rớt)", `Điểm trung bình phản biện (${reviewerScore.toFixed(2)}) thấp hơn ngưỡng quy định (6.0).`);
+          }
+
+          // 3. Trạng thái sẵn sàng xét
           if (r.gradingStatus?.isReadyForDecision) {
-            return <Tag color="green" className="text-xs">Sẵn sàng xét</Tag>;
+            return <Tag color="success" className="text-[11px] rounded-full px-2 border-none bg-green-50 text-green-600">Sẵn sàng xét</Tag>;
           }
-          if (!r.gradingStatus?.supervisorGraded) {
-            return <Tag color="red" className="text-xs">Chưa đủ điều kiện</Tag>;
-          }
-          return <Tag color="orange" className="text-xs">Chưa đủ điều kiện</Tag>;
+
+          // 4. Mặc định: Chờ dữ liệu
+          return <Tag color="default" className="text-[11px] rounded-full px-2 border-none bg-gray-50 text-gray-400">Đang chấm...</Tag>;
         }
-      },
-      {
-        title: 'Hành động', key: 'action', width: 140, align: 'center' as const,
-        render: (_: any, r: any) => (
-          <Button size="small" onClick={() => setSearchParams({ topicId: r.id, groupId: r.groupId || r.group?.id, type: activeTab })} className="text-xs">Xem chi tiết ›</Button>
-        )
       },
     ];
 
@@ -871,22 +998,12 @@ const Evaluation = () => {
 
     return (
       <div>
-        {/* Search bar */}
-        <div className="flex gap-3 mb-4 items-center">
-          <GlobalSearch
-            value={deptSearch}
-            onChange={setDeptSearch}
-            className="flex-1 min-w-52 max-w-md"
-            placeholder="Tìm theo tên đề tài, mã số, sinh viên, giảng viên..."
-          />
-          <Button icon={<DownloadOutlined />} className="ml-auto">Xuất Excel</Button>
-        </div>
-
         {/* Table */}
         <Table
           dataSource={currentData}
           rowKey="id"
           columns={columns}
+          bordered
           pagination={{
             pageSize: pageSize,
             showSizeChanger: true,
@@ -894,8 +1011,8 @@ const Evaluation = () => {
             onShowSizeChange: (_, size) => setPageSize(size),
             showTotal: (total) => `Hiển thị các đề tài của bộ môn (${total} đề tài)`
           }}
-          className="rounded-lg overflow-hidden border border-gray-100 shadow-sm"
-          rowClassName="hover:bg-blue-50 transition-colors"
+          className="rounded-xl overflow-hidden border border-gray-200 shadow-sm custom-hod-table"
+          rowClassName="hover:bg-blue-50/50 transition-colors"
           locale={{ emptyText: <div className="py-10 text-gray-400 text-center">Không có đề tài nào trong mục này</div> }}
         />
       </div>
@@ -904,6 +1021,27 @@ const Evaluation = () => {
 
   return (
     <>
+      <style>{`
+        .custom-hod-table .ant-table-thead > tr > th {
+          background-color: #fafafa !important;
+          color: #64748B !important;
+          font-weight: 600 !important;
+          font-size: 12px !important;
+          border-right: 1px solid #f0f0f0 !important;
+          text-transform: none !important;
+          padding: 12px 8px !important;
+        }
+        .custom-hod-table .ant-table-thead > tr > th:last-child {
+          border-right: none !important;
+        }
+        .custom-hod-table .ant-table-tbody > tr > td {
+          font-size: 13px !important;
+          border-right: 1px solid #f0f0f0 !important;
+        }
+        .custom-hod-table .ant-table-tbody > tr > td:last-child {
+          border-right: none !important;
+        }
+      `}</style>
       {topicId ? renderGradingView() : (
         <div className="page-container">
           <div className="page-inner">
@@ -926,39 +1064,52 @@ const Evaluation = () => {
                   setSearchParams({ type: key });
                 }}
                 className="sys-tabs sys-tabs-capsule !ml-6 !mt-2"
+                tabBarExtraContent={
+                  <div className="mr-6 flex gap-3 items-center">
+                    {activeTab === 'department' ? (
+                      <GlobalSearch
+                        value={deptSearch}
+                        onChange={setDeptSearch}
+                        placeholder="Tìm đề tài, sinh viên, GV..."
+                        className="w-72"
+                      />
+                    ) : (
+                      <>
+                        <Input
+                          placeholder="Tìm nhanh..."
+                          prefix={<SearchOutlined className="text-gray-400" />}
+                          className="w-64 rounded-lg"
+                          value={lecturerSearch}
+                          onChange={(e) => setLecturerSearch(e.target.value)}
+                          allowClear
+                        />
+                        <Select
+                          placeholder="Bộ lọc"
+                          className="w-32 rounded-lg"
+                          allowClear
+                          value={statusFilter}
+                          onChange={setStatusFilter}
+                          options={[
+                            { label: 'Chưa chấm', value: 'NOT_GRADED' },
+                            { label: 'Đang chấm', value: 'GRADING' },
+                            { label: 'Đã chốt', value: 'FINALIZED' },
+                          ]}
+                        />
+                      </>
+                    )}
+                  </div>
+                }
                 items={[
                   ...(user?.role === 'HEAD' ? [{
                     key: 'department',
                     label: 'Quản lý Bộ môn',
-                    children: <div className="p-6 bg-white">{renderDepartmentTab()}</div>
+                    children: <div className="pt-6 pb-6 pr-6 pl-0 bg-white">{renderDepartmentTab()}</div>
                   }] : []),
                   {
                     key: 'advisor',
                     label: 'Hướng dẫn',
                     children: (
-                      <div className="p-6 space-y-4 bg-white">
-                        <div className="flex flex-wrap gap-3 items-center">
-                          <Input
-                            placeholder="Tìm theo tên đề tài, mã số hoặc tên sinh viên..."
-                            prefix={<SearchOutlined className="text-gray-400" />}
-                            className="max-w-md rounded-lg"
-                            value={lecturerSearch}
-                            onChange={(e) => setLecturerSearch(e.target.value)}
-                            allowClear
-                          />
-                          <Select
-                            placeholder="Trạng thái chấm"
-                            className="w-44 rounded-lg"
-                            allowClear
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            options={[
-                              { label: 'Chưa chấm', value: 'NOT_GRADED' },
-                              { label: 'Đang chấm', value: 'GRADING' },
-                              { label: 'Đã chốt (Khóa)', value: 'FINALIZED' },
-                            ]}
-                          />
-                        </div>
+                      <div className="pt-6 pb-6 pr-6 pl-0 space-y-4 bg-white">
                         <div className="mt-1">
                           <Text type="secondary" className="text-[11px] italic">
                             <InfoCircleOutlined className="mr-1" />
@@ -985,8 +1136,8 @@ const Evaluation = () => {
                     key: 'reviewer',
                     label: 'Phản biện',
                     children: (
-                      <div className="p-6 space-y-4 bg-white">
-                        <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                      <div className="pt-6 pb-6 pr-6 pl-0 space-y-4 bg-white">
+
                         <Table
                           dataSource={filterLecturerData(reviewerAssignments?.map((a: any) => ({ ...a.topic, reviewer_order: a.reviewer_order })) || [])}
                           columns={dashboardColumns}
@@ -1007,8 +1158,8 @@ const Evaluation = () => {
                     key: 'council',
                     label: 'Hội đồng',
                     children: (
-                      <div className="p-6 space-y-4 bg-white">
-                        <GlobalSearch value={lecturerSearch} onChange={setLecturerSearch} className="max-w-md" />
+                      <div className="pt-6 pb-6 pr-6 pl-0 space-y-4 bg-white">
+
                         <Table
                           dataSource={filterLecturerData(councilAssignments?.map((a: any) => ({ ...a.topic, committee_role: a.committee_role })) || [])}
                           columns={dashboardColumns}
@@ -1034,19 +1185,7 @@ const Evaluation = () => {
       )}
 
       {/* Shared Modals & Styles */}
-      <DefensePivotModal
-        visible={pivotModalVisible}
-        onCancel={() => setPivotModalVisible(false)}
-        topic={selectedTopicForPivot}
-        loading={finalizePivotMutation.isPending}
-        onConfirm={(data) => {
-          finalizePivotMutation.mutate({
-            topicId: selectedTopicForPivot.id,
-            isEligible: data.isEligible,
-            defenseType: data.defenseType,
-          });
-        }}
-      />
+
 
       <Modal
         title={<Space><WarningOutlined className="text-amber-500" /> Xác nhận thay đổi điểm số</Space>}

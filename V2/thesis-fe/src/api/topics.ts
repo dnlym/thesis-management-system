@@ -146,4 +146,9 @@ export const TopicsApi = {
         const res = await api.post<ApiResponse<Topic>>(`/topics/${id}/finalize-defense-pivot`, data);
         return res.data;
     },
+
+    async getAuditLogs(entityType: string, entityId: string) {
+        const res = await api.get<ApiResponse<any[]>>(`/audit-logs/${entityType}/${entityId}`);
+        return res.data.data;
+    },
 };
