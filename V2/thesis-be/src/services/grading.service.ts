@@ -1776,22 +1776,11 @@ export class GradingService {
     const fs = updatedTopic.final_scores?.[0];
     if (!fs) return;
 
-    // 2. Logic: Any score < 6.0 = FAIL immediately if that role has graded
+    // 2. Logic: Automatic Eligibility Assessment
     const supervisorGraded = topic.grades.some(g => g.rater_role === 'SUPERVISOR');
     const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
     const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.length || 2;
     const isReviewerComplete = reviewerGraderIds.length >= totalReviewersRequired;
-
-    // Immediate Fail check
-    if (supervisorGraded && fs.supervisor_score !== null && fs.supervisor_score < 6) {
-      await this.setTopicEligibility(topicId, false, 'Điểm hướng dẫn dưới 6.0');
-      return;
-    }
-
-    if (isReviewerComplete && fs.reviewer_avg_score !== null && fs.reviewer_avg_score < 6) {
-      await this.setTopicEligibility(topicId, false, 'Điểm trung bình phản biện dưới 6.0');
-      return;
-    }
 
     // 3. Auto-Pass check: All required grades are in and all are >= 6.0
     if (supervisorGraded && isReviewerComplete) {

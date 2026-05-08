@@ -730,10 +730,9 @@ const Evaluation = () => {
         const supervisorScore = r.students?.[0]?.finalScore?.supervisor_score;
         const reviewerScore = r.students?.[0]?.finalScore?.reviewer_avg_score;
 
-        const isAutoFailed = isAtReviewPhaseOrLater && (!supervisorGraded || (supervisorScore !== null && supervisorScore < 6));
-        const isReviewerFailed = r.gradingStatus?.isReviewerComplete && (reviewerScore !== null && reviewerScore < 6);
+        const isAutoFailed = isAtReviewPhaseOrLater && !supervisorGraded;
         const isManuallyFailed = r.is_eligible_for_defense === false;
-        const isFailed = isAutoFailed || isReviewerFailed || isManuallyFailed;
+        const isFailed = isAutoFailed || isManuallyFailed;
 
         return (
           <Space>
@@ -970,16 +969,6 @@ const Evaluation = () => {
           const isAtReviewPhaseOrLater = currentPhase === 'REVIEWING' || currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
           if (isAtReviewPhaseOrLater && !r.gradingStatus?.supervisorGraded) {
             return renderFailedTag("Loại (Thiếu điểm GVHD)", "Giảng viên hướng dẫn chưa nhập điểm cho đề tài khi đã đến hạn Phản biện.");
-          }
-
-          // Kiểm tra nếu GVHD chấm rớt (< 6.0)
-          if (r.gradingStatus?.supervisorGraded && supervisorScore !== null && supervisorScore < 6) {
-            return renderFailedTag("Loại (GVHD rớt)", `Điểm hướng dẫn (${supervisorScore.toFixed(2)}) thấp hơn ngưỡng quy định (6.0).`);
-          }
-
-          // Kiểm tra nếu GVPB chấm rớt (< 6.0)
-          if (r.gradingStatus?.isReviewerComplete && reviewerScore !== null && reviewerScore < 6) {
-            return renderFailedTag("Loại (GVPB rớt)", `Điểm trung bình phản biện (${reviewerScore.toFixed(2)}) thấp hơn ngưỡng quy định (6.0).`);
           }
 
           // 3. Trạng thái sẵn sàng xét

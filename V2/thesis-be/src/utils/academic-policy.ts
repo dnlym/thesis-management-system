@@ -85,17 +85,6 @@ export class AcademicPolicy {
       if (!hasSupervisorGraded) {
         return { failed: true, reason: 'Sinh viên bị loại do Giảng viên hướng dẫn không nhập điểm trước giai đoạn Phản biện.' };
       }
-
-      // 2.2 Check scores from final_scores
-      if (finalScores.length > 0) {
-        const fs = finalScores[0];
-        if (fs.supervisor_score !== null && fs.supervisor_score < 6) {
-          return { failed: true, reason: 'Sinh viên bị loại do điểm hướng dẫn không đạt (Dưới 6.0).' };
-        }
-        if (fs.reviewer_avg_score !== null && fs.reviewer_avg_score < 6) {
-          return { failed: true, reason: 'Sinh viên bị loại do điểm phản biện không đạt (Trung bình dưới 6.0).' };
-        }
-      }
     }
 
     return { failed: false };
