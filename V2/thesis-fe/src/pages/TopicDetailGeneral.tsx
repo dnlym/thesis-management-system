@@ -189,7 +189,7 @@ const TopicDetailGeneral = () => {
                         </div>
                     </Descriptions.Item>
                     <Descriptions.Item label={t('topics.numStudents')}>
-                        <span className={isFull ? 'text-red-500 font-bold' : 'text-green-600 font-bold'}>
+                        <span className={isFull ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>
                             {topic.current_students || 0} / {topic.max_students || 0}
                         </span>
                     </Descriptions.Item>
@@ -227,9 +227,10 @@ const TopicDetailGeneral = () => {
                     className="shadow-soft mt-6"
                 >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(topic.registrations || topic.students).map((item: any) => {
+                        {(topic.students || topic.registrations || []).map((item: any) => {
                             // Handle both registration objects and student objects
                             const student = item.student || item;
+                            const groupCode = item.groupCode || item.group?.name;
                             
                             return (
                                 <Card key={student.id} size="small" className="bg-slate-50/50 hover:border-academic-primary/30 transition-colors">
@@ -244,11 +245,9 @@ const TopicDetailGeneral = () => {
                                             <div className="font-bold text-slate-800 truncate">
                                                 {student.full_name || 'N/A'}
                                             </div>
-                                            <div className="text-xs text-slate-500 font-medium">
-                                                MSSV: {student.student_code || student.studentCode || 'N/A'}
-                                            </div>
-                                            <div className="text-xs text-slate-400 truncate">
-                                                {student.email || 'N/A'}
+                                            <div className="text-xs text-slate-500 font-medium flex justify-between items-center">
+                                                <span>MSSV: {student.student_code || student.studentCode || 'N/A'}</span>
+                                                {groupCode && <Tag color="blue" className="mr-0">{groupCode}</Tag>}
                                             </div>
                                         </div>
                                     </div>

@@ -23,8 +23,4 @@ export interface RemoveMemberRequest {
   userId: string;
 }
 
-export interface ChangeLeaderRequest {
-  groupId: string;
-  newLeaderId: string;
-  reason: string;
-}
+

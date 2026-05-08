@@ -61,21 +61,7 @@ router.post(
   groupController.removeMember.bind(groupController)
 );
 
-router.post(
-  '/change-leader',
-  validate([
-    body('groupId').isUUID().withMessage('Invalid group ID'),
-    body('newLeaderId').isUUID().withMessage('Invalid new leader ID'),
-    body('reason').optional().isString(),
-  ]),
-  groupController.changeLeader.bind(groupController)
-);
 
-router.post(
-  '/leader-change/:requestId/approve',
-  validate([param('requestId').isUUID().withMessage('Invalid request ID')]),
-  groupController.approveLeaderChange.bind(groupController)
-);
 
 // Get groups needing members (for students to join)
 router.get(

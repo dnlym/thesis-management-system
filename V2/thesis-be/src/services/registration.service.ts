@@ -4,7 +4,7 @@ import { ERROR_CODES } from '../constants';
 import notificationService from './notification.service';
 import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
-import { generateGroupName } from '../utils/group-utils';
+import { GroupUtils } from '../utils/group.utils';
 import semesterService from './semester.service';
 
 export class RegistrationService {
@@ -36,7 +36,7 @@ export class RegistrationService {
       });
 
       if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
-      
+
       // Strict Capacity Check
       if ((topic.current_students || 0) >= topic.max_students) {
         throw new Error('Đề tài này đã đủ số lượng sinh viên tối đa.');
@@ -48,9 +48,9 @@ export class RegistrationService {
 
       // Dept check
       const isPrimaryDept = user.departmentId === topic.departmentId;
-      const isSecondaryDept = topic.is_interdisciplinary && 
-                             topic.secondary_department_id === user.departmentId && 
-                             topic.interdisciplinary_status === 'APPROVED';
+      const isSecondaryDept = topic.is_interdisciplinary &&
+        topic.secondary_department_id === user.departmentId &&
+        topic.interdisciplinary_status === 'APPROVED';
 
       if (!isPrimaryDept && !isSecondaryDept) {
         throw new Error('Sinh viên chỉ được đăng ký đề tài thuộc đúng chuyên ngành.');
@@ -167,7 +167,7 @@ export class RegistrationService {
 
       if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
       if (topic.supervisor_id !== supervisorId) throw new Error('Bạn chỉ được đăng ký sinh viên vào đề tài của mình');
-      
+
       // Strict Capacity Check
       if ((topic.current_students || 0) >= topic.max_students) {
         throw new Error('Đề tài này đã đủ số lượng sinh viên tối đa.');
@@ -175,8 +175,8 @@ export class RegistrationService {
 
       // Dept check
       const isPrimaryDept = student.departmentId === topic.departmentId;
-      const meetsInterdisciplinary = !topic.is_interdisciplinary || 
-                             topic.interdisciplinary_status === 'APPROVED';
+      const meetsInterdisciplinary = !topic.is_interdisciplinary ||
+        topic.interdisciplinary_status === 'APPROVED';
 
       if (!isPrimaryDept || !meetsInterdisciplinary) {
         throw new Error('Sinh viên chỉ được đăng ký đề tài thuộc đúng chuyên ngành.');
@@ -275,7 +275,7 @@ export class RegistrationService {
     // The user specifically requested that students should NOT see other students
     // who registered for the same topic. They must use MSSV search instead.
     if (userId && (await prisma.user.findUnique({ where: { id: userId } }))?.role === UserRole.STUDENT) {
-       return []; // Students get an empty list
+      return []; // Students get an empty list
     }
     const allStudents = await prisma.topicRegistration.findMany({
       where: {
@@ -398,7 +398,7 @@ export class RegistrationService {
     const maxGroupSize = dept?.max_group_size || 2;
 
     // Create group
-    const groupName = await generateGroupName(prisma, topic.departmentId, topic.semester_id);
+    const groupName = await GroupUtils.generateGroupCode(topicId, topic.code || "UNKNOWN");
     const group = await prisma.group.create({
       data: {
         name: groupName,
@@ -453,7 +453,7 @@ export class RegistrationService {
     if (topic_current && topic_current.current_students >= topic_current.max_students) {
       await prisma.topic.update({
         where: { id: topicId },
-        data: { 
+        data: {
           status: TopicStatus.REGISTERED,
           progress_stage: 'WORKING'
         },
@@ -1093,9 +1093,10 @@ export class RegistrationService {
     }
 
     // Create group
+    const groupName = await GroupUtils.generateGroupCode(invite.topic_id, invite.topic.code || "UNKNOWN");
     const group = await prisma.group.create({
       data: {
-        name: `Nhóm ${invite.topic.code || invite.topic_id.substring(0, 8)}`,
+        name: groupName,
         topic_id: invite.topic_id,
         leader_id: invite.inviter_id, // Inviter becomes leader
         semester_id: invite.topic.semester_id,

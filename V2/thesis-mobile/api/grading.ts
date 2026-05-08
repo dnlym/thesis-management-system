@@ -17,6 +17,7 @@ export const GradingApi = {
         // Map frontend format to backend format
         const payload = {
             topicId: data.topic_id,
+            groupId: data.group_id,      // Multi-group support
             studentId: data.student_id,  // For per-student grading
             raterRole: data.rater_role,  // SUPERVISOR, REVIEWER, COMMITTEE
             reviewerOrder: data.reviewer_order,

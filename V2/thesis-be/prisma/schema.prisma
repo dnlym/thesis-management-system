@@ -108,8 +108,7 @@ model User {
   student_grades          Grade[]                    @relation("StudentGrades")
   invitee_invites         GroupInvite[]              @relation("InviteeGroupInvites")
   inviter_invites         GroupInvite[]              @relation("InviterGroupInvites")
-  approved_leader_changes GroupLeaderChangeRequest[] @relation("LeaderChangeApprover")
-  leader_change_requests  GroupLeaderChangeRequest[] @relation("LeaderChangeRequester")
+
   group_memberships       GroupMember[]              @relation("GroupMemberUser")
   owned_groups            Group[]                    @relation("GroupLeader")
   notifications           Notification[]             @relation("UserNotifications")
@@ -119,6 +118,8 @@ model User {
   co_supervised_topics    Topic[]                    @relation("CoSupervisorTopics")
   supervised_topics       Topic[]                    @relation("SupervisorTopics")
   workload_limits         UserWorkloadLimit[]        @relation("UserWorkload")
+  grade_histories_as_student GradeHistory[]          @relation("StudentGradeHistory")
+  grade_histories_as_grader  GradeHistory[]          @relation("GraderGradeHistory")
   department              Department                 @relation(fields: [departmentId], references: [id])
 
   @@index([email])
@@ -177,7 +178,7 @@ model Topic {
   reviewer_required_count  Int                      @default(2)
   source_topic_id          String?                  @map("source_topic_id")
   assignments              Assignment[]             @relation("TopicAssignments")
-  defense_schedule         DefenseSchedule?         @relation("TopicDefense")
+  defense_schedules        DefenseSchedule[]        @relation("TopicDefense")
   extra_point_requests     ExtraPointRequest[]      @relation("TopicExtraPoints")
   final_scores             FinalScore[]             @relation("TopicFinalScore")
   grades                   Grade[]                  @relation("TopicGrades")
@@ -185,6 +186,7 @@ model Topic {
   groups                   Group[]                  @relation("TopicGroups")
   registrations            TopicRegistration[]      @relation("TopicRegistrations")
   versions                 TopicVersion[]           @relation("TopicVersions")
+  grade_histories          GradeHistory[]           @relation("TopicGradeHistory")
   co_supervisor            User?                    @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
   department               Department               @relation("DepartmentTopics", fields: [departmentId], references: [id])
   secondary_department     Department?              @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
@@ -198,6 +200,7 @@ model Topic {
   @@index([supervisor_id])
   @@index([departmentId])
   @@index([semester_id])
+  @@index([semester_id, departmentId])
   @@index([status])
   @@index([created_at])
   @@index([normalized_title])
@@ -230,12 +233,17 @@ model Group {
   status                 GroupStatus                @default(FORMING)
   created_at             DateTime                   @default(now())
   updated_at             DateTime                   @updatedAt
-  leader_change_requests GroupLeaderChangeRequest[] @relation("GroupLeaderChanges")
+
   members                GroupMember[]              @relation("GroupMembers")
   leader                 User                       @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
   semester               Semester                   @relation(fields: [semester_id], references: [id])
   topic                  Topic?                     @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
   registrations          TopicRegistration[]        @relation("GroupRegistrations")
+  assignments            Assignment[]               @relation("GroupAssignments")
+  grades                 Grade[]                    @relation("GroupGrades")
+  final_scores           FinalScore[]               @relation("GroupFinalScore")
+  defense_schedule       DefenseSchedule?           @relation("GroupDefense")
+  grade_histories        GradeHistory[]             @relation("GroupGradeHistory")
 
   @@index([topic_id])
   @@index([leader_id])
@@ -282,26 +290,7 @@ model GroupInvite {
   @@map("group_invites")
 }
 
-model GroupLeaderChangeRequest {
-  id               String             @id @default(uuid())
-  group_id         String
-  current_leader   String
-  new_leader       String
-  reason           String
-  status           ChangeLeaderStatus @default(PENDING)
-  requested_by     String
-  approved_by      String?
-  rejection_reason String?
-  created_at       DateTime           @default(now())
-  responded_at     DateTime?
-  approver         User?              @relation("LeaderChangeApprover", fields: [approved_by], references: [id])
-  group            Group              @relation("GroupLeaderChanges", fields: [group_id], references: [id], onDelete: Cascade)
-  requester        User               @relation("LeaderChangeRequester", fields: [requested_by], references: [id])
 
-  @@index([group_id])
-  @@index([status])
-  @@map("group_leader_change_requests")
-}
 
 model TopicRegistration {
   id                      String                @id @default(uuid())
@@ -350,13 +339,16 @@ model Assignment {
   auto_declined_at     DateTime?
   decline_reason       String?
   room                 String?          @db.VarChar(100)
+  group_id             String?          @map("group_id")
   assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
   reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
   topic                Topic            @relation("TopicAssignments", fields: [topic_id], references: [id], onDelete: Cascade)
+  group                Group?           @relation("GroupAssignments", fields: [group_id], references: [id], onDelete: Cascade)
 
-  @@unique([topic_id, reviewer_id, assignment_type])
-  @@unique([topic_id, reviewer_order])
+  @@unique([topic_id, reviewer_id, assignment_type, group_id])
+  @@unique([topic_id, reviewer_order, group_id])
   @@index([topic_id])
+  @@index([group_id])
   @@index([reviewer_id])
   @@index([status])
   @@index([deadline_at])
@@ -393,6 +385,7 @@ model Grade {
   criterion_id   String
   rater_role     RaterRole
   reviewer_order Int?
+  group_id       String?
   score          Float
   comments       String?
   graded_at      DateTime         @default(now())
@@ -401,9 +394,11 @@ model Grade {
   grader         User             @relation("GraderGrades", fields: [grader_id], references: [id], onDelete: Cascade)
   student        User?            @relation("StudentGrades", fields: [student_id], references: [id], onDelete: Cascade)
   topic          Topic            @relation("TopicGrades", fields: [topic_id], references: [id], onDelete: Cascade)
+  group          Group?           @relation("GroupGrades", fields: [group_id], references: [id], onDelete: Cascade)
 
-  @@unique([topic_id, student_id, grader_id, criterion_id, rater_role, reviewer_order])
+  @@unique([topic_id, student_id, grader_id, criterion_id, rater_role, reviewer_order, group_id])
   @@index([topic_id])
+  @@index([group_id])
   @@index([student_id])
   @@index([grader_id])
   @@index([criterion_id])
@@ -427,12 +422,15 @@ model FinalScore {
   finalized_at         DateTime?
   computed_at          DateTime  @default(now())
   updated_at           DateTime  @updatedAt
+  group_id             String?
   finalizer            User?     @relation("ScoreFinalizer", fields: [finalized_by], references: [id])
   student              User      @relation("StudentFinalScore", fields: [student_id], references: [id], onDelete: Cascade)
   topic                Topic     @relation("TopicFinalScore", fields: [topic_id], references: [id], onDelete: Cascade)
+  group                Group?    @relation("GroupFinalScore", fields: [group_id], references: [id], onDelete: Cascade)
 
-  @@unique([topic_id, student_id])
+  @@unique([topic_id, student_id, group_id])
   @@index([topic_id])
+  @@index([group_id])
   @@index([student_id])
   @@index([finalized])
   @@index([grade_classification])
@@ -465,7 +463,8 @@ model ExtraPointRequest {
 
 model DefenseSchedule {
   id                  String         @id @default(uuid())
-  topic_id            String         @unique
+  topic_id            String         
+  group_id            String?        @unique
   committee_id        String?
   semester_id         String
   defense_date        DateTime
@@ -482,8 +481,10 @@ model DefenseSchedule {
   committee           Committee?     @relation(fields: [committee_id], references: [id])
   semester            Semester       @relation(fields: [semester_id], references: [id])
   topic               Topic          @relation("TopicDefense", fields: [topic_id], references: [id], onDelete: Cascade)
+  group               Group?         @relation("GroupDefense", fields: [group_id], references: [id], onDelete: Cascade)
 
   @@index([topic_id])
+  @@index([group_id])
   @@index([defense_date])
   @@index([committee_id])
   @@index([semester_id])
@@ -580,6 +581,30 @@ model AuditLog {
   @@index([entity_id])
   @@index([created_at])
   @@map("audit_logs")
+}
+
+model GradeHistory {
+  id           String   @id @default(uuid())
+  student_id   String
+  grader_id    String
+  topic_id     String
+  group_id     String?
+  criterion_id String
+  old_score    Float?
+  new_score    Float
+  reason       String?  @db.Text
+  changed_at   DateTime @default(now())
+  
+  student      User     @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
+  grader       User     @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
+  topic        Topic    @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
+  group        Group?   @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@index([grader_id])
+  @@index([topic_id])
+  @@index([group_id])
+  @@map("grade_history")
 }
 
 model SystemConfig {
@@ -748,11 +773,7 @@ enum RaterRole {
   POSTER_COMMITTEE
 }
 
-enum ChangeLeaderStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
+
 
 enum StudentProgressStatus {
   NOT_STARTED

@@ -145,12 +145,28 @@ export const GradingApi = {
         const res = await api.put<ApiResponse<any>>(`/grading/midterm/${registrationId}`, data);
         return res.data.data;
     },
-    /**
-     * Get grade history for a topic
-     * GET /grading/:topicId/history
-     */
     async getGradeHistoryByTopic(topicId: string) {
         const res = await api.get<ApiResponse<any[]>>(`/grading/${topicId}/history`);
+        return res.data.data;
+    },
+
+    /**
+     * Finalize grades for a specific group
+     * POST /grading/groups/:groupId/finalize
+     */
+    async finalizeGroupGrades(groupId: string) {
+        const res = await api.post<ApiResponse<any>>(`/grading/groups/${groupId}/finalize`);
+        return res.data.data;
+    },
+
+    /**
+     * Get global grade history with filters
+     * GET /grading/history
+     */
+    async getGradeHistory(studentId?: string, groupId?: string) {
+        const res = await api.get<ApiResponse<any[]>>('/grading/history', {
+            params: { studentId, groupId }
+        });
         return res.data.data;
     },
 };

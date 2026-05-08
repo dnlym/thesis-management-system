@@ -214,6 +214,7 @@ export interface Assignment {
     responded_at?: string | null;
     decline_reason?: string | null;
     topic?: Topic;
+    group_id?: string | null;
     reviewer?: {
         id: string;
         full_name: string;
@@ -284,6 +285,7 @@ export interface Grade {
     rater_role: RaterRole;
     reviewer_order?: number | null;
     committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
+    group_id?: string | null;
     score: number;
     comments?: string | null;
     graded_at: string;
@@ -319,6 +321,7 @@ export interface FinalScore {
     finalized_at?: string | null;
     created_at: string;
     updated_at: string;
+    group_id?: string | null;
     topic?: Topic;
     student?: User;
 }
@@ -400,6 +403,7 @@ export interface TopicForm {
 
 export interface GradeSubmissionForm {
     topic_id: string;
+    group_id?: string;
     student_id?: string;
     rater_role: RaterRole;
     reviewer_order?: number | null;

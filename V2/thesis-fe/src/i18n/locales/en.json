@@ -214,6 +214,13 @@
       "APPROVED": "Approved",
       "REJECTED": "Rejected",
       "WITHDRAWN": "Withdrawn"
+    },
+    "progress": {
+      "WORKING": "Working",
+      "REVIEWING": "Reviewing",
+      "READY_FOR_DEFENSE": "Ready for Defense",
+      "DEFENDING": "Defending",
+      "DONE": "Done"
     }
   },
   "phases": {

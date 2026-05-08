@@ -16,13 +16,15 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 interface TopicForReviewer {
     id: string;
+    groupId: string;
+    groupName: string;
     code: string;
     title: string;
     supervisor: { id: string; full_name: string; email: string };
     registrations: any[];
     assignments: any[];
     reviewerCount: number;
-    assignmentStatus: 'NOT_ASSIGNED' | 'FULLY_ASSIGNED';
+    assignmentStatus: 'NOT_ASSIGNED' | 'FULLY_ASSIGNED' | 'PARTIALLY_ASSIGNED';
     canAssignMore: boolean;
     room?: string | null;
 }
@@ -51,9 +53,9 @@ const ReviewerAssignment = () => {
     const queryClient = useQueryClient();
     const [pageSize, setPageSize] = useState(10);
 
-    // Track selections per topic
+    // Track selections per group
     const [selections, setSelections] = useState<Record<string, ReviewerSelection>>({});
-    const [submittingTopicId, setSubmittingTopicId] = useState<string | null>(null);
+    const [submittingGroupId, setSubmittingGroupId] = useState<string | null>(null);
 
     // Fetch topics eligible for reviewer assignment
     const { data: topics, isLoading, isError } = useQuery<TopicForReviewer[]>({
@@ -118,15 +120,15 @@ const ReviewerAssignment = () => {
 
     // Assign reviewer mutation
     const assignMutation = useMutation({
-        mutationFn: (data: { topicId: string; reviewerId: string; reviewerOrder: number; deadlineAt: Date; room?: string }) =>
+        mutationFn: (data: { topicId: string; groupId: string; reviewerId: string; reviewerOrder: number; deadlineAt: Date; room?: string }) =>
             AssignmentsApi.assignReviewer(data),
         onError: (error: any) => {
             notify.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
         },
     });
 
-    const getSelection = (topicId: string, initialRoom?: string | null): ReviewerSelection => {
-        return selections[topicId] || {
+    const getSelection = (groupId: string, initialRoom?: string | null): ReviewerSelection => {
+        return selections[groupId] || {
             reviewer1: null,
             reviewer2: null,
             deadline: dayjs().add(14, 'day'),
@@ -134,11 +136,11 @@ const ReviewerAssignment = () => {
         };
     };
 
-    const updateSelection = (topicId: string, field: keyof ReviewerSelection, value: any) => {
+    const updateSelection = (groupId: string, field: keyof ReviewerSelection, value: any) => {
         setSelections(prev => ({
             ...prev,
-            [topicId]: {
-                ...getSelection(topicId),
+            [groupId]: {
+                ...getSelection(groupId),
                 [field]: value,
             },
         }));
@@ -150,7 +152,7 @@ const ReviewerAssignment = () => {
     };
 
     const handleAssignBoth = async (topic: TopicForReviewer) => {
-        const sel = getSelection(topic.id);
+        const sel = getSelection(topic.groupId);
         const assignedOrders = getAssignedOrders(topic);
 
         if (!sel.reviewer1 && !sel.reviewer2) {
@@ -163,13 +165,14 @@ const ReviewerAssignment = () => {
             return;
         }
 
-        setSubmittingTopicId(topic.id);
+        setSubmittingGroupId(topic.groupId);
 
         try {
             // Assign PB1 if selected and not already assigned
             if (sel.reviewer1 && !assignedOrders.includes(1)) {
                 await AssignmentsApi.assignReviewer({
                     topicId: topic.id,
+                    groupId: topic.groupId,
                     reviewerId: sel.reviewer1,
                     reviewerOrder: 1,
                     deadlineAt: sel.deadline.toDate(),
@@ -181,6 +184,7 @@ const ReviewerAssignment = () => {
             if (sel.reviewer2 && !assignedOrders.includes(2)) {
                 await AssignmentsApi.assignReviewer({
                     topicId: topic.id,
+                    groupId: topic.groupId,
                     reviewerId: sel.reviewer2,
                     reviewerOrder: 2,
                     deadlineAt: sel.deadline.toDate(),
@@ -189,17 +193,17 @@ const ReviewerAssignment = () => {
             }
 
             notify.success(t('reviewerAssignment.assignSuccess'));
-            // Clear selection for this topic
+            // Clear selection for this group
             setSelections(prev => {
                 const newSel = { ...prev };
-                delete newSel[topic.id];
+                delete newSel[topic.groupId];
                 return newSel;
             });
             queryClient.invalidateQueries({ queryKey: ['topics-for-reviewer'] });
         } catch (error: any) {
             notify.error(error?.response?.data?.error || t('reviewerAssignment.assignError'));
         } finally {
-            setSubmittingTopicId(null);
+            setSubmittingGroupId(null);
         }
     };
 
@@ -243,6 +247,9 @@ const ReviewerAssignment = () => {
                     <div className="font-medium text-sm leading-tight">
                         <HighlightText text={text} keyword={debouncedSearch} />
                     </div>
+                    <div className="text-[12px] text-blue-600 font-semibold mt-1">
+                        {record.groupName}
+                    </div>
                     <div className="text-[11px] text-gray-500 mt-1">
                         {t('topics.supervisor')}: <HighlightText text={record.supervisor?.full_name} keyword={debouncedSearch} />
                     </div>
@@ -265,13 +272,13 @@ const ReviewerAssignment = () => {
                     );
                 }
                 const reviewers = getAvailableReviewersForTopic(record);
-                const sel = getSelection(record.id, record.room);
+                const sel = getSelection(record.groupId, record.room);
                 // Filter out reviewer2 selection
                 const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer2);
                 return (
                     <Select
                         value={sel.reviewer1}
-                        onChange={(val) => updateSelection(record.id, 'reviewer1', val)}
+                        onChange={(val) => updateSelection(record.groupId, 'reviewer1', val)}
                         style={{ width: '100%' }}
                         placeholder={t('reviewerAssignment.selectPB1')}
                         showSearch
@@ -304,13 +311,13 @@ const ReviewerAssignment = () => {
                     );
                 }
                 const reviewers = getAvailableReviewersForTopic(record);
-                const sel = getSelection(record.id, record.room);
+                const sel = getSelection(record.groupId, record.room);
                 // Filter out reviewer1 selection
                 const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer1);
                 return (
                     <Select
                         value={sel.reviewer2}
-                        onChange={(val) => updateSelection(record.id, 'reviewer2', val)}
+                        onChange={(val) => updateSelection(record.groupId, 'reviewer2', val)}
                         style={{ width: '100%' }}
                         placeholder={t('reviewerAssignment.selectPB2')}
                         showSearch
@@ -338,11 +345,11 @@ const ReviewerAssignment = () => {
                         ? <span className="text-sm">{dayjs(firstAssignment.deadline_at).format('DD/MM/YYYY')}</span>
                         : <span className="text-gray-400">—</span>;
                 }
-                const sel = getSelection(record.id, record.room);
+                const sel = getSelection(record.groupId, record.room);
                 return (
                     <DatePicker
                         value={sel.deadline}
-                        onChange={(val) => updateSelection(record.id, 'deadline', val || dayjs().add(14, 'day'))}
+                        onChange={(val) => updateSelection(record.groupId, 'deadline', val || dayjs().add(14, 'day'))}
                         format="DD/MM/YYYY"
                         size="small"
                         style={{ width: '100%' }}
@@ -359,13 +366,13 @@ const ReviewerAssignment = () => {
                 if (!record.canAssignMore) {
                     return <span className="text-sm">{record.room || 'N/A'}</span>;
                 }
-                const sel = getSelection(record.id, record.room);
+                const sel = getSelection(record.groupId, record.room);
                 return (
                     <input
                         className="ant-input ant-input-sm"
                         placeholder={t('defenseSchedule.roomPlaceholder') || 'Phòng'}
                         value={sel.room}
-                        onChange={(e) => updateSelection(record.id, 'room', e.target.value)}
+                        onChange={(e) => updateSelection(record.groupId, 'room', e.target.value)}
                         style={{ width: '100%' }}
                     />
                 );
@@ -384,7 +391,7 @@ const ReviewerAssignment = () => {
             width: 100,
             render: (_: any, record: TopicForReviewer) => {
                 if (!record.canAssignMore) return null;
-                const sel = getSelection(record.id, record.room);
+                const sel = getSelection(record.groupId, record.room);
                 const hasSelection = sel.reviewer1 || sel.reviewer2;
                 return (
                     <Button
@@ -392,7 +399,7 @@ const ReviewerAssignment = () => {
                         icon={<SaveOutlined />}
                         onClick={() => handleAssignBoth(record)}
                         disabled={!hasSelection}
-                        loading={submittingTopicId === record.id}
+                        loading={submittingGroupId === record.groupId}
                         size="small"
                     >
                         {t('common.save')}
@@ -487,7 +494,7 @@ const ReviewerAssignment = () => {
                     <Table
                         dataSource={filteredTopics}
                         columns={columns}
-                        rowKey="id"
+                        rowKey="groupId"
                         pagination={{ 
                             pageSize: pageSize,
                             showSizeChanger: true,

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Table, Button, Tag, Space, Modal, Input, Select, Row, Col, Spin, Avatar, Popconfirm, Tooltip, Badge, Empty, Flex } from 'antd';
 import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
-import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, UserOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, CheckCircleOutlined, UserOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/store/auth';
 import { useTopics, useApproveTopic, useHideTopic, useUnhideTopic } from '@/hooks/useTopics';
@@ -98,10 +98,10 @@ const Topics = () => {
   };
 
   const handleStatusChange = (value: string | undefined) => {
-    setFilters((prev: any) => ({ 
-      ...prev, 
-      status: (value === 'ALL' || !value) ? undefined : value, 
-      page: 1 
+    setFilters((prev: any) => ({
+      ...prev,
+      status: (value === 'ALL' || !value) ? undefined : value,
+      page: 1
     }));
   };
 
@@ -124,9 +124,9 @@ const Topics = () => {
 
   const confirmRegister = async () => {
     if (!selectedTopic) return;
-    
+
     if (!acceptedTerms) {
-      notify.error(t('topics.mustAcceptTerms')); 
+      notify.error(t('topics.mustAcceptTerms'));
       return;
     }
 
@@ -186,11 +186,11 @@ const Topics = () => {
       dataIndex: 'title',
       key: 'title',
       render: (text: string, record: any) => {
-        const students = record.registrations?.map((r: any) => r.student) || [];
+        const students = record.students || record.registrations?.map((r: any) => r.student) || [];
         return (
           <div className="flex flex-col gap-1 py-1">
             <a
-              onClick={() => navigate(`/topics/${record.id}`)}
+              onClick={() => navigate(`/topics/${record.topicId}`)}
               className="text-academic-primary hover:text-academic-primary-dark font-semibold cursor-pointer hover:underline transition-all leading-snug"
             >
               <HighlightText text={text} keyword={debouncedSearch} />
@@ -198,9 +198,9 @@ const Topics = () => {
             {students.length > 0 && (
               <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-400">
                 {students.map((s: any) => (
-                    <div key={s.id} className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
-                        {s.full_name} ({s.student_code})
-                    </div>
+                  <div key={s.id} className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                    {s.full_name} ({s.student_code})
+                  </div>
                 ))}
               </div>
             )}
@@ -228,10 +228,10 @@ const Topics = () => {
       width: 80,
       render: (_, record: any) => {
         const current = record.current_students || 0;
-        const max = record.max_students || 0;
+        const max = record.max_students || 2;
         const isFull = current >= max;
         return (
-          <span className={isFull ? 'text-red-500 font-bold' : 'text-green-600 font-bold'}>
+          <span className={isFull ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>
             {current}/{max}
           </span>
         );
@@ -241,8 +241,8 @@ const Topics = () => {
       title: t('common.status'),
       key: 'status',
       render: (_, record: any) => (
-        <TopicStatusBadge 
-          status={record.status} 
+        <TopicStatusBadge
+          status={record.status}
           progressStage={record.progress_stage}
           isVisible={record.is_visible}
           isLocked={record.is_locked}
@@ -260,14 +260,14 @@ const Topics = () => {
       key: 'actions',
       render: (_, record: any) => {
         const isFull = (record.current_students || 0) >= (record.max_students || 0);
-        const isRegisteredForThisTopic = myCurrentRegistration?.topic_id === record.id;
+        const isRegisteredForThisTopic = myCurrentRegistration?.topic_id === record.topicId;
 
         return (
           <Space size="small">
             <Button
               type="text"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/topics/${record.id}`)}
+              onClick={() => navigate(`/topics/${record.topicId}`)}
               className="text-blue-600 hover:text-blue-700"
             />
 
@@ -276,7 +276,7 @@ const Topics = () => {
               <Button
                 type="text"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/topics/${record.id}/edit`)}
+                onClick={() => navigate(`/topics/${record.topicId}/edit`)}
                 className="text-orange-500 hover:text-orange-600"
               />
             )}
@@ -285,7 +285,7 @@ const Topics = () => {
             {(record.supervisor_id === user?.id || user?.role === 'ADMIN') && (
               <Popconfirm
                 title={t('topics.deleteConfirm')}
-                onConfirm={() => handleDelete(record.id)}
+                onConfirm={() => handleDelete(record.topicId)}
                 okText={t('common.yes')}
                 cancelText={t('common.no')}
               >
@@ -337,10 +337,12 @@ const Topics = () => {
               <Button
                 type="text"
                 icon={<CheckOutlined />}
-                onClick={() => navigate(`/evaluation?topicId=${record.id}`)}
+                onClick={() => navigate(`/evaluation?topicId=${record.topicId || record.id}`)}
                 className="text-green-600 hover:text-green-700"
               />
             )}
+
+
 
             {/* HEAD Approve Action */}
             {(user?.role === 'HEAD' || user?.role === 'ADMIN') && record.status === 'PENDING_APPROVAL' && (
@@ -425,141 +427,141 @@ const Topics = () => {
         {/* Filter Bar */}
         <Card className="page-toolbar-card">
           <Flex gap="middle" wrap="wrap" align="center">
-          <Input.Search
-            placeholder="Tìm kiếm đề tài..."
-            value={searchValue}
-            onChange={handleSearch}
-            allowClear
-            className="max-w-md flex-1"
-            disabled={!filters.semesterId}
-          />
-          
-          <Select
-            placeholder="Chọn học kỳ"
-            style={{ width: 450 }}
-            value={filters.semesterId}
-            onChange={handleSemesterChange}
-            loading={isLoadingActive}
-            allowClear={false}
-          >
-            {semesters?.map(s => (
-              <Option key={s.id} value={s.id}>
-                <Space>
-                  {s.id === activeSemesterData?.id && <Badge color="green" />}
-                  {s.name}
-                  {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
-                </Space>
-              </Option>
-            ))}
-          </Select>
+            <Input.Search
+              placeholder="Tìm kiếm đề tài..."
+              value={searchValue}
+              onChange={handleSearch}
+              allowClear
+              className="max-w-md flex-1"
+              disabled={!filters.semesterId}
+            />
 
-          <Select
-            placeholder="Lọc trạng thái"
-            style={{ width: 200 }}
-            value={filters.status}
-            onChange={handleStatusChange}
-            options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
-            allowClear
-          />
-
-          {(isFiltering) && (
-            <Button 
-              type="link" 
-              icon={<ReloadOutlined />} 
-              onClick={handleClearFilters}
-              className="px-0"
+            <Select
+              placeholder="Chọn học kỳ"
+              style={{ width: 450 }}
+              value={filters.semesterId}
+              onChange={handleSemesterChange}
+              loading={isLoadingActive}
+              allowClear={false}
             >
-              Xóa bộ lọc
-            </Button>
-          )}
-        </Flex>
+              {semesters?.map(s => (
+                <Option key={s.id} value={s.id}>
+                  <Space>
+                    {s.id === activeSemesterData?.id && <Badge color="green" />}
+                    {s.name}
+                    {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+
+            <Select
+              placeholder="Lọc trạng thái"
+              style={{ width: 200 }}
+              value={filters.status}
+              onChange={handleStatusChange}
+              options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
+              allowClear
+            />
+
+            {(isFiltering) && (
+              <Button
+                type="link"
+                icon={<ReloadOutlined />}
+                onClick={handleClearFilters}
+                className="px-0"
+              >
+                Xóa bộ lọc
+              </Button>
+            )}
+          </Flex>
         </Card>
 
         {/* Topics Table */}
         <Card className="page-card-flush">
           <Table
-          columns={columns}
-          dataSource={topics?.topics || []}
-          rowKey="id"
-          size="middle"
-          className="sys-table"
-          loading={isLoading || isFetching}
-          pagination={{
-            current: topics?.pagination?.page || 1,
-            pageSize: topics?.pagination?.limit || 10,
-            total: topics?.pagination?.total || 0,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
-            onChange: (page, pageSize) => {
-              setFilters((prev: any) => ({ ...prev, page, size: pageSize }));
-            }
-          }}
-          locale={{
-            emptyText: isFiltering ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Không tìm thấy kết quả phù hợp"
-              >
-                <Button type="primary" onClick={handleClearFilters}>Xóa bộ lọc</Button>
-              </Empty>
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Chưa có đề tài trong học kỳ này"
-              >
-                {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
-                  <Button type="primary" onClick={() => navigate('/supervisor/create-topic')}>+ Tạo đề tài</Button>
-                )}
-              </Empty>
-            ),
-          }}
+            columns={columns}
+            dataSource={topics?.topics || []}
+            rowKey="id"
+            size="middle"
+            className="sys-table"
+            loading={isLoading || isFetching}
+            pagination={{
+              current: topics?.pagination?.page || 1,
+              pageSize: topics?.pagination?.limit || 10,
+              total: topics?.pagination?.total || 0,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => t('approveTopics.showTotal', { range0: range[0], range1: range[1], total }),
+              onChange: (page, pageSize) => {
+                setFilters((prev: any) => ({ ...prev, page, size: pageSize }));
+              }
+            }}
+            locale={{
+              emptyText: isFiltering ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Không tìm thấy kết quả phù hợp"
+                >
+                  <Button type="primary" onClick={handleClearFilters}>Xóa bộ lọc</Button>
+                </Empty>
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Chưa có đề tài trong học kỳ này"
+                >
+                  {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
+                    <Button type="primary" onClick={() => navigate('/supervisor/create-topic')}>+ Tạo đề tài</Button>
+                  )}
+                </Empty>
+              ),
+            }}
           />
         </Card>
 
         {/* Registration Modal */}
-      <Modal
-        title={t('topics.registerModalTitle')}
-        open={registerModalVisible}
-        onOk={confirmRegister}
-        onCancel={() => {
-          setRegisterModalVisible(false);
-          setSelectedTopic(null);
-        }}
-        confirmLoading={registerMutation.isPending}
-        okText={t('topics.confirmRegisterButton')}
-        cancelText={t('common.cancel')}
-        okButtonProps={{ disabled: !acceptedTerms }}
-      >
-        {selectedTopic && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="mb-2">{selectedTopic.title}</h3>
-              <div className="text-sm text-slate-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
-            </div>
+        <Modal
+          title={t('topics.registerModalTitle')}
+          open={registerModalVisible}
+          onOk={confirmRegister}
+          onCancel={() => {
+            setRegisterModalVisible(false);
+            setSelectedTopic(null);
+          }}
+          confirmLoading={registerMutation.isPending}
+          okText={t('topics.confirmRegisterButton')}
+          cancelText={t('common.cancel')}
+          okButtonProps={{ disabled: !acceptedTerms }}
+        >
+          {selectedTopic && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="mb-2">{selectedTopic.title}</h3>
+                <div className="text-sm text-slate-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
+              </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-              <p className="text-sm text-yellow-800">
-                {t('topics.registrationLimitNote')}
-              </p>
-            </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-sm text-yellow-800">
+                  {t('topics.registrationLimitNote')}
+                </p>
+              </div>
 
-            <div className="flex items-start space-x-2">
-              <input 
-                type="checkbox" 
-                id="confirm" 
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-academic-primary focus:ring-academic-primary cursor-pointer" 
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                required 
-              />
-              <label htmlFor="confirm" className="text-sm select-none cursor-pointer">
-                {t('topics.understandRequirement')}
-              </label>
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="confirm"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-academic-primary focus:ring-academic-primary cursor-pointer"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  required
+                />
+                <label htmlFor="confirm" className="text-sm select-none cursor-pointer">
+                  {t('topics.understandRequirement')}
+                </label>
+              </div>
             </div>
-          </div>
-        )}
-      </Modal>
+          )}
+        </Modal>
       </div>
     </div>
   );

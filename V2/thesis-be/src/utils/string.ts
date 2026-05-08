@@ -40,7 +40,7 @@ export function snakeToCamel(str: string): string {
 export function keysToCamel(obj: any): any {
     if (Array.isArray(obj)) {
         return obj.map(v => keysToCamel(v));
-    } else if (obj !== null && obj.constructor === Object) {
+    } else if (obj !== null && typeof obj === 'object') {
         return Object.keys(obj).reduce(
             (result, key) => ({
                 ...result,

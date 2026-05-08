@@ -18,6 +18,16 @@ const topicForCommitteeAssignmentInclude = {
       student: {
         select: { id: true, full_name: true, student_code: true, email: true },
       },
+      group: {
+        include: {
+          members: {
+            where: { status: 'ACCEPTED' },
+            include: {
+              user: { select: { id: true, full_name: true, student_code: true, email: true } }
+            }
+          }
+        }
+      }
     },
   },
   assignments: {
@@ -35,23 +45,63 @@ const topicForCommitteeAssignmentInclude = {
           RaterRole.REVIEWER_1,
           RaterRole.REVIEWER_2,
           RaterRole.REVIEWER_3,
-        ],
+        ] as RaterRole[],
       },
     },
     include: {
       criterion: true,
     },
   },
-  defense_schedule: {
+  defense_schedules: {
     include: {
       committee: true
     }
-  } as any
-} satisfies Prisma.TopicInclude;
+  }
+} as const;
+
+export type AssignmentWithRelations = Prisma.AssignmentGetPayload<{
+  include: {
+    topic: {
+      include: {
+        supervisor: true,
+        defense_schedules: true,
+        grades: true,
+        registrations: {
+          include: { student: true, group: true }
+        }
+      }
+    },
+    reviewer: true,
+    assigner: true
+  }
+}>;
 
 export type TopicForCommitteeAssignment = Prisma.TopicGetPayload<{
   include: typeof topicForCommitteeAssignmentInclude
 }>;
+
+type TopicWithAssignmentsPayload = Prisma.TopicGetPayload<{
+  include: { assignments: true, registrations: true }
+}>;
+
+interface GroupInfo {
+  group_id: string;
+  group_name: string;
+  registrations: any[];
+  assignments: any[];
+}
+
+export interface CommitteeAssignmentSummary extends TopicForCommitteeAssignment {
+  topicTitle: string;
+  groupId: string;
+  groupName: string;
+  assignments: any[];
+  registrations: any[];
+  reviewerCount: number;
+  assignmentStatus: string;
+  canAssignMore: boolean;
+  room: string | null;
+}
 
 export class AssignmentService {
   async createReviewerAssignment(userId: string, data: CreateAssignmentRequest) {
@@ -62,7 +112,7 @@ export class AssignmentService {
         assignments: true,
         registrations: true,
       },
-    });
+    }) as TopicWithAssignmentsPayload | null;
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
@@ -85,19 +135,18 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.SUPERVISOR_CONFLICT);
     }
 
-    // Check for duplicate reviewer
+    // Check for duplicate reviewer in the same group
     const existingAssignment = topic.assignments.find(
-      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER
+      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
     );
 
     if (existingAssignment) {
       throw new Error(ERROR_CODES.REVIEWER_DUPLICATE);
     }
 
-    // Check for duplicate reviewer order
     if (data.reviewerOrder) {
       const orderExists = topic.assignments.find(
-        a => a.reviewer_order === data.reviewerOrder && a.assignment_type === AssignmentType.REVIEWER
+        a => a.reviewer_order === data.reviewerOrder && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
       );
 
       if (orderExists) {
@@ -105,9 +154,9 @@ export class AssignmentService {
       }
     }
 
-    // [PRODUCTION GUARD] Check for unique reviewer across all positions
+    // [PRODUCTION GUARD] Check for unique reviewer across all positions for this group
     const reviewerExists = topic.assignments.find(
-      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER
+      a => a.reviewer_id === data.reviewerId && a.assignment_type === AssignmentType.REVIEWER && a.group_id === data.groupId
     );
     if (reviewerExists) {
       throw new Error(ERROR_CODES.REVIEWER_DUPLICATE || 'Giảng viên đã được gán phản biện cho đề tài này');
@@ -133,10 +182,10 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.WORKLOAD_EXCEEDED);
     }
 
-    // Create assignment
-    const assignment = await prisma.assignment.create({
+    const assignment = await (prisma.assignment as any).create({
       data: {
         topic_id: data.topicId,
+        group_id: data.groupId,
         reviewer_id: data.reviewerId,
         assignment_type: AssignmentType.REVIEWER,
         reviewer_order: data.reviewerOrder,
@@ -354,10 +403,11 @@ export class AssignmentService {
     }
 
     // Create defense schedule
-    const schedule = await prisma.defenseSchedule.create({
+    const schedule = await (prisma.defenseSchedule as any).create({
       data: {
         topic_id: data.topicId,
-        semester_id: topic.semester_id, // [FIX] Added required field
+        group_id: data.groupId,
+        semester_id: topic.semester_id,
         defense_date: data.defenseDate,
         defense_time: data.defenseTime,
         room: data.room,
@@ -375,15 +425,17 @@ export class AssignmentService {
     ];
 
     for (const member of committeeAssignments) {
-      await prisma.assignment.create({
+      await (prisma.assignment as any).create({
         data: {
           topic_id: data.topicId,
+          group_id: data.groupId,
           reviewer_id: member.reviewer_id,
           assignment_type: AssignmentType.COMMITTEE,
           committee_role: member.role as CommitteeRole, // CHAIR, SECRETARY, MEMBER
           assigned_by: userId,
           deadline_at: data.defenseDate,
           status: AssignmentStatus.AUTO_ACCEPTED,
+          room: data.room,
         },
       });
 
@@ -585,7 +637,7 @@ export class AssignmentService {
                 email: true,
               },
             },
-            defense_schedule: true,
+            defense_schedules: true,
             grades: {
               where: { grader_id: userId }
             },
@@ -629,13 +681,16 @@ export class AssignmentService {
     });
 
     // Map to camelCase and include topicTitle for frontend compatibility
-    return assignments.map(a => ({
-      ...a,
-      topicTitle: a.topic.title,
-      reviewerOrder: a.reviewer_order,
-      assignedAt: a.assigned_at,
-      deadline: a.deadline_at,
-    }));
+    return (assignments as AssignmentWithRelations[]).map(a => {
+      const topicTitle = a.topic.title;
+      return {
+        ...a,
+        topicTitle,
+        reviewerOrder: a.reviewer_order,
+        assignedAt: a.assigned_at,
+        deadline: a.deadline_at,
+      };
+    });
   }
 
   async deleteAssignment(userId: string, assignmentId: string) {
@@ -726,65 +781,55 @@ export class AssignmentService {
           },
         },
       },
-      include: {
-        supervisor: {
-          select: { id: true, full_name: true, email: true },
-        },
-        registrations: {
-          where: {
-            midterm_status: 'PASS',
-          },
-          include: {
-            student: {
-              select: { id: true, full_name: true, student_code: true, email: true },
-            },
-            group: {
-              include: {
-                members: {
-                  where: { status: 'ACCEPTED' },
-                  include: {
-                    user: {
-                      select: { id: true, full_name: true, student_code: true, email: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        assignments: {
-          where: { assignment_type: AssignmentType.REVIEWER },
-          include: {
-            reviewer: {
-              select: { id: true, full_name: true },
-            },
-          },
-        },
-      },
+      include: topicForCommitteeAssignmentInclude,
       orderBy: { created_at: 'desc' },
     });
 
-    // Add computed fields
-    return topics.map(topic => {
-      const reviewerCount = topic.assignments.length;
-      let assignmentStatus = 'NOT_ASSIGNED';
-      if (reviewerCount >= 2) {
-        assignmentStatus = 'FULLY_ASSIGNED';
-      } else if (reviewerCount > 0) {
-        assignmentStatus = 'PARTIALLY_ASSIGNED';
-      }
+    const result: CommitteeAssignmentSummary[] = [];
+    topics.forEach((topic: TopicForCommitteeAssignment) => {
+      // Group registrations by group_id
+      const groups = new Map<string, GroupInfo>();
+      topic.registrations.forEach(reg => {
+        if (!reg.group_id) return;
+        if (!groups.has(reg.group_id)) {
+          groups.set(reg.group_id, {
+            group_id: reg.group_id,
+            group_name: reg.group?.name || 'Nhóm Đang Lập',
+            registrations: [],
+            assignments: topic.assignments.filter(a => a.group_id === reg.group_id),
+          });
+        }
+        groups.get(reg.group_id)!.registrations.push(reg);
+      });
 
-      const room = topic.assignments[0]?.room || null;
+      groups.forEach(groupInfo => {
+        const reviewerCount = groupInfo.assignments.length;
+        let assignmentStatus = 'NOT_ASSIGNED';
+        if (reviewerCount >= 2) {
+          assignmentStatus = 'FULLY_ASSIGNED';
+        } else if (reviewerCount > 0) {
+          assignmentStatus = 'PARTIALLY_ASSIGNED';
+        }
 
-      return {
-        ...topic,
-        topicTitle: topic.title, // Add for compatibility
-        reviewerCount,
-        assignmentStatus,
-        canAssignMore: reviewerCount < 3,
-        room,
-      };
+        const room = groupInfo.assignments[0]?.room || null;
+
+        // Use groupId as part of the unique identifier in UI, but return topic_id for compatibility
+        result.push({
+          ...topic,
+          topicTitle: topic.title, // Add for compatibility
+          groupId: groupInfo.group_id,
+          groupName: groupInfo.group_name,
+          assignments: groupInfo.assignments,
+          registrations: groupInfo.registrations,
+          reviewerCount,
+          assignmentStatus,
+          canAssignMore: reviewerCount < 3,
+          room,
+        });
+      });
     });
+
+    return result;
   }
 
   /**
@@ -842,9 +887,9 @@ export class AssignmentService {
     return results
       .filter(r => r.eligibility.eligible)
       .map(r => {
-        const topic = r.topic;
+        const topic = r.topic as any;
         const committeeAssignments = topic.assignments.filter(
-          a => a.assignment_type === AssignmentType.COMMITTEE
+          (a: any) => a.assignment_type === AssignmentType.COMMITTEE
         );
         const hasCommittee = committeeAssignments.length > 0;
 
@@ -855,7 +900,7 @@ export class AssignmentService {
         );
         const reviewerIds = [...new Set(reviewerAssignments.map((a: any) => a.reviewer_id))] as string[];
 
-        const reviewerGrades = topic.grades.filter(g =>
+        const reviewerGrades = (topic.grades as any[]).filter(g =>
           ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
         );
 
@@ -873,11 +918,11 @@ export class AssignmentService {
           ...topic,
           hasCommittee,
           avgReviewerScore,
-          currentSchedule: topic.defense_schedule ? {
-            committee_id: topic.defense_schedule.committee_id,
-            defense_date: topic.defense_schedule.defense_date,
-            start_time: (topic.defense_schedule as any).defense_time,
-            room: topic.defense_schedule.room,
+          currentSchedule: topic.defense_schedules?.[0] ? {
+            committee_id: topic.defense_schedules[0].committee_id,
+            defense_date: topic.defense_schedules[0].defense_date,
+            start_time: (topic.defense_schedules[0] as any).defense_time || topic.defense_schedules[0].start_time,
+            room: topic.defense_schedules[0].room,
           } : null,
         } as any;
       });

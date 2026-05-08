@@ -340,9 +340,10 @@ export class CommitteeService {
 
       // 4. Create or Update DefenseSchedule
       const schedule = await tx.defenseSchedule.upsert({
-        where: { topic_id: data.topicId },
+        where: { group_id: data.groupId },
         create: {
           topic_id: data.topicId,
+          group_id: data.groupId,
           committee_id: data.committeeId,
           semester_id: topic.semester_id,
           defense_date: start,
@@ -363,10 +364,10 @@ export class CommitteeService {
       });
 
       // 5. Create Assignments for committee members
-      // Delete old committee assignments for this topic
+      // Delete old committee assignments for this group
       await tx.assignment.deleteMany({
         where: {
-          topic_id: data.topicId,
+          group_id: data.groupId,
           assignment_type: AssignmentType.COMMITTEE
         }
       });
@@ -376,6 +377,7 @@ export class CommitteeService {
         await tx.assignment.create({
           data: {
             topic_id: data.topicId,
+            group_id: data.groupId,
             reviewer_id: member.lecturer_id,
             assignment_type: AssignmentType.COMMITTEE,
             committee_role: member.role,
@@ -394,7 +396,7 @@ export class CommitteeService {
 
       // 7. Send Notifications to committee members and students
       const registrations = await tx.topicRegistration.findMany({
-        where: { topic_id: data.topicId, status: 'CONFIRMED' },
+        where: { topic_id: data.topicId, group_id: data.groupId, status: 'CONFIRMED' },
         include: { 
           group: { include: { members: { where: { status: 'ACCEPTED' } } } } 
         }
@@ -467,6 +469,7 @@ export class CommitteeService {
       },
       schedules: c.defense_schedules.map((s: any) => ({
         topicId: s.topic_id,
+        groupId: s.group_id,
         topicCode: s.topic.code,
         topicName: s.topic.title,
         groupCode: s.topic.registrations?.[0]?.group?.name,

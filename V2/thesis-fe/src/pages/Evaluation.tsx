@@ -44,6 +44,7 @@ const Evaluation = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const topicId = searchParams.get('topicId');
+  const groupId = searchParams.get('groupId');
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' ? 'department' : 'advisor'));
 
   // HOD Pivot Modal state
@@ -119,8 +120,8 @@ const Evaluation = () => {
   });
 
   const currentAssignment = useMemo(() => {
-    if (activeTab === 'reviewer') return reviewerAssignments?.find((a: any) => a.topic_id === topicId);
-    if (activeTab === 'council') return councilAssignments?.find((a: any) => a.topic_id === topicId);
+    if (activeTab === 'reviewer') return reviewerAssignments?.find((a: any) => (a.topic_id === topicId || a.topicId === topicId));
+    if (activeTab === 'council') return councilAssignments?.find((a: any) => (a.topic_id === topicId || a.topicId === topicId));
     return null;
   }, [activeTab, reviewerAssignments, councilAssignments, topicId]);
 
@@ -166,14 +167,24 @@ const Evaluation = () => {
 
   const students = useMemo(() => {
     if (!selectedTopic?.registrations) return [];
-    return selectedTopic.registrations.map((reg: any) => ({
-      id: reg.student.id,
-      name: reg.student.full_name,
-      code: reg.student.student_code || 'N/A',
-      class: reg.student.class_name || 'N/A',
-      avatar: reg.student.avatar_url
+    // Filter registrations by groupId if present
+    let filteredRegs = groupId
+      ? selectedTopic.registrations.filter((reg: any) =>
+        (reg.group_id || reg.groupId)?.toString().toLowerCase() === groupId.toString().toLowerCase()
+      )
+      : selectedTopic.registrations;
+
+    // Fallback: If groupId filter results in empty list, show all (safety net)
+    const regs = (groupId && filteredRegs.length === 0) ? selectedTopic.registrations : filteredRegs;
+
+    return regs.map((reg: any) => ({
+      id: reg.studentId || reg.student_id || reg.student?.id || reg.id,
+      name: reg.student?.fullName || reg.student?.full_name || reg.fullName || reg.studentName || 'Chưa xác định',
+      code: reg.student?.studentCode || reg.student?.student_code || reg.studentCode || reg.code || 'N/A',
+      studentClass: reg.className || reg.class_name || reg.student?.className || reg.student?.class_name || reg.class || reg.student?.class || 'N/A',
+      avatar: reg.student?.avatarUrl || reg.student?.avatar_url || reg.avatarUrl || reg.avatar
     }));
-  }, [selectedTopic]);
+  }, [selectedTopic, myGradesData, groupId]);
 
   const isConfirmed = useMemo(() => {
     return myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
@@ -269,6 +280,7 @@ const Evaluation = () => {
 
         return {
           topic_id: topicId!,
+          group_id: groupId || undefined,
           student_id: student.id,
           rater_role: getRaterRole(),
           reviewer_order: currentAssignment?.reviewer_order,
@@ -413,10 +425,10 @@ const Evaluation = () => {
                         <div className="flex flex-col">
                           <Text strong className="text-gray-800 text-[13px] leading-tight">{s.name}</Text>
                           <Text className="text-[10px] text-gray-500 mt-0.5">
-                            <span className="font-mono bg-blue-50 px-1 rounded text-blue-600">{s.code}</span>
-                            <Divider type="vertical" className="border-gray-300 mx-1" />
-                            <span>{s.class}</span>
-                          </Text>
+                          <span className="font-mono bg-blue-50 px-1 rounded text-blue-600">{s.code}</span>
+                          <Divider type="vertical" className="border-gray-300 mx-1" />
+                          <span>{s.studentClass}</span>
+                        </Text>
                         </div>
                       </div>
                     ))}
@@ -563,14 +575,18 @@ const Evaluation = () => {
                       className="px-10 h-12 font-bold shadow-lg"
                       onClick={() => {
                         Modal.confirm({
-                          title: 'Xác nhận chốt kết quả khóa luận?',
-                          content: 'Sau khi chốt, Giảng viên không thể thay đổi điểm số. Chỉ Admin mới có quyền điều chỉnh.',
+                          title: groupId ? 'Xác nhận chốt kết quả NHÓM?' : 'Xác nhận chốt kết quả đề tài?',
+                          content: 'Sau khi chốt, Giảng viên không thể thay đổi điểm số cho các sinh viên trong nhóm này. Chỉ Admin mới có quyền điều chỉnh.',
                           okText: 'Chốt ngay',
                           cancelText: 'Hủy',
                           okType: 'danger',
                           onOk: async () => {
                             try {
-                              await GradingApi.finalizeGrades(topicId!);
+                              if (groupId) {
+                                await GradingApi.finalizeGroupGrades(groupId);
+                              } else {
+                                await GradingApi.finalizeGrades(topicId!);
+                              }
                               notify.success('Đã chốt điểm thành công!');
                               queryClient.invalidateQueries({ queryKey: ['topic', topicId] });
                               queryClient.invalidateQueries({ queryKey: ['grade-summary'] });
@@ -673,7 +689,11 @@ const Evaluation = () => {
           <Button
             type={r.status === 'FINALIZED' ? "default" : "primary"}
             size="small"
-            onClick={() => setSearchParams({ topicId: r.id, type: activeTab })}
+            onClick={() => setSearchParams({
+              topicId: r.topicId || r.topic_id || r.id,
+              groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id),
+              type: activeTab
+            })}
             className="text-xs rounded-lg"
           >
             {r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm'}
@@ -841,7 +861,7 @@ const Evaluation = () => {
       {
         title: 'Hành động', key: 'action', width: 140, align: 'center' as const,
         render: (_: any, r: any) => (
-          <Button size="small" onClick={() => navigate(`/topics/${r.id}`)} className="text-xs">Xem chi tiết ›</Button>
+          <Button size="small" onClick={() => setSearchParams({ topicId: r.id, groupId: r.groupId || r.group?.id, type: activeTab })} className="text-xs">Xem chi tiết ›</Button>
         )
       },
     ];

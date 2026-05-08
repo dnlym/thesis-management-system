@@ -16,6 +16,7 @@ export interface UpdateCommitteeRequest extends Partial<Omit<CreateCommitteeRequ
 
 export interface AssignTopicToCommitteeRequest {
   topicId: string;
+  groupId: string;
   committeeId: string;
   defenseDate: string; // YYYY-MM-DD
   startTime: string;   // HH:mm
@@ -37,6 +38,7 @@ export interface CommitteeScheduleResponse {
   };
   schedules: {
     topicId: string;
+    groupId?: string;
     topicName: string;
     groupCode?: string;
     students: {

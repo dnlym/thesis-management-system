@@ -57,6 +57,12 @@ router.get(
   gradingController.getGradeSummary.bind(gradingController)
 );
 
+// Grade History
+router.get(
+  '/history',
+  gradingController.getGradeHistory.bind(gradingController)
+);
+
 // ==========================================
 // UC07: MIDTERM GRADING ROUTES
 // ==========================================
@@ -127,6 +133,14 @@ router.post(
   gradingController.finalizeFinalScore.bind(gradingController)
 );
 
+router.post(
+  '/groups/:groupId/finalize',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  enforceAcademicAction(AcademicAction.FINALIZE_SCORE),
+  validate([param('groupId').isUUID().withMessage('Invalid group ID')]),
+  gradingController.finalizeGroup.bind(gradingController)
+);
+
 // Get current user's grades for a topic (for read-only confirmed state)
 router.get(
   '/:topicId/my-grades',
@@ -137,8 +151,14 @@ router.get(
 // Get all grades for a topic (HEAD, ADMIN, or assigned lecturers)
 router.get(
   '/:topicId/grades',
-  validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   gradingController.getGrades.bind(gradingController)
+);
+
+// Get grade history for a topic
+router.get(
+  '/:topicId/history',
+  validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
+  gradingController.getGradeHistory.bind(gradingController)
 );
 
 export default router;

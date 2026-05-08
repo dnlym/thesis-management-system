@@ -2,6 +2,7 @@ import { AssignmentType, AssignmentStatus } from '@prisma/client';
 
 export interface CreateAssignmentRequest {
   topicId: string;
+  groupId: string;
   reviewerId: string;
   assignmentType: AssignmentType;
   reviewerOrder?: number;
@@ -20,6 +21,7 @@ export interface DeclineAssignmentRequest {
 
 export interface CreateDefenseScheduleRequest {
   topicId: string;
+  groupId: string;
   defenseDate: Date;
   defenseTime: string;
   room: string;

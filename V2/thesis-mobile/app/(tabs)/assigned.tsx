@@ -57,18 +57,33 @@ export default function AssignedScreen() {
       if (isHOD) {
         rawList = allDept.map(t => ({ topic: t, role: t.supervisor_id === user?.id ? 'GVHD' : 'XEM' }));
       } else {
+        // Map per registration/group for supervised topics
+        const supervisedEntries = supervised.flatMap(t => 
+            (t.registrations || []).map(reg => ({ 
+                topic: t, 
+                role: 'GVHD', 
+                groupId: reg.group_id 
+            }))
+        );
+
         rawList = [
-            ...supervised.map(t => ({ topic: t, role: 'GVHD' })),
-            ...assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a })),
-            ...assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a }))
+            ...supervisedEntries,
+            ...assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a, groupId: a.group_id })),
+            ...assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a, groupId: a.group_id }))
         ];
       }
     } else if (activeFilter === 'GVHD') {
-      rawList = supervised.map(t => ({ topic: t, role: 'GVHD' }));
+        rawList = supervised.flatMap(t => 
+            (t.registrations || []).map(reg => ({ 
+                topic: t, 
+                role: 'GVHD', 
+                groupId: reg.group_id 
+            }))
+        );
     } else if (activeFilter === 'GVPB') {
-      rawList = assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a }));
+      rawList = assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a, groupId: a.group_id }));
     } else if (activeFilter === 'HĐBV') {
-      rawList = assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a }));
+      rawList = assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a, groupId: a.group_id }));
     }
 
     // Normalize for display
@@ -76,19 +91,26 @@ export default function AssignedScreen() {
       const t = item.topic;
       if (!t) return null;
       
-      const userGrades = t.grades || [];
-      const isGraded = userGrades.length > 0;
+      const groupId = (item as any).groupId || null;
+      // Filter grades for this specific group
+      const groupGrades = t.grades?.filter(g => g.group_id === groupId || (g.group_id === null && !groupId)) || [];
+      const isGraded = groupGrades.length > 0;
       
+      // Find the specific registration for this group to get the group name
+      const reg = t.registrations?.find(r => r.group_id === groupId);
+      const groupName = reg?.group?.name || reg?.student?.full_name || 'Đề tài lẻ';
+
       return {
-        id: item.assignment?.id || `topic-${t.id}-${item.role}`,
+        id: item.assignment?.id || `topic-${t.id}-${groupId || 'no-group'}-${item.role}`,
         topicId: t.id,
+        groupId: groupId,
         title: t.title || 'Đề tài không có tiêu đề',
         code: t.code || 'N/A',
         role: item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'QUẢN LÝ') : item.role,
         status: t.status,
         date: t.created_at || new Date().toISOString(),
         schedule: t.defense_schedule,
-        groupName: t.registrations?.[0]?.group?.name || t.registrations?.[0]?.student?.full_name || 'Đề tài lẻ',
+        groupName: groupName,
         department: t.department?.name || 'CNTT',
         isGraded,
         score: null as string | null,
@@ -109,7 +131,7 @@ export default function AssignedScreen() {
 
     const seen = new Set();
     return result.filter(item => {
-        const key = `${item.topicId}-${item.role}`;
+        const key = `${item.topicId}-${item.groupId || 'no-group'}-${item.role}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -173,7 +195,7 @@ export default function AssignedScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.card}
-            onPress={() => router.push(`/topic/${item.topicId}` as any)}
+            onPress={() => router.push(`/topic/${item.topicId}?groupId=${item.groupId || ''}` as any)}
           >
             <View style={styles.cardStatusCol}>
               <View style={[styles.statusIconContainer, { backgroundColor: item.isGraded ? '#f0fdf4' : '#eff6ff' }]}>

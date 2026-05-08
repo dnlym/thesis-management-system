@@ -227,6 +227,13 @@
       "APPROVED": "Đã duyệt",
       "REJECTED": "Từ chối",
       "WITHDRAWN": "Đã rút"
+    },
+    "progress": {
+      "WORKING": "Đang thực hiện",
+      "REVIEWING": "Đang phản biện",
+      "READY_FOR_DEFENSE": "Sẵn sàng bảo vệ",
+      "DEFENDING": "Đang bảo vệ",
+      "DONE": "Hoàn thành"
     }
   },
   "phases": {

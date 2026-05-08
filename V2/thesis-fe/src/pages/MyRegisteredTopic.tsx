@@ -37,7 +37,6 @@ import {
   ClockCircleOutlined,
   MailOutlined,
   InfoCircleOutlined,
-  CrownOutlined,
   UserDeleteOutlined
 } from '@ant-design/icons';
 
@@ -51,22 +50,23 @@ const MyRegisteredTopic = () => {
     const [searchResult, setSearchResult] = useState<any>(null);
     const [searchLoading, setSearchLoading] = useState(false);
     
-    // Leader Change Modal State
-    const [isLeaderModalVisible, setIsLeaderModalVisible] = useState(false);
-    const [leaderChangeReason, setLeaderChangeReason] = useState('');
+
 
     // Fetch my registration
     const { data: myRegistration, isLoading, isError } = useMyTopicRegistration();
 
     const topicId = myRegistration?.topic?.id;
-    const hasGroup = !!myRegistration?.group;
+    const group = myRegistration?.group;
+    const hasGroup = !!group;
+    const memberCount = group?.members?.filter((m: any) => m.status === 'ACCEPTED')?.length || 0;
+    const isSoloGroup = hasGroup && memberCount === 1;
     const isLeader = hasGroup && myRegistration?.group?.leader_id === currentUser?.id;
 
     // Fetch my invites
     const { data: invitesData, refetch: refetchInvites } = useQuery({
         queryKey: ['my-invites', topicId],
         queryFn: () => RegistrationsApi.getMyInvites(topicId),
-        enabled: !!topicId && !hasGroup,
+        enabled: !!topicId && isSoloGroup,
     });
 
     // Fetch students same topic
@@ -168,18 +168,7 @@ const MyRegisteredTopic = () => {
         },
     });
 
-    // Change leader mutation
-    const changeLeaderMutation = useMutation({
-        mutationFn: (reason: string) => RegistrationsApi.changeLeader(myRegistration.group.id, currentUser.id, reason),
-        onSuccess: () => {
-            notify.success('Đã gửi yêu cầu thay đổi trưởng nhóm');
-            setIsLeaderModalVisible(false);
-            setLeaderChangeReason('');
-        },
-        onError: (error: any) => {
-            notify.error(error.response?.data?.error || 'Yêu cầu thất bại');
-        },
-    });
+
 
     if (isLoading) {
         return (
@@ -205,7 +194,6 @@ const MyRegisteredTopic = () => {
     }
 
     const topic = myRegistration.topic;
-    const group = myRegistration.group;
     const sentInvites = invitesData?.sentInvites || [];
     const receivedInvites = invitesData?.receivedInvites || [];
 
@@ -338,18 +326,7 @@ const MyRegisteredTopic = () => {
                   <Card 
                     title={<Space><TeamOutlined />Thành viên nhóm</Space>} 
                     className="shadow-soft border-0"
-                    extra={!isLeader && (
-                      <Tooltip title={isPhaseLocked ? "Không thể đổi trưởng nhóm trong giai đoạn thực hiện khóa luận" : ""}>
-                        <Button 
-                          size="small" 
-                          icon={<CrownOutlined />} 
-                          onClick={() => setIsLeaderModalVisible(true)}
-                          disabled={isPhaseLocked}
-                        >
-                          Đổi trưởng nhóm
-                        </Button>
-                      </Tooltip>
-                    )}
+
                   >
                     <List
                       itemLayout="horizontal"
@@ -388,7 +365,7 @@ const MyRegisteredTopic = () => {
                 )}
 
                 {/* Received Invites */}
-                {!hasGroup && receivedInvites.length > 0 && (
+                {isSoloGroup && receivedInvites.length > 0 && (
                   <Card 
                     title={<Space><MailOutlined />Lời mời đồng hành</Space>} 
                     className="shadow-soft border-0 bg-blue-50"
@@ -436,7 +413,7 @@ const MyRegisteredTopic = () => {
                   </Card>
                 )}
 
-                {!hasGroup && (
+                {isSoloGroup && (
                   <Card title={<Space><SearchOutlined />Tìm bạn cùng nhóm</Space>} className="shadow-soft border-0">
                     <Paragraph type="secondary">
                         Nhập mã sinh viên của người bạn muốn đồng hành hoặc chọn từ danh sách bên dưới.
@@ -484,7 +461,7 @@ const MyRegisteredTopic = () => {
 
               <Col xs={24} lg={8}>
                 {/* Sent Invites Sidebar */}
-                {!hasGroup && sentInvites.length > 0 && (
+                {isSoloGroup && sentInvites.length > 0 && (
                   <Card title={<Space><SendOutlined />Lời mời đã gửi</Space>} className="shadow-soft border-0 mb-6">
                     <List
                       dataSource={sentInvites}
@@ -528,28 +505,7 @@ const MyRegisteredTopic = () => {
               </Col>
             </Row>
 
-            <Modal
-              title="Yêu cầu thay đổi trưởng nhóm"
-              open={isLeaderModalVisible}
-              onOk={() => changeLeaderMutation.mutate(leaderChangeReason)}
-              onCancel={() => {
-                setIsLeaderModalVisible(false);
-                setLeaderChangeReason('');
-              }}
-              confirmLoading={changeLeaderMutation.isPending}
-              okText="Gửi yêu cầu"
-              cancelText="Hủy"
-            >
-              <div className="py-2">
-                <Paragraph>Cung cấp lý do thay đổi trưởng nhóm (Tùy chọn):</Paragraph>
-                <TextArea 
-                  rows={4} 
-                  value={leaderChangeReason} 
-                  onChange={(e) => setLeaderChangeReason(e.target.value)} 
-                  placeholder="Ví dụ: Bạn hiện tại bận việc cá nhân nên muốn chuyển quyền trưởng nhóm cho tôi..."
-                />
-              </div>
-            </Modal>
+
             </div>
         </div>
       <style dangerouslySetInnerHTML={{

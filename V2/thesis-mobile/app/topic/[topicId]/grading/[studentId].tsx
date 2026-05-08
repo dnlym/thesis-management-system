@@ -19,7 +19,7 @@ import { GradingApi } from '@/api/grading';
 const BLUE = '#2563eb';
 
 export default function GradingScreen() {
-    const { topicId, studentId } = useLocalSearchParams();
+    const { topicId, studentId, groupId } = useLocalSearchParams();
     const router = useRouter();
     const { user } = useAuthStore();
 
@@ -53,7 +53,11 @@ export default function GradingScreen() {
     });
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const students = topic?.students || [];
+    const students = React.useMemo(() => {
+        const all = topic?.students || [];
+        if (!groupId) return all;
+        return all.filter((s: any) => s.groupId === groupId);
+    }, [topic?.students, groupId]);
 
     // Extract criteria array safely
     const criteria = React.useMemo(() => {
@@ -106,7 +110,7 @@ export default function GradingScreen() {
                 const restoredScores: Record<string, Record<string, string>> = {};
                 const restoredComments: Record<string, string> = {};
                 for (const student of students) {
-                    const draft = await OfflineStorage.getDraft(user.id, topicId as string, raterRole, student.id);
+                    const draft = await OfflineStorage.getDraft(user.id, topicId as string, groupId as string || null, raterRole, student.id);
                     if (draft) {
                         if (draft.scores) restoredScores[student.id] = draft.scores;
                         if (draft.comment) restoredComments[student.id] = draft.comment;
@@ -157,11 +161,22 @@ export default function GradingScreen() {
         const currentScores = allScores[currentStudent.id] || {};
         const incomplete = criteria.some((c: any) => !currentScores[c.id]);
         if (incomplete) { Alert.alert('Thiếu điểm', 'Vui lòng nhập đủ điểm.'); return; }
-        OfflineStorage.saveDraft(user!.id, topicId as string, raterRole, currentStudent.id, {
+        
+        OfflineStorage.saveDraft(user!.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
             scores: currentScores, comment: allComments[currentStudent.id] || ''
         });
-        if (isLast) router.push(`/topic/${topicId}/grade-review/${studentId}`);
+        
+        if (isLast) router.push(`/topic/${topicId}/grade-review/${studentId}?groupId=${groupId || ''}`);
         else setIdx(i => i + 1);
+    };
+
+    const handleSaveDraft = async () => {
+        if (!user || !currentStudent) return;
+        const currentScores = allScores[currentStudent.id] || {};
+        await OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
+            scores: currentScores, comment: allComments[currentStudent.id] || ''
+        });
+        Alert.alert('Thành công', 'Đã lưu bản nháp cho sinh viên này');
     };
 
     return (
@@ -288,7 +303,7 @@ export default function GradingScreen() {
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.draftBtn} onPress={() => Alert.alert('Thông báo', 'Đã lưu bản nháp')}>
+                <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
                     <Save size={18} color={BLUE} />
                     <Text style={styles.draftBtnText}>Lưu nháp</Text>
                 </TouchableOpacity>

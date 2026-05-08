@@ -183,6 +183,26 @@ class GradingController {
   }
 
   /**
+   * Finalize a specific group
+   */
+  async finalizeGroup(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const groupId = req.params.groupId as string;
+      const result = await gradingService.finalizeGroup(userId, groupId);
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * @swagger
    * /grading/topics/{topicId}/grades:
    *   get:
@@ -558,6 +578,32 @@ class GradingController {
       res.status(400).json({
         success: false,
         error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get Grade History
+   */
+  async getGradeHistory(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const topicId = req.params.topicId as string;
+      const { studentId, groupId } = req.query;
+      const history = await gradingService.getGradeHistory(
+        userId, 
+        studentId as string, 
+        groupId as string,
+        topicId
+      );
+      res.json({
+        success: true,
+        data: history
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
       });
     }
   }

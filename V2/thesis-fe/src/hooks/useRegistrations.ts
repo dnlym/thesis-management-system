@@ -48,7 +48,7 @@ export function useRegisterTopic() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ topicId, accepted }: { topicId: string; accepted: boolean }) => 
+        mutationFn: ({ topicId, accepted }: { topicId: string; accepted: boolean }) =>
             RegistrationsApi.registerIndividual(topicId, accepted),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: registrationKeys.lists() });
@@ -125,16 +125,17 @@ export function useRejectRegistration() {
 }
 
 /**
- * Student cancel registration (only when PENDING)
+ * Student cancel registration
  */
 export function useCancelRegistration() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => RegistrationsApi.cancel(id),
-        onSuccess: (response, id) => {
+        mutationFn: () => RegistrationsApi.cancelIndividual(),
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: registrationKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: registrationKeys.detail(id) });
+            queryClient.invalidateQueries({ queryKey: ['my-topic-registration'] });
+            queryClient.invalidateQueries({ queryKey: ['topics'] });
             toast.success('Hủy đăng ký thành công');
         },
         onError: (error: any) => {
@@ -142,6 +143,8 @@ export function useCancelRegistration() {
         },
     });
 }
+
+
 
 /**
  * Update student progress mutation

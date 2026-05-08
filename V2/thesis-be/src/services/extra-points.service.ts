@@ -200,7 +200,7 @@ export class ExtraPointsService {
       const gradeClassification = this.getGradeClassification(newFinalScore);
 
       await prisma.finalScore.update({
-        where: { topic_id_student_id: { topic_id: request.topic_id, student_id: request.student_id } },
+        where: { topic_id_student_id_group_id: { topic_id: request.topic_id, student_id: request.student_id, group_id: studentFinalScore.group_id as string } },
         data: {
           extra_points: newExtraPoints,
           final_score: newFinalScore,

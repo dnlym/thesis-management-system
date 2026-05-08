@@ -411,6 +411,7 @@ export interface ExtraPointsForm {
 
 export interface ReviewerAssignmentForm {
   topicId: string;
+  groupId: string;
   reviewerId: string;
   reviewerOrder?: number;
   deadlineAt?: Date;

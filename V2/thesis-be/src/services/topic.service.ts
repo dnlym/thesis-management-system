@@ -17,6 +17,7 @@ import { AuditLogger } from '../utils/audit-logger';
 import semesterService from './semester.service';
 import { normalizeTitle } from '../utils/string';
 import { ApiError } from '../utils/errors';
+import { GroupUtils } from '../utils/group.utils';
 
 
 type TopicDetailsPayload = Prisma.TopicGetPayload<{
@@ -52,6 +53,7 @@ type TopicDetailsPayload = Prisma.TopicGetPayload<{
             email: true,
             avatar_url: true,
             student_code: true,
+            class_name: true,
           },
         },
         group: {
@@ -65,6 +67,7 @@ type TopicDetailsPayload = Prisma.TopicGetPayload<{
                     email: true,
                     avatar_url: true,
                     student_code: true,
+                    class_name: true,
                   },
                 },
               },
@@ -73,7 +76,7 @@ type TopicDetailsPayload = Prisma.TopicGetPayload<{
         },
       },
     },
-    defense_schedule: {
+    defense_schedules: {
       include: {
         committee: {
           select: {
@@ -134,40 +137,30 @@ export class TopicService {
 
     // Attempt to generate unique code with retry logic to handle race conditions
     let attempts = 0;
-    while (attempts < 5) {
-      // Find the topic with the highest sequence number for this department and semester
-      const latestTopic = await client.topic.findFirst({
-        where: {
-          semester_id: semesterId,
-          departmentId: departmentId,
-          code: { startsWith: prefix }
-        },
-        orderBy: { code: 'desc' },
-        select: { code: true }
+    // Find the topic with the highest sequence number for this department and semester
+    const topics = await client.topic.findMany({
+      where: {
+        semester_id: semesterId,
+        departmentId: departmentId,
+        code: { startsWith: prefix }
+      },
+      select: { code: true }
+    });
+
+    let nextSeq = 1;
+    if (topics.length > 0) {
+      const sequences = topics.map((t: any) => {
+        const seqStr = t.code.substring(prefix.length);
+        const seq = parseInt(seqStr);
+        return isNaN(seq) ? 0 : seq;
       });
-
-      let nextSeq = 1;
-      if (latestTopic && latestTopic.code) {
-        // Extract sequence from code like "CNTT001"
-        const lastSeqStr = latestTopic.code.substring(prefix.length);
-        const lastSeq = parseInt(lastSeqStr);
-        if (!isNaN(lastSeq)) {
-          nextSeq = lastSeq + 1;
-        }
-      }
-
-      const code = `${prefix}${nextSeq}`;
-
-      // Final check for uniqueness within same semester (scoped unique)
-      const existing = await client.topic.findFirst({
-        where: { code, semester_id: semesterId }
-      });
-
-      if (!existing) return code;
-      attempts++;
+      nextSeq = Math.max(...sequences) + 1;
     }
 
-    throw new Error('Không thể tạo mã đề tài duy nhất sau nhiều lần thử');
+    // Pad with zeros (e.g., CNTT001) to ensure string sorting works better in the future
+    const code = `${prefix}${nextSeq.toString().padStart(3, '0')}`;
+
+    return code;
   }
 
   async createTopic(userId: string, data: CreateTopicRequest) {
@@ -1022,7 +1015,6 @@ export class TopicService {
             }
           },
           registrations: {
-            // When filtering by midterm status, only include registrations with that status
             where: filter.midtermStatus ? { midterm_status: filter.midtermStatus } : undefined,
             include: {
               student: {
@@ -1032,6 +1024,7 @@ export class TopicService {
                   email: true,
                   avatar_url: true,
                   student_code: true,
+                  class_name: true,
                 },
               },
               group: {
@@ -1045,6 +1038,7 @@ export class TopicService {
                           email: true,
                           avatar_url: true,
                           student_code: true,
+                          class_name: true,
                         },
                       },
                     },
@@ -1053,7 +1047,7 @@ export class TopicService {
               },
             },
           },
-          defense_schedule: {
+          defense_schedules: {
             include: {
               committee: {
                 select: {
@@ -1069,48 +1063,105 @@ export class TopicService {
             where: { grader_id: userId }
           },
           assignments: true,
-        },
+          groups: {
+            select: { id: true, name: true, members: { include: { user: true } } }
+          },
+        } as any,
         skip,
         take: limit,
         orderBy: { code: 'asc' },
-      }) as Promise<TopicDetailsPayload[]>,
+      }) as any,
       prisma.topic.count({ where }),
     ]);
 
-    // Hide registrations from students - they should not see who else registered
-    const processedTopics = topics.map(topic => {
+    // Flatten topics into groups for LECTURER/HEAD/ADMIN roles
+    const finalProcessedTopics: any[] = [];
+
+    for (const topic of topics as any[]) {
       if (user.role === UserRole.STUDENT) {
         // Students only see the count, not the actual registrations
-        // We carefully return a clean object without sensitive relations
-        const { registrations, final_scores, assignments, ...cleanTopic } = topic;
-        return {
+        const { registrations, final_scores, assignments, groups, ...cleanTopic } = topic;
+        finalProcessedTopics.push({
           ...cleanTopic,
-          registrations: [], // Hide registrations from students
-          registrationCount: (registrations || []).length, // But show the count
-        };
+          registrations: [],
+          registrationCount: (registrations || []).length,
+        });
+        continue;
       }
-      // LECTURER, HEAD, ADMIN can see full registrations
-      const students = topic.registrations?.map(reg => {
-        const student = reg.student;
-        const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
-        return {
-          ...student,
-          finalScore,
-        };
-      }) || [];
 
-      const room = topic.assignments[0]?.room || null;
+      // For other roles, split by groups
+      const room = topic.assignments?.[0]?.room || null;
+      const committee = topic.defense_schedules?.[0]?.committee || null;
+      
+      // Check if registration period is over using AcademicPolicy
+      const currentPhase = topic.semester ? AcademicPolicy.getPhase(topic.semester) : null;
+      const isRegistrationOver = currentPhase && !['PLANNING', 'PREVIEW', 'REGISTRATION'].includes(currentPhase);
 
-      return {
-        ...topic,
-        committee: topic.defense_schedule?.committee || null,
-        students,
-        room,
-      };
-    });
+      if (topic.groups && topic.groups.length > 0) {
+        for (const group of topic.groups) {
+          const groupStudents = (topic.registrations as any[])
+            ?.filter((reg: any) => reg.group_id === group.id)
+            .map((reg: any) => {
+              const student = reg.student;
+              const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
+              return { ...student, finalScore };
+            }) || [];
+
+          const { registrations, groups: topicGroups, ...cleanTopic } = topic;
+          finalProcessedTopics.push({
+            ...cleanTopic,
+            id: group.id,
+            topicId: topic.id,
+            code: group.name,
+            students: groupStudents,
+            current_students: group.members.length,
+            max_students: (isRegistrationOver && group.members.length === 1) ? 1 : 2,
+            room,
+            committee,
+          });
+        }
+
+        // Handle students without group (if any)
+        const individualStudents = (topic.registrations as any[])
+          ?.filter((reg: any) => !reg.group_id)
+          .map((reg: any) => {
+            const student = reg.student;
+            const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
+            return { ...student, finalScore };
+          }) || [];
+
+        const { registrations, groups: topicGroups, ...cleanTopic } = topic;
+        if (individualStudents.length > 0) {
+          finalProcessedTopics.push({
+            ...cleanTopic,
+            id: `${topic.id}-individual`,
+            topicId: topic.id,
+            students: individualStudents,
+            current_students: individualStudents.length,
+            max_students: 1, // Cá nhân thì sĩ số tối đa là 1
+            room,
+            committee,
+          });
+        }
+      } else {
+        // No groups yet, show the topic as is
+        const students = (topic.registrations as any[])?.map((reg: any) => ({
+          ...reg.student,
+          finalScore: topic.final_scores?.find((fs: any) => fs.student_id === reg.student.id),
+        })) || [];
+
+        finalProcessedTopics.push({
+          ...topic,
+          topicId: topic.id,
+          students,
+          room,
+          committee,
+        });
+      }
+    }
 
     return {
-      topics: processedTopics,
+      topics: finalProcessedTopics,
       pagination: {
         page,
         limit,
@@ -1120,7 +1171,19 @@ export class TopicService {
     };
   }
 
-  async getTopicById(userId: string, topicId: string) {
+  async getTopicById(userId: string, id: string) {
+    let topicId = id;
+
+    // Support passing groupId instead of topicId (One registration per row mode)
+    const group = await prisma.group.findUnique({
+      where: { id },
+      select: { topic_id: true }
+    });
+
+    if (group && group.topic_id) {
+      topicId = group.topic_id;
+    }
+
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
       include: {
@@ -1156,6 +1219,7 @@ export class TopicService {
                 email: true,
                 avatar_url: true,
                 student_code: true,
+                class_name: true,
               },
             },
             group: {
@@ -1169,6 +1233,7 @@ export class TopicService {
                         email: true,
                         avatar_url: true,
                         student_code: true,
+                        class_name: true,
                       },
                     },
                   },
@@ -1178,7 +1243,10 @@ export class TopicService {
           },
         },
         assignments: true,
-        defense_schedule: {
+        groups: {
+          select: { name: true }
+        },
+        defense_schedules: {
           include: {
             committee: {
               select: {
@@ -1193,7 +1261,7 @@ export class TopicService {
         grades: {
           where: { grader_id: userId }
         },
-      },
+      } as any,
     }) as unknown as TopicDetailsPayload | null;
 
     if (!topic) {
@@ -1218,6 +1286,7 @@ export class TopicService {
 
       return {
         ...cleanTopic,
+        code: GroupUtils.formatGroupDisplay((topic as any).groups, topic.code || ""),
         registrations: myRegistration, // Only show their own registration
         registrationCount: (registrations || []).length, // But show total count
       };
@@ -1226,9 +1295,11 @@ export class TopicService {
     // LECTURER, HEAD, ADMIN can see all registrations
     const students = topic.registrations?.map(reg => {
       const student = reg.student;
-      const finalScore = topic.final_scores?.find(fs => fs.student_id === student.id);
+      const finalScore = topic.final_scores?.find(fs => fs.student_id === (student as any).id);
       return {
         ...student,
+        groupId: reg.group_id,
+        groupCode: (reg as any).group?.name,
         finalScore,
       };
     }) || [];
@@ -1237,7 +1308,8 @@ export class TopicService {
 
     return {
       ...topic,
-      committee: topic.defense_schedule?.committee || null,
+      code: GroupUtils.formatGroupDisplay((topic as any).groups, topic.code || ""),
+      committee: (topic as any).defense_schedules?.[0]?.committee || null,
       registrations: topic.registrations || [],
       students,
       room,

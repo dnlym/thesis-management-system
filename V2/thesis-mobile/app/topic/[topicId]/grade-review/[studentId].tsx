@@ -32,7 +32,7 @@ interface TopicGradesResponse {
 }
 
 export default function GradeReviewScreen() {
-    const { topicId, studentId: initialStudentId } = useLocalSearchParams();
+    const { topicId, studentId: initialStudentId, groupId } = useLocalSearchParams();
     const router = useRouter();
     const { user: currentUser } = useAuthStore();
     
@@ -41,6 +41,7 @@ export default function GradeReviewScreen() {
     
     const [topicGradesData, setTopicGradesData] = React.useState<TopicGradesResponse | null>(null);
     const [isInitialLoading, setIsInitialLoading] = React.useState(true);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [expandedCriteria, setExpandedCriteria] = React.useState<string | null>(null);
 
     const toggleCriteria = (id: string) => {
@@ -90,6 +91,12 @@ export default function GradeReviewScreen() {
         
         return data[roleKey] || data.FINAL || Object.values(data)[0] || [];
     }, [criteriaRes, raterRole]);
+
+    const students = React.useMemo(() => {
+        const all = topic?.students || [];
+        if (!groupId) return all;
+        return all.filter((s: any) => s.groupId === groupId);
+    }, [topic?.students, groupId]);
 
     React.useEffect(() => {
         const fetchAllData = async () => {
@@ -189,7 +196,7 @@ export default function GradeReviewScreen() {
 
             <View style={styles.tabsContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-                    {topic.students?.map((sv: any) => (
+                    {students.map((sv: any) => (
                         <TouchableOpacity 
                             key={sv.id}
                             style={[styles.tab, sv.id === selectedStudentId && styles.tabActive]}
@@ -290,13 +297,70 @@ export default function GradeReviewScreen() {
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.editBtn} onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}`)}>
+                <TouchableOpacity 
+                    style={styles.editBtn} 
+                    onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}?groupId=${groupId || ''}` as any)}
+                >
                     <Edit3 size={20} color={BLUE} />
                     <Text style={styles.editBtnText}>Sửa điểm</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.lockBtn}>
-                    <Lock size={20} color="#fff" />
-                    <Text style={styles.lockBtnText}>Khóa điểm</Text>
+                <TouchableOpacity 
+                    style={[styles.lockBtn, isSubmitting && { opacity: 0.7 }]} 
+                    onPress={async () => {
+                        if (isSubmitting) return;
+                        setIsSubmitting(true);
+                        try {
+                            // Bulk Submission Logic:
+                            // 1. For each student in the group, get their draft
+                            // 2. Add to sync queue
+                            let successCount = 0;
+                            for (const student of students) {
+                                const draft = await OfflineStorage.getDraft(currentUser!.id, topicId as string, groupId as string || null, raterRole, student.id);
+                                if (draft && draft.scores) {
+                                    // Prepare payload for GradingApi.submitGrade format
+                                    const submissionData = {
+                                        topic_id: topicId as string,
+                                        group_id: groupId as string || undefined,
+                                        student_id: student.id,
+                                        rater_role: raterRole,
+                                        // reviewer_order and committee_role will be handled inside submitGrade based on role
+                                        scores: Object.entries(draft.scores).map(([cId, score]) => ({
+                                            criterion_id: cId,
+                                            score: parseFloat(score as string),
+                                            comment: draft.comment || ''
+                                        }))
+                                    };
+                                    
+                                    await OfflineStorage.addToQueue(
+                                        currentUser!.id, 
+                                        topicId as string, 
+                                        groupId as string || null, 
+                                        raterRole, 
+                                        student.id, 
+                                        submissionData
+                                    );
+                                    successCount++;
+                                }
+                            }
+                            
+                            if (successCount > 0) {
+                                Alert.alert(
+                                    'Thành công', 
+                                    `Đã xếp ${successCount} bản ghi vào hàng đợi đồng bộ. Điểm sẽ được cập nhật khi có mạng.`,
+                                    [{ text: 'OK', onPress: () => router.push('/(tabs)/assigned') }]
+                                );
+                            } else {
+                                Alert.alert('Lỗi', 'Không tìm thấy bản nháp nào để nộp. Vui lòng nhập điểm trước.');
+                            }
+                        } catch (err: any) {
+                            Alert.alert('Lỗi', err.message || 'Không thể nộp điểm');
+                        } finally {
+                            setIsSubmitting(false);
+                        }
+                    }}
+                >
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Lock size={20} color="#fff" />}
+                    <Text style={styles.lockBtnText}>{isSubmitting ? 'Đang nộp...' : 'Khóa điểm'}</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

@@ -208,12 +208,5 @@ export const RegistrationsApi = {
         return res.data.data;
     },
 
-    /**
-     * Request change leader (Member only)
-     * POST /groups/change-leader
-     */
-    async changeLeader(groupId: string, newLeaderId: string, reason: string) {
-        const res = await api.post<ApiResponse<any>>('/groups/change-leader', { groupId, newLeaderId, reason });
-        return res.data.data;
-    },
+
 };

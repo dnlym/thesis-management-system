@@ -6,11 +6,10 @@ import {
   AcceptInvitationRequest,
   RejectInvitationRequest,
   RemoveMemberRequest,
-  ChangeLeaderRequest,
 } from '../types';
 import { ERROR_CODES, VALIDATION } from '../constants';
 import notificationService from './notification.service';
-import { generateGroupName } from '../utils/group-utils';
+import { GroupUtils } from '../utils/group.utils';
 
 
 export class GroupService {
@@ -60,7 +59,7 @@ export class GroupService {
     // Auto-generate group name if not provided or following old format
     let finalName = data.name;
     if (!finalName || finalName.startsWith('Nhóm')) {
-      finalName = await generateGroupName(prisma, user.departmentId, data.semesterId);
+      finalName = `Nhóm Đang Lập`;
     }
 
     // Create group
@@ -342,9 +341,8 @@ export class GroupService {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
-    // Cannot remove leader
     if (data.userId === group.leader_id) {
-      throw new Error('Cannot remove group leader. Change leader first.');
+      throw new Error('Cannot remove group leader. Delete the group instead if you wish to dissolve it.');
     }
 
     // Check if group has registered
@@ -393,142 +391,7 @@ export class GroupService {
 
   }
 
-  async changeLeader(userId: string, data: ChangeLeaderRequest) {
-    // Reason length check removed as per user request
-    if (!data.reason) {
-      data.reason = "Chuyển quyền nhóm trưởng";
-    }
 
-    const group = await prisma.group.findUnique({
-      where: { id: data.groupId },
-      include: {
-        members: true,
-        registrations: true,
-      },
-    });
-
-    if (!group) {
-      throw new Error(ERROR_CODES.GROUP_NOT_FOUND);
-    }
-
-    // Check if new leader is a member
-    const newLeaderMembership = group.members.find(
-      m => m.user_id === data.newLeaderId && m.status === GroupMemberStatus.ACCEPTED
-    );
-    if (!newLeaderMembership) {
-      throw new Error('New leader must be an accepted member of the group');
-    }
-
-    // Immediate transfer as per user request
-    const updatedGroup = await prisma.group.update({
-      where: { id: data.groupId },
-      data: {
-        leader_id: data.newLeaderId,
-      },
-    });
-
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'CHANGE_LEADER',
-        entity_type: 'Group',
-        entity_id: data.groupId,
-        old_value: { leader_id: group.leader_id },
-        new_value: { leader_id: data.newLeaderId },
-      },
-    });
-
-    // Notify members of leadership change
-    const memberIds = group.members.map(m => m.user_id);
-    const newLeader = await prisma.user.findUnique({ where: { id: data.newLeaderId } });
-    
-    await notificationService.createBulkNotifications(
-      memberIds,
-      'GROUP_LEADER_CHANGED',
-      'Thay đổi trưởng nhóm',
-      `"${newLeader?.full_name}" đã trở thành trưởng nhóm mới của nhóm "${group.name}".`,
-      group.id
-    );
-
-    return updatedGroup;
-
-  }
-
-  async approveLeaderChange(userId: string, requestId: string) {
-    const request = await prisma.groupLeaderChangeRequest.findUnique({
-      where: { id: requestId },
-      include: {
-        group: {
-          include: {
-            registrations: {
-              include: {
-                topic: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!request) {
-      throw new Error('Request not found');
-    }
-
-    if (request.status !== 'PENDING') {
-      throw new Error('Request already processed');
-    }
-
-    // Check permissions
-    const confirmedRegistration = request.group.registrations.find(r => r.status === 'CONFIRMED');
-
-    if (confirmedRegistration) {
-      // Need GVHD approval
-      const topic = confirmedRegistration?.topic;
-      if (topic?.supervisor_id !== userId) {
-        throw new Error(ERROR_CODES.FORBIDDEN);
-      }
-    } else {
-      // Need current leader approval
-      if (request.current_leader !== userId) {
-        throw new Error(ERROR_CODES.FORBIDDEN);
-      }
-    }
-
-    // Approve request
-    await prisma.groupLeaderChangeRequest.update({
-      where: { id: requestId },
-      data: {
-        status: 'APPROVED',
-        approved_by: userId,
-        responded_at: new Date(),
-      },
-    });
-
-    // Update group leader
-    await prisma.group.update({
-      where: { id: request.group_id },
-      data: {
-        leader_id: request.new_leader,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: userId,
-        action: 'CHANGE_LEADER',
-        entity_type: 'Group',
-        entity_id: request.group_id,
-        old_value: { leader_id: request.current_leader },
-        new_value: { leader_id: request.new_leader },
-      },
-    });
-
-    // TODO: Send notifications
-
-    return { message: 'Leader change approved' };
-  }
 
   async getMyGroups(userId: string, semesterId?: string) {
     const where: any = {
@@ -633,11 +496,7 @@ export class GroupService {
             },
           },
         },
-        leader_change_requests: {
-          where: {
-            status: 'PENDING',
-          },
-        },
+
       },
     });
 

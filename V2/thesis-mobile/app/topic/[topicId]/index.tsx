@@ -28,7 +28,12 @@ export default function TopicDetailScreen() {
         );
     }
 
-    const students = topic.students || [];
+    const { groupId } = useLocalSearchParams();
+    const students = React.useMemo(() => {
+        const allStudents = topic.students || [];
+        if (!groupId) return allStudents;
+        return allStudents.filter((s: any) => s.groupId === groupId);
+    }, [topic.students, groupId]);
 
     // Determine Role dynamically
     const isAdvisor = topic.supervisor_id === user?.id;
@@ -117,9 +122,9 @@ export default function TopicDetailScreen() {
                                     style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                     onPress={() => {
                                         if (isGraded) {
-                                            router.push(`/topic/${topicId}/grade-review/${sv.id}` as any);
+                                            router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
                                         } else {
-                                            router.push(`/topic/${topicId}/grading/${sv.id}` as any);
+                                            router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}` as any);
                                         }
                                     }}
                                 >
@@ -169,8 +174,8 @@ export default function TopicDetailScreen() {
                         style={[styles.ctaBtn, isAnyGraded && styles.reviewBtn]}
                         onPress={() => {
                             const target = isAnyGraded 
-                                ? `/topic/${topicId}/grade-review/${students[0].id}` 
-                                : `/topic/${topicId}/grading/${students[0].id}`;
+                                ? `/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` 
+                                : `/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}`;
                             router.push(target as any);
                         }}
                     >

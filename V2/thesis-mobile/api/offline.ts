@@ -4,8 +4,8 @@ export const OfflineStorage = {
     /**
      * Save a draft with a unique scoped key
      */
-    saveDraft: async (userId: string, topicId: string, role: string, studentId: string, data: any) => {
-        const key = `draft_${userId}_${topicId}_${role}_${studentId}`;
+    saveDraft: async (userId: string, topicId: string, groupId: string | null, role: string, studentId: string, data: any) => {
+        const key = `draft_${userId}_${topicId}_${groupId || 'no_group'}_${role}_${studentId}`;
         await AsyncStorage.setItem(key, JSON.stringify({
             ...data,
             timestamp: new Date().toISOString(),
@@ -15,8 +15,8 @@ export const OfflineStorage = {
     /**
      * Get a specific draft
      */
-    getDraft: async (userId: string, topicId: string, role: string, studentId: string) => {
-        const key = `draft_${userId}_${topicId}_${role}_${studentId}`;
+    getDraft: async (userId: string, topicId: string, groupId: string | null, role: string, studentId: string) => {
+        const key = `draft_${userId}_${topicId}_${groupId || 'no_group'}_${role}_${studentId}`;
         const value = await AsyncStorage.getItem(key);
         return value ? JSON.parse(value) : null;
     },
@@ -24,15 +24,16 @@ export const OfflineStorage = {
     /**
      * Add a submission to the sync queue
      */
-    addToQueue: async (userId: string, topicId: string, role: string, studentId: string, data: any) => {
+    addToQueue: async (userId: string, topicId: string, groupId: string | null, role: string, studentId: string, data: any) => {
         const queueKey = 'sync_queue';
         const queueStr = await AsyncStorage.getItem(queueKey);
         const queue = queueStr ? JSON.parse(queueStr) : [];
 
         const entry = {
-            id: `${userId}_${topicId}_${role}_${studentId}`,
+            id: `${userId}_${topicId}_${groupId || 'no_group'}_${role}_${studentId}`,
             userId,
             topicId,
+            groupId,
             role,
             studentId,
             data,
