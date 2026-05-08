@@ -1083,6 +1083,7 @@ export class TopicService {
         const { registrations, final_scores, assignments, groups, ...cleanTopic } = topic;
         finalProcessedTopics.push({
           ...cleanTopic,
+          topicId: topic.id,
           registrations: [],
           registrationCount: (registrations || []).length,
         });

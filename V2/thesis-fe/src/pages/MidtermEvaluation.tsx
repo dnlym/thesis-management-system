@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty, Tabs } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined, AuditOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,12 +26,21 @@ const MidtermEvaluation = () => {
 
     const updateMidtermMutation = useUpdateMidtermStatus();
 
-    // Modal states
+    // Grade Modal states
     const [selectedRegistration, setSelectedRegistration] = useState<MidtermRegistration | null>(null);
     const [gradeModalVisible, setGradeModalVisible] = useState(false);
     const [feedback, setFeedback] = useState('');
     const [selectedStatus, setSelectedStatus] = useState<'PASS' | 'FAIL' | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('ALL');
+
+    // Detail Modal states
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
+    const [selectedDetail, setSelectedDetail] = useState<MidtermRegistration | null>(null);
+
+    const handleOpenDetailModal = (registration: MidtermRegistration) => {
+        setSelectedDetail(registration);
+        setDetailModalVisible(true);
+    };
 
     const handleOpenGradeModal = (registration: MidtermRegistration, status: 'PASS' | 'FAIL') => {
         setSelectedRegistration(registration);
@@ -83,32 +92,49 @@ const MidtermEvaluation = () => {
             dataIndex: ['topic', 'title'],
             key: 'topic',
             render: (title: string, record: MidtermRegistration) => (
-                <div>
-                   <div className="font-medium text-gray-800">{title}</div>
-                   {!record.topic?.semester && (
-                       <Tag color="warning" className="mt-1">Thiếu thông tin học kỳ</Tag>
-                   )}
+                <div 
+                    className="cursor-pointer group max-w-[400px]" 
+                    onClick={() => handleOpenDetailModal(record)}
+                >
+                   <div className="font-bold text-blue-600 group-hover:text-blue-800 group-hover:underline transition-all leading-snug">
+                       {title}
+                   </div>
+                   <div className="mt-1.5 flex items-center gap-2">
+                       {record.group?.name && (
+                           <Tag className="m-0 bg-indigo-50 text-indigo-600 border-indigo-100 font-bold px-1.5 py-0 text-[10px]">
+                               NHÓM: {record.group.name}
+                           </Tag>
+                       )}
+                       {!record.topic?.semester && (
+                           <Tag color="warning" className="m-0 text-[10px]">Thiếu thông tin học kỳ</Tag>
+                       )}
+                   </div>
                 </div>
             ),
         },
         {
             title: 'Nhóm sinh viên',
             key: 'students',
+            width: 250,
             render: (_: any, record: MidtermRegistration) => (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                     {record.group && record.group.members ? (
                         record.group.members.map((m) => (
-                            <div key={m.user.id} className="flex items-center gap-2">
-                                <Avatar size="small" src={m.user.avatar_url} icon={<UserOutlined />} />
-                                <span className="font-medium">{m.user.full_name}</span>
-                                <span className="text-gray-500 text-sm">({m.user.student_code})</span>
+                            <div key={m.user.id} className="flex items-center gap-2.5">
+                                <Avatar size={24} src={m.user.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-slate-700 text-[13px] leading-none">{m.user.full_name}</span>
+                                    <span className="text-slate-400 text-[11px] mt-0.5">{m.user.student_code}</span>
+                                </div>
                             </div>
                         ))
                     ) : record.student ? (
-                        <div className="flex items-center gap-2">
-                            <Avatar size="small" src={record.student.avatar_url} icon={<UserOutlined />} />
-                            <span className="font-medium">{record.student.full_name}</span>
-                            <span className="text-gray-500 text-sm">({record.student.student_code})</span>
+                        <div className="flex items-center gap-2.5">
+                            <Avatar size={24} src={record.student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
+                            <div className="flex flex-col">
+                                <span className="font-bold text-slate-700 text-[13px] leading-none">{record.student.full_name}</span>
+                                <span className="text-slate-400 text-[11px] mt-0.5">{record.student.student_code}</span>
+                            </div>
                         </div>
                     ) : (
                         <span className="text-gray-400 italic">No student info</span>
@@ -121,33 +147,34 @@ const MidtermEvaluation = () => {
             dataIndex: 'registered_at',
             key: 'registered_at',
             width: 120,
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+            render: (date: string) => <span className="text-slate-500 font-medium">{dayjs(date).format('DD/MM/YYYY')}</span>,
         },
         {
             title: 'Kết quả giữa kỳ',
             dataIndex: 'midterm_status',
             key: 'midterm_status',
-            width: 140,
-            render: (status: string | null) => getMidtermStatusTag(status),
-        },
-        {
-            title: 'Nhận xét',
-            dataIndex: 'midterm_feedback',
-            key: 'midterm_feedback',
-            width: 200,
-            render: (feedback: string | null) => feedback || <span className="text-gray-400 italic">Chưa có</span>,
+            width: 130,
+            render: (status: string | null) => (
+                <div className="flex justify-center">
+                    {getMidtermStatusTag(status)}
+                </div>
+            ),
         },
         {
             title: 'Hành động',
             key: 'action',
-            width: 200,
+            width: 220,
             render: (_: any, record: MidtermRegistration) => {
                 // Already graded
                 if (record.midterm_status) {
+                    const gradedAt = dayjs(record.midterm_graded_at);
                     return (
-                        <span className="text-gray-500 text-sm">
-                            Đã đánh giá lúc {dayjs(record.midterm_graded_at).format('DD/MM/YYYY HH:mm')}
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="text-slate-400 text-[11px] font-medium uppercase tracking-tight">Đã đánh giá lúc</span>
+                            <span className="text-slate-600 font-bold text-[13px]">
+                                {gradedAt.isValid() ? gradedAt.format('DD/MM/YYYY HH:mm') : '---'}
+                            </span>
+                        </div>
                     );
                 }
 
@@ -157,13 +184,16 @@ const MidtermEvaluation = () => {
 
                 // Can grade
                 return (
-                    <Space>
+                    <Space size="middle">
                         <Tooltip title={!canGrade ? reason : ''}>
                             <Button
                                 type="primary"
                                 icon={<CheckCircleOutlined />}
-                                className={canGrade ? "bg-green-600 hover:bg-green-700" : ""}
-                                onClick={() => handleOpenGradeModal(record, 'PASS')}
+                                className={canGrade ? "bg-emerald-600 hover:bg-emerald-700 border-none shadow-sm h-9 px-4 font-bold" : "h-9"}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenGradeModal(record, 'PASS');
+                                }}
                                 disabled={!canGrade}
                             >
                                 PASS
@@ -173,7 +203,11 @@ const MidtermEvaluation = () => {
                             <Button
                                 danger
                                 icon={<CloseCircleOutlined />}
-                                onClick={() => handleOpenGradeModal(record, 'FAIL')}
+                                className="h-9 px-4 font-bold shadow-sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenGradeModal(record, 'FAIL');
+                                }}
                                 disabled={!canGrade}
                             >
                                 FAIL
@@ -301,6 +335,99 @@ const MidtermEvaluation = () => {
                 )}
             </Card>
 
+            {/* Detail Modal */}
+            <Modal
+                title={
+                    <div className="flex items-center gap-2">
+                        <AuditOutlined className="text-blue-600" />
+                        <span>Chi tiết đề tài & Đánh giá</span>
+                    </div>
+                }
+                open={detailModalVisible}
+                onCancel={() => {
+                    setDetailModalVisible(false);
+                    setSelectedDetail(null);
+                }}
+                footer={[
+                    <Button key="close" type="primary" onClick={() => setDetailModalVisible(false)} className="px-6 rounded-lg font-bold h-9">
+                        Đóng
+                    </Button>
+                ]}
+                width={540}
+                className="sys-modal"
+            >
+                {selectedDetail && (
+                    <div className="space-y-4 py-1">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tên đề tài</div>
+                            <div className="text-[14px] font-bold text-slate-800 leading-snug">
+                                {selectedDetail.topic.title}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mã nhóm</div>
+                                <div className="text-[13px] font-bold text-indigo-600">
+                                    {selectedDetail.group?.name || '---'}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ngày đăng ký</div>
+                                <div className="text-[13px] font-bold text-slate-700">
+                                    {dayjs(selectedDetail.registered_at).format('DD/MM/YYYY')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Thành viên nhóm</div>
+                            <div className="space-y-2">
+                                {selectedDetail.group?.members ? (
+                                    selectedDetail.group.members.map((m) => (
+                                        <div key={m.user.id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                                            <div className="flex items-center gap-2.5">
+                                                <Avatar size={28} src={m.user.avatar_url} icon={<UserOutlined />} className="border border-slate-100" />
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-700 text-[12px] leading-none">{m.user.full_name}</span>
+                                                    <span className="text-slate-400 text-[10px] mt-0.5">{m.user.student_code}</span>
+                                                </div>
+                                            </div>
+                                            <Tag color="blue" className="m-0 text-[9px] rounded-md border-none font-bold px-1.5 py-0">SINH VIÊN</Tag>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex items-center gap-2.5 bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
+                                        <Avatar size={28} src={selectedDetail.student?.avatar_url} icon={<UserOutlined />} className="border border-slate-100" />
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-slate-700 text-[12px] leading-none">{selectedDetail.student?.full_name}</span>
+                                            <span className="text-slate-400 text-[10px] mt-0.5">{selectedDetail.student?.student_code}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-white rounded-xl border-2 border-slate-100 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kết quả đánh giá</div>
+                                {getMidtermStatusTag(selectedDetail.midterm_status)}
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Nhận xét của Giảng viên</div>
+                            <div className="text-[13px] text-slate-600 italic bg-slate-50 p-3 rounded-lg border border-dashed border-slate-200">
+                                {selectedDetail.midterm_feedback || 'Chưa có nhận xét nào.'}
+                            </div>
+                            {selectedDetail.midterm_graded_at && (
+                                <div className="mt-3 text-[10px] text-slate-400 text-right font-medium">
+                                    Cập nhật lúc: {dayjs(selectedDetail.midterm_graded_at).format('DD/MM/YYYY HH:mm')}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
             {/* Grade Modal */}
             <Modal
                 title={
@@ -320,6 +447,7 @@ const MidtermEvaluation = () => {
                 confirmLoading={updateMidtermMutation.isPending}
                 okText="Xác nhận"
                 cancelText="Hủy"
+                width={480}
                 okButtonProps={{
                     danger: selectedStatus === 'FAIL',
                     className: selectedStatus === 'PASS' ? 'bg-green-600 hover:bg-green-700' : undefined,

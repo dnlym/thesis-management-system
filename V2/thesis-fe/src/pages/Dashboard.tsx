@@ -38,8 +38,8 @@ const Dashboard = () => {
   const today = new Date();
   const relevantMilestones = allMilestones.filter((m: any) => {
     const mDate = new Date(m.date);
-    // Overdue or within next 14 days
-    return m.isOverdue || (isAfter(mDate, today) && isAfter(addDays(today, 14), mDate));
+    // Overdue, Urgent (0-3 days, includes Today), or within next 14 days
+    return m.isOverdue || m.isUrgent || (isAfter(mDate, today) && isAfter(addDays(today, 14), mDate));
   }).slice(0, 5); // Max 5 items for clean UI
 
   const urgentMilestones = allMilestones.filter((m: any) => m.isUrgent);

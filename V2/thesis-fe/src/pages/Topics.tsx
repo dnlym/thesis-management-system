@@ -260,7 +260,8 @@ const Topics = () => {
       key: 'actions',
       render: (_, record: any) => {
         const isFull = (record.current_students || 0) >= (record.max_students || 0);
-        const isRegisteredForThisTopic = myCurrentRegistration?.topic_id === record.topicId;
+        const myTopicId = myCurrentRegistration?.topicId || myCurrentRegistration?.topic_id;
+        const isRegisteredForThisTopic = !!myTopicId && myTopicId === record.topicId;
 
         return (
           <Space size="small">
@@ -354,8 +355,10 @@ const Topics = () => {
               />
             )}
 
-            {/* STUDENT Register Action - All students can register individually */}
-            {user?.role === 'STUDENT' && ['APPROVED', 'REGISTERED'].includes(record.status) && (
+            {/* STUDENT Register Action - Only in REGISTRATION phase */}
+            {user?.role === 'STUDENT' && 
+             ['APPROVED', 'REGISTERED'].includes(record.status) && 
+             activeSemesterData?.calculated_phase === 'REGISTRATION' && (
               <>
                 {isRegisteredForThisTopic ? (
                   <Button type="default" disabled className="bg-green-100 text-green-700 border-green-200" size="small">

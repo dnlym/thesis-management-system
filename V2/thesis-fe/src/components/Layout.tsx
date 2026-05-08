@@ -86,13 +86,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         ]
       },
       {
-        title: 'PHẢN BIỆN / HỘI ĐỒNG',
-        items: [
-          { key: '/evaluation?type=reviewer', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
-        ]
-      },
-      {
-        title: 'HỆ THỐNG',
+        title: 'Hệ thống',
         items: [
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
