@@ -31,7 +31,6 @@ type TopicDetailsPayload = Prisma.TopicGetPayload<{
     },
     semester: true,
     department: true,
-    secondary_department: true,
     co_supervisor: {
       select: {
         id: true,
@@ -281,16 +280,7 @@ export class TopicService {
         },
       });
 
-      // Resolve co-supervisor department IF NOT PROVIDED BUT CO-SUPERVISOR IS
-      if (topic.is_interdisciplinary && topic.co_supervisor_id && !topic.secondary_department_id) {
-        const coSupervisor = await prisma.user.findUnique({ where: { id: topic.co_supervisor_id } });
-        if (coSupervisor) {
-          await prisma.topic.update({
-            where: { id: topic.id },
-            data: { secondary_department_id: coSupervisor.departmentId }
-          });
-        }
-      }
+
 
       // Create initial version
       await prisma.topicVersion.create({
@@ -313,22 +303,12 @@ export class TopicService {
           new_value: {
             title: topic.title,
             status: topic.status,
-            is_interdisciplinary: topic.is_interdisciplinary,
             co_supervisor_id: topic.co_supervisor_id
           },
         },
       });
 
-      // Notify co-supervisor if interdisciplinary
-      if (topic.is_interdisciplinary && topic.co_supervisor_id) {
-        await notificationService.createNotification(
-          topic.co_supervisor_id,
-          'INFO',
-          'Mời hướng dẫn đề tài liên ngành',
-          `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
-          topic.id
-        );
-      }
+
 
       return topic;
     } catch (error: any) {
@@ -377,14 +357,9 @@ export class TopicService {
       }
     }
 
-    // RE-APPROVAL LOGIC: If topic was already APPROVED, skip interdisciplinary reset
     let statusUpdate: any = {};
     if (topic.status === TopicStatus.APPROVED) {
       statusUpdate.status = TopicStatus.PENDING_APPROVAL;
-      // Also reset interdisciplinary status if it was pending
-      if (topic.is_interdisciplinary) {
-        statusUpdate.interdisciplinary_status = 'PENDING';
-      }
     }
 
     // Validate maxStudents is even
@@ -403,34 +378,12 @@ export class TopicService {
     if (data.coSupervisorId !== undefined) {
       updateData.co_supervisor_id = data.coSupervisorId;
       delete updateData.coSupervisorId;
-
-      // If co-supervisor changed, reset status and notify
-      if (data.coSupervisorId !== topic.co_supervisor_id) {
-        updateData.interdisciplinary_status = 'PENDING';
-
-        // Resolve secondary department
-        if (data.coSupervisorId) {
-          const coSup = await prisma.user.findUnique({ where: { id: data.coSupervisorId } });
-          updateData.secondary_department_id = coSup?.departmentId || null;
-
-          // Notify new co-supervisor
-          await notificationService.createNotification(
-            data.coSupervisorId,
-            'INFO',
-            'Mời hướng dẫn đề tài liên ngành (Cập nhật)',
-            `Bạn được mời làm đồng hướng dẫn cho đề tài "${topic.title}".`,
-            topic.id
-          );
-        } else {
-          updateData.secondary_department_id = null;
-          updateData.is_interdisciplinary = false;
-        }
-      }
     }
-    if (data.isInterdisciplinary !== undefined) {
-      updateData.is_interdisciplinary = data.isInterdisciplinary;
-      delete updateData.isInterdisciplinary;
-    }
+
+    // Always force interdisciplinary to false if it somehow comes in
+    updateData.is_interdisciplinary = false;
+    updateData.interdisciplinary_status = null;
+    updateData.secondary_department_id = null;
 
     delete updateData.isDraft;
     delete updateData.changeReason;
@@ -1093,7 +1046,7 @@ export class TopicService {
       // For other roles, split by groups
       const room = topic.assignments?.[0]?.room || null;
       const committee = topic.defense_schedules?.[0]?.committee || null;
-      
+
       // Check if registration period is over using AcademicPolicy
       const currentPhase = topic.semester ? AcademicPolicy.getPhase(topic.semester) : null;
       const isRegistrationOver = currentPhase && !['PLANNING', 'PREVIEW', 'REGISTRATION'].includes(currentPhase);

@@ -46,13 +46,8 @@ export class RegistrationService {
         throw new Error('Đề tài chưa được duyệt hoặc đã đóng đăng ký.');
       }
 
-      // Dept check
-      const isPrimaryDept = user.departmentId === topic.departmentId;
-      const isSecondaryDept = topic.is_interdisciplinary &&
-        topic.secondary_department_id === user.departmentId &&
-        topic.interdisciplinary_status === 'APPROVED';
-
-      if (!isPrimaryDept && !isSecondaryDept) {
+      // Dept check: Only same department allowed
+      if (user.departmentId !== topic.departmentId) {
         throw new Error('Sinh viên chỉ được đăng ký đề tài thuộc đúng chuyên ngành.');
       }
 
@@ -174,11 +169,7 @@ export class RegistrationService {
       }
 
       // Dept check
-      const isPrimaryDept = student.departmentId === topic.departmentId;
-      const meetsInterdisciplinary = !topic.is_interdisciplinary ||
-        topic.interdisciplinary_status === 'APPROVED';
-
-      if (!isPrimaryDept || !meetsInterdisciplinary) {
+      if (student.departmentId !== topic.departmentId) {
         throw new Error('Sinh viên chỉ được đăng ký đề tài thuộc đúng chuyên ngành.');
       }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Input, Tag, Spin, Descriptions, Avatar } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Modal, Input, Tag, Spin, Descriptions, Avatar, Tabs, Badge } from 'antd';
+import { CheckOutlined, CloseOutlined, EyeOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
 import { RegistrationStatusBadge } from '@/components/StatusBadge';
 import {
     useRegistrations,
@@ -18,14 +18,28 @@ const SupervisorManageRegistrations = () => {
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [activeTab, setActiveTab] = useState('ALL');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Get all registrations for supervisor's topics (no status filter)
     const { data: registrations, isLoading } = useRegistrations();
     const confirmMutation = useConfirmRegistration();
     const rejectMutation = useRejectRegistration();
 
+    // Filter registrations
+    const filteredRegistrations = registrations?.filter((reg: any) => {
+        const matchesStatus = activeTab === 'ALL' || reg.status === activeTab;
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = !searchTerm || 
+            reg.student?.full_name?.toLowerCase().includes(searchLower) ||
+            reg.student?.student_code?.toLowerCase().includes(searchLower) ||
+            reg.topic?.title?.toLowerCase().includes(searchLower);
+        
+        return matchesStatus && matchesSearch;
+    });
+
     // Group registrations by topic_id to prevent duplicate topic display
-    const groupedByTopic = registrations?.reduce((acc: any, reg: any) => {
+    const groupedByTopic = filteredRegistrations?.reduce((acc: any, reg: any) => {
         const topicId = reg.topic_id || reg.topic?.id;
         if (!topicId) return acc;
 
@@ -97,6 +111,13 @@ const SupervisorManageRegistrations = () => {
     };
 
     const columns = [
+        {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => index + 1,
+        },
         {
             title: 'Sinh viên',
             key: 'students',
@@ -217,32 +238,54 @@ const SupervisorManageRegistrations = () => {
                     </div>
                 </Card>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="shadow-soft">
-                    <div className="text-center">
-                        <div className="text-sm text-gray-600 mb-1">Chờ xử lý</div>
-                        <div className="font-bold text-blue-600">
-                            {registrations?.filter(r => r.status === 'PENDING').length || 0}
-                        </div>
+            {/* Filters Row */}
+            <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 px-2">
+                    <div className="flex flex-wrap items-center gap-2 py-2">
+                        {[
+                            { key: 'ALL', label: 'Tất cả', count: registrations?.length || 0, color: 'blue' },
+                            { key: 'PENDING', label: 'Chờ xử lý', count: registrations?.filter(r => r.status === 'PENDING').length || 0, color: 'orange' },
+                            { key: 'CONFIRMED', label: 'Đã xác nhận', count: registrations?.filter(r => r.status === 'CONFIRMED').length || 0, color: 'green' },
+                            { key: 'REJECTED', label: 'Đã từ chối', count: registrations?.filter(r => r.status === 'REJECTED').length || 0, color: 'red' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all duration-200 border-none outline-none cursor-pointer ${
+                                    activeTab === tab.key
+                                        ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100'
+                                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                }`}
+                            >
+                                <span className="text-sm">{tab.label}</span>
+                                <Badge 
+                                    count={tab.count} 
+                                    size="small" 
+                                    overflowCount={99} 
+                                    style={{ 
+                                        backgroundColor: activeTab === tab.key ? '#3b82f6' : '#94a3b8', 
+                                        color: '#fff', 
+                                        boxShadow: 'none',
+                                        fontSize: '10px',
+                                        minWidth: '18px',
+                                        height: '18px',
+                                        lineHeight: '18px'
+                                    }} 
+                                />
+                            </button>
+                        ))}
                     </div>
-                </Card>
-                <Card className="shadow-soft">
-                    <div className="text-center">
-                        <div className="text-sm text-gray-600 mb-1">Đã xác nhận</div>
-                        <div className="font-bold text-green-600">
-                            {registrations?.filter(r => r.status === 'CONFIRMED').length || 0}
-                        </div>
+                    <div className="w-full md:w-auto">
+                        <Input
+                            placeholder="Tìm tên sinh viên, mã số, đề tài..."
+                            prefix={<SearchOutlined className="text-slate-400" />}
+                            allowClear
+                            className="sys-input-search"
+                            style={{ width: '100%', minWidth: 320, height: 40, borderRadius: 12 }}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
-                </Card>
-                <Card className="shadow-soft">
-                    <div className="text-center">
-                        <div className="text-sm text-gray-600 mb-1">Đã từ chối</div>
-                        <div className="font-bold text-red-600">
-                            {registrations?.filter(r => r.status === 'REJECTED').length || 0}
-                        </div>
-                    </div>
-                </Card>
+                </div>
             </div>
 
             {/* Registrations Table */}
