@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { ExtraPointsApi } from '@/api/extraPoints';
 import { RegistrationsApi } from '@/api/registrations';
 import { 
@@ -10,17 +10,15 @@ import {
   Form, 
   Input, 
   Select, 
-  Radio, 
-  Checkbox, 
   Alert, 
   Upload, 
   Spin, 
   Result,
   Space,
   Divider,
-  Badge,
   Row,
-  Col
+  Col,
+  Checkbox
 } from 'antd';
 import { notify } from '@/utils/notification';
 import { 
@@ -29,17 +27,18 @@ import {
   ClockCircleOutlined, 
   LinkOutlined, 
   InfoCircleOutlined,
-  CloseCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  TrophyOutlined,
+  MinusCircleOutlined
 } from '@ant-design/icons';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { Option } = Select;
 
 const AWARD_CATEGORIES = [
     { label: 'Abstract Hội nghị khoa học', value: 'abstract', points: 0.5 },
-    { label: 'Báo báo tạp chí TUH / danh mục GS, PGS', value: 'journal', points: 1.0 },
-    { label: 'Giải thưởng NCKH / Eureka / Đề tài cấp trường', value: 'award', points: 1.0 },
+    { label: 'Báo báo tạp chí TUH / GS, PGS', value: 'journal', points: 1.0 },
+    { label: 'Giải thưởng NCKH / Eureka', value: 'award', points: 1.0 },
 ];
 
 export default function ExtraPointsSubmission() {
@@ -49,15 +48,12 @@ export default function ExtraPointsSubmission() {
     const [uploading, setUploading] = useState(false);
     
     const [form] = Form.useForm();
-    const queryClient = useQueryClient();
 
-    // Get student's current topic registration
     const { data: myTopic, isLoading: loadingTopic } = useQuery({
         queryKey: ['myTopic'],
         queryFn: () => RegistrationsApi.getMyTopic(),
     });
 
-    // Get extra points status
     const { data: status, isLoading: loadingStatus, refetch: refetchStatus } = useQuery({
         queryKey: ['extraPointsStatus', myTopic?.topic?.id],
         queryFn: () => ExtraPointsApi.getMyStatus(myTopic!.topic!.id),
@@ -73,29 +69,6 @@ export default function ExtraPointsSubmission() {
 
     const handleFileUpload = async (options: any) => {
         const { file, onSuccess, onError } = options;
-        
-        // 1. Check file size (5MB limit)
-        const isLt5M = file.size / 1024 / 1024 < 5;
-        if (!isLt5M) {
-            notify.error('File phải nhỏ hơn 5MB!');
-            onError(new Error('File too large'));
-            return;
-        }
-
-        // 2. Check file type (sync with backend)
-        const allowedTypes = [
-            'application/pdf', 
-            'image/jpeg', 
-            'image/png',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ];
-        if (!allowedTypes.includes(file.type)) {
-            notify.error('Chỉ hỗ trợ file PDF, Ảnh (JPEG/PNG) hoặc Word (.doc, .docx)');
-            onError(new Error('Invalid file type'));
-            return;
-        }
-
         try {
             setUploading(true);
             const result = await ExtraPointsApi.uploadEvidence(file);
@@ -103,19 +76,17 @@ export default function ExtraPointsSubmission() {
             notify.success('Upload minh chứng thành công!');
             onSuccess(result);
         } catch (err: any) {
-            notify.error('Upload thất bại: ' + (err.response?.data?.error || err.message));
+            notify.error('Upload thất bại');
             onError(err);
         } finally {
             setUploading(false);
         }
     };
 
-    // Submit extra points request
     const submitMutation = useMutation({
         mutationFn: (values: any) => {
             const category = AWARD_CATEGORIES.find(c => c.value === values.achievementType);
             const reason = `[${category?.label}] ${values.achievementTitle}${values.achievementOrganizer ? ` - ${values.achievementOrganizer}` : ''}`;
-
             return ExtraPointsApi.create({
                 topicId: myTopic!.topic!.id,
                 reason: reason,
@@ -124,22 +95,20 @@ export default function ExtraPointsSubmission() {
             });
         },
         onSuccess: () => {
-            notify.success('Đã gửi yêu cầu điểm cộng NCKH!');
+            notify.success('Gửi yêu cầu thành công!');
             refetchStatus();
             form.resetFields();
             setHasExtraPoints(null);
-            setProjectedPoints(0);
         },
         onError: (error: any) => {
             notify.error(error.response?.data?.error || 'Có lỗi xảy ra');
         },
     });
 
-    // Confirm no extra points
     const confirmNoPointsMutation = useMutation({
         mutationFn: () => ExtraPointsApi.confirmNoPoints(myTopic!.topic!.id),
         onSuccess: () => {
-            notify.success('Đã xác nhận không có điểm cộng NCKH');
+            notify.success('Đã xác nhận không có điểm cộng');
             refetchStatus();
         },
         onError: (error: any) => {
@@ -147,267 +116,225 @@ export default function ExtraPointsSubmission() {
         },
     });
 
-    if (loadingTopic || loadingStatus) {
-        return (
-            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <Spin size="large" />
-            </div>
-        );
-    }
+    if (loadingTopic || loadingStatus) return <div className="flex justify-center p-20"><Spin size="large" /></div>;
 
-    if (!myTopic?.topic) {
-        return (
-            <div className="max-w-2xl mx-auto p-8 mt-10">
-                <Alert
-                    message="Bạn chưa đăng ký đề tài"
-                    description="Vui lòng đăng ký đề tài trước khi xác nhận điểm cộng NCKH"
-                    type="warning"
-                    showIcon
-                    className="shadow-soft"
-                />
-            </div>
-        );
-    }
+    if (!myTopic?.topic) return <div className="max-w-2xl mx-auto p-8"><Result status="warning" title="Chưa đăng ký đề tài" /></div>;
 
-    // Check midterm status
     if (myTopic.midterm_status !== 'PASS') {
         return (
-            <div className="max-w-4xl mx-auto p-6 space-y-6">
-                <Alert
-                    message="Chưa đủ điều kiện"
-                    description="Sinh viên cần đạt điểm giữa kỳ (PASS) trước khi có thể xác nhận điểm cộng NCKH."
-                    type="info"
-                    showIcon
-                />
-            </div>
-        );
-    }
-
-    // Already confirmed
-    if (status?.confirmed) {
-        return (
-            <Result
-                status="success"
-                title="Đã xác nhận thành công"
-                subTitle={status.hasRequest
-                    ? `Yêu cầu điểm cộng của bạn đã được ghi nhận (${status.request?.status === 'APPROVED' ? 'Đã duyệt' : 'Đang chờ'})`
-                    : 'Bạn đã xác nhận không có điểm cộng NCKH cho học kỳ này.'
-                }
-            />
-        );
-    }
-
-    // Has pending request
-    if (status?.hasRequest && status.request?.status === 'PENDING') {
-        return (
-            <div className="max-w-2xl mx-auto p-6 mt-10">
-                <Card className="shadow-soft text-center" title={<Space><ClockCircleOutlined className="text-orange-500" />Đang chờ phê duyệt</Space>}>
-                    <Text type="secondary" style={{ display: 'block' }} className="mb-4">Yêu cầu điểm cộng NCKH của bạn đang được xử lý.</Text>
-                    <div className="p-4 bg-gray-50 rounded-lg border text-left mb-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <Text strong>Điểm yêu cầu:</Text>
-                            <Tag color="orange">{status.request.points_requested} điểm</Tag>
+            <div className="page-container py-6">
+                <div className="page-inner">
+                    <Card className="page-header-card mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
+                                <div className="page-header-subtitle">Yêu cầu đạt điểm giữa kỳ để tiếp tục.</div>
+                            </div>
                         </div>
-                        <Paragraph italic type="secondary">"{status.request.reason}"</Paragraph>
-                    </div>
+                    </Card>
                     <Alert
-                        message="Thông báo"
-                        description="Trưởng bộ môn sẽ xem xét và phản hồi sớm nhất có thể."
+                        message="Chưa đủ điều kiện"
+                        description="Sinh viên cần đạt điểm giữa kỳ (PASS) trước khi có thể xác nhận điểm cộng NCKH."
                         type="info"
                         showIcon
                     />
-                </Card>
+                </div>
+            </div>
+        );
+    }
+
+    if (status?.confirmed) {
+        return (
+            <div className="page-container py-6">
+                <div className="page-inner">
+                    <Card className="page-header-card mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon text-green-500"><CheckCircleOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Hoàn tất xác nhận</div>
+                                <div className="page-header-subtitle">Trạng thái điểm cộng của bạn đã được lưu lại.</div>
+                            </div>
+                        </div>
+                    </Card>
+                    <Card className="shadow-soft border-0 rounded-xl">
+                        <Result
+                            status="success"
+                            title="Đã xác nhận thành công"
+                            subTitle={status.hasRequest ? `Yêu cầu: ${status.request?.reason}` : 'Bạn đã xác nhận không có điểm cộng cho học kỳ này.'}
+                            extra={[
+                                <Button type="primary" key="dash" onClick={() => window.location.href='/dashboard'}>Quay về Dashboard</Button>
+                            ]}
+                        />
+                    </Card>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="page-container">
+        <div className="page-container py-6">
             <div className="page-inner">
-                {/* Header */}
-                <Card className="page-header-card">
-                    <div className="flex items-center gap-3">
-                        <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
-                        <div>
-                            <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
-                            <div className="page-header-subtitle">Cung cấp bằng chứng về thành tích nghiên cứu để nhận ưu tiên điểm số.</div>
+                {/* Header Section */}
+                <Card className="page-header-card mb-6">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <div className="page-header-icon"><TrophyOutlined className="text-base" /></div>
+                            <div>
+                                <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
+                                <div className="page-header-subtitle">Học kỳ 2023-2024 • Đề tài: {myTopic.topic.title}</div>
+                            </div>
                         </div>
                     </div>
                 </Card>
 
-            <Card 
-                className="bg-blue-600 text-white border-0 shadow-soft" 
-                title={<span className="text-white">Quy định điểm cộng</span>}
-            >
                 <Row gutter={[16, 16]}>
-                    <Col xs={24} md={12}>
-                        <ul className="list-disc list-inside space-y-1 opacity-90 text-sm">
-                            <li>Abstract Hội nghị: <Text strong className="text-white">0.5 điểm</Text></li>
-                            <li>Báo cáo tạp chí TUH: <Text strong className="text-white">1.0 điểm</Text></li>
-                        </ul>
+                    <Col xs={24} lg={17}>
+                        <div className="space-y-4">
+                            {/* Choice Section */}
+                            <Card className="shadow-soft border-0 rounded-xl" title={<Text strong>Trạng thái thành tích</Text>}>
+                                <Paragraph className="text-gray-500 mb-6 text-sm">Bạn có sở hữu bất kỳ thành tích NCKH nào trong học kỳ này không?</Paragraph>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div 
+                                        className={`choice-card ${hasExtraPoints === "true" ? "active" : ""}`}
+                                        onClick={() => setHasExtraPoints("true")}
+                                    >
+                                        <div className="choice-icon blue"><TrophyOutlined /></div>
+                                        <div className="choice-content">
+                                            <div className="choice-title">Có thành tích</div>
+                                            <div className="choice-desc">Tôi có bài báo, giải thưởng NCKH hợp lệ</div>
+                                        </div>
+                                        {hasExtraPoints === "true" && <CheckCircleOutlined className="check-icon" />}
+                                    </div>
+
+                                    <div 
+                                        className={`choice-card red-theme ${hasExtraPoints === "false" ? "active" : ""}`}
+                                        onClick={() => setHasExtraPoints("false")}
+                                    >
+                                        <div className="choice-icon red"><MinusCircleOutlined /></div>
+                                        <div className="choice-content">
+                                            <div className="choice-title">Không có</div>
+                                            <div className="choice-desc">Tôi không có thành tích cần xác nhận</div>
+                                        </div>
+                                        {hasExtraPoints === "false" && <CheckCircleOutlined className="check-icon red" />}
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* Form Section */}
+                            {hasExtraPoints === "true" && (
+                                <Card className="shadow-soft border-0 rounded-xl animate-fade-in" title={<Text strong>Chi tiết thành tích</Text>}>
+                                    <Form form={form} layout="vertical" onFinish={(values) => submitMutation.mutate(values)} onValuesChange={handleValuesChange}>
+                                        <Form.Item name="achievementType" label="Loại thành tích" rules={[{ required: true, message: 'Vui lòng chọn loại thành tích' }]}>
+                                            <Select placeholder="Chọn loại thành tích của bạn">
+                                                {AWARD_CATEGORIES.map(cat => <Option key={cat.value} value={cat.value}>{cat.label} (+{cat.points})</Option>)}
+                                            </Select>
+                                        </Form.Item>
+                                        <Form.Item name="achievementTitle" label="Tên bài báo / Giải thưởng" rules={[{ required: true, message: 'Vui lòng nhập tên thành tích' }, { min: 50, message: 'Vui lòng nhập tối thiểu 50 ký tự' }]}>
+                                            <Input.TextArea placeholder="Nhập tên chi tiết bài báo, hội nghị hoặc giải thưởng..." rows={3} />
+                                        </Form.Item>
+
+                                        <div className="flex items-center justify-between mt-4 mb-6 bg-gray-50 p-2 px-3 rounded-md border border-gray-100">
+                                            <Space size="small">
+                                                <TrophyOutlined className="text-blue-500" />
+                                                <Text className="text-gray-600 text-[13px]">Điểm cộng dự kiến:</Text>
+                                            </Space>
+                                            <Tag color="blue" className="m-0 border-0 font-bold">+{projectedPoints} Điểm</Tag>
+                                        </div>
+
+                                        <Divider orientation="left" className="!my-4">
+                                            <Text className="text-gray-400 text-[11px] uppercase tracking-wider">Minh chứng xác thực</Text>
+                                        </Divider>
+                                        
+                                        <Form.Item required className="mb-4">
+                                            <Space className="mb-3">
+                                                <Button size="small" type={evidenceType === 'link' ? 'primary' : 'default'} onClick={() => setEvidenceType('link')} className="text-[12px] h-7 px-3">Đường dẫn URL</Button>
+                                                <Button size="small" type={evidenceType === 'file' ? 'primary' : 'default'} onClick={() => setEvidenceType('file')} className="text-[12px] h-7 px-3">Tải tệp lên</Button>
+                                            </Space>
+
+                                            {evidenceType === 'link' ? (
+                                                <Form.Item name="evidenceUrl" rules={[{ required: true, message: 'Vui lòng nhập link' }]}>
+                                                    <Input prefix={<LinkOutlined className="text-gray-400" />} placeholder="Ví dụ: https://drive.google.com/..." />
+                                                </Form.Item>
+                                            ) : (
+                                                <Form.Item name="evidenceUrl" rules={[{ required: true, message: 'Vui lòng tải tệp' }]}>
+                                                    <Upload customRequest={handleFileUpload} maxCount={1} accept=".pdf,.png,.jpg,.jpeg">
+                                                        <Button icon={<UploadOutlined />} loading={uploading} block className="rounded-md">Chọn tệp minh chứng</Button>
+                                                    </Upload>
+                                                </Form.Item>
+                                            )}
+                                        </Form.Item>
+
+                                        <Form.Item name="commitment" valuePropName="checked" rules={[{ validator: (_, v) => v ? Promise.resolve() : Promise.reject('Vui lòng xác nhận') }]}>
+                                            <Checkbox className="text-gray-500 text-[11px]">Tôi cam đoan thông tin trên là chính xác và chịu hoàn toàn trách nhiệm.</Checkbox>
+                                        </Form.Item>
+
+                                        <Button type="primary" htmlType="submit" block size="large" loading={submitMutation.isPending} className="h-11 rounded-lg font-bold mt-2 shadow-blue">
+                                            Gửi yêu cầu xác nhận
+                                        </Button>
+                                    </Form>
+                                </Card>
+                            )}
+
+                            {hasExtraPoints === "false" && (
+                                <Card className="shadow-soft border-0 rounded-xl bg-red-50 animate-fade-in">
+                                    <div className="flex items-start gap-4">
+                                        <InfoCircleOutlined className="text-red-500 text-lg mt-1" />
+                                        <div className="flex-1">
+                                            <div className="font-bold text-red-700 text-base mb-1">Xác nhận quan trọng</div>
+                                            <Paragraph className="text-red-600 mb-6 text-xs">Bạn khẳng định mình không có thành tích NCKH nào cần cộng điểm. Thao tác này không thể hoàn tác.</Paragraph>
+                                            <Button danger type="primary" block size="large" className="h-11 rounded-lg font-bold shadow-red" onClick={() => confirmNoPointsMutation.mutate()} loading={confirmNoPointsMutation.isPending}>
+                                                Tôi xác nhận không có điểm cộng
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
+                        </div>
                     </Col>
-                    <Col xs={24} md={12}>
-                        <ul className="list-disc list-inside space-y-1 opacity-90 text-sm">
-                            <li>Giải thưởng NCKH/Eureka: <Text strong className="text-white">1.0 điểm</Text></li>
-                            <li>Tối đa tích lũy: <Text strong className="text-white">2.0 điểm</Text></li>
-                        </ul>
+
+                    <Col xs={24} lg={7}>
+                        <div className="sticky top-6 space-y-4">
+                            <Card className="shadow-soft border-0 rounded-xl" title={<Space><InfoCircleOutlined className="text-blue-500" /> Quy định</Space>}>
+                                <div className="space-y-3">
+                                    {AWARD_CATEGORIES.map(cat => (
+                                        <div key={cat.value} className="flex justify-between items-center">
+                                            <Text className="text-gray-600 text-[13px]">{cat.label}</Text>
+                                            <Tag color="blue" className="m-0 font-bold">+{cat.points}</Tag>
+                                        </div>
+                                    ))}
+                                    <Divider className="my-2" />
+                                    <Text className="text-gray-400 text-[11px] italic">Tối đa cộng 2.0 điểm cho học kỳ hiện tại.</Text>
+                                </div>
+                            </Card>
+                        </div>
                     </Col>
                 </Row>
-                <Divider className="border-white/20 my-3" />
-                <Text italic className="text-white/80 text-xs">Xác nhận đề tài: <Text underline className="text-white">{myTopic.topic.title}</Text></Text>
-            </Card>
-
-            <Card title="Xác nhận thành tích" className="shadow-soft border-0">
-                <Paragraph>Bạn có sở hữu bất kỳ thành tích NCKH nào trong học kỳ này không?</Paragraph>
-                
-                <Radio.Group 
-                    value={hasExtraPoints} 
-                    onChange={(e) => setHasExtraPoints(e.target.value)}
-                    className="w-full flex gap-4"
-                >
-                    <Radio.Button value="true" className="flex-1 h-20 flex flex-col items-center justify-center gap-1">
-                        <CheckCircleOutlined className="text-xl" />
-                        <span>Có thành tích</span>
-                    </Radio.Button>
-                    <Radio.Button value="false" className="flex-1 h-20 flex flex-col items-center justify-center gap-1">
-                        <CloseCircleOutlined className="text-xl" />
-                        <span>Không có</span>
-                    </Radio.Button>
-                </Radio.Group>
-
-                {hasExtraPoints === "true" && (
-                    <div className="mt-8">
-                        <Form 
-                            form={form} 
-                            layout="vertical" 
-                            onFinish={(values) => submitMutation.mutate(values)}
-                            onValuesChange={handleValuesChange}
-                        >
-                            <Form.Item 
-                                name="achievementType" 
-                                label="Loại thành tích" 
-                                rules={[{ required: true, message: 'Vui lòng chọn loại thành tích' }]}
-                            >
-                                <Select placeholder="Chọn loại thành tích của bạn">
-                                    {AWARD_CATEGORIES.map(cat => (
-                                        <Option key={cat.value} value={cat.value}>
-                                            {cat.label} (+{cat.points})
-                                        </Option>
-                                    ))}
-                                </Select>
-                            </Form.Item>
-
-                             <Form.Item 
-                                name="achievementTitle" 
-                                label="Tên thành tích / Bài báo / Giải thưởng" 
-                                rules={[
-                                    { required: true, message: 'Vui lòng nhập tên thành tích' },
-                                    { min: 50, message: 'Tên thành tích/Lý do phải ít nhất 50 ký tự' }
-                                ]}
-                            >
-                                <Input.TextArea 
-                                    placeholder="Ví dụ: Giải Nhì NCKH Cấp Trường 2025 - Bài báo nghiên cứu về AI trong y tế (Vui lòng mô tả chi tiết để được duyệt)" 
-                                    rows={3} 
-                                />
-                            </Form.Item>
-
-                            <Form.Item 
-                                name="achievementOrganizer" 
-                                label="Đơn vị tổ chức / Tạp chí (Không bắt buộc)"
-                            >
-                                <Input placeholder="Ví dụ: Đại học Công nghiệp TP.HCM" />
-                            </Form.Item>
-
-                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between mb-6">
-                                <Space>
-                                    <InfoCircleOutlined className="text-blue-500" />
-                                    <Text strong>Điểm cộng dự kiến:</Text>
-                                </Space>
-                                <Badge count={`${projectedPoints} điểm`} style={{ backgroundColor: '#1890ff', fontSize: '14px', padding: '0 10px' }} />
-                            </div>
-
-                            <Form.Item label="Minh chứng (Bắt buộc)" required>
-                                <Radio.Group 
-                                    value={evidenceType} 
-                                    onChange={(e) => setEvidenceType(e.target.value)}
-                                    className="mb-3"
-                                >
-                                    <Radio value="link">Link trực tuyến</Radio>
-                                    <Radio value="file">Tải lên tệp</Radio>
-                                </Radio.Group>
-
-                                {evidenceType === 'link' ? (
-                                    <Form.Item 
-                                        name="evidenceUrl" 
-                                        rules={[{ required: true, message: 'Vui lòng cung cấp minh chứng' }]}
-                                    >
-                                        <Input prefix={<LinkOutlined className="text-gray-400" />} placeholder="https://drive.google.com/..." />
-                                    </Form.Item>
-                                ) : (
-                                    <Form.Item 
-                                        name="evidenceUrl" 
-                                        rules={[{ required: true, message: 'Vui lòng tải lên minh chứng' }]}
-                                    >
-                                        <Upload 
-                                            customRequest={handleFileUpload}
-                                            maxCount={1}
-                                            accept=".pdf,.png,.jpg,.jpeg"
-                                            showUploadList={true}
-                                        >
-                                            <Button icon={<UploadOutlined />} loading={uploading}>Chọn tệp minh chứng</Button>
-                                        </Upload>
-                                    </Form.Item>
-                                )}
-                            </Form.Item>
-
-                            <Form.Item 
-                                name="commitment" 
-                                valuePropName="checked"
-                                rules={[{ 
-                                    validator: (_, value) => 
-                                        value ? Promise.resolve() : Promise.reject(new Error('Bạn phải cam kết thông tin cung cấp là đúng sự thật')) 
-                                }]}
-                            >
-                                <Checkbox>Tôi cam kết thông tin và minh chứng cung cấp là đúng sự thật.</Checkbox>
-                            </Form.Item>
-
-                            <Button 
-                                type="primary" 
-                                htmlType="submit" 
-                                block 
-                                size="large" 
-                                loading={submitMutation.isPending}
-                                className="h-12 text-lg"
-                            >
-                                Gửi yêu cầu xác nhận
-                            </Button>
-                        </Form>
-                    </div>
-                )}
-
-                {hasExtraPoints === "false" && (
-                    <div className="mt-8 space-y-6">
-                        <Alert
-                            message="Xác nhận không có thành tích"
-                            description="Sau khi xác nhận, bạn sẽ không thể thay đổi thông tin này. Vui lòng kiểm tra kỹ trước khi nhấn nút xác nhận bên dưới."
-                            type="error"
-                            showIcon
-                        />
-                        <Button 
-                            danger 
-                            type="primary" 
-                            block 
-                            size="large" 
-                            className="h-12 text-lg"
-                            onClick={() => confirmNoPointsMutation.mutate()}
-                            loading={confirmNoPointsMutation.isPending}
-                        >
-                            Tôi xác nhận không có điểm cộng
-                        </Button>
-                    </div>
-                )}
-            </Card>
             </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .choice-card {
+                    display: flex; align-items: center; gap: 12px; padding: 14px; border: 2px solid #f0f0f0;
+                    border-radius: 10px; cursor: pointer; transition: all 0.2s; position: relative; background: white;
+                }
+                .choice-card:hover { border-color: #d1e9ff; background: #fafcfe; }
+                .choice-card.active { border-color: #1890ff; background: #f0f7ff; }
+                .choice-card.red-theme.active { border-color: #ff4d4f; background: #fff1f0; }
+                .choice-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+                .choice-icon.blue { background: #e6f7ff; color: #1890ff; }
+                .choice-icon.red { background: #fff1f0; color: #ff4d4f; }
+                .choice-title { font-weight: 700; color: #262626; font-size: 14px; }
+                .choice-desc { color: #8c8c8c; font-size: 11px; line-height: 1.2; }
+                .check-icon { position: absolute; top: 10px; right: 10px; font-size: 16px; color: #1890ff; }
+                .check-icon.red { color: #ff4d4f; }
+                .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+                .shadow-blue { box-shadow: 0 4px 10px rgba(24, 144, 255, 0.2); }
+                .shadow-red { box-shadow: 0 4px 10px rgba(255, 77, 79, 0.2); }
+                .ant-card-head-title { font-size: 14px !important; font-weight: 700 !important; }
+                .ant-input, .ant-select-selector, .ant-btn { border-radius: 6px !important; }
+                .ant-card { border-radius: 10px !important; }
+            `}} />
         </div>
     );
 }

@@ -1244,7 +1244,18 @@ export class RegistrationService {
     const group = myRegistration.group;
     const memberIds = group.members.map(m => m.user_id);
 
-    // Check if any member has midterm grade - cannot disband if graded
+    // 1. Phase Check - Cannot disband in WORK phase or later
+    const semester = await prisma.semester.findUnique({ where: { id: myRegistration.semester_id } });
+    if (semester) {
+      const { SemesterGuard } = require('../utils/semester-guard');
+      const currentPhase = SemesterGuard.calculateCurrentPhase(semester);
+      const isLocked = !['PLANNING', 'PREVIEW', 'REGISTRATION'].includes(currentPhase);
+      if (isLocked) {
+        throw new Error('Không thể giải tán nhóm trong giai đoạn thực hiện khóa luận hoặc muộn hơn.');
+      }
+    }
+
+    // 2. Check if any member has midterm grade
     const gradedRegistrations = await prisma.topicRegistration.findMany({
       where: {
         group_id: group.id,
@@ -1259,15 +1270,14 @@ export class RegistrationService {
       throw new Error('Không thể giải tán nhóm vì đã có điểm đánh giá giữa kỳ. Vui lòng liên hệ GVHD nếu cần hỗ trợ.');
     }
 
-    // Reset all registrations: remove group_id and reset status to PENDING
+    // 3. Reset all registrations: remove group_id and STAY CONFIRMED
     await prisma.topicRegistration.updateMany({
       where: {
         group_id: group.id,
       },
       data: {
         group_id: null,
-        status: RegistrationStatus.PENDING, // Reset to PENDING status
-        confirmed_at: null, // Clear confirmation date
+        status: RegistrationStatus.CONFIRMED, // Keep as CONFIRMED for individual work
       },
     });
 
