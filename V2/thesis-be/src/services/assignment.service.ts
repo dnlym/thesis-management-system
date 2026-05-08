@@ -638,14 +638,9 @@ export class AssignmentService {
       where.status = filters.status;
     }
 
-    // Role-based filtering
-    if (user.role === UserRole.LECTURER) {
-      where.reviewer_id = userId;
-    } else if (user.role === UserRole.HEAD) {
-      where.topic = {
-        departmentId: user.departmentId,
-      };
-    }
+    // [FIX] Even if HEAD, the personal tabs (Reviewer/Council) should only show THEIR assignments.
+    // Department-wide view is handled by a different logic/tab.
+    where.reviewer_id = userId;
 
     const assignments = await prisma.assignment.findMany({
       where,
@@ -665,6 +660,14 @@ export class AssignmentService {
             },
             registrations: {
               include: {
+                student: {
+                  select: {
+                    id: true,
+                    full_name: true,
+                    email: true,
+                    student_code: true,
+                  },
+                },
                 group: {
                   include: {
                     members: {
@@ -675,6 +678,7 @@ export class AssignmentService {
                             id: true,
                             full_name: true,
                             email: true,
+                            student_code: true,
                           },
                         },
                       },
@@ -702,12 +706,25 @@ export class AssignmentService {
       orderBy: { assigned_at: 'desc' },
     });
 
-    // Map to camelCase and include topicTitle for frontend compatibility
-    return (assignments as AssignmentWithRelations[]).map(a => {
+    // Map to camelCase and include topicTitle and STUDENTS for frontend compatibility
+    return (assignments as any[]).map(a => {
       const topicTitle = a.topic.title;
+      
+      // Extract students to a top-level property so frontend can find it easily like Topics
+      const registrations = a.topic?.registrations || [];
+      const firstReg = registrations[0];
+      let students = [];
+      
+      if (firstReg?.group?.members?.length > 0) {
+        students = firstReg.group.members.map((m: any) => ({ ...m.user }));
+      } else if (firstReg?.student) {
+        students = [{ ...firstReg.student }];
+      }
+
       return {
         ...a,
         topicTitle,
+        students, // Add this for direct access in frontend
         reviewerOrder: a.reviewer_order,
         assignedAt: a.assigned_at,
         deadline: a.deadline_at,

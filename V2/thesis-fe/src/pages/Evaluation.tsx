@@ -657,7 +657,8 @@ const Evaluation = () => {
       key: 'code',
       width: 100,
       render: (t: string, r: any) => {
-        const groupName = r.registrations?.[0]?.group?.name || t;
+        const topicObj = r.topic || r;
+        const groupName = topicObj.registrations?.[0]?.group?.name || topicObj.code || t;
         return (
           <Tag color="blue" className="font-bold">
             <HighlightText text={groupName} keyword={debouncedLecturerSearch} />
@@ -669,36 +670,83 @@ const Evaluation = () => {
       title: 'Tên đề tài',
       dataIndex: 'title',
       key: 'title',
-      render: (t: string, r: any) => (
-        <div>
-          <div className="font-medium text-sm leading-tight mb-1">
-            <HighlightText text={t} keyword={debouncedLecturerSearch} />
+      render: (t: string, r: any) => {
+        const topicObj = r.topic || r;
+        return (
+          <div>
+            <div className="font-medium text-sm leading-tight mb-1">
+              <HighlightText text={topicObj.title || t} keyword={debouncedLecturerSearch} />
+            </div>
+            <Space size={4} className="text-[10px] text-gray-400">
+              <Text type="secondary" className="text-[10px]">GVHD: <HighlightText text={topicObj.supervisor?.full_name} keyword={debouncedLecturerSearch} /></Text>
+              <Divider type="vertical" className="m-0 border-gray-300" />
+              <Text type="warning" className="text-[10px]">Hạn chốt: {dayjs(topicObj.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
+            </Space>
           </div>
-          <Space size={4} className="text-[10px] text-gray-400">
-            <Text type="secondary" className="text-[10px]">GVHD: <HighlightText text={r.supervisor?.full_name} keyword={debouncedLecturerSearch} /></Text>
-            <Divider type="vertical" className="m-0 border-gray-300" />
-            <Text type="warning" className="text-[10px]">Hạn chốt: {dayjs(r.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
-          </Space>
-        </div>
-      )
+        )
+      }
     },
     {
       title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
-        const m = r.registrations?.[0]?.group?.members || [];
-        return (
-          <Space direction="vertical" size={0}>
-            <Avatar.Group size="small">
-              {m.map((mi: any) => <Avatar key={mi.user.id} src={mi.user.avatar_url}>{mi.user.full_name?.[0]}</Avatar>)}
-            </Avatar.Group>
-            <div className="text-[10px] text-gray-400 mt-1">
-              {m.map((mi: any) => (
-                <div key={mi.user.id}>
-                  <HighlightText text={mi.user.full_name} keyword={debouncedLecturerSearch} />
+        const topicObj = r.topic || r;
+        
+        // 1. Ưu tiên lấy từ property "students" (TopicService trả về cấu trúc này)
+        if (r.students && Array.isArray(r.students)) {
+          return (
+            <div className="flex flex-col gap-1 py-1">
+              {r.students.map((s: any) => (
+                <div key={s.id} className="flex flex-col mb-1 last:mb-0 group/sv">
+                  <Text className="text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors">
+                    <HighlightText text={s.full_name} keyword={debouncedLecturerSearch} />
+                  </Text>
+                  <Text className="text-[10px] text-gray-400 mt-0.5">
+                    {s.student_code || s.username}
+                  </Text>
                 </div>
               ))}
             </div>
-          </Space>
-        );
+          );
+        }
+
+        // 2. Dự phòng lấy từ registrations (AssignmentService/Prisma include)
+        const registrations = topicObj.registrations || [];
+        const firstReg = registrations[0];
+        
+        // Trường hợp nhóm
+        const members = firstReg?.group?.members || [];
+        if (members.length > 0) {
+          return (
+            <div className="flex flex-col gap-1 py-1">
+              {members.map((mi: any) => (
+                <div key={mi.user?.id} className="flex flex-col mb-1 last:mb-0 group/sv">
+                  <Text className="text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors">
+                    <HighlightText text={mi.user?.full_name} keyword={debouncedLecturerSearch} />
+                  </Text>
+                  <Text className="text-[10px] text-gray-400 mt-0.5">
+                    {mi.user?.student_code || mi.user?.username}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        // Trường hợp cá nhân
+        const student = firstReg?.student;
+        if (student) {
+          return (
+            <div className="flex flex-col py-1">
+              <Text className="text-[12px] font-medium leading-tight">
+                <HighlightText text={student.full_name} keyword={debouncedLecturerSearch} />
+              </Text>
+              <Text className="text-[10px] text-gray-400 mt-0.5">
+                {student.student_code || student.username}
+              </Text>
+            </div>
+          );
+        }
+
+        return <span className="text-gray-300 italic text-[10px]">Chưa có sinh viên</span>;
       }
     },
     {

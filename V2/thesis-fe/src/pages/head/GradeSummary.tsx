@@ -7,7 +7,7 @@ import {
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
-  CheckCircleOutlined, ClockCircleOutlined,
+  CheckCircleOutlined, ClockCircleOutlined, CheckCircleFilled,
   LockOutlined, SearchOutlined, TrophyOutlined,
   UserOutlined, RightOutlined, EyeOutlined,
   FilterOutlined, FireOutlined
@@ -210,23 +210,33 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
   const isComplete = gs?.isReadyForDecision;
   const isFinalized = gs?.isFinalized;
 
-  const getStatusBadge = () => {
-    if (isFinalized) return <Tag className="rounded-full px-3 py-1 border-none bg-slate-100 text-slate-500 font-bold text-[11px] tracking-tight">ĐÃ CHỐT ĐIỂM</Tag>;
-    if (isComplete) return <Tag className="rounded-full px-3 py-1 border-none bg-green-50 text-green-600 font-bold text-[11px] tracking-tight">SẴN SÀNG CHỐT</Tag>;
-    if (!gs?.supervisorGraded) return <Tag className="rounded-full px-3 py-1 border-none bg-amber-50 text-amber-600 font-bold text-[11px] tracking-tight">THIẾU GVHD</Tag>;
-    if (!gs?.isReviewerComplete) return <Tag className="rounded-full px-3 py-1 border-none bg-amber-50 text-amber-600 font-bold text-[11px] tracking-tight">THIẾU PHẢN BIỆN</Tag>;
-    return <Tag className="rounded-full px-3 py-1 border-none bg-amber-50 text-amber-600 font-bold text-[11px] tracking-tight">THIẾU HỘI ĐỒNG</Tag>;
-  };
-
-  const statusClass = isFinalized ? 'status-finalized' : (isComplete ? 'status-ready' : 'status-incomplete');
-
-  // Calculate overall percentage
-  const totalSteps = 3;
   let doneCount = 0;
   if (gs?.supervisorGraded) doneCount++;
   if (gs?.isReviewerComplete) doneCount++;
   if (gs?.committeeCount > 0) doneCount++;
-  const percent = Math.round((doneCount / totalSteps) * 100);
+
+  const getStatusBadge = () => {
+    if (isFinalized) return <Tag className="rounded-full px-3 py-1 border-none bg-slate-100 text-slate-500 font-bold text-[11px] tracking-tight">ĐÃ CHỐT ĐIỂM</Tag>;
+    if (isComplete) return <Tag className="rounded-full px-3 py-1 border-none bg-green-50 text-green-600 font-bold text-[11px] tracking-tight">SẴN SÀNG CHỐT</Tag>;
+    
+    return (
+      <div className="flex items-center gap-1.5 bg-amber-50/50 px-2 py-0.5 rounded-full border border-amber-100/50">
+        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <Text className="text-[10px] font-black text-amber-700 uppercase tracking-tight">
+          Đang chấm: {doneCount}/3
+        </Text>
+      </div>
+    );
+  };
+
+  const statusClass = isFinalized ? 'status-finalized' : (isComplete ? 'status-ready' : 'status-incomplete');
+
+  // Multi-segment color mapping
+  const steps = [
+    { label: 'HD', active: gs?.supervisorGraded, color: '#3b82f6', bg: '#dbeafe' },
+    { label: 'PB', active: gs?.isReviewerComplete, color: '#10b981', bg: '#d1fae5' },
+    { label: 'HĐ', active: gs?.committeeCount > 0, color: '#6366f1', bg: '#e0e7ff' }
+  ];
 
   return (
     <Card className={`rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-0 topic-summary-card ${statusClass}`}>
@@ -240,11 +250,11 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
         <Col span={8}>
           <div className="flex gap-2 mb-2 items-center">
             <Text className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-mono font-bold text-slate-500">
-              <HighlightText text={topic.code} keyword={keyword} />
+              <HighlightText text={topic.groupName || topic.code} keyword={keyword} />
             </Text>
             {getStatusBadge()}
           </div>
-          <Title level={5} className="!mb-1.5 line-clamp-1 !text-[15px] font-bold text-slate-800 tracking-tight">
+          <Title level={5} className="!mb-1.5 !text-[15px] font-bold text-slate-800 tracking-tight leading-snug">
             <HighlightText text={topic.title} keyword={keyword} />
           </Title>
           <div className="flex items-center gap-2">
@@ -262,19 +272,19 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
           </div>
           <div className="space-y-2">
             {topic.students?.map((s: any) => (
-              <div key={s.id} className="flex items-center gap-3 group">
-                <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100">
-                   {s.full_name?.charAt(0)}
-                </Avatar>
-                <div className="flex flex-col overflow-hidden">
-                  <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">
-                    <HighlightText text={s.full_name} keyword={keyword} />
-                  </Text>
-                  <Text className="text-[10px] text-slate-400 font-mono font-bold">
-                    <HighlightText text={s.student_code} keyword={keyword} />
-                  </Text>
+                <div key={s.student.id} className="flex items-center gap-3 group">
+                  <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100">
+                     {s.student.full_name?.charAt(0)}
+                  </Avatar>
+                  <div className="flex flex-col overflow-hidden">
+                    <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">
+                      <HighlightText text={s.student.full_name} keyword={keyword} />
+                    </Text>
+                    <Text className="text-[10px] text-slate-400 font-mono font-bold">
+                      <HighlightText text={s.student.student_code} keyword={keyword} />
+                    </Text>
+                  </div>
                 </div>
-              </div>
             ))}
           </div>
         </Col>
@@ -282,27 +292,31 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
         {/* Progress Column */}
         <Col span={5}>
           <div className="space-y-4 px-1">
-            <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
-              <div className="flex items-center gap-1.5">
-                {gs?.supervisorGraded ? <CheckCircleOutlined className="text-green-500" /> : <ClockCircleOutlined className="text-slate-300" />}
-                <span className={gs?.supervisorGraded ? 'text-green-600' : 'text-slate-400'}>HD</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {gs?.isReviewerComplete ? <CheckCircleOutlined className="text-green-500" /> : <ClockCircleOutlined className="text-slate-300" />}
-                <span className={gs?.isReviewerComplete ? 'text-green-600' : 'text-slate-400'}>PB ({gs?.reviewerGradedCount}/{gs?.totalReviewersRequired})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {gs?.committeeCount > 0 ? <CheckCircleOutlined className="text-green-500" /> : <ClockCircleOutlined className="text-slate-300" />}
-                <span className={gs?.committeeCount > 0 ? 'text-green-600' : 'text-slate-400'}>HĐ</span>
-              </div>
+            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tight">
+              {steps.map((step, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  {step.active ? <CheckCircleOutlined style={{ color: step.color }} /> : <ClockCircleOutlined className="text-slate-200" />}
+                  <span className={step.active ? 'text-slate-700' : 'text-slate-300'}>
+                    {step.label} {step.label === 'PB' && `(${gs?.reviewerGradedCount}/${gs?.totalReviewersRequired})`}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="relative">
-              <Progress percent={percent} showInfo={false} strokeColor={percent === 100 ? '#10b981' : '#3b82f6'} trailColor="#f1f5f9" strokeWidth={8} className="m-0" />
+            
+            {/* Segmented Progress Bar */}
+            <div className="flex gap-1.5 w-full h-2 mt-2">
+              {steps.map((step, i) => (
+                <div 
+                  key={i} 
+                  className={`flex-1 rounded-full transition-all duration-700 shadow-sm ${step.active ? '' : 'bg-slate-100'}`}
+                  style={{ 
+                    backgroundColor: step.active ? step.color : '#f1f5f9', 
+                    opacity: step.active ? 1 : 0.4 
+                  }}
+                />
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-               <Text className="text-[10px] text-slate-400 font-bold uppercase">Trạng thái: {doneCount}/3</Text>
-               <Text className="text-xs text-slate-800 font-black tracking-tighter">{percent}%</Text>
-            </div>
+
           </div>
         </Col>
 
@@ -348,23 +362,24 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
               >
                 Chi tiết điểm
               </Button>
-              {isComplete && (
+              {!isFinalized && (
                 <Popconfirm 
-                  title={<span className="text-base font-bold">Xác nhận chốt điểm vĩnh viễn?</span>}
-                  description={<span className="text-sm">Sinh viên sẽ thấy kết quả ngay lập tức trên hệ thống.</span>}
+                  disabled={!isComplete}
+                  title={<span className="text-sm font-black text-blue-600">XÁC NHẬN CHỐT ĐIỂM?</span>}
+                  description={<div className="text-[11px] text-slate-500 max-w-[200px]">Sau khi chốt, điểm số sẽ không thể thay đổi.</div>}
                   onConfirm={onFinalize} 
-                  okText="Chốt ngay" 
-                  cancelText="Hủy"
-                  okButtonProps={{ className: 'bg-blue-600 h-9 rounded-lg px-4' }}
-                  cancelButtonProps={{ className: 'h-9 rounded-lg' }}
+                  okText="CHỐT ĐIỂM"
+                  cancelText="HỦY"
+                  okButtonProps={{ className: 'bg-blue-600 h-8 rounded font-black text-xs' }}
                 >
                   <Button 
                     type="primary" 
-                    size="middle"
-                    className="bg-blue-600 rounded-lg h-9 shadow-lg shadow-blue-100 font-bold text-[12px] uppercase tracking-wide" 
+                    size="middle" 
+                    disabled={!isComplete}
+                    className={`h-9 px-4 rounded-lg font-black text-[10px] tracking-wide transition-all ${!isComplete ? 'bg-slate-200 border-none text-slate-400 shadow-none' : 'bg-blue-600 shadow-sm shadow-blue-200'}`}
                     loading={isFinalizing}
                   >
-                    Chốt điểm
+                    {isComplete ? 'CHỐT ĐIỂM' : 'CHƯA ĐỦ ĐIỂM'}
                   </Button>
                 </Popconfirm>
               )}
@@ -531,12 +546,7 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
                   );
                 })}
                 
-                {reviewerGrades.length > 0 && (
-                  <div className="bg-green-50/50 p-2.5 rounded-lg border border-dashed border-green-200 flex justify-between items-center mt-2">
-                    <Text className="text-green-700 font-black text-[10px] uppercase tracking-widest">TRUNG BÌNH PB (40%)</Text>
-                    <Text className="text-[20px] font-black text-green-700 tabular-nums tracking-tighter">{finalScore?.reviewer_avg_score?.toFixed(2) || '—'}</Text>
-                  </div>
-                )}
+
               </div>
             </section>
 
@@ -577,28 +587,27 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
                   );
                 })}
 
-                {councilGrades.length > 0 && (
-                  <div className="bg-indigo-50/50 p-2.5 rounded-lg border border-dashed border-indigo-200 flex justify-between items-center mt-2">
-                    <Text className="text-indigo-700 font-black text-[10px] uppercase tracking-widest">TRUNG BÌNH HĐ (20%)</Text>
-                    <Text className="text-[20px] font-black text-indigo-700 tabular-nums tracking-tighter">{finalScore?.committee_score?.toFixed(2) || '—'}</Text>
-                  </div>
-                )}
+
               </div>
             </section>
 
-            {finalScore?.extra_points > 0 && (
-              <section>
-                <Card className="rounded-lg border-none bg-amber-50 border border-amber-100 shadow-none">
-                  <div className="flex justify-between items-center p-2 px-3">
-                    <div className="flex items-center gap-2">
-                       <FireOutlined className="text-lg text-amber-600" />
-                       <Text className="text-amber-800 font-black text-[10px] uppercase">ĐIỂM CỘNG</Text>
-                    </div>
-                    <Text className="text-[18px] font-black text-amber-600 tabular-nums tracking-tighter">+{finalScore?.extra_points?.toFixed(2)}</Text>
+            <section>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                 <div className="w-1.5 h-3.5 bg-amber-500 rounded-full" />
+                 <Title level={5} className="!m-0 !text-[12px] font-black text-slate-800 uppercase tracking-tight">4. Điểm cộng NCKH / Thành tích</Title>
+              </div>
+              <Card className={`rounded-lg border-none shadow-none transition-all ${finalScore?.extra_points > 0 ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50 border border-slate-100'}`}>
+                <div className="flex justify-between items-center p-2 px-3">
+                  <div className="flex items-center gap-2">
+                     <FireOutlined className={`text-lg ${finalScore?.extra_points > 0 ? 'text-amber-600' : 'text-slate-300'}`} />
+                     <Text className={`${finalScore?.extra_points > 0 ? 'text-amber-800' : 'text-slate-400'} font-black text-[10px] uppercase`}>TỔNG ĐIỂM CỘNG</Text>
                   </div>
-                </Card>
-              </section>
-            )}
+                  <Text className={`text-[13px] font-black tabular-nums tracking-tighter ${finalScore?.extra_points > 0 ? 'text-amber-600' : 'text-slate-300'}`}>
+                    {finalScore?.extra_points > 0 ? `+${finalScore?.extra_points?.toFixed(2)}` : '0.00'}
+                  </Text>
+                </div>
+              </Card>
+            </section>
           </div>
 
           {/* Drawer Footer */}
@@ -619,16 +628,25 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
 
             <div className="flex gap-3">
               <Button size="middle" className="flex-1 h-9 rounded-lg font-black text-xs border-slate-200 text-slate-500 shadow-sm" onClick={onClose}>QUAY LẠI</Button>
-              {!isFinalized && isComplete && (
+              {!isFinalized && (
                 <Popconfirm 
-                  title={<span className="text-sm font-black">XÁC NHẬN CHỐT ĐIỂM?</span>}
+                  disabled={!isComplete}
+                  title={<span className="text-sm font-black text-blue-600">XÁC NHẬN CHỐT ĐIỂM?</span>}
+                  description={<div className="text-[11px] text-slate-500 max-w-[200px]">Sau khi chốt, đề tài sẽ được chuyển sang danh sách kết quả khóa luận.</div>}
                   onConfirm={() => onFinalize(topic.id)} 
-                  okText="CHỐT" 
+                  okText="CHỐT ĐIỂM"
                   cancelText="HỦY"
                   okButtonProps={{ className: 'bg-blue-600 h-8 rounded font-black text-xs' }}
                 >
-                  <Button type="primary" size="middle" className="flex-[2] h-9 rounded-lg bg-blue-600 font-black text-xs shadow-md shadow-blue-200 tracking-wide" loading={isFinalizing}>
-                    CHỐT ĐIỂM NGAY
+                  <Button 
+                    type="primary" 
+                    size="middle" 
+                    disabled={!isComplete}
+                    className={`flex-[2] h-10 rounded-lg font-black text-xs tracking-wide shadow-md transition-all ${!isComplete ? 'bg-slate-200 border-none text-slate-400 shadow-none' : 'bg-blue-600 shadow-blue-200'}`}
+                    loading={isFinalizing}
+                    icon={<CheckCircleFilled />}
+                  >
+                    {isComplete ? 'CHỐT ĐIỂM NGAY' : 'CHƯA ĐỦ ĐIỂM ĐỂ CHỐT'}
                   </Button>
                 </Popconfirm>
               )}

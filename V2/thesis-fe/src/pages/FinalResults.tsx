@@ -84,6 +84,13 @@ const FinalResults = () => {
                 )
             );
         }
+        // Sắp xếp theo điểm tổng kết từ cao xuống thấp
+        filtered.sort((a, b) => {
+            const scoreA = (a.students as any)?.[0]?.finalScore?.final_score || 0;
+            const scoreB = (b.students as any)?.[0]?.finalScore?.final_score || 0;
+            return scoreB - scoreA;
+        });
+
         return filtered;
     }, [results, councilFilter, debouncedSearch]);
 
