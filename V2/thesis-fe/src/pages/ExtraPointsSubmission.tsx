@@ -87,11 +87,19 @@ export default function ExtraPointsSubmission() {
         mutationFn: (values: any) => {
             const category = AWARD_CATEGORIES.find(c => c.value === values.achievementType);
             const reason = `[${category?.label}] ${values.achievementTitle}${values.achievementOrganizer ? ` - ${values.achievementOrganizer}` : ''}`;
+            
+            // Extract URL string from potentially complex upload object
+            let evidenceUrl = values.evidenceUrl;
+            if (typeof evidenceUrl === 'object' && evidenceUrl !== null) {
+                // Handle Ant Design upload object structure
+                evidenceUrl = evidenceUrl.file?.response?.url || evidenceUrl.fileList?.[0]?.response?.url || '';
+            }
+
             return ExtraPointsApi.create({
                 topicId: myTopic!.topic!.id,
                 reason: reason,
                 pointsRequested: projectedPoints,
-                evidenceUrl: values.evidenceUrl,
+                evidenceUrl: evidenceUrl,
             });
         },
         onSuccess: () => {
@@ -144,33 +152,38 @@ export default function ExtraPointsSubmission() {
         );
     }
 
-    if (status?.confirmed) {
+    // Even if confirmed, allow submitting MORE if not finalized
+    const isFinalized = myTopic?.topic?.status === 'FINALIZED';
+
+    if (isFinalized) {
         return (
             <div className="page-container py-6">
                 <div className="page-inner">
                     <Card className="page-header-card mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="page-header-icon text-green-500"><CheckCircleOutlined className="text-base" /></div>
+                            <div className="page-header-icon text-amber-500"><ClockCircleOutlined className="text-base" /></div>
                             <div>
-                                <div className="page-header-title">Hoàn tất xác nhận</div>
-                                <div className="page-header-subtitle">Trạng thái điểm cộng của bạn đã được lưu lại.</div>
+                                <div className="page-header-title">Giai đoạn đã kết thúc</div>
+                                <div className="page-header-subtitle">Điểm số đã được chốt, không thể gửi thêm yêu cầu.</div>
                             </div>
                         </div>
                     </Card>
-                    <Card className="shadow-soft border-0 rounded-xl">
-                        <Result
-                            status="success"
-                            title="Đã xác nhận thành công"
-                            subTitle={status.hasRequest ? `Yêu cầu: ${status.request?.reason}` : 'Bạn đã xác nhận không có điểm cộng cho học kỳ này.'}
-                            extra={[
-                                <Button type="primary" key="dash" onClick={() => window.location.href='/dashboard'}>Quay về Dashboard</Button>
-                            ]}
-                        />
-                    </Card>
+                    <Result
+                        status="info"
+                        title="Đã chốt điểm tổng kết"
+                        subTitle="Hệ thống đã hoàn tất việc tính điểm cho đề tài này. Vui lòng liên hệ Văn phòng khoa nếu có thắc mắc."
+                        extra={[
+                            <Button type="primary" key="dash" onClick={() => window.location.href='/dashboard'}>Quay về Dashboard</Button>
+                        ]}
+                    />
                 </div>
             </div>
         );
     }
+
+    // If confirmed but NOT finalized, we can show a "Add more" option or just the form
+    // Let's show the form but with a notice that they have already submitted before
+    const hasExistingRequests = status?.hasRequest;
 
     return (
         <div className="page-container py-6">
@@ -191,6 +204,18 @@ export default function ExtraPointsSubmission() {
                 <Row gutter={[16, 16]}>
                     <Col xs={24} lg={17}>
                         <div className="space-y-4">
+                            {status?.confirmed && (
+                                <Alert
+                                    message="Bạn đã hoàn tất xác nhận điểm cộng"
+                                    description={hasExistingRequests 
+                                        ? "Bạn đã gửi yêu cầu cộng điểm trước đó. Tuy nhiên, bạn vẫn có thể gửi thêm các thành tích mới nếu có (Ví dụ: mới đạt giải thưởng hoặc bài báo mới được đăng)." 
+                                        : "Bạn đã từng xác nhận không có điểm cộng. Nếu hiện tại bạn đã có thành tích mới, bạn vẫn có thể gửi yêu cầu tại đây."
+                                    }
+                                    type="success"
+                                    showIcon
+                                    className="rounded-xl border-green-100"
+                                />
+                            )}
                             {/* Choice Section */}
                             <Card className="shadow-soft border-0 rounded-xl" title={<Text strong>Trạng thái thành tích</Text>}>
                                 <Paragraph className="text-gray-500 mb-6 text-sm">Bạn có sở hữu bất kỳ thành tích NCKH nào trong học kỳ này không?</Paragraph>

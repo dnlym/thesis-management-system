@@ -58,17 +58,21 @@ export class ExtraPointsService {
 
     AcademicPolicy.enforce(AcademicAction.SUBMIT_EXTRA_POINTS, { id: userId, role: user.role as any }, semester, registration);
 
-    // Check if already has a pending or approved request
-    const existingRequest = await prisma.extraPointRequest.findFirst({
+    // Calculate total points already requested (pending or approved)
+    const totalExistingPoints = await prisma.extraPointRequest.aggregate({
       where: {
         student_id: userId,
         topic_id: data.topicId,
         status: { in: [ExtraPointStatus.PENDING, ExtraPointStatus.APPROVED] },
       },
+      _sum: {
+        points_requested: true,
+      },
     });
 
-    if (existingRequest) {
-      throw new Error('Bạn đã có yêu cầu điểm cộng đang chờ duyệt hoặc đã được duyệt');
+    const currentTotal = totalExistingPoints._sum.points_requested || 0;
+    if (currentTotal + data.pointsRequested > GRADING.CONFIG.MAX_EXTRA_POINTS) {
+      throw new Error(`Tổng điểm cộng (bao gồm cả yêu cầu này) không được vượt quá ${GRADING.CONFIG.MAX_EXTRA_POINTS}. Bạn hiện có ${currentTotal} điểm đang chờ duyệt hoặc đã duyệt.`);
     }
 
     // Check if final score is finalized (if somehow already exists)

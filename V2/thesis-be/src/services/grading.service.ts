@@ -395,16 +395,18 @@ export class GradingService {
         g.student_id === studentId || (g.student_id === null && groupId && g.group_id === groupId)
       );
 
-      // Fetch approved extra points from research evidence (AUTOMATIC)
-      const approvedExtraPoint = await prisma.extraPointRequest.findFirst({
+      // Fetch all approved extra points from research evidence (AUTOMATIC)
+      const approvedExtraPointsSum = await prisma.extraPointRequest.aggregate({
         where: {
           topic_id: topicId,
           student_id: studentId,
           status: 'APPROVED'
         },
-        select: { points_requested: true }
+        _sum: {
+          points_requested: true
+        }
       });
-      const extraPoints = approvedExtraPoint?.points_requested || 0;
+      const extraPoints = approvedExtraPointsSum._sum.points_requested || 0;
 
       // 1. Calculate weighted score for supervisor
       const supervisorGrades = studentGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR);

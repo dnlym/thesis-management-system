@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/store/auth';
 
 // Base URL: adjust via Vite env if available; fallback to backend localhost:3000
-const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) || 'http://localhost:3000';
+export const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) || 'http://localhost:3000';
 
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,

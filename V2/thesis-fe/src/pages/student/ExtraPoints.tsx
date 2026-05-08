@@ -12,44 +12,54 @@ import type { ExtraPoints } from '@/types';
 
 const { TextArea } = Input;
 
-const StudentExtraPoints = () => {
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [detailModalVisible, setDetailModalVisible] = useState(false);
-    const [selectedRequest, setSelectedRequest] = useState<ExtraPoints | null>(null);
-    const [form] = Form.useForm();
-    const [proofFiles, setProofFiles] = useState<File[]>([]);
+    // Fetch real registration data
+    const { data: myRegistration, isLoading: isRegLoading } = useMyTopicRegistration();
+    const studentId = currentUser?.id;
+    const topicId = myRegistration?.topic?.id;
 
-    // TODO: Get studentId and topicId from auth/registration context
-    const studentId = 'student-1';
-    const topicId = 'topic-1';
-
-    const { data: requests, isLoading } = useExtraPoints({ studentId });
+    const { data: requests, isLoading: isRequestsLoading } = useExtraPoints({ 
+        studentId: studentId,
+        topicId: topicId 
+    });
+    
+    const [uploading, setUploading] = useState(false);
     const createMutation = useCreateExtraPointsRequest();
     const withdrawMutation = useWithdrawExtraPoints();
 
     const handleSubmit = async () => {
+        if (!topicId) return;
+        
         try {
             const values = await form.validateFields();
 
             if (proofFiles.length === 0) {
+                notify.error('Vui lòng cung cấp minh chứng');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('topicId', topicId);
-            formData.append('description', values.description);
-            if (values.requestedPoints) {
-                formData.append('requestedPoints', values.requestedPoints.toString());
+            setUploading(true);
+            try {
+                // 1. Upload evidence first
+                const uploadRes = await ExtraPointsApi.uploadEvidence(proofFiles[0]);
+                
+                // 2. Create request with the returned URL
+                createMutation.mutate({
+                    topicId,
+                    reason: values.description,
+                    pointsRequested: parseFloat(values.requestedPoints) || 0,
+                    evidenceUrl: uploadRes.url
+                }, {
+                    onSuccess: () => {
+                        setIsModalVisible(false);
+                        form.resetFields();
+                        setProofFiles([]);
+                    },
+                });
+            } catch (error: any) {
+                notify.error(error.response?.data?.message || 'Tải lên minh chứng thất bại');
+            } finally {
+                setUploading(false);
             }
-            formData.append('proofFile', proofFiles[0]);
-
-            createMutation.mutate(formData, {
-                onSuccess: () => {
-                    setIsModalVisible(false);
-                    form.resetFields();
-                    setProofFiles([]);
-                },
-            });
         } catch (error) {
             console.error('Validation failed:', error);
         }
@@ -61,6 +71,7 @@ const StudentExtraPoints = () => {
             content: 'Bạn có chắc chắn muốn rút yêu cầu cộng điểm này?',
             okText: 'Xác nhận',
             cancelText: 'Hủy',
+            okButtonProps: { danger: true },
             onOk: () => {
                 withdrawMutation.mutate(id);
             },
@@ -189,7 +200,7 @@ const StudentExtraPoints = () => {
 
             {/* Requests Table */}
             <Card className="page-card-flush">
-                <Spin spinning={isLoading}>
+                <Spin spinning={isRequestsLoading || isRegLoading}>
                     <Table
                         columns={columns}
                         dataSource={requests || []}
@@ -217,7 +228,7 @@ const StudentExtraPoints = () => {
                     setProofFiles([]);
                 }}
                 width={700}
-                confirmLoading={createMutation.isPending}
+                confirmLoading={uploading || createMutation.isPending}
                 okText="Gửi yêu cầu"
                 cancelText="Hủy"
             >

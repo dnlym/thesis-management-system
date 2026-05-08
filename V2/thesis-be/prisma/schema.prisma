@@ -450,7 +450,6 @@ model ExtraPointRequest {
   student           User             @relation("StudentExtraPoints", fields: [student_id], references: [id], onDelete: Cascade)
   topic             Topic            @relation("TopicExtraPoints", fields: [topic_id], references: [id])
 
-  @@unique([student_id, topic_id])
   @@index([student_id])
   @@index([topic_id])
   @@index([status])
