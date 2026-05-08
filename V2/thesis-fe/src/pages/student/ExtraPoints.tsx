@@ -8,9 +8,24 @@ import {
     useCreateExtraPointsRequest,
     useWithdrawExtraPoints
 } from '@/hooks/useExtraPoints';
+import { useMyTopicRegistration } from '@/hooks/useRegistrations';
+import { useAuthStore } from '@/store/auth';
+import { ExtraPointsApi } from '@/api/extraPoints';
+import { notify } from '@/utils/notification';
+import { getFileUrl } from '@/utils/file';
 import type { ExtraPoints } from '@/types';
 
 const { TextArea } = Input;
+
+export default function StudentExtraPoints() {
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState<ExtraPoints | null>(null);
+    const [proofFiles, setProofFiles] = useState<any[]>([]);
+    const [uploading, setUploading] = useState(false);
+    
+    const [form] = Form.useForm();
+    const { user: currentUser } = useAuthStore();
 
     // Fetch real registration data
     const { data: myRegistration, isLoading: isRegLoading } = useMyTopicRegistration();
@@ -22,7 +37,6 @@ const { TextArea } = Input;
         topicId: topicId 
     });
     
-    const [uploading, setUploading] = useState(false);
     const createMutation = useCreateExtraPointsRequest();
     const withdrawMutation = useWithdrawExtraPoints();
 
@@ -106,11 +120,11 @@ const { TextArea } = Input;
         },
         {
             title: 'Điểm được duyệt',
-            dataIndex: 'approved_points',
+            dataIndex: 'points_requested', // It's points_requested in schema (overwritten on approval)
             key: 'approved_points',
             width: 130,
-            render: (points: number | null) => (
-                points !== null ? (
+            render: (points: number, record: ExtraPoints) => (
+                record.status === 'APPROVED' ? (
                     <span className="font-semibold text-green-600">+{points.toFixed(2)}</span>
                 ) : (
                     <span className="text-gray-400">-</span>
@@ -312,9 +326,9 @@ const { TextArea } = Input;
                                     : 'Chưa xác định'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Điểm được duyệt">
-                                {selectedRequest.approved_points !== null
+                                {selectedRequest.status === 'APPROVED'
                                     ? <span className="font-semibold text-green-600">
-                                        +{selectedRequest.approved_points.toFixed(2)}
+                                        +{selectedRequest.points_requested.toFixed(2)}
                                     </span>
                                     : <span className="text-gray-400">Chưa duyệt</span>}
                             </Descriptions.Item>
@@ -339,7 +353,7 @@ const { TextArea } = Input;
                             <div>
                                 <h4 className="font-medium mb-2">Minh chứng:</h4>
                                 <a
-                                    href={selectedRequest.evidence_url}
+                                    href={getFileUrl(selectedRequest.evidence_url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-600 hover:underline"
@@ -354,6 +368,5 @@ const { TextArea } = Input;
             </div>
         </div>
     );
-};
+}
 
-export default StudentExtraPoints;

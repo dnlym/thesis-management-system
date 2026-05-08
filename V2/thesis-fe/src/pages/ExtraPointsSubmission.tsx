@@ -18,9 +18,13 @@ import {
   Divider,
   Row,
   Col,
-  Checkbox
+  Checkbox,
+  Modal,
+  Table,
+  Descriptions
 } from 'antd';
 import { notify } from '@/utils/notification';
+import { getFileUrl } from '@/utils/file';
 import { 
   UploadOutlined, 
   CheckCircleOutlined, 
@@ -29,8 +33,16 @@ import {
   InfoCircleOutlined,
   FileTextOutlined,
   TrophyOutlined,
-  MinusCircleOutlined
+  MinusCircleOutlined,
+  EyeOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
+import { 
+  useExtraPoints, 
+  useWithdrawExtraPoints 
+} from '@/hooks/useExtraPoints';
+import { ExtraPointsStatusBadge } from '@/components/StatusBadge';
+import { ExtraPoints } from '@/types';
 
 const { Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -48,6 +60,8 @@ export default function ExtraPointsSubmission() {
     const [uploading, setUploading] = useState(false);
     
     const [form] = Form.useForm();
+    const [selectedRequest, setSelectedRequest] = useState<ExtraPoints | null>(null);
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
 
     const { data: myTopic, isLoading: loadingTopic } = useQuery({
         queryKey: ['myTopic'],
@@ -59,6 +73,12 @@ export default function ExtraPointsSubmission() {
         queryFn: () => ExtraPointsApi.getMyStatus(myTopic!.topic!.id),
         enabled: !!myTopic?.topic?.id,
     });
+
+    const { data: requests, isLoading: loadingRequests } = useExtraPoints({ 
+        topicId: myTopic?.topic?.id 
+    });
+
+    const withdrawMutation = useWithdrawExtraPoints();
 
     const handleValuesChange = (changedValues: any) => {
         if (changedValues.achievementType) {
@@ -112,6 +132,77 @@ export default function ExtraPointsSubmission() {
             notify.error(error.response?.data?.error || 'Có lỗi xảy ra');
         },
     });
+
+    const handleWithdraw = (id: string) => {
+        Modal.confirm({
+            title: 'Xác nhận rút yêu cầu',
+            content: 'Bạn có chắc chắn muốn rút yêu cầu cộng điểm này?',
+            okText: 'Xác nhận',
+            cancelText: 'Hủy',
+            okButtonProps: { danger: true },
+            onOk: () => {
+                withdrawMutation.mutate(id, {
+                    onSuccess: () => refetchStatus()
+                });
+            },
+        });
+    };
+
+    const columns = [
+        {
+            title: 'Mô tả',
+            dataIndex: 'reason',
+            key: 'reason',
+            ellipsis: true,
+        },
+        {
+            title: 'Điểm',
+            dataIndex: 'points_requested',
+            key: 'points_requested',
+            width: 100,
+            render: (points: number) => `+${points.toFixed(2)}`,
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'status',
+            key: 'status',
+            width: 140,
+            render: (status: any) => <ExtraPointsStatusBadge status={status} />,
+        },
+        {
+            title: 'Thao tác',
+            key: 'actions',
+            width: 120,
+            render: (_: any, record: ExtraPoints) => (
+                <Space>
+                    <Button 
+                        type="link" 
+                        size="small" 
+                        icon={<EyeOutlined />}
+                        onClick={() => {
+                            setSelectedRequest(record);
+                            setDetailModalVisible(true);
+                        }}
+                    >
+                        Xem
+                    </Button>
+                    {record.status === 'PENDING' && (
+                        <Button 
+                            type="link" 
+                            danger 
+                            size="small" 
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleWithdraw(record.id)}
+                            loading={withdrawMutation.isPending}
+                        >
+                            Rút
+                        </Button>
+                    )}
+                </Space>
+            ),
+        },
+    ];
+
 
     const confirmNoPointsMutation = useMutation({
         mutationFn: () => ExtraPointsApi.confirmNoPoints(myTopic!.topic!.id),
@@ -335,6 +426,101 @@ export default function ExtraPointsSubmission() {
                         </div>
                     </Col>
                 </Row>
+
+                {/* History Table Section */}
+                <Card 
+                    className="shadow-soft border-0 rounded-xl mt-6" 
+                    title={<Space><FileTextOutlined className="text-blue-500" /> Lịch sử yêu cầu đã gửi</Space>}
+                >
+                    <Table
+                        columns={columns}
+                        dataSource={requests || []}
+                        rowKey="id"
+                        pagination={false}
+                        loading={loadingRequests}
+                        locale={{ emptyText: 'Bạn chưa có yêu cầu cộng điểm nào' }}
+                        className="extra-points-history-table"
+                    />
+                </Card>
+
+                {/* Detail Modal */}
+                <Modal
+                    title={<Space><InfoCircleOutlined className="text-blue-500" /> Chi tiết yêu cầu</Space>}
+                    open={detailModalVisible}
+                    onCancel={() => setDetailModalVisible(false)}
+                    footer={[
+                        <Button key="close" type="primary" onClick={() => setDetailModalVisible(false)}>
+                            Đóng
+                        </Button>,
+                    ]}
+                    width={650}
+                    className="rounded-modal"
+                >
+                    {selectedRequest && (
+                        <div className="space-y-6 py-2">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-1">Mô tả thành tích</Text>
+                                    <div className="text-base font-semibold text-gray-800">{selectedRequest.reason}</div>
+                                </div>
+                                <ExtraPointsStatusBadge status={selectedRequest.status} />
+                            </div>
+
+                            <Row gutter={24}>
+                                <Col span={12}>
+                                    <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-1">Điểm đề xuất</Text>
+                                    <div className="text-lg font-black text-blue-600">+{selectedRequest.points_requested?.toFixed(2)} đ</div>
+                                </Col>
+                                <Col span={12}>
+                                    <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-1">Điểm phê duyệt</Text>
+                                    {selectedRequest.status === 'APPROVED' ? (
+                                        <div className="text-lg font-black text-green-600">+{selectedRequest.points_requested?.toFixed(2)} đ</div>
+                                    ) : (
+                                        <div className="text-lg font-bold text-gray-300">--</div>
+                                    )}
+                                </Col>
+                            </Row>
+
+                            <Divider className="my-0" />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-1">Ngày gửi</Text>
+                                    <div className="text-sm">{new Date(selectedRequest.created_at).toLocaleString('vi-VN')}</div>
+                                </div>
+                                {selectedRequest.reviewed_at && (
+                                    <div>
+                                        <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-1">Ngày duyệt</Text>
+                                        <div className="text-sm">{new Date(selectedRequest.reviewed_at).toLocaleString('vi-VN')}</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {selectedRequest.rejection_reason && (
+                                <div className="bg-red-50 border border-red-100 p-3 rounded-lg">
+                                    <Text className="text-red-700 font-bold text-xs block mb-1">Lý do từ chối:</Text>
+                                    <div className="text-red-600 text-sm">{selectedRequest.rejection_reason}</div>
+                                </div>
+                            )}
+
+                            {selectedRequest.evidence_url && (
+                                <div className="bg-gray-50 border border-gray-100 p-4 rounded-xl">
+                                    <Text type="secondary" className="text-[11px] uppercase font-bold tracking-wider block mb-2">Minh chứng đính kèm</Text>
+                                    <a 
+                                        href={getFileUrl(selectedRequest.evidence_url)} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:text-blue-600 transition-all group"
+                                    >
+                                        <LinkOutlined className="text-blue-500" />
+                                        <span className="flex-1 truncate text-sm font-medium">Xem tài liệu minh chứng</span>
+                                        <EyeOutlined className="text-gray-300 group-hover:text-blue-500" />
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </Modal>
             </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
@@ -359,6 +545,7 @@ export default function ExtraPointsSubmission() {
                 .ant-card-head-title { font-size: 14px !important; font-weight: 700 !important; }
                 .ant-input, .ant-select-selector, .ant-btn { border-radius: 6px !important; }
                 .ant-card { border-radius: 10px !important; }
+                .extra-points-history-table .ant-table-thead > tr > th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
             `}} />
         </div>
     );
