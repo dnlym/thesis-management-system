@@ -11,7 +11,13 @@ export class UserService {
         if (filters?.role) {
             where.role = filters.role;
         }
-        if (filters?.departmentId) {
+
+        // Role-based scoping
+        if (currentUser?.role === UserRole.HEAD) {
+            // HODs can only see users from their own department
+            where.departmentId = currentUser.departmentId;
+        } else if (filters?.departmentId) {
+            // ADMINs or others can filter by departmentId
             where.departmentId = filters.departmentId;
         }
 

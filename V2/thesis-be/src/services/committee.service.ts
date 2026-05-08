@@ -131,6 +131,14 @@ export class CommitteeService {
       });
 
       if (!committee) throw new Error('Không tìm thấy hội đồng');
+      
+      const usage = await tx.defenseSchedule.count({
+        where: { committee_id: committeeId }
+      });
+
+      if (usage > 0) {
+        throw new Error('Không thể chỉnh sửa hội đồng đã được phân công đề tài');
+      }
 
       // Update basic info
       await tx.committee.update({
@@ -239,6 +247,9 @@ export class CommitteeService {
       include: {
         members: {
           include: { lecturer: { select: { id: true, full_name: true } } }
+        },
+        _count: {
+          select: { defense_schedules: true }
         }
       },
       orderBy: { name: 'asc' }
@@ -246,6 +257,7 @@ export class CommitteeService {
 
     return committees.map((c: any) => ({
       ...c,
+      assignedTopicCount: c._count.defense_schedules,
       members: c.members.map((m: any) => ({
         lecturerId: m.lecturer_id,
         fullName: m.lecturer.full_name,

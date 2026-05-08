@@ -45,11 +45,12 @@ const Login = () => {
           const updatedUser: User = {
             ...initialUser,
             id: profile.id,
-            full_name: profile.full_name,
+            full_name: profile.full_name || (profile as any).fullName,
             email: profile.email,
             role: profile.role as User['role'],
-            avatar_url: profile.avatar_url || undefined,
-            joined_at: profile.joined_at || initialUser.joined_at,
+            department_id: profile.department_id || (profile as any).departmentId || profile.department?.id,
+            avatar_url: profile.avatar_url || (profile as any).avatarUrl || undefined,
+            joined_at: profile.joined_at || (profile as any).created_at || initialUser.joined_at,
           };
           login(updatedUser, accessToken, refreshToken);
         }

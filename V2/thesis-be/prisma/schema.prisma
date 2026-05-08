@@ -8,51 +8,52 @@ datasource db {
 }
 
 model Department {
-  id                                    String             @id @default(uuid())
-  name                                  String             @db.VarChar(255)
-  code                                  String             @unique @db.VarChar(50)
+  id                                    String                     @id @default(uuid())
+  name                                  String                     @db.VarChar(255)
+  code                                  String                     @unique @db.VarChar(50)
   description                           String?
-  active                                Boolean            @default(true)
-  created_at                            DateTime           @default(now())
-  updated_at                            DateTime           @updatedAt
-  auto_approve_proposal_on_midterm_pass Boolean            @default(true)
-  max_group_size                        Int                @default(2)
-  min_group_size                        Int                @default(1)
-  requires_midterm_eval                 Boolean            @default(true)
+  active                                Boolean                    @default(true)
+  created_at                            DateTime                   @default(now())
+  updated_at                            DateTime                   @updatedAt
+  auto_approve_proposal_on_midterm_pass Boolean                    @default(true)
+  max_group_size                        Int                        @default(2)
+  min_group_size                        Int                        @default(1)
+  requires_midterm_eval                 Boolean                    @default(true)
   committees                            Committee[]
+  semester_configs                      DepartmentSemesterConfig[]
   grading_criteria                      GradingCriterion[]
-  Topic                                 Topic[]            @relation("DepartmentTopics")
-  secondary_topics                      Topic[]            @relation("SecondaryDepartmentTopics")
+  Topic                                 Topic[]                    @relation("DepartmentTopics")
+  secondary_topics                      Topic[]                    @relation("SecondaryDepartmentTopics")
   User                                  User[]
 
   @@index([code])
   @@index([active])
   @@map("departments")
-  semester_configs                      DepartmentSemesterConfig[]
 }
 
 model Semester {
-  id                       String              @id @default(uuid())
-  name                     String              @db.VarChar(100)
-  code                     String              @unique @db.VarChar(50)
-  status                   SemesterStatus      @default(PLANNING)
+  id                       String                     @id @default(uuid())
+  name                     String                     @db.VarChar(100)
+  code                     String                     @unique @db.VarChar(50)
+  status                   SemesterStatus             @default(PLANNING)
   start_date               DateTime
   end_date                 DateTime
   proposal_deadline        DateTime
   thesis_deadline          DateTime
   defense_start            DateTime?
   defense_end              DateTime?
-  created_at               DateTime            @default(now())
-  updated_at               DateTime            @updatedAt
+  created_at               DateTime                   @default(now())
+  updated_at               DateTime                   @updatedAt
   topic_registration_end   DateTime?
   topic_registration_start DateTime?
   topic_viewing_start      DateTime?
   topic_viewing_end        DateTime?
   midterm_start            DateTime?
   midterm_end              DateTime?
-  is_registration_override Boolean             @default(false)
+  is_registration_override Boolean                    @default(false)
   committees               Committee[]
   defense_schedules        DefenseSchedule[]
+  department_configs       DepartmentSemesterConfig[]
   groups                   Group[]
   topic_registrations      TopicRegistration[]
   topics                   Topic[]
@@ -60,19 +61,18 @@ model Semester {
 
   @@index([code])
   @@map("semesters")
-  department_configs       DepartmentSemesterConfig[]
 }
 
 model DepartmentSemesterConfig {
-  id                    String     @id @default(uuid())
-  department_id         String
-  semester_id           String
-  defense_date          DateTime?
-  is_registration_open  Boolean    @default(false)
-  updated_by            String
-  updated_at            DateTime   @updatedAt
-  department            Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
-  semester              Semester   @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  id                   String     @id @default(uuid())
+  department_id        String
+  semester_id          String
+  defense_date         DateTime?
+  is_registration_open Boolean    @default(false)
+  updated_by           String
+  updated_at           DateTime   @updatedAt
+  department           Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+  semester             Semester   @relation(fields: [semester_id], references: [id], onDelete: Cascade)
 
   @@unique([department_id, semester_id])
   @@index([department_id])
@@ -81,46 +81,45 @@ model DepartmentSemesterConfig {
 }
 
 model User {
-  id                      String                     @id @default(uuid())
-  email                   String                     @unique @db.VarChar(255)
-  role                    UserRole
-  active                  Boolean                    @default(true)
-  avatar_url              String?
-  created_at              DateTime                   @default(now())
-  departmentId            String                     @map("department_id")
-  full_name               String                     @db.VarChar(255)
-  last_login_at           DateTime?
-  last_login_ip           String?                    @db.VarChar(50)
-  password_hash           String                     @db.VarChar(255)
-  phone                   String?                    @db.VarChar(20)
-  student_code            String?                    @unique @db.VarChar(50)
-  updated_at              DateTime                   @updatedAt
-  class_name              String?                    @db.VarChar(50)
-  assigner_assignments    Assignment[]               @relation("AssignerAssignments")
-  reviewer_assignments    Assignment[]               @relation("ReviewerAssignments")
-  audit_logs              AuditLog[]                 @relation("UserAuditLogs")
-  committee_memberships   CommitteeMember[]
-  reviewed_extra_points   ExtraPointRequest[]        @relation("ReviewerExtraPoints")
-  extra_point_requests    ExtraPointRequest[]        @relation("StudentExtraPoints")
-  finalized_scores        FinalScore[]               @relation("ScoreFinalizer")
-  final_scores            FinalScore[]               @relation("StudentFinalScore")
-  grades                  Grade[]                    @relation("GraderGrades")
-  student_grades          Grade[]                    @relation("StudentGrades")
-  invitee_invites         GroupInvite[]              @relation("InviteeGroupInvites")
-  inviter_invites         GroupInvite[]              @relation("InviterGroupInvites")
-
-  group_memberships       GroupMember[]              @relation("GroupMemberUser")
-  owned_groups            Group[]                    @relation("GroupLeader")
-  notifications           Notification[]             @relation("UserNotifications")
-  refresh_tokens          RefreshToken[]
-  updated_configs         SystemConfig[]             @relation("ConfigUpdater")
-  topic_registrations     TopicRegistration[]        @relation("StudentRegistrations")
-  co_supervised_topics    Topic[]                    @relation("CoSupervisorTopics")
-  supervised_topics       Topic[]                    @relation("SupervisorTopics")
-  workload_limits         UserWorkloadLimit[]        @relation("UserWorkload")
-  grade_histories_as_student GradeHistory[]          @relation("StudentGradeHistory")
-  grade_histories_as_grader  GradeHistory[]          @relation("GraderGradeHistory")
-  department              Department                 @relation(fields: [departmentId], references: [id])
+  id                         String              @id @default(uuid())
+  email                      String              @unique @db.VarChar(255)
+  role                       UserRole
+  active                     Boolean             @default(true)
+  avatar_url                 String?
+  created_at                 DateTime            @default(now())
+  departmentId               String              @map("department_id")
+  full_name                  String              @db.VarChar(255)
+  last_login_at              DateTime?
+  last_login_ip              String?             @db.VarChar(50)
+  password_hash              String              @db.VarChar(255)
+  phone                      String?             @db.VarChar(20)
+  student_code               String?             @unique @db.VarChar(50)
+  updated_at                 DateTime            @updatedAt
+  class_name                 String?             @db.VarChar(50)
+  assigner_assignments       Assignment[]        @relation("AssignerAssignments")
+  reviewer_assignments       Assignment[]        @relation("ReviewerAssignments")
+  audit_logs                 AuditLog[]          @relation("UserAuditLogs")
+  committee_memberships      CommitteeMember[]
+  reviewed_extra_points      ExtraPointRequest[] @relation("ReviewerExtraPoints")
+  extra_point_requests       ExtraPointRequest[] @relation("StudentExtraPoints")
+  finalized_scores           FinalScore[]        @relation("ScoreFinalizer")
+  final_scores               FinalScore[]        @relation("StudentFinalScore")
+  grade_histories_as_grader  GradeHistory[]      @relation("GraderGradeHistory")
+  grade_histories_as_student GradeHistory[]      @relation("StudentGradeHistory")
+  grades                     Grade[]             @relation("GraderGrades")
+  student_grades             Grade[]             @relation("StudentGrades")
+  invitee_invites            GroupInvite[]       @relation("InviteeGroupInvites")
+  inviter_invites            GroupInvite[]       @relation("InviterGroupInvites")
+  group_memberships          GroupMember[]       @relation("GroupMemberUser")
+  owned_groups               Group[]             @relation("GroupLeader")
+  notifications              Notification[]      @relation("UserNotifications")
+  refresh_tokens             RefreshToken[]
+  updated_configs            SystemConfig[]      @relation("ConfigUpdater")
+  topic_registrations        TopicRegistration[] @relation("StudentRegistrations")
+  co_supervised_topics       Topic[]             @relation("CoSupervisorTopics")
+  supervised_topics          Topic[]             @relation("SupervisorTopics")
+  workload_limits            UserWorkloadLimit[] @relation("UserWorkload")
+  department                 Department          @relation(fields: [departmentId], references: [id])
 
   @@index([email])
   @@index([role])
@@ -181,12 +180,12 @@ model Topic {
   defense_schedules        DefenseSchedule[]        @relation("TopicDefense")
   extra_point_requests     ExtraPointRequest[]      @relation("TopicExtraPoints")
   final_scores             FinalScore[]             @relation("TopicFinalScore")
+  grade_histories          GradeHistory[]           @relation("TopicGradeHistory")
   grades                   Grade[]                  @relation("TopicGrades")
   group_invites            GroupInvite[]            @relation("TopicGroupInvites")
   groups                   Group[]                  @relation("TopicGroups")
   registrations            TopicRegistration[]      @relation("TopicRegistrations")
   versions                 TopicVersion[]           @relation("TopicVersions")
-  grade_histories          GradeHistory[]           @relation("TopicGradeHistory")
   co_supervisor            User?                    @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
   department               Department               @relation("DepartmentTopics", fields: [departmentId], references: [id])
   secondary_department     Department?              @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
@@ -225,25 +224,24 @@ model TopicVersion {
 }
 
 model Group {
-  id                     String                     @id @default(uuid())
-  name                   String                     @db.VarChar(255)
-  topic_id               String?
-  leader_id              String
-  semester_id            String
-  status                 GroupStatus                @default(FORMING)
-  created_at             DateTime                   @default(now())
-  updated_at             DateTime                   @updatedAt
-
-  members                GroupMember[]              @relation("GroupMembers")
-  leader                 User                       @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
-  semester               Semester                   @relation(fields: [semester_id], references: [id])
-  topic                  Topic?                     @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
-  registrations          TopicRegistration[]        @relation("GroupRegistrations")
-  assignments            Assignment[]               @relation("GroupAssignments")
-  grades                 Grade[]                    @relation("GroupGrades")
-  final_scores           FinalScore[]               @relation("GroupFinalScore")
-  defense_schedule       DefenseSchedule?           @relation("GroupDefense")
-  grade_histories        GradeHistory[]             @relation("GroupGradeHistory")
+  id               String              @id @default(uuid())
+  name             String              @db.VarChar(255)
+  topic_id         String?
+  leader_id        String
+  semester_id      String
+  status           GroupStatus         @default(FORMING)
+  created_at       DateTime            @default(now())
+  updated_at       DateTime            @updatedAt
+  assignments      Assignment[]        @relation("GroupAssignments")
+  defense_schedule DefenseSchedule?    @relation("GroupDefense")
+  final_scores     FinalScore[]        @relation("GroupFinalScore")
+  grade_histories  GradeHistory[]      @relation("GroupGradeHistory")
+  grades           Grade[]             @relation("GroupGrades")
+  members          GroupMember[]       @relation("GroupMembers")
+  leader           User                @relation("GroupLeader", fields: [leader_id], references: [id], onDelete: Cascade)
+  semester         Semester            @relation(fields: [semester_id], references: [id])
+  topic            Topic?              @relation("TopicGroups", fields: [topic_id], references: [id], onDelete: Cascade)
+  registrations    TopicRegistration[] @relation("GroupRegistrations")
 
   @@index([topic_id])
   @@index([leader_id])
@@ -289,8 +287,6 @@ model GroupInvite {
   @@index([expires_at])
   @@map("group_invites")
 }
-
-
 
 model TopicRegistration {
   id                      String                @id @default(uuid())
@@ -341,9 +337,9 @@ model Assignment {
   room                 String?          @db.VarChar(100)
   group_id             String?          @map("group_id")
   assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
+  group                Group?           @relation("GroupAssignments", fields: [group_id], references: [id], onDelete: Cascade)
   reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
   topic                Topic            @relation("TopicAssignments", fields: [topic_id], references: [id], onDelete: Cascade)
-  group                Group?           @relation("GroupAssignments", fields: [group_id], references: [id], onDelete: Cascade)
 
   @@unique([topic_id, reviewer_id, assignment_type, group_id])
   @@unique([topic_id, reviewer_order, group_id])
@@ -385,16 +381,16 @@ model Grade {
   criterion_id   String
   rater_role     RaterRole
   reviewer_order Int?
-  group_id       String?
   score          Float
   comments       String?
   graded_at      DateTime         @default(now())
   updated_at     DateTime         @updatedAt
+  group_id       String?
   criterion      GradingCriterion @relation("CriterionGrades", fields: [criterion_id], references: [id], onDelete: Cascade)
   grader         User             @relation("GraderGrades", fields: [grader_id], references: [id], onDelete: Cascade)
+  group          Group?           @relation("GroupGrades", fields: [group_id], references: [id], onDelete: Cascade)
   student        User?            @relation("StudentGrades", fields: [student_id], references: [id], onDelete: Cascade)
   topic          Topic            @relation("TopicGrades", fields: [topic_id], references: [id], onDelete: Cascade)
-  group          Group?           @relation("GroupGrades", fields: [group_id], references: [id], onDelete: Cascade)
 
   @@unique([topic_id, student_id, grader_id, criterion_id, rater_role, reviewer_order, group_id])
   @@index([topic_id])
@@ -424,9 +420,9 @@ model FinalScore {
   updated_at           DateTime  @updatedAt
   group_id             String?
   finalizer            User?     @relation("ScoreFinalizer", fields: [finalized_by], references: [id])
+  group                Group?    @relation("GroupFinalScore", fields: [group_id], references: [id], onDelete: Cascade)
   student              User      @relation("StudentFinalScore", fields: [student_id], references: [id], onDelete: Cascade)
   topic                Topic     @relation("TopicFinalScore", fields: [topic_id], references: [id], onDelete: Cascade)
-  group                Group?    @relation("GroupFinalScore", fields: [group_id], references: [id], onDelete: Cascade)
 
   @@unique([topic_id, student_id, group_id])
   @@index([topic_id])
@@ -463,8 +459,7 @@ model ExtraPointRequest {
 
 model DefenseSchedule {
   id                  String         @id @default(uuid())
-  topic_id            String         
-  group_id            String?        @unique
+  topic_id            String
   committee_id        String?
   semester_id         String
   defense_date        DateTime
@@ -478,10 +473,11 @@ model DefenseSchedule {
   status              ScheduleStatus @default(PENDING)
   created_at          DateTime       @default(now())
   updated_at          DateTime       @updatedAt
+  group_id            String?        @unique
   committee           Committee?     @relation(fields: [committee_id], references: [id])
+  group               Group?         @relation("GroupDefense", fields: [group_id], references: [id], onDelete: Cascade)
   semester            Semester       @relation(fields: [semester_id], references: [id])
   topic               Topic          @relation("TopicDefense", fields: [topic_id], references: [id], onDelete: Cascade)
-  group               Group?         @relation("GroupDefense", fields: [group_id], references: [id], onDelete: Cascade)
 
   @@index([topic_id])
   @@index([group_id])
@@ -571,9 +567,9 @@ model AuditLog {
   old_value   Json?
   new_value   Json?
   ip_address  String?  @db.VarChar(50)
-  reason      String?  @db.Text
-  description String?  @db.Text
   created_at  DateTime @default(now())
+  description String?
+  reason      String?
   user        User?    @relation("UserAuditLogs", fields: [user_id], references: [id])
 
   @@index([user_id])
@@ -592,13 +588,12 @@ model GradeHistory {
   criterion_id String
   old_score    Float?
   new_score    Float
-  reason       String?  @db.Text
+  reason       String?
   changed_at   DateTime @default(now())
-  
-  student      User     @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
   grader       User     @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
-  topic        Topic    @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
   group        Group?   @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)
+  student      User     @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
+  topic        Topic    @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
 
   @@index([student_id])
   @@index([grader_id])
@@ -772,8 +767,6 @@ enum RaterRole {
   ORAL_COMMITTEE
   POSTER_COMMITTEE
 }
-
-
 
 enum StudentProgressStatus {
   NOT_STARTED

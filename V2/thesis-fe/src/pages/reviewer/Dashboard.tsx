@@ -23,10 +23,10 @@ const ReviewerDashboard = () => {
 
     // Map API stats to component stats
     const displayStats = {
-        pending: stats?.reviewAssignmentsCount || 0,
-        accepted: 0, // Need to add to backend
-        graded: 0, // Need to add to backend
-        total: stats?.reviewAssignmentsCount || 0, // Approximate
+        pending: 0,
+        accepted: stats?.reviewAssignmentsCount || 0,
+        graded: stats?.gradedAssignmentsCount || 0,
+        total: stats?.reviewAssignmentsCount || 0,
     };
 
     const recentAssignments: any[] = []; // Placeholder
@@ -88,27 +88,18 @@ const ReviewerDashboard = () => {
 
             {/* Statistics Cards */}
             <Row gutter={16}>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={8}>
                     <Card className="shadow-soft">
                         <Statistic
-                            title="Chờ phản hồi"
-                            value={displayStats.pending}
-                            prefix={<ClockCircleOutlined className="text-orange-500" />}
-                            valueStyle={{ color: '#f59e0b' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card className="shadow-soft">
-                        <Statistic
-                            title="Đã chấp nhận"
+                            title="Nhiệm vụ phản biện"
                             value={displayStats.accepted}
                             prefix={<CheckCircleOutlined className="text-green-500" />}
                             valueStyle={{ color: '#10b981' }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+
+                <Col xs={24} sm={12} lg={8}>
                     <Card className="shadow-soft">
                         <Statistic
                             title="Đã chấm điểm"
@@ -118,7 +109,7 @@ const ReviewerDashboard = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={8}>
                     <Card className="shadow-soft">
                         <Statistic
                             title="Tổng phân công"
@@ -188,10 +179,10 @@ const ReviewerDashboard = () => {
                 <div className="space-y-2">
                     <h3 className="font-semibold text-blue-900">Nhiệm vụ của Giảng viên phản biện</h3>
                     <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                        <li>Xem xét và phản hồi các phân công phản biện (chấp nhận/từ chối)</li>
-                        <li>Đọc tài liệu và đánh giá chất lượng đề tài</li>
-                        <li>Chấm điểm theo các tiêu chí được phân công (40% tổng điểm)</li>
-                        <li>Cung cấp nhận xét và góp ý xây dựng cho sinh viên</li>
+                        <li>Nhận và thực hiện nhiệm vụ phản biện được Trưởng bộ môn phân công</li>
+                        <li>Đọc tài liệu và đánh giá chất lượng đề tài theo đúng tiến độ</li>
+                        <li>Chấm điểm theo các tiêu chí LO (chiếm 40% tổng điểm)</li>
+                        <li>Cung cấp nhận xét chuyên môn và góp ý xây dựng cho sinh viên</li>
                     </ul>
                 </div>
             </Card>

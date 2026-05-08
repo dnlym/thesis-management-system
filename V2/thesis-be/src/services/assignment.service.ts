@@ -396,7 +396,7 @@ export class AssignmentService {
       where: {
         topic_id: data.topicId,
         assignment_type: AssignmentType.REVIEWER,
-        status: AssignmentStatus.ACCEPTED,
+        status: { in: [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED] },
       },
     });
 

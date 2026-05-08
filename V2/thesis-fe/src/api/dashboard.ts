@@ -15,6 +15,7 @@ export interface DashboardStats {
     pendingRegistrationsCount?: number;
     pendingSubmissionsCount?: number;
     reviewAssignmentsCount?: number;
+    gradedAssignmentsCount?: number;
 
     // Head stats
     totalTopics?: number;

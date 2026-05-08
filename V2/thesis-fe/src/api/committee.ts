@@ -14,6 +14,7 @@ export interface Committee {
   semester_id: string;
   room_preference?: string;
   members: CommitteeMember[];
+  assignedTopicCount?: number;
 }
 
 export interface CreateCommitteeRequest {

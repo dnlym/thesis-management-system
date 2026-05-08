@@ -344,8 +344,9 @@ const AppLayout = () => {
               email: res.data.email,
               role: res.data.role as any,
               department: (res.data as any).department,
+              department_id: (res.data as any).department_id || (res.data as any).departmentId || (res.data as any).department?.id,
               avatar_url: (res.data as any).avatar_url || (res.data as any).avatarUrl || undefined,
-              joined_at: (res.data as any).created_at || new Date().toISOString(),
+              joined_at: (res.data as any).created_at || (res.data as any).joined_at || new Date().toISOString(),
             };
             useAuthStore.getState().login(mapped as any, token, '');
           }

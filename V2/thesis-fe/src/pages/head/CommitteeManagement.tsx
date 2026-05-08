@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
-import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space, Divider, Popconfirm } from 'antd';
+import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space, Divider, Popconfirm, Typography } from 'antd';
 import { notify } from '@/utils/notification';
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { 
+    PlusOutlined, DeleteOutlined, EditOutlined, 
+    HomeOutlined, CrownOutlined, EditFilled, 
+    UsergroupAddOutlined, TagOutlined, UserOutlined, CloseOutlined
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CommitteeApi, Committee } from '@/api/committee';
 import { UsersApi } from '@/api/users';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useAuthStore } from '@/store/auth';
+
+const { Title, Text } = Typography;
 
 const CommitteeManagement = () => {
     const { t } = useTranslation();
@@ -28,11 +34,19 @@ const CommitteeManagement = () => {
 
     const { user } = useAuthStore();
 
-    // Fetch lecturers in the exact same department
+    // Fetch lecturers theo phân quyền: HOD chỉ thấy GV bộ môn, ADMIN thấy toàn bộ khoa
     const { data: lecturers } = useQuery({
-        queryKey: ['lecturers', user?.department_id],
-        queryFn: () => UsersApi.getAll({ role: 'LECTURER', departmentId: user?.department_id }),
-        enabled: !!user?.department_id,
+        queryKey: ['lecturers', user?.role, user?.department_id],
+        queryFn: () => {
+            const filters: any = { role: 'LECTURER' };
+            if (user?.role === 'HEAD') {
+                // Nếu là HOD, bắt buộc phải lọc theo bộ môn của họ
+                filters.departmentId = user?.department_id || (user as any)?.department?.id;
+            }
+            // Nếu là ADMIN, không truyền departmentId để lấy toàn bộ
+            return UsersApi.getAll(filters);
+        },
+        enabled: !!user,
     });
 
     // Fetch lecturers who are already in a committee for this semester (global validation)
@@ -137,11 +151,14 @@ const CommitteeManagement = () => {
             title: t('committeeManagement.nameLabel'),
             dataIndex: 'name',
             key: 'name',
-            className: 'font-semibold',
+            width: 200,
             render: (text: string, record: Committee) => (
-                <div className="flex flex-col">
-                    <span>{text}</span>
-                    <Tag color={record.type === 'POSTER' ? 'cyan' : 'blue'} className="w-fit mt-1 text-[10px] leading-3 uppercase">
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <CrownOutlined className="text-blue-500 text-xs" />
+                        <span className="font-bold text-slate-700 tracking-tight">{text}</span>
+                    </div>
+                    <Tag color={record.type === 'POSTER' ? 'cyan' : 'blue'} className="w-fit m-0 text-[9px] px-1.5 leading-4 font-black uppercase rounded-md border-none bg-slate-100 text-slate-500">
                         {record.type || 'ORAL'}
                     </Tag>
                 </div>
@@ -151,27 +168,37 @@ const CommitteeManagement = () => {
             title: t('committeeManagement.roomPreference'),
             dataIndex: 'room_preference',
             key: 'room_preference',
-            render: (text: string) => text ? <Tag color="orange">{text}</Tag> : '-'
+            width: 140,
+            align: 'center' as const,
+            render: (text: string) => text ? (
+                <Tag color="orange" className="m-0 font-mono font-bold border-orange-100 bg-orange-50 text-orange-600 px-3 rounded-full">
+                    {text}
+                </Tag>
+            ) : <span className="text-slate-300">—</span>
         },
         {
             title: t('committeeManagement.membersDivider'),
             key: 'members',
             render: (_: any, record: Committee) => (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                     {record.members.sort((a, b) => {
                         const order = { CHAIR: 1, SECRETARY: 2, MEMBER: 3 };
-                        return order[a.role] - order[b.role];
+                        return (order[a.role as keyof typeof order] || 99) - (order[b.role as keyof typeof order] || 99);
                     }).map((m: any) => (
-                        <Tag
+                        <div 
                             key={m.id || m.lecturerId}
-                            color={m.role === 'CHAIR' ? 'gold' : m.role === 'SECRETARY' ? 'blue' : 'default'}
-                            className="flex items-center gap-1"
+                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[12px] font-medium transition-all
+                                ${m.role === 'CHAIR' 
+                                    ? 'bg-amber-50 border-amber-100 text-amber-700' 
+                                    : m.role === 'SECRETARY' 
+                                        ? 'bg-blue-50 border-blue-100 text-blue-700' 
+                                        : 'bg-slate-50 border-slate-100 text-slate-600'}`}
                         >
-                            <span className="font-bold">
-                                {m.role === 'CHAIR' ? t('committeeManagement.roleChairShort') : m.role === 'SECRETARY' ? t('committeeManagement.roleSecretaryShort') : t('committeeManagement.roleMemberShort')}
+                            <span className="opacity-60 font-black text-[10px] uppercase">
+                                {m.role === 'CHAIR' ? 'CT' : m.role === 'SECRETARY' ? 'TK' : 'UV'}
                             </span>
-                            <span>{m.lecturer?.full_name || m.fullName}</span>
-                        </Tag>
+                            <span className="font-semibold">{m.lecturer?.full_name || m.fullName}</span>
+                        </div>
                     ))}
                 </div>
             )
@@ -179,26 +206,43 @@ const CommitteeManagement = () => {
         {
             title: t('common.actions'),
             key: 'action',
+            width: 120,
             align: 'right' as const,
-            render: (_: any, record: Committee) => (
-                <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined className="text-blue-600" />}
-                        onClick={() => handleEdit(record)}
-                    />
-                    <Popconfirm
-                        title={t('committeeManagement.deleteConfirm')}
-                        description={t('committeeManagement.deleteDescription')}
-                        onConfirm={() => deleteMutation.mutate(record.id)}
-                        okText={t('common.delete')}
-                        cancelText={t('common.cancel')}
-                        okButtonProps={{ danger: true }}
-                    >
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                </Space>
-            )
+            render: (_: any, record: Committee) => {
+                const isAssigned = (record.assignedTopicCount || 0) > 0;
+                
+                return (
+                    <Space size="middle">
+                        <Button
+                            type="text"
+                            size="small"
+                            disabled={isAssigned}
+                            icon={<EditOutlined className={isAssigned ? "text-slate-300" : "text-blue-600"} />}
+                            onClick={() => handleEdit(record)}
+                            className={isAssigned ? "" : "hover:bg-blue-50"}
+                        />
+                        
+                        <Popconfirm
+                            title={t('committeeManagement.deleteConfirm')}
+                            description={t('committeeManagement.deleteDescription')}
+                            onConfirm={() => deleteMutation.mutate(record.id)}
+                            okText={t('common.delete')}
+                            cancelText={t('common.cancel')}
+                            okButtonProps={{ danger: true }}
+                            disabled={isAssigned}
+                        >
+                            <Button 
+                                type="text" 
+                                size="small"
+                                danger 
+                                disabled={isAssigned}
+                                icon={<DeleteOutlined className={isAssigned ? "text-slate-200" : ""} />} 
+                                className={isAssigned ? "" : "hover:bg-red-50"}
+                            />
+                        </Popconfirm>
+                    </Space>
+                );
+            }
         }
     ];
 
@@ -234,65 +278,107 @@ const CommitteeManagement = () => {
             </Card>
 
             <Modal
-                title={
-                    <div className="flex items-center gap-2">
-                        <PlusOutlined />
-                        <span>{editingCommittee ? t('committeeManagement.editCommittee') : t('committeeManagement.newCommittee')}</span>
-                    </div>
-                }
+                title={null}
                 open={isModalOpen}
                 onOk={handleSubmit}
                 onCancel={() => setIsModalOpen(false)}
-                width={800}
+                width={720}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
                 okText={editingCommittee ? t('common.update') : t('committeeManagement.addCommittee')}
                 cancelText={t('common.cancel')}
                 centered
+                className="premium-modal"
+                styles={{ body: { padding: 0 } }}
+                closeIcon={null}
+                footer={(footer) => (
+                    <div className="p-4 bg-slate-50 border-t flex justify-end gap-3 rounded-b-2xl">
+                        {footer}
+                    </div>
+                )}
             >
-                <Form form={form} layout="vertical" className="mt-4">
-                    <div className="grid grid-cols-3 gap-4">
-                        <Form.Item
-                            name="name"
-                            label={t('committeeManagement.nameLabel')}
-                            rules={[{ required: true, message: t('committeeManagement.nameRequired') }]}
-                            className="col-span-1"
-                        >
-                            <Input placeholder={t('committeeManagement.namePlaceholder')} size="large" />
-                        </Form.Item>
-                        <Form.Item
-                            name="type"
-                            label={t('committeeManagement.typeLabel', 'Loại hội đồng')}
-                            rules={[{ required: true }]}
-                        >
-                            <Select
-                                size="large"
-                                onChange={(val) => {
-                                    const currentMembers = form.getFieldValue('members') || [];
-                                    if (val === 'POSTER') {
-                                        form.setFieldsValue({
-                                            members: currentMembers.slice(0, 2).map((m: any) => ({ ...m, role: 'MEMBER' }))
-                                        });
-                                    } else if (val === 'ORAL' && currentMembers.length < 3) {
-                                        form.setFieldsValue({
-                                            members: [
-                                                { role: 'CHAIR' },
-                                                { role: 'SECRETARY' },
-                                                { role: 'MEMBER' }
-                                            ]
-                                        });
-                                    }
-                                }}
+                {/* Custom Header - Compact Size */}
+                <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-t-2xl relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                    
+                    {/* Custom Close Button */}
+                    <button 
+                        onClick={() => setIsModalOpen(false)}
+                        className="absolute right-4 top-4 z-50 text-white/50 hover:text-white transition-all duration-300 hover:rotate-90 focus:outline-none"
+                    >
+                        <CloseOutlined className="text-lg" />
+                    </button>
+
+                    <div className="relative z-10 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center border border-white/20 shadow-lg">
+                            <UsergroupAddOutlined className="text-xl text-white" />
+                        </div>
+                        <div>
+                            <Title level={5} className="!m-0 !text-white !font-black !text-[15px] tracking-tight">
+                                {editingCommittee ? t('committeeManagement.editCommittee') : t('committeeManagement.newCommittee')}
+                            </Title>
+                            <Text className="text-blue-100 text-[11px] font-medium opacity-70">
+                                {t('committeeManagement.description', { semester: activeSemester?.name })}
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+
+                <Form form={form} layout="vertical" className="p-6 pt-5">
+                    {/* Section 1: Basic Info - Small Text */}
+                    <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 mb-5">
+                        <div className="grid grid-cols-12 gap-3">
+                            <Form.Item
+                                name="name"
+                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><TagOutlined className="mr-1" /> {t('committeeManagement.nameLabel')}</span>}
+                                rules={[{ required: true, message: t('committeeManagement.nameRequired') }]}
+                                className="col-span-5 mb-0"
                             >
-                                <Select.Option value="ORAL">ORAL (Vấn đáp)</Select.Option>
-                                <Select.Option value="POSTER">POSTER</Select.Option>
-                            </Select>
-                        </Form.Item>
-                        <Form.Item name="roomPreference" label={t('committeeManagement.roomPreferenceLabel')}>
-                            <Input placeholder={t('committeeManagement.roomPreferencePlaceholder')} size="large" />
-                        </Form.Item>
+                                <Input placeholder={t('committeeManagement.namePlaceholder')} size="middle" className="rounded-lg text-[13px]" />
+                            </Form.Item>
+                            <Form.Item
+                                name="type"
+                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phân loại</span>}
+                                rules={[{ required: true }]}
+                                className="col-span-4 mb-0"
+                            >
+                                <Select
+                                    size="middle"
+                                    className="rounded-lg text-[13px]"
+                                    onChange={(val) => {
+                                        const currentMembers = form.getFieldValue('members') || [];
+                                        if (val === 'POSTER') {
+                                            form.setFieldsValue({
+                                                members: currentMembers.slice(0, 2).map((m: any) => ({ ...m, role: 'MEMBER' }))
+                                            });
+                                        } else if (val === 'ORAL' && currentMembers.length < 3) {
+                                            form.setFieldsValue({
+                                                members: [
+                                                    { role: 'CHAIR' },
+                                                    { role: 'SECRETARY' },
+                                                    { role: 'MEMBER' }
+                                                ]
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <Select.Option value="ORAL"><span className="text-[12px]">ORAL (Vấn đáp)</span></Select.Option>
+                                    <Select.Option value="POSTER"><span className="text-[12px]">POSTER (Triển lãm)</span></Select.Option>
+                                </Select>
+                            </Form.Item>
+                            <Form.Item 
+                                name="roomPreference" 
+                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><HomeOutlined className="mr-1" /> Phòng</span>}
+                                className="col-span-3 mb-0"
+                            >
+                                <Input placeholder="Vd: A.1.5" size="middle" className="rounded-lg text-[13px]" />
+                            </Form.Item>
+                        </div>
                     </div>
 
-                    <Divider orientation="left" className="text-gray-400">{t('committeeManagement.membersDivider')}</Divider>
+                    <div className="flex items-center gap-2 mb-4">
+                         <div className="w-1.5 h-4 bg-indigo-600 rounded-full" />
+                         <Title level={5} className="!m-0 !text-[13px] font-black text-slate-700 uppercase tracking-tight">{t('committeeManagement.membersDivider')}</Title>
+                    </div>
 
                     <Form.List
                         name="members"
@@ -319,73 +405,90 @@ const CommitteeManagement = () => {
                         {(fields, { add, remove }, { errors }) => (
                             <>
                                 <div className="space-y-3">
-                                    {fields.map(({ key, name, ...restField }) => (
-                                        <div key={key} className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
-                                            <Form.Item
-                                                {...restField}
-                                                name={[name, 'role']}
-                                                rules={[{ required: true, message: t('common.requiredField') }]}
-                                                className="mb-0 flex-none w-32"
-                                            >
-                                                <Select size="large">
-                                                    <Select.Option value="CHAIR">{t('committeeManagement.roleChair')}</Select.Option>
-                                                    <Select.Option value="SECRETARY">{t('committeeManagement.roleSecretary')}</Select.Option>
-                                                    <Select.Option value="MEMBER">{t('committeeManagement.roleMember')}</Select.Option>
-                                                </Select>
-                                            </Form.Item>
-                                            <Form.Item
-                                                {...restField}
-                                                name={[name, 'lecturerId']}
-                                                rules={[{ required: true, message: t('common.requiredField') }]}
-                                                className="mb-0 flex-1"
-                                            >
-                                                <Select
-                                                    size="large"
-                                                    showSearch
-                                                    placeholder={t('committeeManagement.selectLecturerPlaceholder')}
-                                                    filterOption={(input, option) =>
-                                                        (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
-                                                    }
-                                                    options={lecturers?.map(l => {
-                                                        const isSelectedInOtherRow = watchedMembers.some((m: any, idx: number) => idx !== name && m?.lecturerId === l.id);
-                                                        const isAssigned = busyLecturerIds.includes(l.id) && !currentCommitteeLecturerIds.has(l.id);
-                                                        return {
-                                                            value: l.id,
-                                                            label: l.full_name,
-                                                            email: l.email,
-                                                            disabled: isAssigned || isSelectedInOtherRow,
-                                                            isAssigned,
-                                                            isSelectedInOtherRow,
-                                                        };
-                                                    })}
-                                                    optionRender={(option) => (
-                                                        <div className={`py-1 ${option.data.disabled ? 'opacity-50' : ''}`}>
-                                                            <div className="font-medium text-gray-800">
-                                                                {option.data.label}
-                                                                {option.data.isAssigned && (
-                                                                    <Tag color="red" className="ml-2 text-xs">{t('committeeManagement.alreadyAssigned', 'Đã có HĐ')}</Tag>
-                                                                )}
-                                                                {option.data.isSelectedInOtherRow && (
-                                                                    <Tag color="orange" className="ml-2 text-xs">{t('committeeManagement.alreadySelected', 'Đã chọn')}</Tag>
-                                                                )}
+                                    {fields.map(({ key, name, ...restField }) => {
+                                        const roleValue = form.getFieldValue(['members', name, 'role']);
+                                        let roleIcon = <UserOutlined className="text-slate-400" />;
+                                        let roleColor = 'bg-slate-100';
+                                        if (roleValue === 'CHAIR') {
+                                            roleIcon = <CrownOutlined className="text-amber-500" />;
+                                            roleColor = 'bg-amber-50 border-amber-200';
+                                        } else if (roleValue === 'SECRETARY') {
+                                            roleIcon = <EditFilled className="text-blue-500" />;
+                                            roleColor = 'bg-blue-50 border-blue-200';
+                                        }
+                                        
+                                        return (
+                                            <div key={key} className={`flex gap-3 items-center p-3 rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md animate-in fade-in slide-in-from-top-2`}>
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-transparent ${roleColor}`}>
+                                                    {roleIcon}
+                                                </div>
+                                                
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'role']}
+                                                    rules={[{ required: true, message: t('common.requiredField') }]}
+                                                    className="mb-0 flex-none w-28"
+                                                >
+                                                    <Select size="middle" className="font-bold text-slate-700 text-[12px]">
+                                                        <Select.Option value="CHAIR">{t('committeeManagement.roleChair')}</Select.Option>
+                                                        <Select.Option value="SECRETARY">{t('committeeManagement.roleSecretary')}</Select.Option>
+                                                        <Select.Option value="MEMBER">{t('committeeManagement.roleMember')}</Select.Option>
+                                                    </Select>
+                                                </Form.Item>
+
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'lecturerId']}
+                                                    rules={[{ required: true, message: t('common.requiredField') }]}
+                                                    className="mb-0 flex-1"
+                                                >
+                                                    <Select
+                                                        size="middle"
+                                                        showSearch
+                                                        className="font-medium"
+                                                        placeholder={t('committeeManagement.selectLecturerPlaceholder')}
+                                                        filterOption={(input, option) =>
+                                                            (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                                                        }
+                                                        options={lecturers?.map(l => {
+                                                            const isSelectedInOtherRow = watchedMembers.some((m: any, idx: number) => idx !== name && m?.lecturerId === l.id);
+                                                            const isAssigned = busyLecturerIds.includes(l.id) && !currentCommitteeLecturerIds.has(l.id);
+                                                            return {
+                                                                value: l.id,
+                                                                label: l.full_name,
+                                                                email: l.email,
+                                                                disabled: isAssigned || isSelectedInOtherRow,
+                                                                isAssigned,
+                                                                isSelectedInOtherRow,
+                                                            };
+                                                        })}
+                                                        optionRender={(option) => (
+                                                            <div className={`py-1 ${option.data.disabled ? 'opacity-50' : ''}`}>
+                                                                <div className="font-bold text-slate-800 text-xs">
+                                                                    {option.data.label}
+                                                                    {option.data.isAssigned && (
+                                                                        <Tag color="red" className="ml-2 text-[9px] uppercase font-black">{t('committeeManagement.alreadyAssigned', 'Đã có HĐ')}</Tag>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-400 font-mono tracking-tight">{option.data.email}</div>
                                                             </div>
-                                                            <div className="text-xs text-gray-400">{option.data.email}</div>
-                                                        </div>
-                                                    )}
-                                                />
-                                            </Form.Item>
-                                            {((form.getFieldValue('type') === 'ORAL' && fields.length > 3) ||
-                                                (form.getFieldValue('type') === 'POSTER' && fields.length > 2)) && (
-                                                    <Button
-                                                        type="text"
-                                                        danger
-                                                        icon={<DeleteOutlined />}
-                                                        onClick={() => remove(name)}
-                                                        className="mt-1"
+                                                        )}
                                                     />
-                                                )}
-                                        </div>
-                                    ))}
+                                                </Form.Item>
+                                                
+                                                {((form.getFieldValue('type') === 'ORAL' && fields.length > 3) ||
+                                                    (form.getFieldValue('type') === 'POSTER' && fields.length > 2)) && (
+                                                        <Button
+                                                            type="text"
+                                                            danger
+                                                            icon={<DeleteOutlined />}
+                                                            onClick={() => remove(name)}
+                                                            className="flex-none hover:bg-red-50"
+                                                        />
+                                                    )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <Form.ErrorList errors={errors} className="mt-2 text-red-500 text-sm" />

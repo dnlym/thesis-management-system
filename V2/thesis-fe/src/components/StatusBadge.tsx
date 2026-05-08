@@ -48,6 +48,8 @@ const assignmentStatusConfig: Record<AssignmentStatus, { labelKey: string; color
     PENDING: { labelKey: 'status.assignment.PENDING', color: 'processing' },
     ACCEPTED: { labelKey: 'status.assignment.ACCEPTED', color: 'success' },
     DECLINED: { labelKey: 'status.assignment.DECLINED', color: 'error' },
+    AUTO_ACCEPTED: { labelKey: 'status.assignment.AUTO_ACCEPTED', color: 'success' },
+    AUTO_DECLINED: { labelKey: 'status.assignment.AUTO_DECLINED', color: 'error' },
 };
 
 const extraPointsStatusConfig: Record<ExtraPointsStatus, { labelKey: string; color: string }> = {

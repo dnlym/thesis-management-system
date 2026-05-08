@@ -134,12 +134,29 @@ export class DashboardService {
             }
         });
 
+        // Count assignments that are either ACCEPTED or AUTO_ACCEPTED
         const reviewAssignmentsCount = await prisma.assignment.count({
             where: {
                 reviewer_id: userId,
                 assignment_type: 'REVIEWER',
-                status: AssignmentStatus.PENDING,
+                status: { in: [AssignmentStatus.ACCEPTED, 'AUTO_ACCEPTED' as any] },
                 ...(semesterId ? { topic: { semester_id: semesterId } } : {})
+            }
+        });
+
+        // Count assignments where the lecturer has already submitted grades
+        const gradedAssignmentsCount = await prisma.assignment.count({
+            where: {
+                reviewer_id: userId,
+                assignment_type: 'REVIEWER',
+                topic: {
+                    grades: {
+                        some: {
+                            grader_id: userId,
+                            ...(semesterId ? { topic: { semester_id: semesterId } } : {})
+                        }
+                    }
+                }
             }
         });
 
@@ -148,6 +165,7 @@ export class DashboardService {
             supervisedTopicsCount,
             pendingRegistrationsCount,
             reviewAssignmentsCount,
+            gradedAssignmentsCount,
             pendingApprovalTopics: pendingRegistrationsCount,
             completionRate: 0
         };

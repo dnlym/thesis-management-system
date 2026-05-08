@@ -35,7 +35,7 @@ export type ProgressStage =
 export type AssignmentType = 'REVIEWER' | 'COMMITTEE';
 
 // Assignment Status
-export type AssignmentStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
+export type AssignmentStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'AUTO_ACCEPTED' | 'AUTO_DECLINED';
 
 // Registration Status
 export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED';
