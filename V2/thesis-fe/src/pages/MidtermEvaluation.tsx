@@ -80,17 +80,80 @@ const MidtermEvaluation = () => {
         return registrations.some(r => r.permissions && !r.permissions.grade_midterm);
     }, [registrations]);
 
+    // Sort and calculate row spans for grouping
+    const processedData = useMemo(() => {
+        if (!registrations) return [];
+        
+        // 1. Filter
+        let filtered = registrations;
+        if (filterStatus !== 'ALL') {
+            if (filterStatus === 'PENDING') {
+                filtered = registrations.filter(r => !r.midterm_status);
+            } else {
+                filtered = registrations.filter(r => r.midterm_status === filterStatus);
+            }
+        }
+
+        // 2. Sort by Topic and Group
+        const sorted = [...filtered].sort((a, b) => {
+            const topicCompare = a.topic.title.localeCompare(b.topic.title);
+            if (topicCompare !== 0) return topicCompare;
+            return (a.group?.name || '').localeCompare(b.group?.name || '');
+        });
+
+        // 3. Calculate rowSpan
+        const dataWithSpans = sorted.map((item, index) => {
+            // Check if this is the start of a group
+            // Grouping key is topic.id + group.id
+            const currentKey = `${item.topic.id}-${item.group?.id || 'none'}`;
+            const prevKey = index > 0 ? `${sorted[index-1].topic.id}-${sorted[index-1].group?.id || 'none'}` : null;
+
+            if (currentKey !== prevKey) {
+                // Count how many subsequent items have the same key
+                let span = 1;
+                for (let i = index + 1; i < sorted.length; i++) {
+                    const nextKey = `${sorted[i].topic.id}-${sorted[i].group?.id || 'none'}`;
+                    if (nextKey === currentKey) {
+                        span++;
+                    } else {
+                        break;
+                    }
+                }
+                return { ...item, rowSpan: span };
+            } else {
+                return { ...item, rowSpan: 0 };
+            }
+        });
+
+        return dataWithSpans;
+    }, [registrations, filterStatus]);
+
     const columns: any[] = [
         {
             title: 'STT',
             key: 'index',
             width: 60,
-            render: (_: any, __: any, index: number) => index + 1,
+            onCell: (record: any) => ({
+                rowSpan: record.rowSpan,
+            }),
+            render: (_: any, record: any, index: number) => {
+                // Find the topic index by counting rows with rowSpan > 0 up to this index
+                let topicIndex = 0;
+                for (let i = 0; i <= index; i++) {
+                    if (processedData[i].rowSpan > 0) {
+                        topicIndex++;
+                    }
+                }
+                return <span className="font-bold text-slate-400">{topicIndex}</span>;
+            },
         },
         {
             title: 'Đề tài',
             dataIndex: ['topic', 'title'],
             key: 'topic',
+            onCell: (record: any) => ({
+                rowSpan: record.rowSpan,
+            }),
             render: (title: string, record: MidtermRegistration) => (
                 <div 
                     className="cursor-pointer group max-w-[400px]" 
@@ -105,40 +168,21 @@ const MidtermEvaluation = () => {
                                NHÓM: {record.group.name}
                            </Tag>
                        )}
-                       {!record.topic?.semester && (
-                           <Tag color="warning" className="m-0 text-[10px]">Thiếu thông tin học kỳ</Tag>
-                       )}
                    </div>
                 </div>
             ),
         },
         {
-            title: 'Nhóm sinh viên',
-            key: 'students',
+            title: 'Sinh viên',
+            key: 'student',
             width: 250,
             render: (_: any, record: MidtermRegistration) => (
-                <div className="space-y-1.5">
-                    {record.group && record.group.members ? (
-                        record.group.members.map((m) => (
-                            <div key={m.user.id} className="flex items-center gap-2.5">
-                                <Avatar size={24} src={m.user.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-slate-700 text-[13px] leading-none">{m.user.full_name}</span>
-                                    <span className="text-slate-400 text-[11px] mt-0.5">{m.user.student_code}</span>
-                                </div>
-                            </div>
-                        ))
-                    ) : record.student ? (
-                        <div className="flex items-center gap-2.5">
-                            <Avatar size={24} src={record.student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
-                            <div className="flex flex-col">
-                                <span className="font-bold text-slate-700 text-[13px] leading-none">{record.student.full_name}</span>
-                                <span className="text-slate-400 text-[11px] mt-0.5">{record.student.student_code}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <span className="text-gray-400 italic">No student info</span>
-                    )}
+                <div className="flex items-center gap-2.5">
+                    <Avatar size={24} src={record.student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
+                    <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 text-[13px] leading-none">{record.student.full_name}</span>
+                        <span className="text-slate-400 text-[11px] mt-0.5">{record.student.student_code}</span>
+                    </div>
                 </div>
             ),
         },
@@ -147,6 +191,9 @@ const MidtermEvaluation = () => {
             dataIndex: 'registered_at',
             key: 'registered_at',
             width: 120,
+            onCell: (record: any) => ({
+                rowSpan: record.rowSpan,
+            }),
             render: (date: string) => <span className="text-slate-500 font-medium">{dayjs(date).format('DD/MM/YYYY')}</span>,
         },
         {
@@ -222,13 +269,6 @@ const MidtermEvaluation = () => {
     const pendingCount = registrations?.filter((r: MidtermRegistration) => !r.midterm_status).length || 0;
     const passedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length || 0;
     const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
-
-    const filteredRegistrations = useMemo(() => {
-        if (!registrations) return [];
-        if (filterStatus === 'ALL') return registrations;
-        if (filterStatus === 'PENDING') return registrations.filter(r => !r.midterm_status);
-        return registrations.filter(r => r.midterm_status === filterStatus);
-    }, [registrations, filterStatus]);
 
     if (isLoading) {
         return (
@@ -326,11 +366,12 @@ const MidtermEvaluation = () => {
                     <Empty description="Không có nhóm nào cần đánh giá giữa kỳ" className="py-12" />
                 ) : (
                     <Table
-                        dataSource={filteredRegistrations}
+                        dataSource={processedData}
                         columns={columns}
                         rowKey="id"
                         pagination={{ pageSize: 10, className: 'px-6 py-4' }}
-                        className="sys-table"
+                        className="sys-table border-table"
+                        bordered
                     />
                 )}
             </Card>

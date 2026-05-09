@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { Prisma, TopicStatus, UserRole, SemesterPhase, AssignmentStatus, AssignmentType, InterdisciplinaryStatus } from '@prisma/client';
+import { Prisma, TopicStatus, UserRole, SemesterPhase, AssignmentStatus, AssignmentType, InterdisciplinaryStatus, RegistrationStatus } from '@prisma/client';
 import { canEditTopic } from '../utils/permission.utils';
 import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicAction, AcademicPolicy } from '../utils/academic-policy';
@@ -857,6 +857,10 @@ export class TopicService {
       } else {
         where.status = filter.status;
       }
+    } else {
+      // Default: Exclude REJECTED topics from all general lists 
+      // unless specifically requested via filter.status
+      andConditions.push({ status: { not: TopicStatus.REJECTED } });
     }
 
     // Role-based status constraints & logic
@@ -968,7 +972,9 @@ export class TopicService {
             }
           },
           registrations: {
-            where: filter.midtermStatus ? { midterm_status: filter.midtermStatus } : undefined,
+            where: filter.midtermStatus 
+                ? { midterm_status: filter.midtermStatus } 
+                : { status: { not: RegistrationStatus.FAILED } },
             include: {
               student: {
                 select: {

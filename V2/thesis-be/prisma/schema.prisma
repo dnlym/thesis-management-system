@@ -677,6 +677,7 @@ enum RegistrationStatus {
   CONFIRMED
   REJECTED
   CANCELLED
+  FAILED
 }
 
 enum GroupStatus {
@@ -779,6 +780,7 @@ enum StudentProgressStatus {
   DEFENSE_COMPLETED
   COUNCIL_GRADED
   COMPLETED
+  MIDTERM_FAILED
 }
 
 enum MidtermStatus {

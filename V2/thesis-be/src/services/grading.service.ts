@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { Prisma, RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus, ProgressStage } from '@prisma/client';
+import { Prisma, RaterRole, TopicStatus, StudentProgressStatus, MidtermStatus, AssignmentType, SemesterPhase, GradingCriterion, UserRole, AssignmentStatus, ProgressStage, RegistrationStatus } from '@prisma/client';
 import { isSupervisor, isReviewer as isReviewerPermission, isCommitteeMember } from '../utils/permission.utils';
 import { SemesterGuard } from '../utils/semester-guard';
 import { SubmitGradeRequest, CreateGradingCriterionRequest, UpdateGradingCriterionRequest } from '../types';
@@ -440,10 +440,8 @@ export class GradingService {
     for (const data of studentData) {
       const studentId = data.studentId;
       const groupId = data.groupId;
-      // Filter grades for this student (include individual grades and group-level grades)
-      const studentGrades = topic.grades.filter(g =>
-        g.student_id === studentId || (g.student_id === null && groupId && g.group_id === groupId)
-      );
+      // Filter grades for this student (ONLY individual grades)
+      const studentGrades = topic.grades.filter(g => g.student_id === studentId);
 
       // Fetch all approved extra points from research evidence (AUTOMATIC)
       const approvedExtraPointsSum = await prisma.extraPointRequest.aggregate({
@@ -1400,36 +1398,18 @@ export class GradingService {
       throw new Error('Can only grade midterm for confirmed registrations');
     }
 
-    // Update midterm status for ALL registrations in this group
-    // This is important because midterm grading applies to the entire group
-    if (registration.group_id) {
-      await prisma.topicRegistration.updateMany({
-        where: {
-          group_id: registration.group_id,
-          topic_id: registration.topic_id,
-        },
-        data: {
-          midterm_status: status,
-          midterm_graded_at: new Date(),
-          midterm_feedback: feedback || null,
-          // Update progress status if PASS
-          student_progress_status: StudentProgressStatus.HAS_TOPIC,
-        },
-      });
-    } else {
-      // Single student registration (no group)
-
-
-      await prisma.topicRegistration.update({
-        where: { id: registrationId },
-        data: {
-          midterm_status: status,
-          midterm_feedback: feedback,
-          midterm_graded_at: new Date(),
-          student_progress_status: StudentProgressStatus.HAS_TOPIC,
-        },
-      });
-    }
+    // Update midterm status ONLY for this specific registration
+    await prisma.topicRegistration.update({
+      where: { id: registrationId },
+      data: {
+        midterm_status: status,
+        midterm_feedback: feedback || null,
+        midterm_graded_at: new Date(),
+        // Hard Status update:
+        status: status === 'FAIL' ? RegistrationStatus.FAILED : RegistrationStatus.CONFIRMED,
+        student_progress_status: status === 'FAIL' ? StudentProgressStatus.MIDTERM_FAILED : StudentProgressStatus.HAS_TOPIC,
+      },
+    });
 
     // Fetch updated registration for return value
     const updatedRegistration = await prisma.topicRegistration.findUnique({
@@ -1551,15 +1531,10 @@ export class GradingService {
       orderBy: { registered_at: 'desc' },
     });
 
-    // Deduplicate and attach permissions
-    const seenGroups = new Set<string>();
+    // Attach permissions to all registrations (one row per student)
     const result = [];
 
     for (const reg of registrations) {
-      const key = reg.group_id || reg.id;
-      if (seenGroups.has(key)) continue;
-      seenGroups.add(key);
-
       const permissions = this.getTopicPermissions(
         { id: userId, role: user.role },
         reg.topic.semester,
@@ -1604,10 +1579,12 @@ export class GradingService {
             }
           },
           registrations: {
+            where: { midterm_status: 'PASS' },
             select: {
               id: true,
               group_id: true,
               student_id: true,
+              midterm_status: true,
               student: true,
               topic: {
                 select: {
@@ -1703,9 +1680,10 @@ export class GradingService {
       const fs = finalScores.find(s => s.student_id === reg.student_id);
       return {
         ...reg.student,
-        className: reg.student.class_name,
-        class_name: reg.student.class_name,
-        groupId: reg.group_id, // CRITICAL FIX: Add groupId here
+        className: (reg.student as any).class_name,
+        class_name: (reg.student as any).class_name,
+        midterm_status: reg.midterm_status,
+        groupId: reg.group_id,
         finalScore: fs
       };
     });
@@ -1819,11 +1797,12 @@ export class GradingService {
 
     // Get list of students registered for this topic
     const registrations = await prisma.topicRegistration.findMany({
-      where: { topic_id: topicId },
+      where: { topic_id: topicId, midterm_status: 'PASS' },
       select: {
         id: true,
         group_id: true,
         student_id: true,
+        midterm_status: true,
         student: true,
         topic: {
           select: {
