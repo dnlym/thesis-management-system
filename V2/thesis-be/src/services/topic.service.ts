@@ -1126,17 +1126,31 @@ export class TopicService {
     };
   }
 
-  async getTopicById(userId: string, id: string) {
+  async getTopicById(userId: string, id: string, queryGroupId?: string) {
     let topicId = id;
+    let resolvedGroupId = queryGroupId;
 
-    // Support passing groupId instead of topicId (One registration per row mode)
+    // [RESOLUTION STRATEGY] Try to resolve the actual Topic ID from various possible input IDs
+    // 1. Check if it's a Group ID
     const group = await prisma.group.findUnique({
       where: { id },
-      select: { topic_id: true }
+      select: { id: true, topic_id: true }
     });
 
     if (group && group.topic_id) {
       topicId = group.topic_id;
+      resolvedGroupId = group.id;
+    } else {
+      // 2. Check if it's an Assignment ID (Reviewer/Committee context)
+      const assignment = await prisma.assignment.findUnique({
+        where: { id },
+        select: { topic_id: true, group_id: true }
+      });
+
+      if (assignment && assignment.topic_id) {
+        topicId = assignment.topic_id;
+        resolvedGroupId = assignment.group_id || undefined;
+      }
     }
 
     const topic = await prisma.topic.findUnique({
@@ -1199,7 +1213,7 @@ export class TopicService {
         },
         assignments: true,
         groups: {
-          select: { name: true }
+          select: { id: true, name: true }
         },
         defense_schedules: {
           include: {
@@ -1248,7 +1262,9 @@ export class TopicService {
     }
 
     // LECTURER, HEAD, ADMIN can see all registrations
-    const students = topic.registrations?.map(reg => {
+    // [LOGIC ENHANCEMENT] If we resolved this topic via a groupId, we should prioritize that group's info
+    let displayCode = GroupUtils.formatGroupDisplay((topic as any).groups, topic.code || "");
+    let filteredStudents = topic.registrations?.map(reg => {
       const student = reg.student;
       const finalScore = topic.final_scores?.find(fs => fs.student_id === (student as any).id);
       return {
@@ -1259,14 +1275,23 @@ export class TopicService {
       };
     }) || [];
 
+    // If we have a resolved groupId (either from path or query)
+    if (resolvedGroupId) {
+      const selectedGroup = (topic as any).groups?.find((g: any) => g.id === resolvedGroupId);
+      if (selectedGroup) {
+        displayCode = selectedGroup.name;
+        filteredStudents = filteredStudents.filter(s => s.groupId === resolvedGroupId);
+      }
+    }
+
     const room = topic.assignments[0]?.room || null;
 
     return {
       ...topic,
-      code: GroupUtils.formatGroupDisplay((topic as any).groups, topic.code || ""),
+      code: displayCode,
       committee: (topic as any).defense_schedules?.[0]?.committee || null,
       registrations: topic.registrations || [],
-      students,
+      students: filteredStudents,
       room,
     };
   }

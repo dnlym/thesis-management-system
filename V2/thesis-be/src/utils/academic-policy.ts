@@ -68,12 +68,21 @@ export class AcademicPolicy {
     if (!registration || !registration.topic) return { failed: false };
     const topic = registration.topic;
 
-    // Chỉ giữ lại kiểm tra nếu đề tài bị khóa thủ công (is_locked)
+    // 1. Manual Lock
     if (topic.is_locked) {
       return { failed: true, reason: 'Đề tài này đã bị khóa bởi quản trị viên.' };
     }
 
-    // Kiểm tra điều kiện khi bước vào giai đoạn Bảo vệ (DEFENSE) hoặc Tổng kết (FINAL)
+    // 2. Eligibility for Defense Check
+    // If we are at Defense phase, the topic MUST be marked as eligible
+    if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
+      if (topic.is_eligible_for_defense === false) {
+        return { failed: true, reason: 'Đề tài này đã bị chốt không đủ điều kiện bảo vệ cuối kỳ.' };
+      }
+    }
+
+    // 3. Grading Completion Check
+    // For Defense phase, we require Supervisor and Reviewer to have finished
     const isAtDefensePhaseOrLater = phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
     if (isAtDefensePhaseOrLater) {
       const grades = topic.grades || [];
@@ -81,11 +90,11 @@ export class AcademicPolicy {
       const hasReviewerGraded = grades.some((g: any) => g.rater_role?.startsWith('REVIEWER'));
 
       if (!hasSupervisorGraded) {
-        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Giảng viên hướng dẫn khi kết thúc giai đoạn xét duyệt.' };
+        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Giảng viên hướng dẫn.' };
       }
       
       if (!hasReviewerGraded) {
-        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Phản biện khi bước vào giai đoạn Bảo vệ.' };
+        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Phản biện.' };
       }
     }
 
@@ -132,6 +141,7 @@ export class AcademicPolicy {
       AcademicAction.ASSIGN_DEFENSE_PIVOT,
       AcademicAction.ASSIGN_REVIEWER,
       AcademicAction.ASSIGN_COMMITTEE,
+      AcademicAction.GRADE_COMMITTEE,
       AcademicAction.FINALIZE_SCORE
     ];
 

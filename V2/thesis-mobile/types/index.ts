@@ -168,8 +168,12 @@ export interface Topic {
     source_topic_id?: string | null;
     source_topic?: Topic | null;
     grades?: Grade[];
+    final_scores?: FinalScore[];
     room?: string | null;
     assignments?: Assignment[];
+    allowedActions?: Record<string, ActionPermission>;
+    topicId?: string; // Add topicId for group-flattened topics from backend
+    groupId?: string; // Add groupId for group-flattened topics from backend
 }
 
 export interface Group {
@@ -289,7 +293,10 @@ export interface Grade {
     score: number;
     comments?: string | null;
     graded_at: string;
+    created_at?: string;
+    updated_at?: string;
     criterion?: GradingCriteria;
+    grader?: User;
 }
 
 export interface GradeScore {
@@ -322,6 +329,8 @@ export interface FinalScore {
     created_at: string;
     updated_at: string;
     group_id?: string | null;
+    total_score?: number;
+    result?: string;
     topic?: Topic;
     student?: User;
 }

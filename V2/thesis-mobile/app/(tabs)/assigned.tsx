@@ -50,40 +50,61 @@ export default function AssignedScreen() {
     const supervised = supervisedTopics || [];
     const allDept = allDeptTopicsRes?.topics || [];
 
-    let rawList: { topic: any, role: string, assignment?: any }[] = [];
+    let rawList: { topic: any, role: string, assignment?: any, groupId?: string | null }[] = [];
 
-    // Select list based on filter
+    // Helper to get personal roles for a topic
+    const getPersonalRole = (topicId: string) => {
+        if (supervised.some(t => t.id === topicId)) return 'GVHD';
+        const reviewer = assignedReviewer.find(a => a.topic_id === topicId);
+        if (reviewer) return 'GVPB';
+        const committee = assignedCommittee.find(a => a.topic_id === topicId);
+        if (committee) return 'HĐBV';
+        return isHOD ? 'XEM' : null;
+    };
+
+    // select personal assignments first
+    const personalSupervised = supervised.flatMap(t => {
+        if (!t.registrations || t.registrations.length === 0) {
+            return [{ topic: t, role: 'GVHD', groupId: null }];
+        }
+        return t.registrations.map(reg => ({ 
+            topic: t, 
+            role: 'GVHD', 
+            groupId: reg.group_id 
+        }));
+    });
+
+    const personalReviewer = assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a, groupId: a.group_id }));
+    const personalCommittee = assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a, groupId: a.group_id }));
+
+    const personalList = [...personalSupervised, ...personalReviewer, ...personalCommittee];
+
     if (activeFilter === 'ALL') {
       if (isHOD) {
-        rawList = allDept.map(t => ({ topic: t, role: t.supervisor_id === user?.id ? 'GVHD' : 'XEM' }));
+        // HOD sees everything in dept, but we prioritize marking their personal ones
+        const deptList = allDept.map(t => {
+            const role = getPersonalRole(t.id) || 'XEM';
+            return { topic: t, role, groupId: null };
+        });
+        
+        rawList = [...personalList];
+        
+        // Add dept topics that aren't already in personalList (by topic id)
+        const personalTopicIds = new Set(personalList.map(item => item.topic?.id));
+        deptList.forEach(item => {
+            if (!personalTopicIds.has(item.topic?.id)) {
+                rawList.push(item);
+            }
+        });
       } else {
-        // Map per registration/group for supervised topics
-        const supervisedEntries = supervised.flatMap(t => 
-            (t.registrations || []).map(reg => ({ 
-                topic: t, 
-                role: 'GVHD', 
-                groupId: reg.group_id 
-            }))
-        );
-
-        rawList = [
-            ...supervisedEntries,
-            ...assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a, groupId: a.group_id })),
-            ...assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a, groupId: a.group_id }))
-        ];
+        rawList = personalList;
       }
     } else if (activeFilter === 'GVHD') {
-        rawList = supervised.flatMap(t => 
-            (t.registrations || []).map(reg => ({ 
-                topic: t, 
-                role: 'GVHD', 
-                groupId: reg.group_id 
-            }))
-        );
+        rawList = personalSupervised;
     } else if (activeFilter === 'GVPB') {
-      rawList = assignedReviewer.map(a => ({ topic: a.topic, role: 'GVPB', assignment: a, groupId: a.group_id }));
+        rawList = personalReviewer;
     } else if (activeFilter === 'HĐBV') {
-      rawList = assignedCommittee.map(a => ({ topic: a.topic, role: 'HĐBV', assignment: a, groupId: a.group_id }));
+        rawList = personalCommittee;
     }
 
     // Normalize for display
@@ -93,12 +114,25 @@ export default function AssignedScreen() {
       
       const groupId = (item as any).groupId || null;
       // Filter grades for this specific group
-      const groupGrades = t.grades?.filter(g => g.group_id === groupId || (g.group_id === null && !groupId)) || [];
-      const isGraded = groupGrades.length > 0;
+      const groupGrades = t.grades?.filter((g: any) => g.group_id === groupId || (g.group_id === null && !groupId)) || [];
       
-      // Find the specific registration for this group to get the group name
-      const reg = t.registrations?.find(r => r.group_id === groupId);
-      const groupName = reg?.group?.name || reg?.student?.full_name || 'Đề tài lẻ';
+      // Find the specific registration for this group
+      const reg = t.registrations?.find((r: any) => r.group_id === groupId || (!r.group_id && !groupId));
+      const studentId = reg?.student_id || t.students?.[0]?.id;
+      
+      // A topic is considered graded if it has grades OR it has a final score in the final_scores array
+      // Match by group_id or student_id in final_scores
+      const finalScoreForStudent = (t.final_scores || []).find((fs: any) => 
+        (groupId && fs.group_id === groupId) || 
+        (studentId && fs.student_id === studentId)
+      );
+
+      const isFinalized = t.status === 'FINALIZED' || !!finalScoreForStudent;
+      const isGraded = groupGrades.length > 0 || isFinalized;
+      
+      const groupName = t.groupName || reg?.group?.name || reg?.student?.full_name || t.students?.[0]?.full_name || 'Đề tài lẻ';
+
+      const displayScore = finalScoreForStudent?.final_score ?? (groupGrades.length > 0 ? groupGrades.reduce((acc: number, g: any) => acc + g.score, 0) / groupGrades.length : null);
 
       return {
         id: item.assignment?.id || `topic-${t.id}-${groupId || 'no-group'}-${item.role}`,
@@ -113,7 +147,8 @@ export default function AssignedScreen() {
         groupName: groupName,
         department: t.department?.name || 'CNTT',
         isGraded,
-        score: null as string | null,
+        isFinalized,
+        score: displayScore ? displayScore.toFixed(1) : null,
       };
     });
 
@@ -236,11 +271,14 @@ export default function AssignedScreen() {
             </View>
 
             <View style={styles.cardRightCol}>
-              <View style={[styles.statusBadge, { backgroundColor: item.isGraded ? '#f0fdf4' : '#fff7ed' }]}>
-                <Text style={[styles.statusBadgeText, { color: item.isGraded ? '#16a34a' : '#ea580c' }]}>
-                  {item.isGraded ? 'Đã nhận' : 'Chưa chấm'}
+              <View style={[styles.statusBadge, { backgroundColor: item.isFinalized ? '#f0f9ff' : item.isGraded ? '#f0fdf4' : '#fff7ed' }]}>
+                <Text style={[styles.statusBadgeText, { color: item.isFinalized ? BLUE : item.isGraded ? '#16a34a' : '#ea580c' }]}>
+                  {item.isFinalized ? 'Đã chốt' : item.isGraded ? 'Đã nhận' : 'Chưa chấm'}
                 </Text>
               </View>
+              {item.score && (
+                <Text style={styles.scoreText}>{item.score}</Text>
+              )}
               <View style={styles.chevronContainer}>
                 <ChevronRight size={20} color="#cbd5e1" />
               </View>
@@ -298,5 +336,6 @@ const styles = StyleSheet.create({
   cardRightCol: { width: 90, alignItems: 'flex-end', justifyContent: 'center' },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  scoreText: { fontSize: 16, fontWeight: '800', color: BLUE, marginTop: 8 },
   chevronContainer: { marginTop: 10 },
 });

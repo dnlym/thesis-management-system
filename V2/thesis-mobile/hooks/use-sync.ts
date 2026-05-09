@@ -1,12 +1,16 @@
 import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { OfflineStorage } from '@/api/offline';
 import { GradingApi } from '@/api/grading';
 import { useAuthStore } from '@/store/auth';
+import { gradingKeys } from './useGrading';
+import { topicKeys } from './useTopics';
 
 export const useSync = () => {
     const [status, setStatus] = React.useState<'PENDING' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('PENDING');
     const [pendingCount, setPendingCount] = React.useState(0);
     const { isAuthenticated } = useAuthStore();
+    const queryClient = useQueryClient();
 
     const sync = React.useCallback(async () => {
         if (!isAuthenticated) return;
@@ -23,15 +27,24 @@ export const useSync = () => {
             setStatus('SYNCING');
 
             let errorOccurred = false;
+            let successCount = 0;
 
             for (const item of queue) {
                 try {
                     await GradingApi.submitGrade(item.data);
                     await OfflineStorage.removeFromQueue(item.id);
+                    successCount++;
                 } catch (err) {
                     console.error('Failed to sync item:', item.id, err);
                     errorOccurred = true;
                 }
+            }
+
+            if (successCount > 0) {
+                // Invalidate all related data to ensure consistency with backend
+                queryClient.invalidateQueries({ queryKey: gradingKeys.all });
+                queryClient.invalidateQueries({ queryKey: topicKeys.all });
+                queryClient.invalidateQueries({ queryKey: topicKeys.stats() });
             }
 
             const remainingQueue = await OfflineStorage.getQueue();
@@ -42,7 +55,7 @@ export const useSync = () => {
             console.error('Storage access error during sync:', err);
             setStatus('ERROR');
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, queryClient]);
 
     React.useEffect(() => {
         // Initial sync

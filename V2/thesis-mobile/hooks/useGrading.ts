@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GradingApi, type CriteriaFilters } from '@/api/grading';
+import { topicKeys } from './useTopics';
 import type { GradeSubmissionForm } from '@/types';
 import { Alert } from 'react-native';
 import { useAuthStore } from '@/store/auth';
@@ -53,10 +54,13 @@ export function useSubmitGrade() {
         mutationFn: (data: GradeSubmissionForm) => GradingApi.submitGrade(data),
         onSuccess: (response, variables) => {
             queryClient.invalidateQueries({ queryKey: gradingKeys.topicGrades(variables.topic_id) });
+            queryClient.invalidateQueries({ queryKey: topicKeys.all });
+            queryClient.invalidateQueries({ queryKey: topicKeys.stats() });
             Alert.alert('Thành công', 'Nộp điểm thành công');
         },
         onError: (error: any) => {
-            Alert.alert('Lỗi', error?.response?.data?.message || 'Nộp điểm thất bại');
+            const message = error?.response?.data?.message || error?.message || 'Nộp điểm thất bại';
+            Alert.alert('Lỗi', message);
         },
     });
 }
@@ -74,7 +78,8 @@ export function useComputeFinalScore() {
             Alert.alert('Thành công', 'Tính điểm tổng hợp thành công');
         },
         onError: (error: any) => {
-            Alert.alert('Lỗi', error?.response?.data?.message || 'Tính điểm tổng hợp thất bại');
+            const message = error?.response?.data?.message || error?.message || 'Tính điểm tổng hợp thất bại';
+            Alert.alert('Lỗi', message);
         },
     });
 }
@@ -92,7 +97,8 @@ export function useFinalizeGrades() {
             Alert.alert('Thành công', 'Hoàn tất chấm điểm thành công');
         },
         onError: (error: any) => {
-            Alert.alert('Lỗi', error?.response?.data?.message || 'Hoàn tất chấm điểm thất bại');
+            const message = error?.response?.data?.message || error?.message || 'Hoàn tất chấm điểm thất bại';
+            Alert.alert('Lỗi', message);
         },
     });
 }

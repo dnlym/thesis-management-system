@@ -2,7 +2,7 @@ import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     TextInput, StyleSheet, Alert, ActivityIndicator,
-    Platform, StatusBar
+    Platform, StatusBar, Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -75,8 +75,14 @@ export default function GradingScreen() {
     const [idx, setIdx] = React.useState(initialIdx >= 0 ? initialIdx : 0);
     const [allScores, setAllScores] = React.useState<Record<string, Record<string, string>>>({});
     const [allComments, setAllComments] = React.useState<Record<string, string>>({});
+    const [originalScores, setOriginalScores] = React.useState<Record<string, Record<string, string>>>({});
+    const [originalComments, setOriginalComments] = React.useState<Record<string, string>>({});
+    const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
     const [isRestoring, setIsRestoring] = React.useState(true);
     const [submitted, setSubmitted] = React.useState(false);
+    const [dbGrades, setDbGrades] = React.useState<any[]>([]);
+    const [gradeHistory, setGradeHistory] = React.useState<any[]>([]);
+    const inputRefs = React.useRef<Record<string, TextInput | null>>({});
 
     // Restoration Logic
     React.useEffect(() => {
@@ -87,29 +93,39 @@ export default function GradingScreen() {
             }
             try {
                 const myGrades = await GradingApi.getMyGrades(topicId as string, raterRole);
-                if (myGrades && myGrades.students && myGrades.students.length > 0) {
-                    const restoredScores: Record<string, Record<string, string>> = {};
-                    const restoredComments: Record<string, string> = {};
-                    let anySubmitted = false;
-                    for (const sGrade of myGrades.students) {
-                        if (sGrade.status === 'SUBMITTED') {
-                            anySubmitted = true;
-                            const sScores: Record<string, string> = {};
-                            sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
-                            restoredScores[sGrade.studentId] = sScores;
-                            restoredComments[sGrade.studentId] = sGrade.generalComment || '';
-                        }
-                    }
-                    if (anySubmitted) {
-                        setAllScores(restoredScores);
-                        setAllComments(restoredComments);
-                        setSubmitted(true);
-                        setIsRestoring(false);
-                        return;
-                    }
-                }
                 const restoredScores: Record<string, Record<string, string>> = {};
                 const restoredComments: Record<string, string> = {};
+
+                if (myGrades) {
+                    setGradeHistory(myGrades.gradeHistory || []);
+                    if (myGrades.students && myGrades.students.length > 0) {
+                        setDbGrades(myGrades.students);
+                        let anySubmitted = false;
+                        for (const sGrade of myGrades.students) {
+                            if (sGrade.status === 'SUBMITTED') {
+                                anySubmitted = true;
+                                const sScores: Record<string, string> = {};
+                                sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
+                                restoredScores[sGrade.studentId] = sScores;
+                                restoredComments[sGrade.studentId] = sGrade.generalComment || '';
+                                if (sGrade.studentId === studentId) {
+                                    setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
+                                }
+                            }
+                        }
+                        if (anySubmitted) {
+                            setAllScores(JSON.parse(JSON.stringify(restoredScores)));
+                            setOriginalScores(JSON.parse(JSON.stringify(restoredScores)));
+                            setAllComments(restoredComments);
+                            setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
+                            setSubmitted(true);
+                            setIsRestoring(false);
+                            return;
+                        }
+                    }
+                }
+                
+                // If not submitted, try local drafts
                 for (const student of students) {
                     const draft = await OfflineStorage.getDraft(user.id, topicId as string, groupId as string || null, raterRole, student.id);
                     if (draft) {
@@ -118,19 +134,59 @@ export default function GradingScreen() {
                     }
                 }
                 setAllScores(restoredScores);
+                setOriginalScores(JSON.parse(JSON.stringify(restoredScores)));
                 setAllComments(restoredComments);
+                setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
             } catch (err) { console.error(err); } finally { setIsRestoring(false); }
         };
         if (topic && !isLoadingTopic) restoreAndCheck();
     }, [topic, isLoadingTopic, raterRole]);
 
+    const isDirty = React.useMemo(() => {
+        const currentId = students[idx]?.id;
+        if (!currentId) return false;
+        
+        const scoresChanged = JSON.stringify(allScores[currentId] || {}) !== JSON.stringify(originalScores[currentId] || {});
+        const commentChanged = (allComments[currentId] || '') !== (originalComments[currentId] || '');
+        
+        return scoresChanged || commentChanged;
+    }, [allScores, originalScores, allComments, originalComments, idx, students]);
+
     const roleLabel = React.useMemo(() => {
-        if (raterRole === 'SUPERVISOR') return 'GVHD';
+        if (raterRole === 'SUPERVISOR') return 'GV hướng dẫn';
         if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch HĐ';
         if (raterRole === 'COMMITTEE_SECRETARY') return 'Thư ký HĐ';
-        if (raterRole.startsWith('COMMITTEE')) return 'Thành viên HĐ';
-        return 'GVPB';
+        if (raterRole === 'COMMITTEE_MEMBER') return 'Ủy viên HĐ';
+        if (raterRole === 'REVIEWER_1') return 'GVPB 1';
+        if (raterRole === 'REVIEWER_2') return 'GVPB 2';
+        if (raterRole === 'REVIEWER_3') return 'GVPB 3';
+        if (raterRole.startsWith('REVIEWER')) return 'GVPB';
+        return raterRole;
     }, [raterRole]);
+
+    // Determine if grading is allowed based on allowedActions from topic
+    const canGrade = React.useMemo(() => {
+        const actions = (topic as any)?.allowedActions;
+        if (!actions) return true; 
+
+        if (raterRole === 'SUPERVISOR') return actions.GRADE_SUPERVISOR?.allowed;
+        if (raterRole.startsWith('REVIEWER')) return actions.GRADE_REVIEWER?.allowed;
+        if (raterRole.startsWith('COMMITTEE')) return actions.GRADE_COMMITTEE?.allowed;
+        
+        return true;
+    }, [topic, raterRole]);
+
+    const disableReason = React.useMemo(() => {
+        const actions = (topic as any)?.allowedActions;
+        if (!actions) return null;
+
+        let result = null;
+        if (raterRole === 'SUPERVISOR') result = actions.GRADE_SUPERVISOR;
+        else if (raterRole.startsWith('REVIEWER')) result = actions.GRADE_REVIEWER;
+        else if (raterRole.startsWith('COMMITTEE')) result = actions.GRADE_COMMITTEE;
+
+        return result?.allowed ? null : result?.reason;
+    }, [topic, raterRole]);
 
     if (isLoadingTopic || isLoadingCriteria || isRestoring) {
         return (
@@ -150,7 +206,10 @@ export default function GradingScreen() {
     );
 
     const handleScore = (cId: string, val: string, max: number = 10) => {
-        if (submitted) return;
+        if (!canGrade) {
+            console.log('[DEBUG] Grading locked:', disableReason);
+            return;
+        }
         const normalized = val.replace(',', '.').replace(/[^0-9.]/g, '');
         let finalized = normalized;
         const num = parseFloat(normalized);
@@ -158,17 +217,45 @@ export default function GradingScreen() {
         setAllScores(prev => ({ ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } }));
     };
 
-    const handleNext = () => {
-        const currentScores = allScores[currentStudent.id] || {};
+    const handleNext = async () => {
+        const currentStudentId = students[idx].id;
+        const currentScores = allScores[currentStudentId] || {};
         const incomplete = criteria.some((c: any) => !currentScores[c.id]);
-        if (incomplete) { Alert.alert('Thiếu điểm', 'Vui lòng nhập đủ điểm.'); return; }
+        if (incomplete) { Alert.alert('Thiếu điểm', 'Vui lòng nhập đủ điểm trước khi lưu.'); return; }
         
-        OfflineStorage.saveDraft(user!.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
-            scores: currentScores, comment: allComments[currentStudent.id] || ''
-        });
-        
-        if (isLast) router.push(`/topic/${topicId}/grade-review/${studentId}?groupId=${groupId || ''}`);
-        else setIdx(i => i + 1);
+        setIsSubmitting(true);
+        try {
+            const submissionData = {
+                topic_id: topicId as string,
+                group_id: groupId as string || undefined,
+                student_id: currentStudentId,
+                rater_role: raterRole,
+                scores: criteria.map((c: any) => ({
+                    criterion_id: c.id,
+                    score: parseFloat(currentScores[c.id] || '0'),
+                    comment: ''
+                })),
+                general_comment: allComments[currentStudentId] || ''
+            };
+
+            await GradingApi.submitGrade(submissionData as any);
+            
+            setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
+            setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
+            setSubmitted(true);
+            setSubmittedAt(new Date().toISOString());
+            
+            if (isLast) {
+                Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm.');
+                router.push(`/topic/${topicId}/grade-review/${studentId}?groupId=${groupId || ''}`);
+            } else {
+                setIdx(i => i + 1);
+            }
+        } catch (err: any) {
+            Alert.alert('Lỗi', err.message || 'Không thể lưu điểm. Vui lòng thử lại.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleSaveDraft = async () => {
@@ -193,6 +280,28 @@ export default function GradingScreen() {
                 </View>
                 <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>{roleLabel}</Text></View>
             </View>
+
+            {!canGrade && !submitted && (
+                <View style={styles.phaseWarning}>
+                    <Info size={16} color="#92400e" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.phaseWarningTitle}>Không trong giai đoạn chấm điểm</Text>
+                        <Text style={styles.phaseWarningText}>{disableReason || 'Bạn hiện không thể nhập điểm.'}</Text>
+                    </View>
+                </View>
+            )}
+
+            {submitted && (
+                <View style={[styles.phaseWarning, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                    <CheckCircle size={16} color="#15803d" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={[styles.phaseWarningTitle, { color: '#15803d' }]}>Đã hoàn thành chấm điểm</Text>
+                        <Text style={[styles.phaseWarningText, { color: '#166534' }]}>
+                            Bảng điểm được lưu lúc {submittedAt ? new Date(submittedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ngày ' + new Date(submittedAt).toLocaleDateString('vi-VN') : '---'}
+                        </Text>
+                    </View>
+                </View>
+            )}
 
             <View style={styles.topicCardContainer}>
                 <View style={styles.topicCard}>
@@ -259,9 +368,9 @@ export default function GradingScreen() {
                             <Info size={14} color="#94a3b8" />
                             <Text style={styles.statsLabel}>DỰ KIẾN</Text>
                         </View>
-                        <View style={[styles.gradeBadge, { backgroundColor: totalScore >= 6 ? '#dcfce7' : '#fee2e2' }]}>
-                            <Text style={[styles.gradeBadgeText, { color: totalScore >= 6 ? '#166534' : '#991b1b' }]}>
-                                {totalScore >= 6 ? 'Đạt' : 'Rớt'}
+                        <View style={[styles.gradeBadge, { backgroundColor: totalScore === 0 ? '#f1f5f9' : (totalScore >= 6 ? '#dcfce7' : '#fee2e2') }]}>
+                            <Text style={[styles.gradeBadgeText, { color: totalScore === 0 ? '#64748b' : (totalScore >= 6 ? '#166534' : '#991b1b') }]}>
+                                {totalScore === 0 ? 'Chưa chấm' : (totalScore >= 6 ? 'Đạt' : 'Rớt')}
                             </Text>
                         </View>
                     </View>
@@ -281,23 +390,29 @@ export default function GradingScreen() {
                                 <View style={styles.criterionInfo}>
                                     <View style={styles.criterionTitleRow}>
                                         <ClipboardCheck size={16} color={BLUE} style={{ marginRight: 8 }} />
-                                        <Text style={styles.criterionName}>{c.name}</Text>
+                                        <Text style={styles.criterionName} numberOfLines={2}>{c.name}</Text>
                                     </View>
-                                    <Text style={styles.criterionDesc} numberOfLines={2}>{c.description || 'Chấm điểm dựa trên kết quả thực hiện.'}</Text>
                                 </View>
-                                <View style={styles.scoreInputGroup}>
+                                <Pressable 
+                                    style={styles.scoreInputGroup}
+                                    onPress={() => {
+                                        inputRefs.current[c.id]?.focus();
+                                    }}
+                                >
                                     <TextInput
-                                        style={[styles.input, scores[c.id] ? styles.inputFilled : {}]}
+                                        ref={el => { inputRefs.current[c.id] = el; }}
+                                        style={[styles.input, !canGrade && styles.disabledInput, scores[c.id] ? styles.inputFilled : {}]}
                                         keyboardType="decimal-pad"
                                         value={scores[c.id] || ''}
                                         onChangeText={v => handleScore(c.id, v, c.max_score)}
                                         placeholder="0.0"
-                                        editable={!submitted}
+                                        editable={canGrade}
+                                        selectTextOnFocus
                                     />
                                     <View style={styles.maxBadge}>
                                         <Text style={styles.maxBadgeText}>/{c.max_score}</Text>
                                     </View>
-                                </View>
+                                </Pressable>
                             </View>
                         </View>
                     ))}
@@ -309,26 +424,66 @@ export default function GradingScreen() {
                         <Text style={styles.commentLabel}>NHẬN XÉT CỦA GIẢNG VIÊN</Text>
                     </View>
                     <TextInput
-                        style={styles.commentInput}
+                        style={[styles.commentInput, (submitted || !canGrade) && styles.disabledInput]}
                         multiline
                         placeholder="Nhập nhận xét chi tiết về phần thể hiện của sinh viên..."
                         value={comment}
-                        onChangeText={v => setAllComments(prev => ({ ...prev, [currentStudent.id]: v }))}
-                        editable={!submitted}
+                        onChangeText={v => {
+                            if (!canGrade) return;
+                            setAllComments(prev => ({ ...prev, [currentStudent.id]: v }));
+                        }}
+                        editable={canGrade}
                         textAlignVertical="top"
                     />
                 </View>
-                <View style={{ height: 120 }} />
+
+                {gradeHistory && gradeHistory.length > 0 && (
+                    <View style={styles.historySection}>
+                        <View style={styles.commentHeader}>
+                            <Info size={16} color="#64748b" />
+                            <Text style={styles.commentLabel}>LỊCH SỬ CHỈNH SỬA</Text>
+                        </View>
+                        <View style={{ gap: 8 }}>
+                            {gradeHistory.filter((h: any) => h.studentName === currentStudent?.full_name).map((h: any) => (
+                                <View key={h.id} style={styles.historyItem}>
+                                    <View style={styles.historyPoint} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.historyText}>
+                                            <Text style={{ fontWeight: '700' }}>{h.graderName}</Text> đã sửa điểm 
+                                            <Text style={{ color: BLUE }}> {h.criterionName}</Text>
+                                        </Text>
+                                        <Text style={styles.historyChange}>
+                                            Thay đổi: <Text style={{ color: '#94a3b8', textDecorationLine: 'line-through' }}>{h.oldScore}</Text> → <Text style={{ color: BLUE, fontWeight: '700' }}>{h.newScore}</Text>
+                                        </Text>
+                                        <Text style={styles.historyDate}>{new Date(h.createdAt).toLocaleString('vi-VN')}</Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                )}
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
+                <TouchableOpacity 
+                    style={[styles.draftBtn, !canGrade && { opacity: 0.5 }]} 
+                    onPress={handleSaveDraft}
+                    disabled={!canGrade}
+                >
                     <Save size={18} color={BLUE} />
                     <Text style={styles.draftBtnText}>Lưu bản nháp</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.submitBtn} onPress={handleNext}>
-                    <Text style={styles.submitBtnText}>{isLast ? 'Tiếp tục xem lại' : 'Sinh viên tiếp theo'}</Text>
-                    <ChevronRight size={18} color="#fff" />
+                <TouchableOpacity 
+                    style={[styles.submitBtn, (!canGrade || !isDirty || isSubmitting) && styles.disabledSubmitBtn]} 
+                    onPress={handleNext}
+                    disabled={!canGrade || !isDirty || isSubmitting}
+                >
+                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : (
+                        <>
+                            <Text style={styles.submitBtnText}>{isLast ? 'Lưu điểm & Kết thúc' : 'Lưu & Tiếp tục'}</Text>
+                            <ChevronRight size={18} color="#fff" />
+                        </>
+                    )}
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -337,110 +492,122 @@ export default function GradingScreen() {
 
 const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    backBtn: { marginRight: 12 },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b' },
-    headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2, fontWeight: '500' },
-    roleBadge: { backgroundColor: LIGHT_BLUE, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    roleBadgeText: { fontSize: 11, fontWeight: '800', color: BLUE },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    backBtn: { marginRight: 8 },
+    headerTitle: { fontSize: 16, fontWeight: '800', color: '#1e293b' },
+    headerSub: { fontSize: 11, color: '#94a3b8', marginTop: 0, fontWeight: '500' },
+    roleBadge: { backgroundColor: LIGHT_BLUE, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+    roleBadgeText: { fontSize: 10, fontWeight: '800', color: BLUE },
+    phaseWarning: { flexDirection: 'row', backgroundColor: '#fffbeb', padding: 8, marginHorizontal: 12, marginTop: 8, borderRadius: 8, borderWidth: 1, borderColor: '#fef3c7', alignItems: 'center' },
+    phaseWarningTitle: { fontSize: 12, fontWeight: '700', color: '#92400e' },
+    phaseWarningText: { fontSize: 11, color: '#b45309', marginTop: 1 },
 
-    topicCardContainer: { padding: 16, backgroundColor: '#fff' },
+    topicCardContainer: { padding: 12, backgroundColor: '#fff', paddingBottom: 8 },
     topicCard: {
-        backgroundColor: '#fff', borderRadius: 20,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+        backgroundColor: '#fff', borderRadius: 12,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
         borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden'
     },
-    topicCardBody: { padding: 16, flexDirection: 'row', gap: 16 },
-    topicIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: LIGHT_BLUE, alignItems: 'center', justifyContent: 'center' },
-    topicCardTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', lineHeight: 22 },
-    topicInfoGrid: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    topicCardBody: { padding: 10, flexDirection: 'row', gap: 10 },
+    topicIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: LIGHT_BLUE, alignItems: 'center', justifyContent: 'center' },
+    topicCardTitle: { fontSize: 13, fontWeight: '700', color: '#1e293b', lineHeight: 18 },
+    topicInfoGrid: { flexDirection: 'row', gap: 12, marginTop: 4 },
     topicInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    topicInfoText: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+    topicInfoText: { fontSize: 11, color: '#64748b', fontWeight: '500' },
     topicCardFooter: {
-        backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingVertical: 10,
+        backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6,
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         borderTopWidth: 1, borderTopColor: '#f1f5f9'
     },
-    supervisorBox: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    supervisorText: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+    supervisorBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    supervisorText: { fontSize: 10, color: '#64748b', fontWeight: '600' },
     detailBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-    detailBtnText: { fontSize: 11, color: BLUE, fontWeight: '700' },
+    detailBtnText: { fontSize: 10, color: BLUE, fontWeight: '700' },
 
     switcher: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    tabWrapper: { flexDirection: 'row', paddingHorizontal: 16 },
+    tabWrapper: { flexDirection: 'row', paddingHorizontal: 12 },
     tab: {
-        flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
-        flexDirection: 'row', gap: 8, borderBottomWidth: 3, borderBottomColor: 'transparent'
+        flex: 1, paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'row', gap: 6, borderBottomWidth: 2, borderBottomColor: 'transparent'
     },
     tabActive: { borderBottomColor: BLUE, backgroundColor: '#f0f7ff' },
-    tabText: { fontSize: 13, color: '#94a3b8', fontWeight: '700' },
+    tabText: { fontSize: 12, color: '#94a3b8', fontWeight: '700' },
     tabTextActive: { color: BLUE },
 
     statsCard: {
-        flexDirection: 'row', margin: 16, padding: 20, backgroundColor: '#fff',
-        borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
+        flexDirection: 'row', margin: 12, padding: 12, backgroundColor: '#fff',
+        borderRadius: 12, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1,
     },
     statsCol: { flex: 1, alignItems: 'center' },
-    statsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-    statsLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
-    statsValue: { fontSize: 32, fontWeight: '900', color: '#0f172a' },
-    statsMax: { fontSize: 16, fontWeight: '600', color: '#cbd5e1' },
-    statsDivider: { width: 1, height: 40, backgroundColor: '#f1f5f9' },
-    gradeBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 },
-    gradeBadgeText: { fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
+    statsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+    statsLabel: { fontSize: 9, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
+    statsValue: { fontSize: 24, fontWeight: '900', color: '#0f172a' },
+    statsMax: { fontSize: 12, fontWeight: '600', color: '#cbd5e1' },
+    statsDivider: { width: 1, height: 30, backgroundColor: '#f1f5f9' },
+    gradeBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+    gradeBadgeText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
 
-    sectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#64748b', letterSpacing: 1 },
-    badge: { backgroundColor: '#e2e8f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-    badgeText: { fontSize: 10, color: '#475569', fontWeight: '700' },
+    sectionHeader: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    sectionTitle: { fontSize: 11, fontWeight: '800', color: '#64748b', letterSpacing: 0.5 },
+    badge: { backgroundColor: '#e2e8f0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    badgeText: { fontSize: 9, color: '#475569', fontWeight: '700' },
 
-    criteriaContainer: { paddingHorizontal: 16, gap: 12 },
+    criteriaContainer: { paddingHorizontal: 12, gap: 8 },
     criterionCard: {
-        backgroundColor: '#fff', padding: 16, borderRadius: 16,
+        backgroundColor: '#fff', padding: 8, borderRadius: 10,
         borderWidth: 1, borderColor: '#f1f5f9',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1
+        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.01, shadowRadius: 1, elevation: 1
     },
-    criterionMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    criterionInfo: { flex: 1 },
-    criterionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    criterionName: { fontSize: 14, fontWeight: '700', color: '#334155', lineHeight: 20 },
-    criterionDesc: { fontSize: 11, color: '#94a3b8', lineHeight: 16 },
-    scoreInputGroup: { flexDirection: 'row', alignItems: 'center' },
+    criterionMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    criterionInfo: { flex: 1, marginRight: 8 },
+    criterionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0, flexWrap: 'wrap' },
+    criterionName: { fontSize: 13, fontWeight: '700', color: '#334155', lineHeight: 18, flexShrink: 1 },
+    modifiedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginLeft: 6 },
+    criterionDesc: { fontSize: 10, color: '#94a3b8', lineHeight: 14 },
+    scoreInputGroup: { flexDirection: 'row', alignItems: 'center', minWidth: 65, justifyContent: 'flex-end' },
     input: {
-        width: 54, height: 44, backgroundColor: '#f8fafc', borderTopLeftRadius: 10, borderBottomLeftRadius: 10,
-        borderWidth: 1, borderColor: '#e2e8f0', textAlign: 'center', fontSize: 18, fontWeight: '800', color: '#1e293b'
+        width: 36, height: 28, backgroundColor: '#f8fafc', borderTopLeftRadius: 6, borderBottomLeftRadius: 6,
+        borderWidth: 1, borderColor: '#e2e8f0', textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#1e293b'
     },
     inputFilled: { color: BLUE, borderColor: BLUE, backgroundColor: '#f0f7ff' },
     maxBadge: {
-        height: 44, paddingHorizontal: 8, backgroundColor: '#f1f5f9',
-        borderTopRightRadius: 10, borderBottomRightRadius: 10,
+        height: 28, paddingHorizontal: 4, backgroundColor: '#f1f5f9',
+        borderTopRightRadius: 6, borderBottomRightRadius: 6,
         justifyContent: 'center', borderWidth: 1, borderLeftWidth: 0, borderColor: '#e2e8f0'
     },
-    maxBadgeText: { fontSize: 12, fontWeight: '700', color: '#94a3b8' },
+    maxBadgeText: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
 
-    commentSection: { padding: 16, marginTop: 8 },
-    commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    commentLabel: { fontSize: 11, fontWeight: '800', color: '#64748b' },
+    commentSection: { padding: 12, marginTop: 4 },
+    commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    commentLabel: { fontSize: 10, fontWeight: '800', color: '#64748b' },
     commentInput: {
-        backgroundColor: '#fff', borderRadius: 16, padding: 16, minHeight: 120,
-        fontSize: 14, color: '#334155', borderWidth: 1, borderColor: '#e2e8f0', lineHeight: 22
+        backgroundColor: '#fff', borderRadius: 12, padding: 12, minHeight: 80,
+        fontSize: 13, color: '#334155', borderWidth: 1, borderColor: '#e2e8f0', lineHeight: 18
     },
 
     footer: {
-        flexDirection: 'row', padding: 16, backgroundColor: '#fff',
-        borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 12,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 10
+        flexDirection: 'row', padding: 12, backgroundColor: '#fff',
+        borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 10,
+        paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.03, shadowRadius: 4, elevation: 5
     },
     draftBtn: {
-        flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: BLUE,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
+        flex: 1, height: 44, borderRadius: 10, borderWidth: 1.5, borderColor: BLUE,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6
     },
-    draftBtnText: { color: BLUE, fontSize: 15, fontWeight: '700' },
+    draftBtnText: { color: BLUE, fontSize: 14, fontWeight: '700' },
     submitBtn: {
-        flex: 1.2, height: 52, borderRadius: 14, backgroundColor: BLUE,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
+        flex: 1.2, height: 44, borderRadius: 10, backgroundColor: BLUE,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6
     },
-    submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' }
+    disabledSubmitBtn: { backgroundColor: '#e2e8f0' },
+    submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    disabledInput: { backgroundColor: '#f8fafc', color: '#94a3b8' },
+    historySection: { padding: 12, marginTop: 4, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+    historyItem: { flexDirection: 'row', gap: 12, paddingBottom: 12, borderLeftWidth: 1, borderLeftColor: '#f1f5f9', marginLeft: 6, paddingLeft: 16 },
+    historyPoint: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#f59e0b', position: 'absolute', left: -4, top: 4 },
+    historyText: { fontSize: 12, color: '#334155', lineHeight: 18 },
+    historyChange: { fontSize: 11, color: '#64748b', marginTop: 2 },
+    historyDate: { fontSize: 10, color: '#94a3b8', marginTop: 4 }
 });

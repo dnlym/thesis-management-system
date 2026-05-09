@@ -32,7 +32,7 @@ export default function RootLayout() {
   React.useEffect(() => {
     if (!isMounted) return;
 
-    const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'topic';
+    const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'topic' || segments[0] === 'grading-management';
 
     if (!isAuthenticated && inAuthGroup) {
       router.replace('/login');

@@ -59,10 +59,10 @@ export const GradingApi = {
             advisorGrades: Grade[];
             reviewerGrades: Grade[];
             councilGrades: Grade[];
-            finalScore?: FinalScore;
+            finalScores: FinalScore[];
             permissions?: any;
             topic?: any;
-        }>>(`/grading/${topicId}`);
+        }>>(`/grading/${topicId}/grades`);
         return res.data.data;
     },
 

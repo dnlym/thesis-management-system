@@ -1,8 +1,10 @@
 import { Response } from 'express';
-import { TopicStatus, ProgressStage } from '@prisma/client';
+import { TopicStatus, ProgressStage, UserRole } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import topicService from '../services/topic.service';
 import { SemesterResolver } from '../utils/semester-resolver';
+import prisma from '../config/database';
+import { AcademicPolicy, AcademicAction } from '../utils/academic-policy';
 
 /**
  * @swagger
@@ -246,7 +248,67 @@ export class TopicController {
     try {
       const userId = req.user!.id;
       const topicId = req.params.topicId as string;
-      const topic = await topicService.getTopicById(userId, topicId);
+      const groupId = req.query.groupId as string | undefined;
+      const topic = await topicService.getTopicById(userId, topicId, groupId);
+      
+      // Calculate allowed actions for the UI
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const semester = await prisma.semester.findUnique({ 
+        where: { id: (topic as any).semester_id } 
+      });
+
+      if (semester && user) {
+        // Fetch Department-specific config for the user's department
+        const deptConfig = await prisma.departmentSemesterConfig.findUnique({
+          where: {
+            department_id_semester_id: {
+              department_id: user.departmentId!,
+              semester_id: semester.id
+            }
+          }
+        });
+        (semester as any).deptConfig = deptConfig;
+
+        // Fetch user's assignments for this topic
+        const userAssignments = await prisma.assignment.findMany({
+          where: {
+            topic_id: topicId,
+            reviewer_id: userId,
+            status: { in: ['ACCEPTED', 'AUTO_ACCEPTED'] }
+          }
+        });
+
+        const registration = (topic as any).registrations?.[0];
+        const allActions = AcademicPolicy.getAllAllowedActions(
+          { id: userId, role: user.role as any },
+          semester,
+          registration
+        );
+
+        // EXTRA GUARD: Even if AcademicPolicy allows it based on Phase, 
+        // we block it if there is no accepted assignment (for Reviewer/Committee)
+        const isSupervisorOfTopic = (topic as any).supervisor_id === userId;
+        const hasAcceptedReviewerAssignment = userAssignments.some(a => a.assignment_type === 'REVIEWER');
+        const hasAcceptedCommitteeAssignment = userAssignments.some(a => a.assignment_type === 'COMMITTEE');
+
+        if (!isSupervisorOfTopic) {
+          allActions[AcademicAction.GRADE_SUPERVISOR].allowed = false;
+          allActions[AcademicAction.GRADE_SUPERVISOR].reason = 'Bạn không phải giảng viên hướng dẫn đề tài này.';
+        }
+
+        if (!hasAcceptedReviewerAssignment) {
+          allActions[AcademicAction.GRADE_REVIEWER].allowed = false;
+          allActions[AcademicAction.GRADE_REVIEWER].reason = 'Bạn không có phân công phản biện đã chấp nhận cho đề tài này.';
+        }
+
+        if (!hasAcceptedCommitteeAssignment) {
+          allActions[AcademicAction.GRADE_COMMITTEE].allowed = false;
+          allActions[AcademicAction.GRADE_COMMITTEE].reason = 'Bạn không có phân công hội đồng đã chấp nhận cho đề tài này.';
+        }
+
+        (topic as any).allowedActions = allActions;
+      }
+
       res.json({
         success: true,
         data: topic,

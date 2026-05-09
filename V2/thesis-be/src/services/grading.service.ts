@@ -44,9 +44,29 @@ type TopicSummaryPayload = Prisma.TopicGetPayload<{
 
 export class GradingService {
   async submitGrade(userId: string, data: SubmitGradeRequest, raterRole: RaterRole) {
+    let resolvedTopicId = data.topicId;
+
+    // [RESOLUTION STRATEGY] Try to resolve the actual Topic ID from various possible input IDs
+    const group = await prisma.group.findUnique({
+      where: { id: data.topicId },
+      select: { id: true, topic_id: true }
+    });
+
+    if (group && group.topic_id) {
+      resolvedTopicId = group.topic_id;
+    } else {
+      const assignment = await prisma.assignment.findUnique({
+        where: { id: data.topicId },
+        select: { topic_id: true }
+      });
+      if (assignment && assignment.topic_id) {
+        resolvedTopicId = assignment.topic_id;
+      }
+    }
+
     // Verify topic
     const topic = await prisma.topic.findUnique({
-      where: { id: data.topicId },
+      where: { id: resolvedTopicId },
       include: topicSummaryInclude,
     }) as TopicSummaryPayload | null;
 
@@ -66,8 +86,8 @@ export class GradingService {
         throw new Error('Nhóm này đã được chốt điểm bởi Trưởng bộ môn. Không thể chỉnh sửa.');
       }
     } else if (data.studentId) {
-       // Check if student is finalized individually
-       const finalizedScore = await prisma.finalScore.findFirst({
+      // Check if student is finalized individually
+      const finalizedScore = await prisma.finalScore.findFirst({
         where: {
           student_id: data.studentId,
           finalized: true
@@ -91,7 +111,7 @@ export class GradingService {
       prisma.semester.findUnique({ where: { id: topic.semester_id } }),
       prisma.user.findUnique({ where: { id: userId } })
     ]);
-    
+
     if (!semester) throw new Error('Không tìm thấy thông tin học kỳ.');
     if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
 
@@ -100,11 +120,11 @@ export class GradingService {
     // Verify user has permission to grade using helpers
     let hasPermission = false;
     if (raterRole === RaterRole.SUPERVISOR) {
-      hasPermission = await isSupervisor(userId, data.topicId);
+      hasPermission = await isSupervisor(userId, resolvedTopicId);
     } else if (isReviewer(raterRole)) {
-      hasPermission = await isReviewerPermission(userId, data.topicId);
+      hasPermission = await isReviewerPermission(userId, resolvedTopicId);
     } else if (isCommittee(raterRole)) {
-      hasPermission = await isCommitteeMember(userId, data.topicId);
+      hasPermission = await isCommitteeMember(userId, resolvedTopicId);
     }
 
     if (!hasPermission) {
@@ -161,7 +181,7 @@ export class GradingService {
 
     const existingGrades = await prisma.grade.findMany({
       where: {
-        topic_id: data.topicId,
+        topic_id: resolvedTopicId,
         group_id: data.groupId || null,
         student_id: data.studentId || null,
         grader_id: userId,
@@ -170,10 +190,11 @@ export class GradingService {
       },
     });
 
-    // Delete existing grades for this grader, topic, group, and optionally student
+    // We will use upsert instead of delete-create to preserve graded_at for yellow dot detection
+    /* 
     await prisma.grade.deleteMany({
       where: {
-        topic_id: data.topicId,
+        topic_id: resolvedTopicId,
         group_id: data.groupId || null,
         student_id: data.studentId || null,
         grader_id: userId,
@@ -181,57 +202,98 @@ export class GradingService {
         reviewer_order: data.reviewerOrder || null,
       },
     });
+    */
 
-    // Create new grades
+    // Create or Update grades
     const grades = await Promise.all(
       data.grades.map(async (grade) => {
-        const newGrade = await prisma.grade.create({
-          data: {
-            topic_id: data.topicId,
-            group_id: data.groupId || null,
+        const roundedScore = roundScore(grade.score);
+        const oldGrade = existingGrades.find(eg => eg.criterion_id === grade.criterionId);
+        
+        // Find existing grade manually to handle nulls in compound unique constraints
+        const existingGradeRecord = await prisma.grade.findFirst({
+          where: {
+            topic_id: resolvedTopicId,
             student_id: data.studentId || null,
             grader_id: userId,
             criterion_id: grade.criterionId,
             rater_role: raterRole,
             reviewer_order: data.reviewerOrder || null,
-            score: roundScore(grade.score),
-            comments: grade.comments,
-          },
+            group_id: data.groupId || null,
+          }
         });
 
-        // Save GradeHistory for each student individually
-        // Save GradeHistory ONLY if score has changed (prevent "Đã sửa" on first grade)
-        if (data.studentId) {
-          const oldGrade = existingGrades.find(eg => eg.criterion_id === grade.criterionId);
-          if (oldGrade && oldGrade.score !== roundScore(grade.score)) {
+        let savedGrade;
+        if (existingGradeRecord) {
+          // UPDATE: Preserves graded_at, updates updated_at -> Yellow dot works!
+          savedGrade = await prisma.grade.update({
+            where: { id: existingGradeRecord.id },
+            data: {
+              score: roundedScore,
+              comments: grade.comments,
+            }
+          });
+        } else {
+          // CREATE: First time grading
+          savedGrade = await prisma.grade.create({
+            data: {
+              topic_id: resolvedTopicId,
+              group_id: data.groupId || null,
+              student_id: data.studentId || null,
+              grader_id: userId,
+              criterion_id: grade.criterionId,
+              rater_role: raterRole,
+              reviewer_order: data.reviewerOrder || null,
+              score: roundedScore,
+              comments: grade.comments,
+            },
+          });
+        }
+
+        // Save GradeHistory ONLY if score has changed
+        if (oldGrade && oldGrade.score !== roundedScore) {
+          // Determine students to log history for
+          let studentIds: string[] = [];
+          if (data.studentId) {
+            studentIds = [data.studentId];
+          } else if (data.groupId) {
+            // Get all students in the group
+            const groupStudents = topic.registrations
+              .filter(r => r.group_id === data.groupId)
+              .map(r => r.student_id);
+            studentIds = groupStudents;
+          }
+
+          // Create history for each student
+          for (const sid of studentIds) {
             await prisma.gradeHistory.create({
               data: {
-                student_id: data.studentId,
+                student_id: sid,
                 grader_id: userId,
-                topic_id: data.topicId,
+                topic_id: resolvedTopicId,
                 group_id: data.groupId || null,
                 criterion_id: grade.criterionId,
                 old_score: oldGrade.score,
-                new_score: roundScore(grade.score),
+                new_score: roundedScore,
                 reason: grade.comments || 'Cập nhật điểm',
                 rater_role: raterRole
               }
             });
           }
         }
-        
-        return newGrade;
+
+        return savedGrade;
       })
     );
 
     // Professional Logging
     logger.info('SUBMIT_GRADE', {
-        topicId: data.topicId,
-        studentId: data.studentId,
-        group_id: data.groupId,
-        raterRole: raterRole,
-        criteriaCount: grades.length,
-        timestamp: new Date().toISOString()
+      topicId: resolvedTopicId,
+      studentId: data.studentId,
+      group_id: data.groupId,
+      raterRole: raterRole,
+      criteriaCount: grades.length,
+      timestamp: new Date().toISOString()
     });
 
     // --- AUDIT LOGGING ---
@@ -249,10 +311,10 @@ export class GradingService {
     });
 
     // Update student progress status
-    const regs = data.groupId 
-      ? topic.registrations.filter((reg: any) => 
-          (reg.group_id || reg.groupId)?.toString() === data.groupId?.toString()
-        )
+    const regs = data.groupId
+      ? topic.registrations.filter((reg: any) =>
+        (reg.group_id || reg.groupId)?.toString() === data.groupId?.toString()
+      )
       : topic.registrations.filter((reg: any) => reg.student_id === data.studentId);
 
     for (const registration of regs) {
@@ -379,7 +441,7 @@ export class GradingService {
       const studentId = data.studentId;
       const groupId = data.groupId;
       // Filter grades for this student (include individual grades and group-level grades)
-      const studentGrades = topic.grades.filter(g => 
+      const studentGrades = topic.grades.filter(g =>
         g.student_id === studentId || (g.student_id === null && groupId && g.group_id === groupId)
       );
 
@@ -528,8 +590,8 @@ export class GradingService {
       .filter((g: any) => isCommittee(g.rater_role))
       .map((g: any) => g.grader_id))];
 
-    const isCommitteeComplete = committeeAssignedIds.length > 0 && 
-                                committeeGradedIds.length >= committeeAssignedIds.length;
+    const isCommitteeComplete = committeeAssignedIds.length > 0 &&
+      committeeGradedIds.length >= committeeAssignedIds.length;
 
     const reviewerRequired = topic.reviewer_required_count || 2;
     const isReviewerComplete = gradedReviewerIds.length >= reviewerRequired;
@@ -712,11 +774,11 @@ export class GradingService {
 
       groupMap.forEach((members, groupId) => {
         const actualGroupId = groupId === 'no-group' ? null : groupId;
-        
+
         const studentSummaries = members.map(reg => {
           // Safe comparison for group_id
-          const fs = topic.final_scores.find(s => 
-            s.student_id === reg.student_id && 
+          const fs = topic.final_scores.find(s =>
+            s.student_id === reg.student_id &&
             (s.group_id === actualGroupId || (s.group_id === null && actualGroupId === null))
           );
 
@@ -735,7 +797,7 @@ export class GradingService {
               : null;
 
             const ep = extraPoints.find(e => e.topic_id === topic.id && e.student_id === reg.student_id);
-            
+
             return {
               student: reg.student,
               finalScore: {
@@ -756,43 +818,50 @@ export class GradingService {
           };
         });
 
-        const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
-        
+        const supervisorGraded = topic.grades.some(g =>
+          g.rater_role === RaterRole.SUPERVISOR &&
+          (g.group_id === actualGroupId || (!g.group_id && !actualGroupId))
+        );
+
         const sIds = members.map(m => m.student_id);
-        
+
+        const groupGrades = topic.grades.filter(g =>
+          g.group_id === actualGroupId || (!g.group_id && !actualGroupId)
+        );
+
         // Production-grade Reviewer Check
         const reviewerAssignments = topic.assignments.filter(as => as.assignment_type === AssignmentType.REVIEWER && as.group_id === actualGroupId);
-        const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra => 
-          sIds.every(sid => 
-            topic.grades.some(g => 
-              g.grader_id === ra.reviewer_id && 
+        const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra =>
+          sIds.every(sid =>
+            groupGrades.some(g =>
+              g.grader_id === ra.reviewer_id &&
               g.student_id === sid &&
               isReviewer(g.rater_role)
             )
           )
         );
-        
+
         // Production-grade Committee Check
         const committeeAssignments = topic.assignments.filter(as => as.assignment_type === AssignmentType.COMMITTEE && as.group_id === actualGroupId);
-        const isCommitteeComplete = committeeAssignments.length > 0 && committeeAssignments.every(ca => 
-          sIds.every(sid => 
-            topic.grades.some(g => 
-              g.grader_id === ca.reviewer_id && 
+        const isCommitteeComplete = committeeAssignments.length > 0 && committeeAssignments.every(ca =>
+          sIds.every(sid =>
+            groupGrades.some(g =>
+              g.grader_id === ca.reviewer_id &&
               g.student_id === sid &&
               isCommittee(g.rater_role)
             )
           )
         );
 
-        const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
-        const committeeGraderIds = [...new Set(topic.grades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
+        const reviewerGraderIds = [...new Set(groupGrades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
+        const committeeGraderIds = [...new Set(groupGrades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
         const totalReviewersRequired = topic.reviewer_required_count || 2;
         const totalCommitteeRequired = committeeAssignments.length;
 
         const isGroupFinalized = studentSummaries.every(s => s.finalScore && 'finalized' in s.finalScore && s.finalScore.finalized);
 
         summaryData.push({
-          id: topic.id,
+          id: actualGroupId || topic.id, // Use Group ID as primary if available
           topicId: topic.id,
           code: topic.code,
           title: topic.title,
@@ -820,8 +889,8 @@ export class GradingService {
 
     return {
       allTopics: summaryData,
-      missingSupervisor: summaryData.filter(d => !d.gradingStatus.supervisorGraded),
-      missingReviewer: summaryData.filter(d => d.gradingStatus.supervisorGraded && !d.gradingStatus.isReviewerComplete),
+      missingSupervisor: summaryData.filter(d => !d.gradingStatus.supervisorGraded && !d.gradingStatus.isFinalized),
+      missingReviewer: summaryData.filter(d => d.gradingStatus.supervisorGraded && !d.gradingStatus.isReviewerComplete && !d.gradingStatus.isFinalized),
       ready: summaryData.filter(d => d.gradingStatus.isReadyForDecision && !d.gradingStatus.isFinalized),
       finalized: summaryData.filter(d => d.gradingStatus.isFinalized),
     };
@@ -1125,7 +1194,7 @@ export class GradingService {
       },
       orderBy: { order_index: 'asc' },
     });
-    
+
     if (finalCriteria.length > 0) {
       console.log(`[GradingService] Found ${finalCriteria.length} criteria for canonical role ${canonicalRole} (Dept: ${departmentId})`);
       return finalCriteria;
@@ -1571,12 +1640,12 @@ export class GradingService {
     // Helper to group grades by grader and student
     const groupGrades = (grades: any[]) => {
       const grouped = new Map<string, any>();
-      
+
       grades.forEach(g => {
         const key = `${g.grader_id}-${g.student_id || 'topic'}`;
         if (!grouped.has(key)) {
           grouped.set(key, {
-            id: g.id, 
+            id: g.id,
             topic_id: g.topic_id,
             rater_id: g.grader_id,
             rater_name: g.grader.full_name,
@@ -1587,19 +1656,21 @@ export class GradingService {
             submitted_at: g.graded_at,
           });
         }
-        
+
         const entry = grouped.get(key);
         entry.scores.push({
           criterion_id: g.criterion_id,
           score: g.score,
           comment: g.comments,
+          createdAt: g.graded_at,
+          updatedAt: g.updated_at,
         });
-        
+
         if (new Date(g.graded_at) > new Date(entry.submitted_at)) {
           entry.submitted_at = g.graded_at;
         }
       });
-      
+
       return Array.from(grouped.values());
     };
 
@@ -1612,7 +1683,7 @@ export class GradingService {
     const reviewerAssignments = topic.assignments
       .filter(a => a.assignment_type === 'REVIEWER')
       .map(a => ({ ...a, reviewer: a.reviewer }));
-      
+
     const councilAssignments = topic.assignments
       .filter(a => a.assignment_type === 'COMMITTEE')
       .map(a => ({ ...a, reviewer: a.reviewer }));
@@ -1630,32 +1701,33 @@ export class GradingService {
 
     const students = topic.registrations.map(reg => {
       const fs = finalScores.find(s => s.student_id === reg.student_id);
-      return { 
-        ...reg.student, 
+      return {
+        ...reg.student,
         className: reg.student.class_name,
         class_name: reg.student.class_name,
-        finalScore: fs 
+        groupId: reg.group_id, // CRITICAL FIX: Add groupId here
+        finalScore: fs
       };
     });
 
     // Calculate grading status for the frontend
     const supervisorGraded = allGrades.some((g: any) => g.rater_role === RaterRole.SUPERVISOR);
     const sIds = topic.registrations.map(r => r.student_id);
-    
-    const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra => 
-      sIds.every(sid => 
-        allGrades.some((g: any) => 
-          g.grader_id === ra.reviewer_id && 
+
+    const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra =>
+      sIds.every(sid =>
+        allGrades.some((g: any) =>
+          g.grader_id === ra.reviewer_id &&
           g.student_id === sid &&
           isReviewer(g.rater_role)
         )
       )
     );
-    
-    const isCommitteeComplete = councilAssignments.length > 0 && councilAssignments.every(ca => 
-      sIds.every(sid => 
-        allGrades.some((g: any) => 
-          g.grader_id === ca.reviewer_id && 
+
+    const isCommitteeComplete = councilAssignments.length > 0 && councilAssignments.every(ca =>
+      sIds.every(sid =>
+        allGrades.some((g: any) =>
+          g.grader_id === ca.reviewer_id &&
           g.student_id === sid &&
           isCommittee(g.rater_role)
         )
@@ -1664,7 +1736,7 @@ export class GradingService {
 
     const reviewerGraderIds = [...new Set(allGrades.filter((g: any) => isReviewer(g.rater_role)).map((g: any) => g.grader_id))];
     const committeeGraderIds = [...new Set(allGrades.filter((g: any) => isCommittee(g.rater_role)).map((g: any) => g.grader_id))];
-    
+
     const totalReviewersRequired = topic.reviewer_required_count || 2;
     const totalCommitteeRequired = councilAssignments.length;
 
@@ -1783,13 +1855,18 @@ export class GradingService {
     });
 
     // Fetch audit logs
-    const auditHistory = await prisma.auditLog.findMany({
-      where: {
-        entity_type: 'Grade',
-        entity_id: topicId,
-        user_id: userId,
+    // Fetch detailed grade history for auditing (per student/grader)
+    const gradeHistory = await (prisma.gradeHistory as any).findMany({
+      where: { 
+        topic_id: topicId,
+        grader_id: userId
       },
-      orderBy: { created_at: 'desc' },
+      include: {
+        grader: { select: { full_name: true } },
+        criterion: { select: { name: true } },
+        student: { select: { full_name: true } }
+      },
+      orderBy: { changed_at: 'desc' },
       take: 20,
     });
 
@@ -1832,6 +1909,8 @@ export class GradingService {
           criterionMinScore: g.criterion.min_score,
           score: g.score,
           comment: g.comments?.replace(/\s*\[META_DATA:.*\]/, '') || null,
+          createdAt: g.graded_at,
+          updatedAt: g.updated_at,
         })),
       };
     });
@@ -1840,14 +1919,19 @@ export class GradingService {
       grader,
       students,
       permissions,
-      auditHistory: auditHistory.map(a => ({
-        id: a.id,
-        action: a.action,
-        createdAt: a.created_at,
-        details: a.new_value,
+      gradeHistory: gradeHistory.map((h: any) => ({
+        id: h.id,
+        graderName: h.grader?.full_name,
+        studentName: h.student?.full_name,
+        criterionName: h.criterion?.name,
+        oldScore: h.old_score,
+        newScore: h.new_score,
+        reason: h.reason,
+        createdAt: h.changed_at
       })),
     };
   }
+
   /**
    * Automatically evaluates if a topic is eligible for defense or should be failed.
    */
@@ -1884,8 +1968,8 @@ export class GradingService {
 
     // 3. Auto-Pass check: All required grades are in and all are >= 6.0
     if (supervisorGraded && isReviewerComplete) {
-      if (fs.supervisor_score !== null && fs.supervisor_score >= 6 && 
-          fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6) {
+      if (fs.supervisor_score !== null && fs.supervisor_score >= 6 &&
+        fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6) {
         await this.setTopicEligibility(topicId, true);
       }
     }
@@ -1909,7 +1993,6 @@ export class GradingService {
         entity_type: 'Topic',
         entity_id: topicId,
         new_value: { isEligible, reason },
-        // Note: AuditLogger might be better if it exists in scope, but AuditLog model works
       }
     });
   }

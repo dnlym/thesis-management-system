@@ -657,6 +657,7 @@ export class AssignmentService {
             },
             defense_schedules: true,
             grades: true, 
+            final_scores: true,
             assignments: true, // Include assignments to check against assigned reviewers/committee
             registrations: {
               include: {

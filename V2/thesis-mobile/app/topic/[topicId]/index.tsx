@@ -1,12 +1,13 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, ActivityIndicator, StatusBar
+    StyleSheet, ActivityIndicator, StatusBar, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTopic } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';
+import { Grade } from '@/types';
 
 import { ChevronLeft, MoreVertical, MapPin, Users } from 'lucide-react-native';
 
@@ -14,11 +15,23 @@ const NAVY = '#1e293b';
 const BLUE = '#2563eb';
 
 export default function TopicDetailScreen() {
-    const { topicId } = useLocalSearchParams();
+    const { topicId, groupId } = useLocalSearchParams();
     const router = useRouter();
 
     const { user } = useAuthStore();
     const { data: topic, isLoading } = useTopic(topicId as string);
+
+    const students = React.useMemo(() => {
+        if (!topic) return [];
+        const allStudents = topic.students || [];
+        const effectiveGroupId = groupId || topicId;
+        if (!effectiveGroupId) return allStudents;
+        
+        return allStudents.filter((s: any) => {
+            const sGroupId = s.groupId || s.group_id;
+            return sGroupId === effectiveGroupId || (!sGroupId && !effectiveGroupId) || (effectiveGroupId && sGroupId === effectiveGroupId);
+        });
+    }, [topic?.students, groupId]);
 
     if (isLoading || !topic) {
         return (
@@ -28,14 +41,8 @@ export default function TopicDetailScreen() {
         );
     }
 
-    const { groupId } = useLocalSearchParams();
-    const students = React.useMemo(() => {
-        const allStudents = topic.students || [];
-        if (!groupId) return allStudents;
-        return allStudents.filter((s: any) => s.groupId === groupId);
-    }, [topic.students, groupId]);
-
     // Determine Role dynamically
+    const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN';
     const isAdvisor = topic.supervisor_id === user?.id;
     const reviewerAssignment = topic.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
     const committeeAssignment = topic.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
@@ -43,7 +50,10 @@ export default function TopicDetailScreen() {
     let roleCode = 'GVPB';
     let roleLabel = 'Giảng viên phản biện';
 
-    if (isAdvisor) {
+    if (isHead) {
+        roleCode = 'HOD';
+        roleLabel = 'Trưởng bộ môn';
+    } else if (isAdvisor) {
         roleCode = 'GVHD';
         roleLabel = 'Giảng viên hướng dẫn';
     } else if (committeeAssignment) {
@@ -70,7 +80,7 @@ export default function TopicDetailScreen() {
 
     roomString = topic.room || topic.defense_schedule?.room || topic.defense_schedule?.committee?.room_preference || 'Chưa xếp phòng';
 
-    const isAnyGraded = students.some((sv: any) => (topic.grades || []).some((g: any) => g.student_id === sv.id));
+    const isAnyGraded = students.some((sv: any) => (topic.grades || []).some((g: Grade) => g.student_id === sv.id));
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -112,20 +122,16 @@ export default function TopicDetailScreen() {
                         {students.length === 0 ? (
                             <Text style={{ padding: 20, color: '#94a3b8', textAlign: 'center' }}>Chưa có sinh viên</Text>
                         ) : students.map((sv: any, i: number) => {
-                            const studentGrades = (topic.grades || []).filter((g: any) => g.student_id === sv.id);
+                            const studentGrades = (topic.grades || []).filter((g: Grade) => g.student_id === sv.id);
                             const isGraded = studentGrades.length > 0;
-                            const avgScore = isGraded ? studentGrades.reduce((sum: number, g: any) => sum + g.score, 0) / studentGrades.length : 0;
+                            const avgScore = isGraded ? studentGrades.reduce((sum: number, g: Grade) => sum + g.score, 0) / studentGrades.length : 0;
 
                             return (
                                 <TouchableOpacity
                                     key={sv.id}
                                     style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                     onPress={() => {
-                                        if (isGraded) {
-                                            router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
-                                        } else {
-                                            router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}` as any);
-                                        }
+                                        router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
                                     }}
                                 >
                                     <View style={styles.avatar}>
@@ -136,12 +142,16 @@ export default function TopicDetailScreen() {
                                         <Text style={styles.studentId}>{sv.student_code || sv.id}</Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                                        <View style={[styles.statusChip, { backgroundColor: isGraded ? '#f0fdf4' : '#fff7ed' }]}>
-                                            <Text style={[styles.statusChipText, { color: isGraded ? '#16a34a' : '#ea580c' }]}>
-                                                {isGraded ? 'Đã chấm' : 'Chưa chấm'}
+                                        <View style={[styles.statusChip, { backgroundColor: (isGraded || !!sv.finalScore) ? '#f0fdf4' : '#fff7ed' }]}>
+                                            <Text style={[styles.statusChipText, { color: (isGraded || !!sv.finalScore) ? '#16a34a' : '#ea580c' }]}>
+                                                {(isGraded || !!sv.finalScore) ? 'Đã chấm' : 'Chưa chấm'}
                                             </Text>
                                         </View>
-                                        {isGraded && <Text style={styles.scoreText}>{avgScore.toFixed(1)}</Text>}
+                                        {(isGraded || !!sv.finalScore) && (
+                                            <Text style={styles.scoreText}>
+                                                {(sv.finalScore?.final_score ?? avgScore).toFixed(1)}
+                                            </Text>
+                                        )}
                                     </View>
                                 </TouchableOpacity>
                             );
@@ -171,16 +181,18 @@ export default function TopicDetailScreen() {
             {students.length > 0 && (
                 <View style={styles.footer}>
                     <TouchableOpacity
-                        style={[styles.ctaBtn, isAnyGraded && styles.reviewBtn]}
+                        style={[styles.ctaBtn, (isAnyGraded || isHead) && styles.reviewBtn]}
                         onPress={() => {
-                            const target = isAnyGraded 
-                                ? `/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` 
-                                : `/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}`;
-                            router.push(target as any);
+                            // HOD or Anyone seeing grades goes to review
+                            if (isHead || isAnyGraded) {
+                                router.push(`/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` as any);
+                            } else {
+                                router.push(`/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}` as any);
+                            }
                         }}
                     >
-                        <Text style={[styles.ctaBtnText, isAnyGraded && styles.reviewBtnText]}>
-                            {isAnyGraded ? 'Xem lại điểm' : 'Bắt đầu nhập điểm'}
+                        <Text style={[styles.ctaBtnText, (isAnyGraded || isHead) && styles.reviewBtnText]}>
+                            {isHead ? 'Xem bảng điểm' : isAnyGraded ? 'Xem lại điểm' : 'Bắt đầu nhập điểm'}
                         </Text>
                     </TouchableOpacity>
                 </View>

@@ -55,17 +55,35 @@ class GradingController {
   async submitGrade(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      let { raterRole } = req.body;
+      let { raterRole, topicId } = req.body;
+      let resolvedTopicId = topicId;
+
+      // [RESOLUTION STRATEGY] Try to resolve the actual Topic ID from various possible input IDs
+      const group = await prisma.group.findUnique({
+        where: { id: topicId },
+        select: { id: true, topic_id: true }
+      });
+  
+      if (group && group.topic_id) {
+        resolvedTopicId = group.topic_id;
+      } else {
+        const assignment = await prisma.assignment.findUnique({
+          where: { id: topicId },
+          select: { topic_id: true }
+        });
+        if (assignment && assignment.topic_id) {
+          resolvedTopicId = assignment.topic_id;
+        }
+      }
 
       // Map generic frontend role names to exact Prisma RaterRole enum values
       if (raterRole === 'ADVISOR') {
         raterRole = RaterRole.SUPERVISOR;
       } else if (raterRole === 'REVIEWER') {
         // Auto-detect reviewer order from assignment
-        const { topicId } = req.body;
         const assignment = await prisma.assignment.findFirst({
           where: {
-            topic_id: topicId,
+            topic_id: resolvedTopicId,
             reviewer_id: userId,
             assignment_type: 'REVIEWER',
             status: { in: ['ACCEPTED', 'AUTO_ACCEPTED', 'PENDING'] },
@@ -77,10 +95,9 @@ class GradingController {
         else raterRole = RaterRole.REVIEWER_1; // fallback
       } else if (raterRole === 'COUNCIL_MEMBER') {
         // Auto-detect committee role from assignment
-        const { topicId } = req.body;
         const assignment = await prisma.assignment.findFirst({
           where: {
-            topic_id: topicId,
+            topic_id: resolvedTopicId,
             reviewer_id: userId,
             assignment_type: 'COMMITTEE',
             status: { in: ['AUTO_ACCEPTED', 'ACCEPTED', 'PENDING'] },

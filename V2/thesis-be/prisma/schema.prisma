@@ -363,9 +363,10 @@ model GradingCriterion {
   created_at    DateTime    @default(now())
   departmentId  String?     @map("department_id")
   role          RaterRole   @default(SUPERVISOR)
-  criteria_type String?     @db.VarChar(50)
-  grades        Grade[]     @relation("CriterionGrades")
-  department    Department? @relation(fields: [departmentId], references: [id])
+  criteria_type  String?        @db.VarChar(50)
+  grades         Grade[]        @relation("CriterionGrades")
+  gradeHistories GradeHistory[]
+  department     Department?    @relation(fields: [departmentId], references: [id])
 
   @@index([active])
   @@index([role])
@@ -592,8 +593,9 @@ model GradeHistory {
   changed_at   DateTime @default(now())
   grader       User     @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
   group        Group?   @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)
-  student      User     @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
-  topic        Topic    @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
+  student      User             @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
+  topic        Topic            @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
+  criterion    GradingCriterion @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
 
   @@index([student_id])
   @@index([grader_id])

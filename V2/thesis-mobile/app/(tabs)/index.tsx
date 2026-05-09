@@ -10,7 +10,7 @@ import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useSupervisedTopics, useTopics } from '@/hooks/useTopics';
 
-import { MapPin, Clock } from 'lucide-react-native';
+import { MapPin, Clock, Trophy, ChevronRight } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
@@ -57,7 +57,9 @@ export default function DashboardScreen() {
           }
     
           return {
-            id: a.topic_id,
+            id: a.id, // Assignment ID for unique key
+            topicId: a.topic_id,
+            groupId: a.group_id,
             groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
             status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
             statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
@@ -68,7 +70,9 @@ export default function DashboardScreen() {
           };
         }),
         ...supervisedList.map(t => ({
-          id: t.id,
+          id: t.id, // This is groupId from getTopics
+          topicId: t.topicId,
+          groupId: t.id, // Explicitly treat t.id as groupId
           groupName: t.code || t.title || 'Supervised Topic',
           status: 'ADVISOR',
           statusLabel: 'Chấm HD',
@@ -79,8 +83,7 @@ export default function DashboardScreen() {
         }))
     ];
 
-    // Deduplicate by ID
-    return Array.from(new Map(list.map(t => [t.id, t])).values());
+    return list;
   }, [assignedList, supervisedList]);
 
   // Group assignments by session or date
@@ -99,7 +102,9 @@ export default function DashboardScreen() {
       id: 'hod_all',
       name: 'Quản lý Bộ môn',
       topics: allDeptTopics.map(t => ({
-        id: t.id,
+        id: t.id, // GroupId
+        topicId: t.topicId,
+        groupId: t.id,
         groupName: t.code || t.title || 'Topic',
         status: t.status,
         statusLabel: t.status,
@@ -148,6 +153,24 @@ export default function DashboardScreen() {
             <Text style={[styles.statsValue, { color: '#ef4444' }]}>{notStarted}</Text>
           </View>
         </View>
+
+        {/* HOD Quick Access */}
+        {isHOD && (
+          <TouchableOpacity 
+            style={styles.hodQuickCard} 
+            onPress={() => router.push('/grading-management' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.hodIconContainer}>
+              <Trophy size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.hodCardTitle}>Quản lý chấm điểm</Text>
+              <Text style={styles.hodCardSub}>Theo dõi tiến độ & chốt điểm bộ môn</Text>
+            </View>
+            <ChevronRight size={20} color={BLUE} />
+          </TouchableOpacity>
+        )}
 
         {/* Sessions */}
         <View style={styles.body}>
@@ -256,4 +279,39 @@ const styles = StyleSheet.create({
   roleBadge: { backgroundColor: '#eff6ff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 4 },
   roleBadgeText: { fontSize: 10, fontWeight: '700', color: BLUE },
   statusText: { fontSize: 11, fontWeight: '600' },
+  hodQuickCard: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  hodIconContainer: {
+    width: 44,
+    height: 44,
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hodCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  hodCardSub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '500',
+  },
 });
