@@ -68,22 +68,24 @@ export class AcademicPolicy {
     if (!registration || !registration.topic) return { failed: false };
     const topic = registration.topic;
 
-    // 1. Quyết định thủ công từ HOD
-    if (topic.is_eligible_for_defense === false) {
-      return { failed: true, reason: 'Đề tài đã bị Trưởng bộ môn đánh giá không đủ điều kiện bảo vệ.' };
+    // Chỉ giữ lại kiểm tra nếu đề tài bị khóa thủ công (is_locked)
+    if (topic.is_locked) {
+      return { failed: true, reason: 'Đề tài này đã bị khóa bởi quản trị viên.' };
     }
 
-    // 2. Logic tự động khi bước vào giai đoạn Phản biện trở đi
-    const isAtReviewPhaseOrLater = phase === SemesterPhase.REVIEWING || phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
-    if (isAtReviewPhaseOrLater) {
+    // Kiểm tra điều kiện khi bước vào giai đoạn Bảo vệ (DEFENSE) hoặc Tổng kết (FINAL)
+    const isAtDefensePhaseOrLater = phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
+    if (isAtDefensePhaseOrLater) {
       const grades = topic.grades || [];
-      const finalScores = topic.final_scores || [];
-      
-      // 2.1 Check if supervisor has graded (any criterion)
-      const hasSupervisorGraded = grades.some((g: any) => g.rater_role === 'SUPERVISOR');
+      const hasSupervisorGraded = grades.some((g: any) => g.rater_role?.startsWith('SUPERVISOR'));
+      const hasReviewerGraded = grades.some((g: any) => g.rater_role?.startsWith('REVIEWER'));
 
       if (!hasSupervisorGraded) {
-        return { failed: true, reason: 'Sinh viên bị loại do Giảng viên hướng dẫn không nhập điểm trước giai đoạn Phản biện.' };
+        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Giảng viên hướng dẫn khi kết thúc giai đoạn xét duyệt.' };
+      }
+      
+      if (!hasReviewerGraded) {
+        return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Phản biện khi bước vào giai đoạn Bảo vệ.' };
       }
     }
 
@@ -127,8 +129,6 @@ export class AcademicPolicy {
     // --- GLOBAL FAILED STATUS CHECK ---
     // Block subsequent actions if topic is failed
     const subsequentActions = [
-      AcademicAction.GRADE_REVIEWER,
-      AcademicAction.GRADE_COMMITTEE,
       AcademicAction.ASSIGN_DEFENSE_PIVOT,
       AcademicAction.ASSIGN_REVIEWER,
       AcademicAction.ASSIGN_COMMITTEE,
@@ -216,10 +216,6 @@ export class AcademicPolicy {
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
           return { allowed: false, reason: 'GVHD chỉ được chấm điểm từ giai đoạn Phản biện trở đi.', code: 'INVALID_PHASE' };
         }
-        // Lock: No edits if HOD already made a decision
-        if (registration?.topic?.is_eligible_for_defense !== null && registration?.topic?.is_eligible_for_defense !== undefined) {
-          return { allowed: false, reason: 'Quyết định xét bảo vệ đã được chốt, không thể sửa điểm.', code: 'ALREADY_FINALIZED' };
-        }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
@@ -227,20 +223,12 @@ export class AcademicPolicy {
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
           return { allowed: false, reason: 'GVPB chỉ được chấm điểm trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
         }
-        // Lock: No edits if HOD already made a decision
-        if (registration?.topic?.is_eligible_for_defense !== null && registration?.topic?.is_eligible_for_defense !== undefined) {
-          return { allowed: false, reason: 'Quyết định xét bảo vệ đã được chốt, không thể sửa điểm.', code: 'ALREADY_FINALIZED' };
-        }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_COMMITTEE:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
         if (phase !== SemesterPhase.DEFENSE) {
           return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm trong giai đoạn Bảo vệ (DEFENSE).', code: 'INVALID_PHASE' };
-        }
-        // Strict Guard: Must be eligible
-        if (!registration?.topic?.is_eligible_for_defense) {
-          return { allowed: false, reason: 'Đề tài chưa được duyệt đủ điều kiện ra Hội đồng.', code: 'NOT_ELIGIBLE' };
         }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 

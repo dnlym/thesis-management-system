@@ -400,10 +400,13 @@ export class CommitteeService {
         });
       }
 
-      // 6. Update Topic Status
+      // 6. Update Topic Status & Eligibility
       await tx.topic.update({
         where: { id: data.topicId },
-        data: { progress_stage: ProgressStage.READY_FOR_DEFENSE }
+        data: { 
+          progress_stage: ProgressStage.READY_FOR_DEFENSE,
+          is_eligible_for_defense: true // Automatically approve eligibility when assigned to committee
+        }
       });
 
       // 7. Send Notifications to committee members and students

@@ -20,16 +20,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const BLUE = '#2563eb';
+const LIGHT_BLUE = '#eff6ff';
 const GREEN = '#16a34a';
-
-interface TopicGradesResponse {
-    advisorGrades: Grade[];
-    reviewerGrades: Grade[];
-    councilGrades: Grade[];
-    finalScore?: any;
-    permissions?: any;
-    topic?: any;
-}
 
 export default function GradeReviewScreen() {
     const { topicId, studentId: initialStudentId, groupId } = useLocalSearchParams();
@@ -52,11 +44,7 @@ export default function GradeReviewScreen() {
     // Determine Role dynamically based on Backend assignments
     const raterRole = React.useMemo(() => {
         if (!topic || !currentUser) return 'REVIEWER_1';
-        
-        // 1. Check if Supervisor
         if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
-        
-        // 2. Check Assignments
         const myAssignment = topic.assignments?.find(a => a.reviewer_id === currentUser.id);
         if (myAssignment) {
             if (myAssignment.assignment_type === 'REVIEWER') {
@@ -70,7 +58,6 @@ export default function GradeReviewScreen() {
                 return 'COMMITTEE_MEMBER';
             }
         }
-        
         return 'REVIEWER_1';
     }, [topic, currentUser]);
 
@@ -83,12 +70,9 @@ export default function GradeReviewScreen() {
         if (!criteriaRes) return [];
         if (Array.isArray(criteriaRes)) return criteriaRes;
         const data = criteriaRes as any;
-        
-        // Map specific raterRole to generic criteria group
         let roleKey = 'REVIEWER';
         if (raterRole === 'SUPERVISOR') roleKey = 'SUPERVISOR';
         else if (raterRole.startsWith('COMMITTEE') || raterRole.includes('COUNCIL')) roleKey = 'COMMITTEE';
-        
         return data[roleKey] || data.FINAL || Object.values(data)[0] || [];
     }, [criteriaRes, raterRole]);
 
@@ -115,38 +99,20 @@ export default function GradeReviewScreen() {
 
     const reviewData = React.useMemo(() => {
         if (!topicGradesData || criteriaList.length === 0) return null;
-        
         const allGrades: Grade[] = [
             ...(topicGradesData.advisorGrades || []),
             ...(topicGradesData.reviewerGrades || []),
             ...(topicGradesData.councilGrades || [])
         ];
-
-        const myGrades = allGrades.filter(g => 
-            g.student_id === selectedStudentId && g.grader_id === currentUser?.id
-        );
-
+        const myGrades = allGrades.filter(g => g.student_id === selectedStudentId && g.grader_id === currentUser?.id);
         if (myGrades.length === 0) return null;
-
         const firstGrade = myGrades[0];
-        
         const gradedItems = criteriaList.map((c: any) => {
             const g = myGrades.find((grade: Grade) => grade.criterion_id === c.id);
-            return {
-                criterion: c,
-                score: g?.score ?? 0,
-                isGraded: !!g
-            };
+            return { criterion: c, score: g?.score ?? 0, isGraded: !!g };
         });
-
-        const totalScore = gradedItems.reduce((acc: number, item: any) => 
-            acc + (item.score * (item.criterion.weight || 0)), 0
-        );
-        
-        const maxPossible = gradedItems.reduce((acc: number, item: any) => 
-            acc + ((item.criterion.max_score || 10) * (item.criterion.weight || 0)), 0
-        );
-
+        const totalScore = gradedItems.reduce((acc: number, item: any) => acc + (item.score * (item.criterion.weight || 0)), 0);
+        const maxPossible = gradedItems.reduce((acc: number, item: any) => acc + ((item.criterion.max_score || 10) * (item.criterion.weight || 0)), 0);
         return {
             rater_role: firstGrade.rater_role,
             graded_at: firstGrade.graded_at,
@@ -168,36 +134,31 @@ export default function GradeReviewScreen() {
     }
 
     const roleDisplay = React.useMemo(() => {
-        if (raterRole === 'SUPERVISOR') return 'Giảng viên hướng dẫn';
-        if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch Hội đồng';
-        if (raterRole === 'COMMITTEE_SECRETARY') return 'Thư ký Hội đồng';
-        if (raterRole.startsWith('COMMITTEE')) return 'Thành viên Hội đồng';
-        return 'Giảng viên phản biện';
+        if (raterRole === 'SUPERVISOR') return 'GV hướng dẫn';
+        if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch HĐ';
+        if (raterRole === 'COMMITTEE_SECRETARY') return 'Thư ký HĐ';
+        if (raterRole.startsWith('COMMITTEE')) return 'Thành viên HĐ';
+        return 'GV phản biện';
     }, [raterRole]);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
             <StatusBar barStyle="dark-content" />
-            
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={28} color="#374151" />
+                    <ChevronLeft size={24} color="#374151" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>{topic?.code || 'Chi tiết điểm'}</Text>
-                    <Text style={styles.headerSub} numberOfLines={1}>
-                        {topic?.room ? `Phòng: ${topic.room} • ` : ''}{roleDisplay}
-                    </Text>
+                    <Text style={styles.headerTitle}>Xem lại điểm</Text>
+                    <Text style={styles.headerSub}>{topic?.code || 'N/A'}</Text>
                 </View>
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusBadgeText}>REVIEW MODE</Text>
-                </View>
+                <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>{roleDisplay}</Text></View>
             </View>
 
-            <View style={styles.tabsContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+            <View style={styles.switcher}>
+                <View style={styles.tabWrapper}>
                     {students.map((sv: any) => (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             key={sv.id}
                             style={[styles.tab, sv.id === selectedStudentId && styles.tabActive]}
                             onPress={() => {
@@ -205,87 +166,116 @@ export default function GradeReviewScreen() {
                                 setExpandedCriteria(null);
                             }}
                         >
-                            <Text style={[styles.tabText, sv.id === selectedStudentId && styles.tabTextActive]}>{sv.full_name}</Text>
+                            <User size={16} color={sv.id === selectedStudentId ? BLUE : '#94a3b8'} />
+                            <Text style={[styles.tabText, sv.id === selectedStudentId && styles.tabTextActive]} numberOfLines={1}>
+                                {sv.full_name.split(' ').pop()}
+                            </Text>
                         </TouchableOpacity>
                     ))}
-                </ScrollView>
+                </View>
             </View>
 
-            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-                <View style={styles.infoCard}>
-                    <View style={styles.topicRow}>
-                        <View style={styles.iconBox}><GraduationCap size={24} color={BLUE} /></View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={styles.topicTitle} numberOfLines={2}>{topic.title}</Text>
-                            <Text style={styles.department}>{topic.department?.name}</Text>
+            <ScrollView style={{ flex: 1, backgroundColor: '#f8fafc' }} showsVerticalScrollIndicator={false}>
+                <View style={styles.topicCardContainer}>
+                    <View style={styles.topicCard}>
+                        <View style={styles.topicCardBody}>
+                            <View style={styles.topicIconBox}>
+                                <GraduationCap size={24} color={BLUE} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.topicCardTitle} numberOfLines={2}>{topic.title}</Text>
+                                <View style={styles.topicInfoGrid}>
+                                    <View style={styles.topicInfoItem}>
+                                        <Clock size={12} color="#94a3b8" />
+                                        <Text style={styles.topicInfoText}>
+                                            {reviewData?.graded_at ? new Date(reviewData.graded_at).toLocaleDateString('vi-VN') : 'Đang chấm'}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.topicInfoItem}>
+                                        <Users size={12} color="#94a3b8" />
+                                        <Text style={styles.topicInfoText}>{topic?.registrations?.[0]?.group?.name || 'N/A'}</Text>
+                                    </View>
+                                </View>
+                            </View>
                         </View>
                     </View>
-                    {reviewData?.graded_at && (
-                        <View style={styles.timeRow}>
-                            <Clock size={14} color="#94a3b8" />
-                            <Text style={styles.timeText}>Nộp lúc: {new Date(reviewData.graded_at).toLocaleString('vi-VN')}</Text>
-                        </View>
-                    )}
                 </View>
 
                 {!reviewData ? (
                     <View style={styles.emptyState}>
                         <AlertCircle size={48} color="#cbd5e1" />
-                        <Text style={styles.emptyText}>Chưa có dữ liệu điểm</Text>
+                        <Text style={styles.emptyText}>Chưa có dữ liệu điểm nháp</Text>
                     </View>
                 ) : (
                     <>
-                        <View style={styles.scoreBoard}>
-                            <View style={styles.scoreCol}>
-                                <Text style={styles.scoreLabel}>TỔNG ĐIỂM (HỆ {Math.round(reviewData.maxPossible)})</Text>
-                                <Text style={styles.scoreValue}>{reviewData.totalScore.toFixed(2)}<Text style={styles.scoreMax}>/{Math.round(reviewData.maxPossible)}</Text></Text>
+                        <View style={styles.statsCard}>
+                            <View style={styles.statsCol}>
+                                <View style={styles.statsLabelRow}>
+                                    <Award size={14} color="#94a3b8" />
+                                    <Text style={styles.statsLabel}>TỔNG ĐIỂM</Text>
+                                </View>
+                                <Text style={styles.statsValue}>
+                                    {reviewData.totalScore.toFixed(1)} 
+                                    <Text style={styles.statsMax}> / {Math.round(reviewData.maxPossible)}</Text>
+                                </Text>
                             </View>
-                            <View style={styles.divider} />
-                            <View style={styles.scoreCol}>
-                                <Text style={styles.scoreLabel}>XẾP LOẠI</Text>
-                                <View style={styles.statusBox}>
-                                    <Text style={styles.statusText}>
-                                        {reviewData.totalScore / reviewData.maxPossible >= 0.8 ? 'Giỏi' : (reviewData.totalScore / reviewData.maxPossible >= 0.65 ? 'Khá' : 'Trung bình')}
+                            <View style={styles.statsDivider} />
+                            <View style={styles.statsCol}>
+                                <View style={styles.statsLabelRow}>
+                                    <Info size={14} color="#94a3b8" />
+                                    <Text style={styles.statsLabel}>XẾP LOẠI</Text>
+                                </View>
+                                <View style={styles.gradeBadge}>
+                                    <Text style={styles.gradeBadgeText}>
+                                        {reviewData.totalScore / reviewData.maxPossible >= 0.8 ? 'Giỏi' : 
+                                         (reviewData.totalScore / reviewData.maxPossible >= 0.65 ? 'Khá' : 'Trung bình')}
                                     </Text>
                                 </View>
                             </View>
                         </View>
 
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>CHI TIẾT ĐÁNH GIÁ</Text>
-                            <View style={styles.criteriaCard}>
-                                {reviewData.items.map((item: any, i: number) => {
-                                    const isExpanded = expandedCriteria === item.criterion.id;
-                                    return (
-                                        <TouchableOpacity 
-                                            key={item.criterion.id} 
-                                            style={[styles.criteriaRow, i < reviewData.items.length - 1 && styles.rowBorder]}
-                                            onPress={() => toggleCriteria(item.criterion.id)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={styles.criteriaTitleCol}>
-                                                <View style={styles.nameRow}>
-                                                    <View style={styles.chevronBox}>
-                                                        {isExpanded ? <ChevronDown size={16} color={BLUE} /> : <ChevronRight size={16} color="#94a3b8" />}
-                                                    </View>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>CHI TIẾT ĐIỂM THÀNH PHẦN</Text>
+                        </View>
+
+                        <View style={styles.criteriaContainer}>
+                            {reviewData.items.map((item: any, i: number) => {
+                                const isExpanded = expandedCriteria === item.criterion.id;
+                                return (
+                                    <TouchableOpacity 
+                                        key={item.criterion.id} 
+                                        style={styles.criterionCard}
+                                        onPress={() => toggleCriteria(item.criterion.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.criterionMain}>
+                                            <View style={styles.criterionInfo}>
+                                                <View style={styles.criterionTitleRow}>
+                                                    {isExpanded ? <ChevronDown size={16} color={BLUE} style={{ marginRight: 8 }} /> : <ChevronRight size={16} color="#94a3b8" style={{ marginRight: 8 }} />}
                                                     <Text style={styles.criterionName} numberOfLines={isExpanded ? undefined : 1}>
                                                         {i + 1}. {item.criterion.name}
                                                     </Text>
                                                 </View>
+                                                {isExpanded && (
+                                                    <Text style={styles.criterionDesc}>{item.criterion.description || 'Tiêu chí đánh giá chi tiết.'}</Text>
+                                                )}
                                             </View>
                                             <View style={styles.scoreContainer}>
                                                 <Text style={styles.itemScore}>{item.score.toFixed(1)}</Text>
                                                 <Text style={styles.itemMax}>/{item.criterion.max_score}</Text>
                                             </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
 
                         {reviewData.generalComment ? (
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>NHẬN XÉT CỦA GIẢNG VIÊN</Text>
+                            <View style={styles.commentSection}>
+                                <View style={styles.commentHeader}>
+                                    <FileText size={16} color="#64748b" />
+                                    <Text style={styles.commentLabel}>GHI CHÚ / NHẬN XÉT</Text>
+                                </View>
                                 <View style={styles.commentBox}>
                                     <Text style={styles.commentContent}>{reviewData.generalComment}</Text>
                                 </View>
@@ -301,8 +291,8 @@ export default function GradeReviewScreen() {
                     style={styles.editBtn} 
                     onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}?groupId=${groupId || ''}` as any)}
                 >
-                    <Edit3 size={20} color={BLUE} />
-                    <Text style={styles.editBtnText}>Sửa điểm</Text>
+                    <Edit3 size={18} color={BLUE} />
+                    <Text style={styles.editBtnText}>Chỉnh sửa</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                     style={[styles.lockBtn, isSubmitting && { opacity: 0.7 }]} 
@@ -310,57 +300,39 @@ export default function GradeReviewScreen() {
                         if (isSubmitting) return;
                         setIsSubmitting(true);
                         try {
-                            // Bulk Submission Logic:
-                            // 1. For each student in the group, get their draft
-                            // 2. Add to sync queue
                             let successCount = 0;
                             for (const student of students) {
                                 const draft = await OfflineStorage.getDraft(currentUser!.id, topicId as string, groupId as string || null, raterRole, student.id);
                                 if (draft && draft.scores) {
-                                    // Prepare payload for GradingApi.submitGrade format
                                     const submissionData = {
                                         topic_id: topicId as string,
                                         group_id: groupId as string || undefined,
                                         student_id: student.id,
                                         rater_role: raterRole,
-                                        // reviewer_order and committee_role will be handled inside submitGrade based on role
                                         scores: Object.entries(draft.scores).map(([cId, score]) => ({
                                             criterion_id: cId,
                                             score: parseFloat(score as string),
                                             comment: draft.comment || ''
                                         }))
                                     };
-                                    
-                                    await OfflineStorage.addToQueue(
-                                        currentUser!.id, 
-                                        topicId as string, 
-                                        groupId as string || null, 
-                                        raterRole, 
-                                        student.id, 
-                                        submissionData
-                                    );
+                                    await OfflineStorage.addToQueue(currentUser!.id, topicId as string, groupId as string || null, raterRole, student.id, submissionData);
                                     successCount++;
                                 }
                             }
-                            
                             if (successCount > 0) {
-                                Alert.alert(
-                                    'Thành công', 
-                                    `Đã xếp ${successCount} bản ghi vào hàng đợi đồng bộ. Điểm sẽ được cập nhật khi có mạng.`,
-                                    [{ text: 'OK', onPress: () => router.push('/(tabs)/assigned') }]
-                                );
+                                Alert.alert('Thành công', `Đã chuẩn bị nộp điểm cho ${successCount} sinh viên.`, [{ text: 'Xác nhận', onPress: () => router.push('/(tabs)/assigned') }]);
                             } else {
-                                Alert.alert('Lỗi', 'Không tìm thấy bản nháp nào để nộp. Vui lòng nhập điểm trước.');
+                                Alert.alert('Thông báo', 'Vui lòng hoàn tất nhập điểm trước khi nộp.');
                             }
                         } catch (err: any) {
-                            Alert.alert('Lỗi', err.message || 'Không thể nộp điểm');
+                            Alert.alert('Lỗi', err.message || 'Không thể gửi dữ liệu');
                         } finally {
                             setIsSubmitting(false);
                         }
                     }}
                 >
-                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Lock size={20} color="#fff" />}
-                    <Text style={styles.lockBtnText}>{isSubmitting ? 'Đang nộp...' : 'Khóa điểm'}</Text>
+                    {isSubmitting ? <ActivityIndicator color="#fff" /> : <Lock size={18} color="#fff" />}
+                    <Text style={styles.lockBtnText}>Xác nhận & Khóa</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -371,50 +343,88 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
     header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
     backBtn: { marginRight: 12 },
-    headerTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
-    headerSub: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-    statusBadge: { backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    statusBadgeText: { fontSize: 10, fontWeight: '800', color: BLUE },
-    tabsContainer: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    tab: { paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    tabActive: { borderBottomColor: BLUE },
-    tabText: { fontSize: 14, color: '#94a3b8', fontWeight: '600' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b' },
+    headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2, fontWeight: '500' },
+    roleBadge: { backgroundColor: LIGHT_BLUE, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    roleBadgeText: { fontSize: 11, fontWeight: '800', color: BLUE },
+
+    switcher: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    tabWrapper: { flexDirection: 'row', paddingHorizontal: 16 },
+    tab: {
+        flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'row', gap: 8, borderBottomWidth: 3, borderBottomColor: 'transparent'
+    },
+    tabActive: { borderBottomColor: BLUE, backgroundColor: '#f0f7ff' },
+    tabText: { fontSize: 13, color: '#94a3b8', fontWeight: '700' },
     tabTextActive: { color: BLUE },
-    infoCard: { margin: 16, padding: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9' },
-    topicRow: { flexDirection: 'row', alignItems: 'center' },
-    iconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
-    topicTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', lineHeight: 22 },
-    department: { fontSize: 12, color: '#94a3b8', marginTop: 4 },
-    timeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 6 },
-    timeText: { fontSize: 12, color: '#94a3b8' },
-    scoreBoard: { marginHorizontal: 16, marginBottom: 16, padding: 20, backgroundColor: '#fff', borderRadius: 16, flexDirection: 'row', borderWidth: 1, borderColor: '#f1f5f9' },
-    scoreCol: { flex: 1, alignItems: 'center' },
-    divider: { width: 1, backgroundColor: '#f1f5f9', marginHorizontal: 10 },
-    scoreLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', marginBottom: 8 },
-    scoreValue: { fontSize: 28, fontWeight: '900', color: BLUE },
-    scoreMax: { fontSize: 14, color: '#94a3b8' },
-    statusBox: { backgroundColor: '#ecfdf5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-    statusText: { fontSize: 12, fontWeight: '800', color: GREEN },
-    section: { paddingHorizontal: 16, marginBottom: 16 },
-    sectionTitle: { fontSize: 11, fontWeight: '800', color: '#64748b', marginBottom: 12, letterSpacing: 1 },
-    criteriaCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden' },
-    criteriaRow: { flexDirection: 'row', padding: 16, alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: '#fff' },
-    rowBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    criteriaTitleCol: { flex: 1, marginRight: 12 },
-    nameRow: { flexDirection: 'row', alignItems: 'flex-start' },
-    chevronBox: { marginTop: 2, marginRight: 8 },
-    criterionName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#334155', lineHeight: 20 },
-    criterionDesc: { fontSize: 12, color: '#64748b', marginTop: 8, lineHeight: 18, borderLeftWidth: 2, borderLeftColor: '#e2e8f0', paddingLeft: 10, paddingVertical: 2 },
-    scoreContainer: { alignItems: 'flex-end', minWidth: 44, marginTop: 0 },
-    itemScore: { fontSize: 18, fontWeight: '800', color: BLUE },
-    itemMax: { fontSize: 11, color: '#94a3b8' },
+
+    topicCardContainer: { padding: 16 },
+    topicCard: {
+        backgroundColor: '#fff', borderRadius: 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+        borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden'
+    },
+    topicCardBody: { padding: 16, flexDirection: 'row', gap: 16 },
+    topicIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: LIGHT_BLUE, alignItems: 'center', justifyContent: 'center' },
+    topicCardTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', lineHeight: 22 },
+    topicInfoGrid: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    topicInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    topicInfoText: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
+
+    statsCard: {
+        flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, padding: 20, backgroundColor: '#fff',
+        borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
+    },
+    statsCol: { flex: 1, alignItems: 'center' },
+    statsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    statsLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
+    statsValue: { fontSize: 32, fontWeight: '900', color: '#0f172a' },
+    statsMax: { fontSize: 16, fontWeight: '600', color: '#cbd5e1' },
+    statsDivider: { width: 1, height: 40, backgroundColor: '#f1f5f9' },
+    gradeBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+    gradeBadgeText: { fontSize: 12, fontWeight: '800', color: '#475569' },
+
+    sectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
+    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#64748b', letterSpacing: 1 },
+
+    criteriaContainer: { paddingHorizontal: 16, gap: 12 },
+    criterionCard: {
+        backgroundColor: '#fff', padding: 16, borderRadius: 16,
+        borderWidth: 1, borderColor: '#f1f5f9',
+    },
+    criterionMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    criterionInfo: { flex: 1 },
+    criterionTitleRow: { flexDirection: 'row', alignItems: 'center' },
+    criterionName: { fontSize: 14, fontWeight: '700', color: '#334155', lineHeight: 20 },
+    criterionDesc: { fontSize: 12, color: '#94a3b8', marginTop: 10, lineHeight: 18, borderLeftWidth: 2, borderLeftColor: '#e2e8f0', paddingLeft: 10 },
+    scoreContainer: { alignItems: 'flex-end', minWidth: 50 },
+    itemScore: { fontSize: 20, fontWeight: '900', color: BLUE },
+    itemMax: { fontSize: 12, color: '#cbd5e1', fontWeight: '700' },
+
+    commentSection: { padding: 16, marginTop: 8 },
+    commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    commentLabel: { fontSize: 11, fontWeight: '800', color: '#64748b' },
     commentBox: { padding: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9' },
     commentContent: { fontSize: 14, color: '#334155', lineHeight: 22 },
+
     emptyState: { padding: 40, alignItems: 'center', justifyContent: 'center' },
     emptyText: { marginTop: 12, color: '#94a3b8', fontSize: 14, textAlign: 'center' },
-    footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f1f5f9', flexDirection: 'row', gap: 12 },
-    editBtn: { flex: 1, height: 54, borderRadius: 12, backgroundColor: '#eff6ff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: '#dbeafe' },
-    editBtnText: { fontSize: 15, fontWeight: '700', color: BLUE },
-    lockBtn: { flex: 1, height: 54, borderRadius: 12, backgroundColor: '#ef4444', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-    lockBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' }
+
+    footer: {
+        position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: '#fff',
+        borderTopWidth: 1, borderTopColor: '#f1f5f9', flexDirection: 'row', gap: 12,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 10
+    },
+    editBtn: {
+        flex: 1, height: 52, borderRadius: 14, backgroundColor: '#f1f5f9',
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
+    },
+    editBtnText: { color: BLUE, fontSize: 15, fontWeight: '700' },
+    lockBtn: {
+        flex: 1.5, height: 52, borderRadius: 14, backgroundColor: '#ef4444',
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
+    },
+    lockBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' }
 });

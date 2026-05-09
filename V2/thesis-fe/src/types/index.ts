@@ -119,6 +119,7 @@ export interface Semester {
 export interface Topic {
   id: string;
   code?: string;
+  groupName?: string;
   title: string;
   description: string;
   objectives?: string;

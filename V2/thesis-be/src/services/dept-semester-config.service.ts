@@ -44,8 +44,35 @@ export class DepartmentSemesterConfigService {
       },
     });
 
-    // Create audit logs for each changed field (Rule #5)
+    // Create audit logs and SYNC existing schedules (Rule: Dynamic update)
     if (data.defense_date !== undefined) {
+      // 1. Update all existing defense schedules for this department/semester
+      await prisma.defenseSchedule.updateMany({
+        where: {
+          semester_id: semesterId,
+          topic: {
+            departmentId: departmentId
+          }
+        },
+        data: {
+          defense_date: data.defense_date
+        }
+      });
+
+      // 2. Update all committee assignments deadlines for this department/semester
+      await prisma.assignment.updateMany({
+        where: {
+          assignment_type: 'COMMITTEE',
+          topic: {
+            semester_id: semesterId,
+            departmentId: departmentId
+          }
+        },
+        data: {
+          deadline_at: data.defense_date
+        }
+      });
+
       await prisma.auditLog.create({
         data: {
           user_id: userId,
@@ -53,6 +80,7 @@ export class DepartmentSemesterConfigService {
           entity_type: 'DepartmentSemesterConfig',
           entity_id: config.id,
           new_value: { defense_date: data.defense_date, department_id: departmentId },
+          description: `Đã tự động đồng bộ ngày bảo vệ mới (${dayjs(data.defense_date).format('DD/MM/YYYY')}) cho toàn bộ đề tài của bộ môn.`
         },
       });
     }

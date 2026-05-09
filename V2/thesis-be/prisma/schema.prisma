@@ -588,6 +588,7 @@ model GradeHistory {
   old_score    Float?
   new_score    Float
   reason       String?
+  rater_role   RaterRole?
   changed_at   DateTime @default(now())
   grader       User     @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
   group        Group?   @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)

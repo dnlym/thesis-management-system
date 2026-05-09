@@ -9,6 +9,13 @@ export const isRoleGroup = (role: RaterRole, group: RoleGroup): boolean => {
 };
 
 /**
+ * Get the RoleGroup for a specific RaterRole
+ */
+export const getRoleGroup = (role: RaterRole): RoleGroup => {
+    return ROLE_GROUP_MAP[role];
+};
+
+/**
  * Check if a role is a committee member
  */
 export const isCommittee = (role: RaterRole): boolean => {

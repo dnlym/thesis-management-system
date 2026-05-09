@@ -86,12 +86,13 @@ export class GradingService {
       action = AcademicAction.GRADE_COMMITTEE;
     }
 
-    // Check semester phase via AcademicPolicy
+    // Refresh semester and user data to ensure absolute consistency
     const [semester, user] = await Promise.all([
       prisma.semester.findUnique({ where: { id: topic.semester_id } }),
       prisma.user.findUnique({ where: { id: userId } })
     ]);
-
+    
+    if (!semester) throw new Error('Không tìm thấy thông tin học kỳ.');
     if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
 
     AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, { topic });
@@ -110,21 +111,7 @@ export class GradingService {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
-    // [PRODUCTION GUARD] Dependency Chain
-    if (isReviewer(raterRole)) {
-      const hasSupervisor = topic.grades.some((g: any) =>
-        g.rater_role === RaterRole.SUPERVISOR && g.student_id === (data.studentId || null)
-      );
-      if (!hasSupervisor) {
-        throw new Error('GVHD chưa chấm điểm cho sinh viên này. Không thể chấm phản biện.');
-      }
-    }
-
-    if (isCommittee(raterRole)) {
-      if (!topic.is_eligible_for_defense) {
-        throw new Error('Đề tài chưa được duyệt đủ điều kiện bảo vệ hoặc chưa có quyết định từ Trưởng bộ môn.');
-      }
-    }
+    // [PRODUCTION GUARD] Permission already verified by AcademicPolicy.enforce and isReviewerPermission/isCommitteeMember helpers above
 
     // Get defense type from topic
     const defenseType = topic.defense_type || 'ORAL';
@@ -149,6 +136,10 @@ export class GradingService {
     const missingCriteria = requiredCriteriaIds.filter(id => !providedCriteriaIds.includes(id));
 
     if (missingCriteria.length > 0) {
+      console.log(`[GradingService] Validation Failed: Missing criteria for role ${raterRole}`);
+      console.log(`[GradingService] Required:`, requiredCriteriaIds);
+      console.log(`[GradingService] Provided:`, providedCriteriaIds);
+      console.log(`[GradingService] Missing:`, missingCriteria);
       throw new Error('Tất cả các tiêu chí phải được chấm điểm');
     }
 
@@ -209,20 +200,24 @@ export class GradingService {
         });
 
         // Save GradeHistory for each student individually
+        // Save GradeHistory ONLY if score has changed (prevent "Đã sửa" on first grade)
         if (data.studentId) {
           const oldGrade = existingGrades.find(eg => eg.criterion_id === grade.criterionId);
-          await prisma.gradeHistory.create({
-            data: {
-              student_id: data.studentId,
-              grader_id: userId,
-              topic_id: data.topicId,
-              group_id: data.groupId || null,
-              criterion_id: grade.criterionId,
-              old_score: oldGrade ? oldGrade.score : null,
-              new_score: roundScore(grade.score),
-              reason: grade.comments || 'Cập nhật điểm'
-            }
-          });
+          if (oldGrade && oldGrade.score !== roundScore(grade.score)) {
+            await prisma.gradeHistory.create({
+              data: {
+                student_id: data.studentId,
+                grader_id: userId,
+                topic_id: data.topicId,
+                group_id: data.groupId || null,
+                criterion_id: grade.criterionId,
+                old_score: oldGrade.score,
+                new_score: roundScore(grade.score),
+                reason: grade.comments || 'Cập nhật điểm',
+                rater_role: raterRole
+              }
+            });
+          }
         }
         
         return newGrade;
@@ -342,21 +337,14 @@ export class GradingService {
   }
 
   async computeFinalScore(topicId: string) {
-    // 1. Guard: Check if grading is complete for ALL students in this topic
-    // This ensures we don't compute partial/incorrect final scores
+    // 1. Partial compute allowed: We update scores as they come in.
+    // Full validation only happens at the FINALIZE step.
     const topicData = await prisma.topic.findUnique({
       where: { id: topicId },
       include: { registrations: true }
     });
 
     if (!topicData) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
-
-    for (const reg of topicData.registrations) {
-      const isDone = await this.checkAllFinalGraded(topicId, reg.student_id);
-      if (!isDone) {
-        throw new Error(`Chưa thể tính điểm tổng kết: Sinh viên ${reg.student_id} chưa được chấm điểm đầy đủ (GVHD, 2 GVPB, Hội đồng)`);
-      }
-    }
 
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
@@ -537,17 +525,23 @@ export class GradingService {
       .map(g => g.grader_id))];
     const committeeAssignedIds = topic.assignments.map(a => a.reviewer_id);
     const committeeGradedIds = [...new Set(topic.grades
-      .filter(g => isCommittee(g.rater_role))
-      .map(g => g.grader_id))];
+      .filter((g: any) => isCommittee(g.rater_role))
+      .map((g: any) => g.grader_id))];
 
-    console.log(`[GradingService] Finalizing scores for Topic: ${topicId}. Supervisor graded: ${supervisorGrades.length > 0}, Reviewers: ${gradedReviewerIds.length}, Committee: ${committeeGradedIds.length}, DefenseType: ${topic.defense_type}`);
+    const isCommitteeComplete = committeeAssignedIds.length > 0 && 
+                                committeeGradedIds.length >= committeeAssignedIds.length;
 
-    if (!isGradingComplete({
-      hasSupervisor: supervisorGrades.length > 0,
-      reviewerCount: gradedReviewerIds.length,
-      committeeCount: committeeGradedIds.length,
-      defenseType: topic.defense_type || undefined
-    })) {
+    const reviewerRequired = topic.reviewer_required_count || 2;
+    const isReviewerComplete = gradedReviewerIds.length >= reviewerRequired;
+
+    if (!supervisorGrades.length || !isReviewerComplete || !isCommitteeComplete) {
+      console.error(`[GradingService] Incomplete grades for topic ${topicId}:`, {
+        hasSupervisor: supervisorGrades.length > 0,
+        reviewerCount: gradedReviewerIds.length,
+        reviewerRequired,
+        committeeCount: committeeGradedIds.length,
+        committeeRequired: committeeAssignedIds.length
+      });
       throw new Error(ERROR_CODES.INCOMPLETE_GRADES);
     }
 
@@ -763,12 +757,37 @@ export class GradingService {
         });
 
         const supervisorGraded = topic.grades.some(g => g.rater_role === RaterRole.SUPERVISOR);
-        const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
-        const totalReviewersRequired = topic.reviewer_required_count || 2;
-        const isReviewerComplete = reviewerGraderIds.length >= totalReviewersRequired;
         
-        const committeeGraderIds = [...new Set(topic.grades.filter(g => g.rater_role === RaterRole.COMMITTEE).map(g => g.grader_id))];
-        const isCommitteeComplete = committeeGraderIds.length >= 3;
+        const sIds = members.map(m => m.student_id);
+        
+        // Production-grade Reviewer Check
+        const reviewerAssignments = topic.assignments.filter(as => as.assignment_type === AssignmentType.REVIEWER && as.group_id === actualGroupId);
+        const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra => 
+          sIds.every(sid => 
+            topic.grades.some(g => 
+              g.grader_id === ra.reviewer_id && 
+              g.student_id === sid &&
+              isReviewer(g.rater_role)
+            )
+          )
+        );
+        
+        // Production-grade Committee Check
+        const committeeAssignments = topic.assignments.filter(as => as.assignment_type === AssignmentType.COMMITTEE && as.group_id === actualGroupId);
+        const isCommitteeComplete = committeeAssignments.length > 0 && committeeAssignments.every(ca => 
+          sIds.every(sid => 
+            topic.grades.some(g => 
+              g.grader_id === ca.reviewer_id && 
+              g.student_id === sid &&
+              isCommittee(g.rater_role)
+            )
+          )
+        );
+
+        const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
+        const committeeGraderIds = [...new Set(topic.grades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
+        const totalReviewersRequired = topic.reviewer_required_count || 2;
+        const totalCommitteeRequired = committeeAssignments.length;
 
         const isGroupFinalized = studentSummaries.every(s => s.finalScore && 'finalized' in s.finalScore && s.finalScore.finalized);
 
@@ -790,8 +809,9 @@ export class GradingService {
             totalReviewersRequired,
             isReviewerComplete,
             committeeGradedCount: committeeGraderIds.length,
+            totalCommitteeRequired,
             isCommitteeComplete,
-            isReadyForDecision: supervisorGraded && isReviewerComplete,
+            isReadyForDecision: supervisorGraded && isReviewerComplete && isCommitteeComplete,
             isFinalized: isGroupFinalized
           }
         });
@@ -824,7 +844,13 @@ export class GradingService {
       throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền tạo tiêu chí');
     }
 
-    // 1. Check uniqueness: name + role + departmentId
+    // 1. Validate Canonical Role: Only SUPERVISOR, REVIEWER, COMMITTEE allowed for templates
+    const roleGroup = ROLE_GROUP_MAP[data.role];
+    if (!roleGroup || (data.role !== RaterRole.SUPERVISOR && data.role !== RaterRole.REVIEWER && data.role !== RaterRole.COMMITTEE)) {
+      throw new Error(`Chỉ được phép tạo tiêu chí cho các vai trò chuẩn: SUPERVISOR, REVIEWER, COMMITTEE. Không được dùng vai trò định danh cụ thể như ${data.role}.`);
+    }
+
+    // 2. Check uniqueness: name + role + departmentId
     const existing = await prisma.gradingCriterion.findFirst({
       where: {
         name: data.name,
@@ -1013,25 +1039,19 @@ export class GradingService {
     where.departmentId = departmentId || null;
 
     if (roleFilter) {
-      // Map requested role (specific or generic) to its group
-      let group: string | undefined = undefined;
+      // Map requested role to its canonical group (e.g. REVIEWER_1 -> REVIEWER)
+      let canonicalRole: RaterRole | undefined = undefined;
 
-      // Explicit generic mapping
-      const rf = roleFilter as string;
-      if (rf === 'REVIEWER') group = RoleGroup.REVIEWER;
-      else if (rf === 'SUPERVISOR' || rf === 'ADVISOR') group = RoleGroup.SUPERVISOR;
-      else if (rf === 'COMMITTEE' || rf === 'COUNCIL' || rf === 'COUNCIL_MEMBER') group = RoleGroup.COMMITTEE;
-      else {
-        // Look up by specific RaterRole
-        group = ROLE_GROUP_MAP[roleFilter as RaterRole];
-      }
-
-      if (group) {
-        where.role = { in: getRolesByGroup(group as RoleGroup) };
-      } else if (roleFilter === 'FINAL') {
+      if (roleFilter === 'FINAL') {
         where.criteria_type = 'FINAL';
       } else {
-        where.role = roleFilter;
+        const group = ROLE_GROUP_MAP[roleFilter as RaterRole] || (Object.values(RoleGroup).includes(roleFilter as any) ? roleFilter : undefined);
+        if (group) {
+          canonicalRole = group as unknown as RaterRole;
+          where.role = canonicalRole;
+        } else {
+          where.role = roleFilter;
+        }
       }
     }
 
@@ -1043,13 +1063,9 @@ export class GradingService {
       ],
     });
 
-    // If a specific role or type (like FINAL) was requested, we return a flat list
-    // but filtered to the first role found in the result to ensure 10 items instead of many sets
-    if (roleFilter) {
-      if (criteria.length === 0 && departmentId) {
-        return this.getGradingCriteria(roleFilter, undefined, undefined);
-      }
-
+    // 2. Return Logic
+    if (roleFilter && roleFilter !== 'FINAL') {
+      // If a specific role was requested, we return a flat list
       const groupByRole = criteria.reduce((acc, c) => {
         if (!acc[c.role]) acc[c.role] = [];
         acc[c.role].push(c);
@@ -1060,13 +1076,13 @@ export class GradingService {
       return firstRoleFound ? groupByRole[firstRoleFound] : [];
     }
 
-    // Grouping logic for general (HOD) view: Pivot specific RaterRoles into generic RoleGroups
+    // 3. Grouping logic for general (HOD) view or FINAL view
     const grouped = criteria.reduce((acc: any, criterion) => {
       const group = ROLE_GROUP_MAP[criterion.role] || criterion.role;
       if (!acc[group]) {
         acc[group] = [];
       }
-      // Strategy: Take the first role's criteria we encounter in that group and stick with them.
+      // Take the first role's criteria encountered in that group
       const existingRoleInGroup = acc[group][0]?.role;
       if (!existingRoleInGroup || existingRoleInGroup === criterion.role) {
         acc[group].push(criterion);
@@ -1074,56 +1090,61 @@ export class GradingService {
       return acc;
     }, {} as Record<string, typeof criteria>);
 
-
-    // Fallback logic for department -> global (for grouped view)
+    // Fallback: If empty but department specified, try global
     if (Object.keys(grouped).length === 0 && departmentId) {
       return this.getGradingCriteria(roleFilter, undefined, undefined);
-    }
-
-    // Role handling for generic output
-    if (roleFilter) {
-      const firstGroupFound = Object.keys(grouped)[0];
-      return firstGroupFound ? grouped[firstGroupFound] : [];
     }
 
     return grouped;
   }
 
   private getGradeClassification(score: number): string {
-    if (score >= GRADING.CLASSIFICATION.EXCELLENT.min) return GRADING.CLASSIFICATION.EXCELLENT.label;
-    if (score >= GRADING.CLASSIFICATION.GOOD.min) return GRADING.CLASSIFICATION.GOOD.label;
-    if (score >= GRADING.CLASSIFICATION.FAIR.min) return GRADING.CLASSIFICATION.FAIR.label;
-    if (score >= GRADING.CLASSIFICATION.AVERAGE.min) return GRADING.CLASSIFICATION.AVERAGE.label;
-    return GRADING.CLASSIFICATION.FAIL.label;
+    if (score >= 9.0) return 'Xuất sắc (A)';
+    if (score >= 8.5) return 'Xuất sắc (A-)';
+    if (score >= 8.0) return 'Giỏi (B+)';
+    if (score >= 7.0) return 'Khá (B)';
+    if (score >= 6.5) return 'Trung bình khá (C+)';
+    if (score >= 5.5) return 'Trung bình (C)';
+    if (score >= 5.0) return 'Trung bình yếu (D+)';
+    if (score >= 4.0) return 'Yếu (D)';
+    return 'Kém (F)';
   }
 
   private async getPriorityCriteria(role: RaterRole, departmentId: string) {
-    // 1. Role Group lookup (Reviewer/Committee/Supervisor)
-    const roleGroup = ROLE_GROUP_MAP[role];
+    // 1. Canonical Role lookup
+    const roleGroup = ROLE_GROUP_MAP[role] || RoleGroup.SUPERVISOR;
+    const canonicalRole = roleGroup as unknown as RaterRole;
     const rolesInGroup = getRolesByGroup(roleGroup);
 
-    // 0. Final Evaluation Priority - MUST filter by role group and department
+    // 0. Final Evaluation Priority - Filter by CANONICAL role and department
     const finalCriteria = await prisma.gradingCriterion.findMany({
       where: {
         active: true,
-        role: { in: rolesInGroup },
+        role: canonicalRole,
         departmentId: departmentId || null
       },
       orderBy: { order_index: 'asc' },
     });
-    if (finalCriteria.length > 0) return finalCriteria;
+    
+    if (finalCriteria.length > 0) {
+      console.log(`[GradingService] Found ${finalCriteria.length} criteria for canonical role ${canonicalRole} (Dept: ${departmentId})`);
+      return finalCriteria;
+    }
 
-    // Fallback: Global final criteria for this role group
+    // Fallback: Global final criteria for this canonical role
     if (departmentId) {
       const globalFinalCriteria = await prisma.gradingCriterion.findMany({
         where: {
           active: true,
-          role: { in: rolesInGroup },
+          role: canonicalRole,
           departmentId: null
         },
         orderBy: { order_index: 'asc' },
       });
-      if (globalFinalCriteria.length > 0) return globalFinalCriteria;
+      if (globalFinalCriteria.length > 0) {
+        console.log(`[GradingService] Found ${globalFinalCriteria.length} GLOBAL criteria for canonical role ${canonicalRole}`);
+        return globalFinalCriteria;
+      }
     }
 
     // Try department-specific group criteria
@@ -1508,12 +1529,26 @@ export class GradingService {
         include: {
           semester: true,
           supervisor: { select: { id: true, full_name: true, role: true, avatar_url: true } },
+          assignments: {
+            include: {
+              reviewer: { select: { id: true, full_name: true, role: true, avatar_url: true } }
+            }
+          },
           registrations: {
             select: {
               id: true,
               group_id: true,
               student_id: true,
               student: true,
+              topic: {
+                select: {
+                  id: true,
+                  is_eligible_for_defense: true,
+                  is_locked: true,
+                  progress_stage: true,
+                  grades: true,
+                }
+              }
             }
           }
         }
@@ -1541,14 +1576,13 @@ export class GradingService {
         const key = `${g.grader_id}-${g.student_id || 'topic'}`;
         if (!grouped.has(key)) {
           grouped.set(key, {
-            id: g.id, // Use the first grade ID as reference
+            id: g.id, 
             topic_id: g.topic_id,
             rater_id: g.grader_id,
             rater_name: g.grader.full_name,
             rater_role: g.rater_role,
             student_id: g.student_id,
             reviewer_order: g.reviewer_order,
-            committee_role: g.grader.committee_role, // Note: might need to join assignments for exact role
             scores: [],
             submitted_at: g.graded_at,
           });
@@ -1561,7 +1595,6 @@ export class GradingService {
           comment: g.comments,
         });
         
-        // Ensure submitted_at is the latest
         if (new Date(g.graded_at) > new Date(entry.submitted_at)) {
           entry.submitted_at = g.graded_at;
         }
@@ -1574,6 +1607,15 @@ export class GradingService {
 
     const reviewerGrades = groupedGrades.filter(g => isReviewer(g.rater_role));
     const councilGrades = groupedGrades.filter(g => isCommittee(g.rater_role));
+
+    // Get assignments breakdown
+    const reviewerAssignments = topic.assignments
+      .filter(a => a.assignment_type === 'REVIEWER')
+      .map(a => ({ ...a, reviewer: a.reviewer }));
+      
+    const councilAssignments = topic.assignments
+      .filter(a => a.assignment_type === 'COMMITTEE')
+      .map(a => ({ ...a, reviewer: a.reviewer }));
 
     const finalScores = await prisma.finalScore.findMany({
       where: { topic_id: topicId },
@@ -1596,13 +1638,60 @@ export class GradingService {
       };
     });
 
+    // Calculate grading status for the frontend
+    const supervisorGraded = allGrades.some((g: any) => g.rater_role === RaterRole.SUPERVISOR);
+    const sIds = topic.registrations.map(r => r.student_id);
+    
+    const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every(ra => 
+      sIds.every(sid => 
+        allGrades.some((g: any) => 
+          g.grader_id === ra.reviewer_id && 
+          g.student_id === sid &&
+          isReviewer(g.rater_role)
+        )
+      )
+    );
+    
+    const isCommitteeComplete = councilAssignments.length > 0 && councilAssignments.every(ca => 
+      sIds.every(sid => 
+        allGrades.some((g: any) => 
+          g.grader_id === ca.reviewer_id && 
+          g.student_id === sid &&
+          isCommittee(g.rater_role)
+        )
+      )
+    );
+
+    const reviewerGraderIds = [...new Set(allGrades.filter((g: any) => isReviewer(g.rater_role)).map((g: any) => g.grader_id))];
+    const committeeGraderIds = [...new Set(allGrades.filter((g: any) => isCommittee(g.rater_role)).map((g: any) => g.grader_id))];
+    
+    const totalReviewersRequired = topic.reviewer_required_count || 2;
+    const totalCommitteeRequired = councilAssignments.length;
+
+    const isGroupFinalized = finalScores.length > 0 && finalScores.every(fs => fs.finalized);
+
+    const gradingStatus = {
+      supervisorGraded,
+      reviewerGradedCount: reviewerGraderIds.length,
+      totalReviewersRequired,
+      isReviewerComplete,
+      committeeGradedCount: committeeGraderIds.length,
+      totalCommitteeRequired,
+      isCommitteeComplete,
+      isReadyForDecision: supervisorGraded && isReviewerComplete && isCommitteeComplete,
+      isFinalized: isGroupFinalized
+    };
+
     return {
       advisorGrades: groupedGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR),
       reviewerGrades,
       councilGrades,
+      reviewerAssignments,
+      councilAssignments,
       finalScores,
       permissions,
-      topic: { ...topic, students },
+      gradingStatus, // Add this!
+      topic: { ...topic, students, gradingStatus }, // Also add to topic object just in case
     };
   }
 
@@ -1664,6 +1753,15 @@ export class GradingService {
         group_id: true,
         student_id: true,
         student: true,
+        topic: {
+          select: {
+            id: true,
+            is_eligible_for_defense: true,
+            is_locked: true,
+            progress_stage: true,
+            grades: true, // Needed for AcademicPolicy.isTopicFailed
+          }
+        }
       },
     });
 

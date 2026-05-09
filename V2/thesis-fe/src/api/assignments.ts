@@ -79,7 +79,7 @@ export const AssignmentsApi = {
      * GET /assignments/topics-for-committee
      */
     async getTopicsForCommitteeAssignment() {
-        const res = await api.get<ApiResponse<any[]>>('/assignments/topics-for-committee');
+        const res = await api.get<ApiResponse<{ topics: any[], deptDefenseDate: string | null }>>('/assignments/topics-for-committee');
         return res.data.data;
     },
 

@@ -65,6 +65,7 @@ export const CommitteeApi = {
   },
   assignTopic: async (data: {
     topicId: string;
+    groupId: string;
     committeeId: string;
     defenseDate: string;
     startTime?: string;

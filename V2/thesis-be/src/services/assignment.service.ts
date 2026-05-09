@@ -6,6 +6,7 @@ import { SemesterGuard } from '../utils/semester-guard';
 import { AcademicPolicy, AcademicAction } from '../utils/academic-policy';
 import notificationService from './notification.service';
 import semesterService from './semester.service';
+import { isReviewer, isCommittee } from '../utils/grading.utils';
 
 
 const topicForCommitteeAssignmentInclude = {
@@ -655,9 +656,8 @@ export class AssignmentService {
               },
             },
             defense_schedules: true,
-            grades: {
-              where: { grader_id: userId }
-            },
+            grades: true, 
+            assignments: true, // Include assignments to check against assigned reviewers/committee
             registrations: {
               include: {
                 student: {
@@ -728,6 +728,51 @@ export class AssignmentService {
         reviewerOrder: a.reviewer_order,
         assignedAt: a.assigned_at,
         deadline: a.deadline_at,
+        is_eligible_for_defense: a.topic?.is_eligible_for_defense,
+        // Calculate grading status for frontend logic
+        gradingStatus: a.topic ? (() => {
+          const topic = a.topic;
+          const registrations = topic.registrations || [];
+          const studentIds = registrations.flatMap((reg: any) => 
+            reg.group?.members?.map((m: any) => m.user_id) || [reg.student_id]
+          );
+          
+          const supervisorGraded = topic.grades.some((g: any) => g.rater_role === RaterRole.SUPERVISOR);
+          
+          // Reviewer Check
+          const reviewerAssignments = topic.assignments.filter((as: any) => as.assignment_type === AssignmentType.REVIEWER);
+          const isReviewerComplete = reviewerAssignments.length > 0 && reviewerAssignments.every((ra: any) => 
+            studentIds.every((sid: string) => 
+              topic.grades.some((g: any) => 
+                g.grader_id === ra.reviewer_id && 
+                g.student_id === sid &&
+                isReviewer(g.rater_role)
+              )
+            )
+          );
+
+          // Committee Check
+          const committeeAssignments = topic.assignments.filter((as: any) => as.assignment_type === AssignmentType.COMMITTEE);
+          const isCommitteeComplete = committeeAssignments.length >= 3 && committeeAssignments.every((ca: any) => 
+            studentIds.every((sid: string) => 
+              topic.grades.some((g: any) => 
+                g.grader_id === ca.reviewer_id && 
+                g.student_id === sid &&
+                isCommittee(g.rater_role)
+              )
+            )
+          );
+
+          return {
+            supervisorGraded,
+            reviewerGradedCount: [...new Set(topic.grades.filter((g: any) => isReviewer(g.rater_role)).map((g: any) => g.grader_id))].length,
+            totalReviewersRequired: topic.reviewer_required_count || 2,
+            isReviewerComplete,
+            committeeGradedCount: [...new Set(topic.grades.filter((g: any) => isCommittee(g.rater_role)).map((g: any) => g.grader_id))].length,
+            isCommitteeComplete,
+            isReadyForDecision: supervisorGraded && isReviewerComplete && isCommitteeComplete
+          };
+        })() : null
       };
     });
   }
@@ -881,28 +926,29 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
-    const topics = await prisma.topic.findMany({
-      where: {
-        ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
-        // Show all topics from reviewer-grading phase through defense completion
-        status: {
-          in: [
-            TopicStatus.REGISTERED,
-            TopicStatus.COMPLETED,
-            TopicStatus.FINALIZED,
-          ],
-        },
-        // --- SEMESTER ISOLATION ---
-        semester_id: (await (await import('./semester.service')).default.getActiveSemester())?.id,
-      },
-      include: topicForCommitteeAssignmentInclude,
-      orderBy: { created_at: 'desc' },
-    }) as TopicForCommitteeAssignment[];
+    const semesterId = (await (await import('./semester.service')).default.getActiveSemester())?.id;
+    if (!semesterId) throw new Error('Không tìm thấy học kỳ đang hoạt động');
 
-    const results = topics.map(topic => {
-      if (topic.status === TopicStatus.COMPLETED || topic.status === TopicStatus.FINALIZED) {
-        throw new Error('Không thể gán hội đồng cho đề tài đã kết thúc');
-      }
+    const [deptConfig, topics] = await Promise.all([
+      user.role === UserRole.HEAD ? prisma.departmentSemesterConfig.findUnique({
+        where: { department_id_semester_id: { department_id: user.departmentId, semester_id: semesterId } }
+      }) : null,
+      prisma.topic.findMany({
+        where: {
+          ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
+          status: {
+            in: [TopicStatus.REGISTERED, TopicStatus.COMPLETED, TopicStatus.FINALIZED],
+          },
+          semester_id: semesterId,
+        },
+        include: topicForCommitteeAssignmentInclude,
+        orderBy: { created_at: 'desc' },
+      })
+    ]);
+
+    const deptDefenseDate = deptConfig?.defense_date;
+
+    const results = (topics as TopicForCommitteeAssignment[]).map(topic => {
       const eligibility = this.isEligibleForCommittee(topic);
 
       // Standardized Production Log
@@ -922,8 +968,7 @@ export class AssignmentService {
       };
     });
 
-    // Return only eligible topics for the assignment list
-    return results
+    const finalTopics = results
       .filter(r => r.eligibility.eligible)
       .map(r => {
         const topic = r.topic as any;
@@ -932,7 +977,6 @@ export class AssignmentService {
         );
         const hasCommittee = committeeAssignments.length > 0;
 
-        // Calculate per-reviewer weighted score, then average across reviewers
         const reviewerAssignments = topic.assignments.filter((a: any) =>
           a.assignment_type === AssignmentType.REVIEWER &&
           [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED].includes(a.status)
@@ -943,28 +987,50 @@ export class AssignmentService {
           ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
         );
 
-        const perReviewerScores = reviewerIds.map((reviewerId: string) => {
-          const grades = reviewerGrades.filter((g: any) => g.grader_id === reviewerId);
-          if (grades.length === 0) return 0;
-          return grades.reduce((sum: number, g: any) => sum + (g.score * (g.criterion?.weight || 0)), 0);
+        // Calculate average reviewer score PER student
+        const registrationsWithScores = topic.registrations.map((reg: any) => {
+          const studentId = reg.student_id;
+          const perReviewerScores = reviewerIds.map((reviewerId: string) => {
+            const grades = reviewerGrades.filter((g: any) => g.grader_id === reviewerId && g.student_id === studentId);
+            if (grades.length === 0) return null;
+            return grades.reduce((sum: number, g: any) => sum + (g.score * (g.criterion?.weight || 0)), 0);
+          }).filter(s => s !== null) as number[];
+
+          const avgScore = perReviewerScores.length > 0
+            ? Math.round((perReviewerScores.reduce((a, b) => a + b, 0) / perReviewerScores.length) * 100) / 100
+            : null;
+          
+          return {
+            ...reg,
+            avgReviewerScore: avgScore
+          };
         });
 
-        const avgReviewerScore = perReviewerScores.length > 0
-          ? Math.round((perReviewerScores.reduce((a, b) => a + b, 0) / perReviewerScores.length) * 100) / 100
+        const allStudentScores = registrationsWithScores.map((r: any) => r.avgReviewerScore).filter((s: any) => s !== null) as number[];
+        const avgReviewerScore = allStudentScores.length > 0
+          ? Math.round((allStudentScores.reduce((a: number, b: number) => a + b, 0) / allStudentScores.length) * 100) / 100
           : null;
 
         return {
           ...topic,
+          registrations: registrationsWithScores,
           hasCommittee,
           avgReviewerScore,
           currentSchedule: topic.defense_schedules?.[0] ? {
             committee_id: topic.defense_schedules[0].committee_id,
+            committee_name: (topic.defense_schedules[0] as any).committee?.name,
             defense_date: topic.defense_schedules[0].defense_date,
-            start_time: (topic.defense_schedules[0] as any).defense_time || topic.defense_schedules[0].start_time,
+            start_time: topic.defense_schedules[0].start_time,
+            end_time: topic.defense_schedules[0].end_time,
             room: topic.defense_schedules[0].room,
           } : null,
         } as any;
       });
+
+    return {
+      topics: finalTopics,
+      deptDefenseDate
+    } as any;
   }
 
   /**

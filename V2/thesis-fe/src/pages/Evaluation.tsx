@@ -288,7 +288,9 @@ const Evaluation = () => {
         };
       });
 
-      await Promise.all(submissions.map(sub => submitGradeMutation.mutateAsync(sub)));
+      for (const sub of submissions) {
+        await submitGradeMutation.mutateAsync(sub);
+      }
       notify.success('Đã lưu điểm thành công!');
 
 
@@ -482,7 +484,7 @@ const Evaluation = () => {
                             />
                           </Form.Item>
                           {gradeHistory?.some((h: any) => {
-                            const hRole = h.grade?.rater_role;
+                            const hRole = h.rater_role || h.grade?.rater_role;
                             const currentRoleGroup = getRaterRole(); // SUPERVISOR, REVIEWER, COMMITTEE
 
                             let isSameRoleGroup = false;
@@ -499,7 +501,7 @@ const Evaluation = () => {
                               isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
                             }
 
-                            return h.grade.criterion_id === r.id && h.grade.student_id === s.id && isSameRoleGroup;
+                            return h.criterion_id === r.id && h.student_id === s.id && isSameRoleGroup;
                           }) && (
                               <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
                                 <Badge status="warning" text={<span className="text-[9px] text-amber-600 font-medium">Đã sửa</span>} className="cursor-help" />
@@ -758,13 +760,14 @@ const Evaluation = () => {
           return <Tag color="error" icon={<LockOutlined />} className="m-0 rounded-full px-3">Đã chốt (Locked)</Tag>;
         }
 
-        // Logic check if any grades exist for this topic
-        const hasGrades = r.grades?.length > 0;
-        if (hasGrades) {
-          return <Tag color="processing" className="m-0 rounded-full px-3">Đang chấm</Tag>;
+        // [UI IMPROVEMENT] Status should reflect CURRENT user's grading progress in lecturer tabs
+        const hasMyGrades = r.grades?.filter((g: any) => (g.grader_id === user?.id || g.graderId === user?.id)).length > 0;
+        
+        if (hasMyGrades) {
+          return <Tag color="processing" className="m-0 rounded-full px-3">Đã chấm</Tag>;
         }
 
-        return <Tag color="default" className="m-0 rounded-full px-3">Chưa chấm</Tag>;
+        return <Tag color="default" className="m-0 rounded-full px-3">Chờ chấm</Tag>;
       }
     },
     {
@@ -773,21 +776,17 @@ const Evaluation = () => {
       width: 180,
       render: (_: any, r: any) => {
         const currentPhase = activeSemester?.calculated_phase;
-        const isAtReviewPhaseOrLater = currentPhase === 'REVIEWING' || currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
+        const isAtDefensePhaseOrLater = currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
         const supervisorGraded = r.gradingStatus?.supervisorGraded;
         const supervisorScore = r.students?.[0]?.finalScore?.supervisor_score;
         const reviewerScore = r.students?.[0]?.finalScore?.reviewer_avg_score;
-
-        const isAutoFailed = isAtReviewPhaseOrLater && !supervisorGraded;
-        const isManuallyFailed = r.is_eligible_for_defense === false;
-        const isFailed = isAutoFailed || isManuallyFailed;
+        const hasMyGrades = r.grades?.some((g: any) => (g.grader_id === user?.id || g.graderId === user?.id));
 
         return (
           <Space>
             <Button
-              type={r.status === 'FINALIZED' ? "default" : "primary"}
+              type={r.status === 'FINALIZED' || hasMyGrades ? "default" : "primary"}
               size="small"
-              disabled={isFailed && r.status !== 'FINALIZED'}
               onClick={() => setSearchParams({
                 topicId: r.topicId || r.topic_id || r.id,
                 groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id),
@@ -795,7 +794,7 @@ const Evaluation = () => {
               })}
               className="text-xs rounded-lg"
             >
-              {isFailed && r.status !== 'FINALIZED' ? 'Bị loại' : (r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm')}
+              {r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm'}
             </Button>
             <Tooltip title="Xem nhanh lịch sử sửa điểm">
               <Button
@@ -953,7 +952,7 @@ const Evaluation = () => {
             <div className="flex items-center gap-2">
               <Badge status={r.gradingStatus?.isCommitteeComplete ? "success" : "processing"} />
               <Text className={`text-[11px] ${r.gradingStatus?.isCommitteeComplete ? 'text-green-600 font-medium' : 'text-blue-500'}`}>
-                Hội đồng: {r.gradingStatus?.committeeGradedCount ?? 0}/3
+                Hội đồng: {r.gradingStatus?.committeeGradedCount ?? 0}/{r.gradingStatus?.totalCommitteeRequired ?? 3}
               </Text>
             </div>
           </div>
@@ -966,8 +965,10 @@ const Evaluation = () => {
         render: (_: any, r: any) => {
           const currentPhase = activeSemester?.calculated_phase;
           
-          // 1. Nếu đã có quyết định chính thức từ HOD
-          if (r.is_eligible_for_defense !== null && r.is_eligible_for_defense !== undefined) {
+          // 1. Nếu đã có quyết định chính thức từ HOD (Chỉ hiển thị từ phase DEFENSE)
+          const isAtDefensePhaseOrLater = currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
+          
+          if (isAtDefensePhaseOrLater && r.is_eligible_for_defense !== null && r.is_eligible_for_defense !== undefined) {
             return (
               <Popover 
                 content={(
@@ -1013,15 +1014,14 @@ const Evaluation = () => {
             </Popover>
           );
 
-          // Kiểm tra thiếu điểm GVHD ngay khi bước vào giai đoạn Phản biện trở đi
-          const isAtReviewPhaseOrLater = currentPhase === 'REVIEWING' || currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
-          if (isAtReviewPhaseOrLater && !r.gradingStatus?.supervisorGraded) {
-            return renderFailedTag("Loại (Thiếu điểm GVHD)", "Giảng viên hướng dẫn chưa nhập điểm cho đề tài khi đã đến hạn Phản biện.");
+          // Kiểm tra thiếu điểm GVHD ngay khi bước vào giai đoạn Bảo vệ
+          if (isAtDefensePhaseOrLater && !r.gradingStatus?.supervisorGraded) {
+            return renderFailedTag("Loại (Thiếu điểm GVHD)", "Giảng viên hướng dẫn chưa nhập điểm cho đề tài khi đã đến hạn Bảo vệ.");
           }
 
           // 3. Trạng thái sẵn sàng xét
           if (r.gradingStatus?.isReadyForDecision) {
-            return <Tag color="success" className="text-[11px] rounded-full px-2 border-none bg-green-50 text-green-600">Sẵn sàng xét</Tag>;
+            return <Tag color="success" className="text-[11px] rounded-full px-2 border-none bg-green-50 text-green-600">Đã chấm</Tag>;
           }
 
           // 4. Mặc định: Chờ dữ liệu

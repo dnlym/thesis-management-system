@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Input, Tabs } from 'antd';
+import { Card, Table, Button, Tag, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Input, Tabs, Tooltip } from 'antd';
 import { notify } from '@/utils/notification';
 import { 
     UserOutlined, CheckCircleOutlined, PlusOutlined, 
-    ClockCircleOutlined, SaveOutlined, SearchOutlined 
+    ClockCircleOutlined, SaveOutlined, SearchOutlined,
+    CheckCircleFilled, ExclamationCircleFilled
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +14,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 
 interface TopicForReviewer {
     id: string;
@@ -62,6 +64,8 @@ const ReviewerAssignment = () => {
         queryKey: ['topics-for-reviewer'],
         queryFn: () => AssignmentsApi.getTopicsForReviewerAssignment(),
     });
+
+    const { data: activeSemester } = useActiveSemester();
 
     // Fetch available lecturers once for the whole page
     const { data: lecturers } = useQuery({
@@ -128,10 +132,18 @@ const ReviewerAssignment = () => {
     });
 
     const getSelection = (groupId: string, initialRoom?: string | null): ReviewerSelection => {
+        let defaultDeadline = dayjs().add(14, 'day');
+        if (activeSemester?.thesis_deadline) {
+            const max = dayjs(activeSemester.thesis_deadline);
+            if (defaultDeadline.isAfter(max)) {
+                defaultDeadline = max;
+            }
+        }
+        
         return selections[groupId] || {
             reviewer1: null,
             reviewer2: null,
-            deadline: dayjs().add(14, 'day'),
+            deadline: defaultDeadline,
             room: initialRoom || ''
         };
     };
@@ -210,9 +222,23 @@ const ReviewerAssignment = () => {
     const getStatusTag = (status: string) => {
         switch (status) {
             case 'NOT_ASSIGNED':
-                return <Tag color="default">{t('reviewerAssignment.notAssigned')}</Tag>;
+                return (
+                    <Tooltip title={t('reviewerAssignment.notAssigned')}>
+                        <ClockCircleOutlined className="text-gray-400 text-lg" />
+                    </Tooltip>
+                );
+            case 'PARTIALLY_ASSIGNED':
+                return (
+                    <Tooltip title={t('reviewerAssignment.partiallyAssigned') || 'Chưa phân công đủ'}>
+                        <ExclamationCircleFilled className="text-orange-400 text-lg" />
+                    </Tooltip>
+                );
             case 'FULLY_ASSIGNED':
-                return <Tag color="success" icon={<CheckCircleOutlined />}>{t('reviewerAssignment.fullyAssigned')}</Tag>;
+                return (
+                    <Tooltip title={t('reviewerAssignment.fullyAssigned')}>
+                        <CheckCircleFilled className="text-green-500 text-lg" />
+                    </Tooltip>
+                );
             default:
                 return <Tag>{status}</Tag>;
         }
@@ -227,10 +253,10 @@ const ReviewerAssignment = () => {
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
-            title: t('topics.code'),
-            dataIndex: 'code',
-            key: 'code',
-            width: 100,
+            title: 'Mã nhóm',
+            dataIndex: 'groupName',
+            key: 'groupName',
+            width: 120,
             render: (text: string) => (
                 <Tag color="blue" className="font-mono">
                     <HighlightText text={text} keyword={debouncedSearch} />
@@ -246,9 +272,6 @@ const ReviewerAssignment = () => {
                 <div>
                     <div className="font-medium text-sm leading-tight">
                         <HighlightText text={text} keyword={debouncedSearch} />
-                    </div>
-                    <div className="text-[12px] text-blue-600 font-semibold mt-1">
-                        {record.groupName}
                     </div>
                     <div className="text-[11px] text-gray-500 mt-1">
                         {t('topics.supervisor')}: <HighlightText text={record.supervisor?.full_name} keyword={debouncedSearch} />
@@ -337,7 +360,7 @@ const ReviewerAssignment = () => {
         {
             title: t('reviewerAssignment.deadline'),
             key: 'deadline',
-            width: 120,
+            width: 140,
             render: (_: any, record: TopicForReviewer) => {
                 if (!record.canAssignMore) {
                     const firstAssignment = record.assignments[0];
@@ -353,7 +376,12 @@ const ReviewerAssignment = () => {
                         format="DD/MM/YYYY"
                         size="small"
                         style={{ width: '100%' }}
-                        disabledDate={(current) => current && current < dayjs().startOf('day')}
+                        disabledDate={(current) => {
+                            if (!activeSemester) return current && current < dayjs().startOf('day');
+                            const start = dayjs(activeSemester.proposal_deadline).startOf('day');
+                            const end = dayjs(activeSemester.thesis_deadline).endOf('day');
+                            return current && (current < start || current > end);
+                        }}
                     />
                 );
             },
@@ -370,7 +398,7 @@ const ReviewerAssignment = () => {
                 return (
                     <input
                         className="ant-input ant-input-sm"
-                        placeholder={t('defenseSchedule.roomPlaceholder') || 'Phòng'}
+                        placeholder="Nhập"
                         value={sel.room}
                         onChange={(e) => updateSelection(record.groupId, 'room', e.target.value)}
                         style={{ width: '100%' }}
@@ -382,28 +410,31 @@ const ReviewerAssignment = () => {
             title: t('common.status'),
             dataIndex: 'assignmentStatus',
             key: 'assignmentStatus',
-            width: 130,
+            width: 80,
+            align: 'center' as const,
             render: (status: string) => getStatusTag(status),
         },
         {
             title: '',
             key: 'actions',
-            width: 100,
+            width: 80,
+            onCell: () => ({ style: { paddingLeft: 0, paddingRight: 0 } }),
             render: (_: any, record: TopicForReviewer) => {
                 if (!record.canAssignMore) return null;
                 const sel = getSelection(record.groupId, record.room);
                 const hasSelection = sel.reviewer1 || sel.reviewer2;
                 return (
-                    <Button
-                        type="primary"
-                        icon={<SaveOutlined />}
-                        onClick={() => handleAssignBoth(record)}
-                        disabled={!hasSelection}
-                        loading={submittingGroupId === record.groupId}
-                        size="small"
-                    >
-                        {t('common.save')}
-                    </Button>
+                    <Tooltip title={t('common.save')}>
+                        <Button
+                            type="primary"
+                            icon={<SaveOutlined />}
+                            onClick={() => handleAssignBoth(record)}
+                            disabled={!hasSelection}
+                            loading={submittingGroupId === record.groupId}
+                            size="small"
+                        >
+                        </Button>
+                    </Tooltip>
                 );
             },
         },

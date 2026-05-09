@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, GraduationCap, MapPin, Users, User, ChevronRight,
-    Save, CheckCircle
+    Save, CheckCircle, ClipboardCheck, FileText, Info, Award
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OfflineStorage } from '@/api/offline';
@@ -17,6 +17,7 @@ import { useGradingCriteria } from '@/hooks/useGrading';
 import { GradingApi } from '@/api/grading';
 
 const BLUE = '#2563eb';
+const LIGHT_BLUE = '#eff6ff';
 
 export default function GradingScreen() {
     const { topicId, studentId, groupId } = useLocalSearchParams();
@@ -195,27 +196,34 @@ export default function GradingScreen() {
 
             <View style={styles.topicCardContainer}>
                 <View style={styles.topicCard}>
-                    <View style={styles.topicIconBox}>
-                        <GraduationCap size={24} color={BLUE} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.topicCardTitle} numberOfLines={2}>{topic?.title}</Text>
-                        <View style={styles.topicInfoRow}>
-                            <MapPin size={12} color="#94a3b8" />
-                            <Text style={styles.topicInfoText}>Phòng: {topic?.room || '---'}</Text>
-                            <Text style={styles.topicInfoDivider}>•</Text>
-                            <Users size={12} color="#94a3b8" />
-                            <Text style={styles.topicInfoText}>Nhóm: {topic?.registrations?.[0]?.group?.name || '---'}</Text>
+                    <View style={styles.topicCardBody}>
+                        <View style={styles.topicIconBox}>
+                            <GraduationCap size={24} color={BLUE} />
                         </View>
-                        <View style={styles.topicInfoRow}>
-                            <User size={12} color="#94a3b8" />
-                            <Text style={styles.topicInfoText}>Giảng viên hướng dẫn: {topic?.supervisor?.full_name || '---'}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.topicCardTitle} numberOfLines={2}>{topic?.title}</Text>
+                            <View style={styles.topicInfoGrid}>
+                                <View style={styles.topicInfoItem}>
+                                    <MapPin size={12} color="#94a3b8" />
+                                    <Text style={styles.topicInfoText}>{topic?.room || '---'}</Text>
+                                </View>
+                                <View style={styles.topicInfoItem}>
+                                    <Users size={12} color="#94a3b8" />
+                                    <Text style={styles.topicInfoText}>Nhóm: {topic?.registrations?.[0]?.group?.name || '---'}</Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
-                    <TouchableOpacity style={styles.detailBtn}>
-                        <Text style={styles.detailBtnText}>Chi tiết</Text>
-                        <ChevronRight size={14} color={BLUE} />
-                    </TouchableOpacity>
+                    <View style={styles.topicCardFooter}>
+                        <View style={styles.supervisorBox}>
+                            <User size={12} color="#64748b" />
+                            <Text style={styles.supervisorText}>GVHD: {topic?.supervisor?.full_name}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.detailBtn}>
+                            <Text style={styles.detailBtnText}>Chi tiết</Text>
+                            <ChevronRight size={14} color={BLUE} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
@@ -227,12 +235,10 @@ export default function GradingScreen() {
                             onPress={() => setIdx(i)}
                             style={[styles.tab, i === idx && styles.tabActive]}
                         >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <User size={16} color={i === idx ? BLUE : '#94a3b8'} />
-                                <Text style={[styles.tabText, i === idx && styles.tabTextActive]}>
-                                    {sv.full_name}
-                                </Text>
-                            </View>
+                            <User size={16} color={i === idx ? BLUE : '#94a3b8'} />
+                            <Text style={[styles.tabText, i === idx && styles.tabTextActive]} numberOfLines={1}>
+                                {sv.full_name.split(' ').pop()}
+                            </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -241,62 +247,75 @@ export default function GradingScreen() {
             <ScrollView style={{ flex: 1, backgroundColor: '#f8fafc' }} keyboardShouldPersistTaps="handled">
                 <View style={styles.statsCard}>
                     <View style={styles.statsCol}>
-                        <Text style={styles.statsLabel}>TỔNG ĐIỂM (TỐI ĐA 10)</Text>
+                        <View style={styles.statsLabelRow}>
+                            <Award size={14} color="#94a3b8" />
+                            <Text style={styles.statsLabel}>TỔNG ĐIỂM</Text>
+                        </View>
                         <Text style={styles.statsValue}>{totalScore.toFixed(1)} <Text style={styles.statsMax}>/ 10</Text></Text>
                     </View>
                     <View style={styles.statsDivider} />
                     <View style={styles.statsCol}>
-                        <Text style={styles.statsLabel}>XẾP LOẠI DỰ KIẾN</Text>
-                        <View style={styles.gradeBadge}>
-                            <Text style={styles.gradeBadgeText}>{totalScore >= 5 ? 'Đạt' : 'Chưa đạt'}</Text>
+                        <View style={styles.statsLabelRow}>
+                            <Info size={14} color="#94a3b8" />
+                            <Text style={styles.statsLabel}>DỰ KIẾN</Text>
                         </View>
-                        <Text style={styles.gradeSubText}>({totalScore >= 5 ? 'Đủ điều kiện' : 'Cần cố gắng'})</Text>
+                        <View style={[styles.gradeBadge, { backgroundColor: totalScore >= 6 ? '#dcfce7' : '#fee2e2' }]}>
+                            <Text style={[styles.gradeBadgeText, { color: totalScore >= 6 ? '#166534' : '#991b1b' }]}>
+                                {totalScore >= 6 ? 'Đạt' : 'Rớt'}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>DANH SÁCH TIÊU CHÍ</Text>
-                    <Text style={styles.totalMaxHint}>Tổng tối đa: 10 điểm</Text>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{criteria.length} tiêu chí</Text>
+                    </View>
                 </View>
 
-                {criteria.map((c: any, i: number) => (
-                    <View key={c.id} style={styles.criterionCard}>
-                        <View style={styles.criterionHeader}>
-                            <View style={styles.idxCircle}>
-                                <Text style={styles.idxCircleText}>{i + 1}</Text>
-                            </View>
-                            <View style={{ flex: 1, paddingRight: 8 }}>
-                                <Text style={styles.criterionName}>{c.name}</Text>
-                                <Text style={styles.maxHint}>Tối đa {c.max_score} điểm</Text>
-                            </View>
-                            <View style={styles.inputBox}>
-                                <TextInput
-                                    style={[styles.input, scores[c.id] ? styles.inputFilled : {}]}
-                                    keyboardType="decimal-pad"
-                                    value={scores[c.id] || ''}
-                                    onChangeText={v => handleScore(c.id, v, c.max_score)}
-                                    placeholder="0.0"
-                                    editable={!submitted}
-                                />
-                                <View style={styles.inputDivider} />
-                                <Text style={styles.maxSubText}>{c.max_score}</Text>
+                <View style={styles.criteriaContainer}>
+                    {criteria.map((c: any, i: number) => (
+                        <View key={c.id} style={styles.criterionCard}>
+                            <View style={styles.criterionMain}>
+                                <View style={styles.criterionInfo}>
+                                    <View style={styles.criterionTitleRow}>
+                                        <ClipboardCheck size={16} color={BLUE} style={{ marginRight: 8 }} />
+                                        <Text style={styles.criterionName}>{c.name}</Text>
+                                    </View>
+                                    <Text style={styles.criterionDesc} numberOfLines={2}>{c.description || 'Chấm điểm dựa trên kết quả thực hiện.'}</Text>
+                                </View>
+                                <View style={styles.scoreInputGroup}>
+                                    <TextInput
+                                        style={[styles.input, scores[c.id] ? styles.inputFilled : {}]}
+                                        keyboardType="decimal-pad"
+                                        value={scores[c.id] || ''}
+                                        onChangeText={v => handleScore(c.id, v, c.max_score)}
+                                        placeholder="0.0"
+                                        editable={!submitted}
+                                    />
+                                    <View style={styles.maxBadge}>
+                                        <Text style={styles.maxBadgeText}>/{c.max_score}</Text>
+                                    </View>
+                                </View>
                             </View>
                         </View>
-                    </View>
-                ))}
+                    ))}
+                </View>
 
                 <View style={styles.commentSection}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <Text style={styles.commentLabel}>NHẬN XÉT <Text style={{ color: '#94a3b8' }}>(KHÔNG BẮT BUỘC)</Text></Text>
-                        <Text style={styles.charCount}>{comment.length}/1000</Text>
+                    <View style={styles.commentHeader}>
+                        <FileText size={16} color="#64748b" />
+                        <Text style={styles.commentLabel}>NHẬN XÉT CỦA GIẢNG VIÊN</Text>
                     </View>
                     <TextInput
                         style={styles.commentInput}
                         multiline
-                        placeholder="Nhập nhận xét của bạn..."
+                        placeholder="Nhập nhận xét chi tiết về phần thể hiện của sinh viên..."
                         value={comment}
                         onChangeText={v => setAllComments(prev => ({ ...prev, [currentStudent.id]: v }))}
                         editable={!submitted}
+                        textAlignVertical="top"
                     />
                 </View>
                 <View style={{ height: 120 }} />
@@ -305,11 +324,11 @@ export default function GradingScreen() {
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.draftBtn} onPress={handleSaveDraft}>
                     <Save size={18} color={BLUE} />
-                    <Text style={styles.draftBtnText}>Lưu nháp</Text>
+                    <Text style={styles.draftBtnText}>Lưu bản nháp</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.submitBtn} onPress={handleNext}>
-                    <CheckCircle size={18} color="#fff" />
-                    <Text style={styles.submitBtnText}>{isLast ? 'Lưu điểm' : 'Tiếp theo'}</Text>
+                    <Text style={styles.submitBtnText}>{isLast ? 'Tiếp tục xem lại' : 'Sinh viên tiếp theo'}</Text>
+                    <ChevronRight size={18} color="#fff" />
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -322,86 +341,106 @@ const styles = StyleSheet.create({
     backBtn: { marginRight: 12 },
     headerTitle: { fontSize: 18, fontWeight: '800', color: '#1e293b' },
     headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2, fontWeight: '500' },
-    roleBadge: { backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    roleBadge: { backgroundColor: LIGHT_BLUE, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
     roleBadgeText: { fontSize: 11, fontWeight: '800', color: BLUE },
 
     topicCardContainer: { padding: 16, backgroundColor: '#fff' },
     topicCard: {
-        backgroundColor: '#fff', borderRadius: 16, padding: 16,
-        flexDirection: 'row', alignItems: 'center', gap: 12,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3,
-        borderWidth: 1, borderColor: '#f1f5f9'
+        backgroundColor: '#fff', borderRadius: 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+        borderWidth: 1, borderColor: '#f1f5f9', overflow: 'hidden'
     },
-    topicIconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
-    topicCardTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b', lineHeight: 20 },
-    topicInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+    topicCardBody: { padding: 16, flexDirection: 'row', gap: 16 },
+    topicIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: LIGHT_BLUE, alignItems: 'center', justifyContent: 'center' },
+    topicCardTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', lineHeight: 22 },
+    topicInfoGrid: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    topicInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     topicInfoText: { fontSize: 12, color: '#64748b', fontWeight: '500' },
-    topicInfoDivider: { color: '#cbd5e1', fontSize: 12 },
-    detailBtn: { alignItems: 'center', gap: 4, marginLeft: 8 },
+    topicCardFooter: {
+        backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingVertical: 10,
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        borderTopWidth: 1, borderTopColor: '#f1f5f9'
+    },
+    supervisorBox: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    supervisorText: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+    detailBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
     detailBtnText: { fontSize: 11, color: BLUE, fontWeight: '700' },
 
     switcher: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    tabWrapper: { flexDirection: 'row', width: '100%' },
-    tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    tabActive: { borderBottomColor: BLUE },
-    tabText: { fontSize: 14, color: '#94a3b8', fontWeight: '600' },
+    tabWrapper: { flexDirection: 'row', paddingHorizontal: 16 },
+    tab: {
+        flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'row', gap: 8, borderBottomWidth: 3, borderBottomColor: 'transparent'
+    },
+    tabActive: { borderBottomColor: BLUE, backgroundColor: '#f0f7ff' },
+    tabText: { fontSize: 13, color: '#94a3b8', fontWeight: '700' },
     tabTextActive: { color: BLUE },
 
     statsCard: {
-        flexDirection: 'row', margin: 16, padding: 16, backgroundColor: '#fff',
-        borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.02, shadowRadius: 5, elevation: 1,
+        flexDirection: 'row', margin: 16, padding: 20, backgroundColor: '#fff',
+        borderRadius: 20, borderWidth: 1, borderColor: '#f1f5f9', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
     },
     statsCol: { flex: 1, alignItems: 'center' },
+    statsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    statsLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5 },
+    statsValue: { fontSize: 32, fontWeight: '900', color: '#0f172a' },
+    statsMax: { fontSize: 16, fontWeight: '600', color: '#cbd5e1' },
     statsDivider: { width: 1, height: 40, backgroundColor: '#f1f5f9' },
-    statsLabel: { fontSize: 9, fontWeight: '800', color: '#94a3b8', letterSpacing: 0.5, marginBottom: 8 },
-    statsValue: { fontSize: 28, fontWeight: '900', color: BLUE },
-    statsMax: { fontSize: 14, fontWeight: '600', color: '#cbd5e1' },
-    gradeBadge: { backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 4 },
-    gradeBadgeText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
-    gradeSubText: { fontSize: 10, color: '#94a3b8', fontWeight: '500' },
+    gradeBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 },
+    gradeBadgeText: { fontSize: 14, fontWeight: '900', textTransform: 'uppercase' },
 
-    sectionHeader: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-    sectionTitle: { fontSize: 11, fontWeight: '800', color: '#64748b', letterSpacing: 1 },
-    totalMaxHint: { fontSize: 11, color: BLUE, fontWeight: '700' },
+    sectionHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#64748b', letterSpacing: 1 },
+    badge: { backgroundColor: '#e2e8f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    badgeText: { fontSize: 10, color: '#475569', fontWeight: '700' },
 
-    criterionCard: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    criterionHeader: { flexDirection: 'row', alignItems: 'center' },
-    idxCircle: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    idxCircleText: { fontSize: 10, fontWeight: '800', color: '#94a3b8' },
-    criterionName: { fontSize: 13, fontWeight: '600', color: '#334155', lineHeight: 18 },
-    maxHint: { fontSize: 10, color: '#94a3b8', marginTop: 4, fontWeight: '500' },
-
-    inputBox: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc',
-        borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 8, height: 44
+    criteriaContainer: { paddingHorizontal: 16, gap: 12 },
+    criterionCard: {
+        backgroundColor: '#fff', padding: 16, borderRadius: 16,
+        borderWidth: 1, borderColor: '#f1f5f9',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1
     },
-    input: { width: 40, textAlign: 'center', fontSize: 15, fontWeight: '800', color: '#1e293b' },
-    inputFilled: { color: BLUE },
-    inputDivider: { width: 1, height: 16, backgroundColor: '#e2e8f0', marginHorizontal: 4 },
-    maxSubText: { fontSize: 11, color: '#94a3b8', fontWeight: '700', width: 20, textAlign: 'center' },
+    criterionMain: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    criterionInfo: { flex: 1 },
+    criterionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    criterionName: { fontSize: 14, fontWeight: '700', color: '#334155', lineHeight: 20 },
+    criterionDesc: { fontSize: 11, color: '#94a3b8', lineHeight: 16 },
+    scoreInputGroup: { flexDirection: 'row', alignItems: 'center' },
+    input: {
+        width: 54, height: 44, backgroundColor: '#f8fafc', borderTopLeftRadius: 10, borderBottomLeftRadius: 10,
+        borderWidth: 1, borderColor: '#e2e8f0', textAlign: 'center', fontSize: 18, fontWeight: '800', color: '#1e293b'
+    },
+    inputFilled: { color: BLUE, borderColor: BLUE, backgroundColor: '#f0f7ff' },
+    maxBadge: {
+        height: 44, paddingHorizontal: 8, backgroundColor: '#f1f5f9',
+        borderTopRightRadius: 10, borderBottomRightRadius: 10,
+        justifyContent: 'center', borderWidth: 1, borderLeftWidth: 0, borderColor: '#e2e8f0'
+    },
+    maxBadgeText: { fontSize: 12, fontWeight: '700', color: '#94a3b8' },
 
-    commentSection: { padding: 16 },
-    commentLabel: { fontSize: 11, fontWeight: '800', color: '#475569' },
-    charCount: { fontSize: 11, color: '#94a3b8', fontWeight: '600' },
+    commentSection: { padding: 16, marginTop: 8 },
+    commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    commentLabel: { fontSize: 11, fontWeight: '800', color: '#64748b' },
     commentInput: {
         backgroundColor: '#fff', borderRadius: 16, padding: 16, minHeight: 120,
-        fontSize: 14, color: '#334155', borderWidth: 1, borderColor: '#e2e8f0', lineHeight: 20
+        fontSize: 14, color: '#334155', borderWidth: 1, borderColor: '#e2e8f0', lineHeight: 22
     },
 
     footer: {
         flexDirection: 'row', padding: 16, backgroundColor: '#fff',
         borderTopWidth: 1, borderTopColor: '#f1f5f9', gap: 12,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 16
+        paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 10
     },
     draftBtn: {
-        flex: 1, height: 50, borderRadius: 12, borderWidth: 1, borderColor: BLUE,
+        flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: BLUE,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
     },
-    draftBtnText: { color: BLUE, fontSize: 14, fontWeight: '700' },
+    draftBtnText: { color: BLUE, fontSize: 15, fontWeight: '700' },
     submitBtn: {
-        flex: 1, height: 50, borderRadius: 12, backgroundColor: BLUE,
+        flex: 1.2, height: 52, borderRadius: 14, backgroundColor: BLUE,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8
     },
-    submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' }
+    submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' }
 });

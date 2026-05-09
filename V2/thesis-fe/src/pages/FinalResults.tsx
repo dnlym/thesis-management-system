@@ -12,21 +12,36 @@ import { useDebounce } from '@/hooks/useDebounce';
 const { Title, Text } = Typography;
 
 // ── Helpers xuất file ────────────────────────────────────────────────
-const getExportRows = (data: Topic[]) =>
-    data.map((r, i) => ({
-        STT: i + 1,
-        'Mã đề tài': r.code || '',
-        'Tên đề tài': r.title || '',
-        'Sinh viên': r.students?.map((s: any) => s.full_name).join(', ') || '',
-        'Điểm HD': (r.students as any)?.[0]?.finalScore?.supervisor_score?.toFixed(1) ?? '',
-        'Điểm PB': (r.students as any)?.[0]?.finalScore?.reviewer_avg_score?.toFixed(1) ?? '',
-        'Điểm HĐ': (r.students as any)?.[0]?.finalScore?.committee_score?.toFixed(1) ?? '',
-        'Tổng điểm': (r.students as any)?.[0]?.finalScore?.final_score?.toFixed(1) ?? '',
-        'Kết quả': (r.students as any)?.[0]?.finalScore?.grade_classification ?? '',
-    }));
+// ── Helpers xuất file chuyên nghiệp ─────────────────────────────────────
+const getExportData = (data: Topic[]) => {
+    const rows: any[] = [];
+    let stt = 1;
+
+    data.forEach((topic) => {
+        topic.students?.forEach((student: any, index: number) => {
+            const final = student.finalScore;
+            rows.push({
+                'STT': index === 0 ? stt : '', // Chỉ hiện STT ở dòng đầu của nhóm
+                'Mã nhóm': index === 0 ? (topic.groupName || topic.code) : '', 
+                'Tên đề tài': index === 0 ? topic.title : '',
+                'MSSV': student.student_code || '',
+                'Họ tên sinh viên': student.full_name || '',
+                'Điểm HD': final?.supervisor_score?.toFixed(1) || '0',
+                'Điểm PB': final?.reviewer_avg_score?.toFixed(1) || '0',
+                'Điểm HĐ': final?.committee_score?.toFixed(1) || '0',
+                'Điểm cộng': final?.extra_points?.toFixed(1) || '0',
+                'Tổng điểm': final?.final_score?.toFixed(1) || '0',
+                'Trạng thái': (final?.final_score || 0) >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT',
+                'Xếp loại': final?.grade_classification || '—',
+            });
+        });
+        stt++;
+    });
+    return rows;
+};
 
 const exportCSV = (data: Topic[]) => {
-    const rows = getExportRows(data);
+    const rows = getExportData(data);
     if (!rows.length) return;
     const headers = Object.keys(rows[0]);
     const csv = [
@@ -45,14 +60,41 @@ const exportCSV = (data: Topic[]) => {
 const exportExcel = async (data: Topic[]) => {
     try {
         const XLSX = await import('xlsx');
-        const ws = XLSX.utils.json_to_sheet(getExportRows(data));
+        const rows = getExportData(data);
+        if (!rows.length) return;
+
+        const semesterName = data[0]?.semester?.name || '...';
+        const headers = Object.keys(rows[0]);
+        const dataRows = rows.map(r => headers.map(h => r[h]));
+
+        // Tạo cấu trúc file có Header
+        const aoaData = [
+            ['TRƯỜNG ĐẠI HỌC CÔNG NGHIỆP TP.HCM'],
+            ['KHOA CÔNG NGHỆ THÔNG TIN'],
+            [''],
+            ['DANH SÁCH KẾT QUẢ KHÓA LUẬN TỐT NGHIỆP'],
+            [`Học kỳ: ${semesterName}`],
+            [''],
+            headers,
+            ...dataRows
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(aoaData);
+        
+        // Merge cells cho các tiêu đề
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Trường
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }, // Khoa
+            { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } }, // Tiêu đề chính
+            { s: { r: 4, c: 0 }, e: { r: 4, c: 11 } }, // Học kỳ
+        ];
+
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Kết quả');
-        XLSX.writeFile(wb, 'ket-qua-khoa-luan.xlsx');
-    } catch {
-        // Fallback về CSV nếu chưa cài xlsx
+        XLSX.utils.book_append_sheet(wb, ws, 'KetQua');
+        XLSX.writeFile(wb, `Ket-qua-khoa-luan-${semesterName.replace(/\s+/g, '-')}.xlsx`);
+    } catch (err) {
+        console.error('Export error:', err);
         exportCSV(data);
-        console.info('Thư viện xlsx chưa được cài, đã xuất dưới dạng CSV.');
     }
 };
 // ─────────────────────────────────────────────────────────────────────
@@ -71,7 +113,11 @@ const FinalResults = () => {
         if (!results?.topics) return [];
         let filtered = [...results.topics];
         if (councilFilter !== 'ALL') {
-            filtered = filtered.filter(item => item.defense_type === councilFilter);
+            filtered = filtered.filter(item => {
+                // Ưu tiên lấy type từ Hội đồng thực tế, nếu không có mới dùng defense_type của đề tài
+                const effectiveType = item.committee?.type || item.defense_type;
+                return effectiveType === councilFilter;
+            });
         }
         if (debouncedSearch) {
             filtered = filtered.filter(item =>
@@ -120,13 +166,12 @@ const FinalResults = () => {
             ),
         },
         {
-            title: 'Mã',
-            dataIndex: 'code',
-            key: 'code',
-            width: 75,
-            render: (code: string) => (
-                <Tag color="blue" className="font-mono text-xs">
-                    <HighlightText text={code} keyword={debouncedSearch} />
+            title: 'Mã nhóm',
+            key: 'groupCode',
+            width: 100,
+            render: (record: any) => (
+                <Tag color="blue" className="font-mono text-[11px] font-bold">
+                    <HighlightText text={record.groupName || record.code} keyword={debouncedSearch} />
                 </Tag>
             ),
         },
@@ -136,7 +181,7 @@ const FinalResults = () => {
             key: 'title',
             ellipsis: true,
             render: (title: string) => (
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 text-[13px]">
                     <HighlightText text={title} keyword={debouncedSearch} />
                 </span>
             ),
@@ -145,20 +190,20 @@ const FinalResults = () => {
             title: 'Sinh viên',
             dataIndex: 'students',
             key: 'students',
-            width: 190,
+            width: 220,
             render: (students: any[]) => (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                     {students?.map((s: any) => (
-                        <div key={s.id} className="flex items-center gap-1.5">
-                            <Avatar
-                                size={18}
-                                src={s.avatar_url}
-                                icon={<UserOutlined />}
-                                className="bg-slate-200 flex-shrink-0"
-                            />
-                            <Text className="text-[12px] text-slate-700 leading-tight">
-                                <HighlightText text={s.full_name} keyword={debouncedSearch} />
-                            </Text>
+                        <div key={s.id} className="flex items-center gap-2 h-7">
+                            <Avatar size={20} src={s.avatar_url} icon={<UserOutlined />} className="bg-slate-200 flex-shrink-0" />
+                            <div className="flex flex-col leading-tight overflow-hidden">
+                                <Text className="text-[12px] font-bold text-slate-700 truncate">
+                                    <HighlightText text={s.full_name} keyword={debouncedSearch} />
+                                </Text>
+                                <Text className="text-[9px] text-slate-400 font-mono font-bold">
+                                    <HighlightText text={s.student_code} keyword={debouncedSearch} />
+                                </Text>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -168,64 +213,125 @@ const FinalResults = () => {
             title: 'Điểm HD',
             key: 'supervisor',
             align: 'center' as const,
-            width: 78,
+            width: 75,
             render: (record: Topic) => (
-                <span className="text-slate-600 text-sm">
-                    {(record.students as any)?.[0]?.finalScore?.supervisor_score?.toFixed(1) || '—'}
-                </span>
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => (
+                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                            {s.finalScore?.supervisor_score?.toFixed(1) || '—'}
+                        </div>
+                    ))}
+                </div>
             ),
         },
         {
             title: 'Điểm PB',
             key: 'reviewer',
             align: 'center' as const,
-            width: 78,
+            width: 75,
             render: (record: Topic) => (
-                <span className="text-slate-600 text-sm">
-                    {(record.students as any)?.[0]?.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
-                </span>
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => (
+                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                            {s.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
+                        </div>
+                    ))}
+                </div>
             ),
         },
         {
             title: 'Điểm HĐ',
             key: 'committee',
             align: 'center' as const,
-            width: 78,
+            width: 75,
             render: (record: Topic) => (
-                <span className="text-slate-600 text-sm">
-                    {(record.students as any)?.[0]?.finalScore?.committee_score?.toFixed(1) || '—'}
-                </span>
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => (
+                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                            {s.finalScore?.committee_score?.toFixed(1) || '—'}
+                        </div>
+                    ))}
+                </div>
+            ),
+        },
+        {
+            title: 'Cộng',
+            key: 'extra',
+            align: 'center' as const,
+            width: 60,
+            render: (record: Topic) => (
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => (
+                        <div key={s.id} className="h-7 flex items-center justify-center text-amber-600 text-xs font-bold">
+                            {s.finalScore?.extra_points ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
+                        </div>
+                    ))}
+                </div>
             ),
         },
         {
             title: 'Tổng',
             key: 'total',
             align: 'center' as const,
-            width: 70,
+            width: 65,
             render: (record: Topic) => (
-                <Text strong className="text-blue-600 text-sm">
-                    {(record.students as any)?.[0]?.finalScore?.final_score?.toFixed(1) || '—'}
-                </Text>
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => (
+                        <div key={s.id} className="h-7 flex items-center justify-center text-blue-600 font-black text-sm">
+                            {s.finalScore?.final_score?.toFixed(1) || '—'}
+                        </div>
+                    ))}
+                </div>
+            ),
+        },
+        /* Result Column - Đạt/Không đạt (>= 6.0) */
+        {
+            title: 'Trạng thái',
+            key: 'status',
+            align: 'center' as const,
+            width: 95,
+            render: (record: Topic) => (
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => {
+                        const score = s.finalScore?.final_score || 0;
+                        const isPass = score >= 6.0;
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center">
+                                <Tag color={isPass ? 'success' : 'error'} className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
+                                    {isPass ? 'ĐẠT' : 'KHÔNG ĐẠT'}
+                                </Tag>
+                            </div>
+                        );
+                    })}
+                </div>
             ),
         },
         {
-            title: 'Kết quả',
+            title: 'Xếp loại',
             key: 'result',
             align: 'center' as const,
-            width: 95,
-            render: (record: Topic) => {
-                const cls = (record.students as any)?.[0]?.finalScore?.grade_classification;
-                let color = 'default';
-                if (cls === 'Xuất sắc') color = 'gold';
-                if (cls === 'Giỏi') color = 'green';
-                if (cls === 'Khá') color = 'blue';
-                if (cls === 'Trung bình') color = 'orange';
-                return (
-                    <Tag color={color} className="min-w-[68px] text-center m-0 text-xs">
-                        {cls || '—'}
-                    </Tag>
-                );
-            },
+            width: 130,
+            render: (record: Topic) => (
+                <div className="flex flex-col gap-2">
+                    {record.students?.map((s: any) => {
+                        const cls = s.finalScore?.grade_classification || '';
+                        let color = 'default';
+                        if (cls.startsWith('Xuất sắc')) color = 'gold';
+                        else if (cls.startsWith('Giỏi')) color = 'green';
+                        else if (cls.startsWith('Khá')) color = 'blue';
+                        else if (cls.startsWith('Trung bình')) color = 'orange';
+                        else if (cls.startsWith('Yếu') || cls.startsWith('Kém')) color = 'red';
+                        
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center">
+                                <Tag color={color} className="min-w-[90px] text-center m-0 text-[10px] font-bold px-1 py-0 leading-none h-5 flex items-center justify-center uppercase">
+                                    {cls || '—'}
+                                </Tag>
+                            </div>
+                        );
+                    })}
+                </div>
+            ),
         },
     ];
 

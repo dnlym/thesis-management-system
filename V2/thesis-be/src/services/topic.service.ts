@@ -1066,7 +1066,8 @@ export class TopicService {
             ...cleanTopic,
             id: group.id,
             topicId: topic.id,
-            code: group.name,
+            code: group.name, // Keep for compatibility
+            groupName: group.name, // Explicitly add groupName
             students: groupStudents,
             current_students: group.members.length,
             max_students: (isRegistrationOver && group.members.length === 1) ? 1 : 2,

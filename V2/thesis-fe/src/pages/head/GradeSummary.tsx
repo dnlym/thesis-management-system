@@ -73,7 +73,21 @@ const GradeSummary = () => {
         )
       );
     }
-    return result;
+
+    // [SORTING] Finalized topics go to the bottom
+    return [...result].sort((a: any, b: any) => {
+      const aFinalized = a.gradingStatus?.isFinalized ? 1 : 0;
+      const bFinalized = b.gradingStatus?.isFinalized ? 1 : 0;
+      
+      if (aFinalized !== bFinalized) {
+        return aFinalized - bFinalized;
+      }
+      
+      // Secondary sort: Ready for decision first
+      const aReady = a.gradingStatus?.isReadyForDecision ? 0 : 1;
+      const bReady = b.gradingStatus?.isReadyForDecision ? 0 : 1;
+      return aReady - bReady;
+    });
   }, [topics, filter, debouncedSearch]);
 
   const stats = useMemo(() => ({
@@ -213,7 +227,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
   let doneCount = 0;
   if (gs?.supervisorGraded) doneCount++;
   if (gs?.isReviewerComplete) doneCount++;
-  if (gs?.committeeCount > 0) doneCount++;
+  if (gs?.isCommitteeComplete) doneCount++;
 
   const getStatusBadge = () => {
     if (isFinalized) return <Tag className="rounded-full px-3 py-1 border-none bg-slate-100 text-slate-500 font-bold text-[11px] tracking-tight">ĐÃ CHỐT ĐIỂM</Tag>;
@@ -223,7 +237,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
       <div className="flex items-center gap-1.5 bg-amber-50/50 px-2 py-0.5 rounded-full border border-amber-100/50">
         <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
         <Text className="text-[10px] font-black text-amber-700 uppercase tracking-tight">
-          Đang chấm: {doneCount}/3
+          Đang chấm: {doneCount}/{1 + (gs?.totalReviewersRequired ?? 2) + (gs?.totalCommitteeRequired ?? 3)}
         </Text>
       </div>
     );
@@ -235,7 +249,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
   const steps = [
     { label: 'HD', active: gs?.supervisorGraded, color: '#3b82f6', bg: '#dbeafe' },
     { label: 'PB', active: gs?.isReviewerComplete, color: '#10b981', bg: '#d1fae5' },
-    { label: 'HĐ', active: gs?.committeeCount > 0, color: '#6366f1', bg: '#e0e7ff' }
+    { label: 'HĐ', active: gs?.isCommitteeComplete, color: '#6366f1', bg: '#e0e7ff' }
   ];
 
   return (
@@ -297,7 +311,9 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
                 <div key={i} className="flex items-center gap-1">
                   {step.active ? <CheckCircleOutlined style={{ color: step.color }} /> : <ClockCircleOutlined className="text-slate-200" />}
                   <span className={step.active ? 'text-slate-700' : 'text-slate-300'}>
-                    {step.label} {step.label === 'PB' && `(${gs?.reviewerGradedCount}/${gs?.totalReviewersRequired})`}
+                    {step.label} 
+                    {step.label === 'PB' && ` (${gs?.reviewerGradedCount}/${gs?.totalReviewersRequired ?? 2})`}
+                    {step.label === 'HĐ' && ` (${gs?.committeeGradedCount}/${gs?.totalCommitteeRequired ?? 3})`}
                   </span>
                 </div>
               ))}
@@ -320,23 +336,38 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
           </div>
         </Col>
 
-        {/* Score Column */}
-        <Col span={3} className="text-center border-l border-slate-100">
+        {/* Classification Column */}
+        <Col span={3} className="text-center border-l border-slate-100 bg-slate-50/30">
           {(isFinalized || isComplete) ? (
             <div className="flex flex-col items-center">
-              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-0.5">Điểm dự kiến</Text>
-              <div className="text-2xl font-black text-blue-600 leading-none mb-1.5 tabular-nums tracking-tighter">
-                {topic.final_score?.final_score?.toFixed(2) || '—'}
+              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-1">Xếp loại</Text>
+              <div className="mb-1">
+                {(() => {
+                  const cls = topic.final_score?.grade_classification || '—';
+                  let colorClass = 'bg-slate-100 text-slate-500';
+                  if (cls.startsWith('Xuất sắc')) colorClass = 'bg-amber-100 text-amber-700 border border-amber-200';
+                  else if (cls.startsWith('Giỏi')) colorClass = 'bg-green-100 text-green-700 border border-green-200';
+                  else if (cls.startsWith('Khá')) colorClass = 'bg-blue-100 text-blue-700 border border-blue-200';
+                  else if (cls.startsWith('Trung bình')) colorClass = 'bg-orange-100 text-orange-700 border border-orange-200';
+                  else if (cls.startsWith('Yếu') || cls.startsWith('Kém')) colorClass = 'bg-red-100 text-red-700 border border-red-200';
+                  
+                  return (
+                    <div className={`px-2 py-1 rounded-lg text-[13px] font-black uppercase tracking-tight shadow-sm ${colorClass}`}>
+                      {cls}
+                    </div>
+                  );
+                })()}
               </div>
-              <Tag className="m-0 border-none bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-0 rounded leading-none">
-                {topic.final_score?.grade_classification || '—'}
-              </Tag>
+              <Text className="text-[11px] font-bold text-slate-400 tabular-nums">
+                {topic.final_score?.final_score?.toFixed(2)}đ
+              </Text>
             </div>
           ) : (
             <div className="flex flex-col items-center opacity-40">
-              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-0.5">Điểm dự kiến</Text>
-              <div className="text-2xl font-black text-slate-300 leading-none mb-1">—</div>
-              <Text className="text-[10px] text-slate-400 italic font-bold">Chờ đủ điểm</Text>
+              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-1">Xếp loại</Text>
+              <div className="px-2 py-1 rounded-lg bg-slate-100 text-slate-400 text-[11px] font-bold border border-slate-200 dashed">
+                CHỜ ĐIỂM
+              </div>
             </div>
           )}
         </Col>
@@ -405,6 +436,8 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
 
   const topic = details?.topic;
   const students = topic?.students || [];
+  const councilAssignments = details?.councilAssignments || [];
+  const reviewerAssignments = details?.reviewerAssignments || [];
   
   // Set default student if not set
   useMemo(() => {
@@ -427,6 +460,32 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
     return scores.reduce((sum, s) => sum + s.score, 0) / scores.length;
   };
 
+  const renderCouncilMember = (assignment: any, grade: any, idx: number) => {
+    const roleLabel = assignment.committee_role === 'CHAIR' ? 'Chủ tịch' : 
+                      assignment.committee_role === 'SECRETARY' ? 'Thư ký' : 'Ủy viên';
+    
+    return (
+      <Card key={assignment.id} className={`rounded-lg border shadow-none bg-white ${grade ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-70'}`} styles={{ body: { padding: 0 } }}>
+        <div className="flex justify-between items-center p-3 px-4">
+          <div className="flex items-center gap-2">
+            <Avatar size={22} className={`${grade ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'} font-black text-[9px] border border-indigo-100`}>
+              {assignment.reviewer?.full_name?.charAt(0)}
+            </Avatar>
+            <div>
+              <div className={`font-bold text-[13px] leading-tight mb-0 ${grade ? 'text-slate-600' : 'text-slate-400 italic'}`}>
+                {assignment.reviewer?.full_name}
+              </div>
+              <Text className="text-[8px] uppercase font-black text-indigo-400 tracking-tighter leading-none">{roleLabel}</Text>
+            </div>
+          </div>
+          <Text className={`text-[15px] font-black tabular-nums tracking-tighter ${grade ? 'text-slate-700' : 'text-slate-200'}`}>
+            {grade ? calculateAvg(grade.scores).toFixed(2) : '—'}
+          </Text>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <Drawer
       title={null}
@@ -445,7 +504,7 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
         </div>
       ) : (
         <div className="flex flex-col h-full bg-slate-50">
-          {/* Drawer Header */}
+          {/* Drawer Header omitted for brevity in instruction, keeping original structure */}
           <div className="p-4 bg-white border-b sticky top-0 z-20 shadow-sm">
             <div className="flex justify-between items-start mb-3">
               <Space direction="vertical" size={0}>
@@ -495,7 +554,6 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
             </div>
           </div>
 
-          {/* Drawer Body - Detailed Scores */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
             <section>
               <div className="flex items-center gap-2 mb-2 px-1">
@@ -521,32 +579,22 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
                  <Title level={5} className="!m-0 !text-[12px] font-black text-slate-800 uppercase tracking-tight">2. Điểm Phản biện</Title>
               </div>
               <div className="space-y-2">
-                {[0, 1].map((idx) => {
-                  const g = reviewerGrades[idx] as any;
-                  return g ? (
-                    <Card key={g.id} className="rounded-lg border border-slate-200 shadow-none bg-white" styles={{ body: { padding: 0 } }}>
+                {reviewerAssignments.map((a: any, idx: number) => {
+                  const g = reviewerGrades.find((rg: any) => rg.rater_id === a.reviewer_id);
+                  return (
+                    <Card key={a.id} className={`rounded-lg border shadow-none bg-white ${g ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-70'}`} styles={{ body: { padding: 0 } }}>
                       <div className="flex justify-between items-center p-3 px-4">
                         <div className="flex items-center gap-2">
-                           <div className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center font-black text-slate-400 text-[10px]">PB{idx+1}</div>
-                           <div className="font-bold text-slate-500 text-[13px] leading-tight">{g.rater_name}</div>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] border ${g ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-slate-100 border-transparent text-slate-300'}`}>PB{idx+1}</div>
+                          <div className={`font-bold text-[13px] leading-tight ${g ? 'text-slate-500' : 'text-slate-400 italic'}`}>{a.reviewer?.full_name}</div>
                         </div>
-                        <Text className="text-[15px] font-black text-slate-700 tabular-nums tracking-tighter">{calculateAvg(g.scores).toFixed(2)}</Text>
-                      </div>
-                    </Card>
-                  ) : (
-                    <Card key={`empty-pb-${idx}`} className="rounded-lg border border-dashed border-slate-200 shadow-none bg-slate-50/30" styles={{ body: { padding: 0 } }}>
-                      <div className="flex justify-between items-center p-3 px-4">
-                        <div className="flex items-center gap-2 opacity-50">
-                           <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-300 text-[10px]">PB{idx+1}</div>
-                           <div className="font-bold text-slate-400 text-[12px] italic">Chưa phân công</div>
-                        </div>
-                        <Text className="text-[12px] font-black text-slate-200">—</Text>
+                        <Text className={`text-[15px] font-black tabular-nums tracking-tighter ${g ? 'text-slate-700' : 'text-slate-200'}`}>
+                          {g ? calculateAvg(g.scores).toFixed(2) : '—'}
+                        </Text>
                       </div>
                     </Card>
                   );
                 })}
-                
-
               </div>
             </section>
 
@@ -556,38 +604,10 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
                  <Title level={5} className="!m-0 !text-[12px] font-black text-slate-800 uppercase tracking-tight">3. Điểm Hội đồng</Title>
               </div>
               <div className="space-y-2">
-                {['CHAIR', 'SECRETARY', 'MEMBER'].map((role, idx) => {
-                  const g = councilGrades.find((cg: any) => cg.committee_role === role) as any;
-                  const roleLabel = role === 'CHAIR' ? 'Chủ tịch' : role === 'SECRETARY' ? 'Thư ký' : 'Ủy viên';
-                  return g ? (
-                    <Card key={g.id} className="rounded-lg border border-slate-200 shadow-none bg-white" styles={{ body: { padding: 0 } }}>
-                      <div className="flex justify-between items-center p-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <Avatar size={22} className="bg-indigo-50 text-indigo-600 font-black text-[9px] border border-indigo-100">{g.rater_name?.charAt(0)}</Avatar>
-                          <div>
-                            <div className="font-bold text-slate-600 text-[13px] leading-tight mb-0">{g.rater_name}</div>
-                            <Text className="text-[8px] uppercase font-black text-indigo-400 tracking-tighter leading-none">{roleLabel}</Text>
-                          </div>
-                        </div>
-                        <Text className="text-[15px] font-black text-slate-700 tabular-nums tracking-tighter">{calculateAvg(g.scores).toFixed(2)}</Text>
-                      </div>
-                    </Card>
-                  ) : (
-                    <Card key={`empty-council-${role}`} className="rounded-lg border border-dashed border-slate-200 shadow-none bg-slate-50/30" styles={{ body: { padding: 0 } }}>
-                      <div className="flex justify-between items-center p-3 px-4">
-                        <div className="flex items-center gap-2 opacity-50">
-                          <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-300 text-[10px]">{idx+1}</div>
-                          <div>
-                            <div className="font-bold text-slate-400 text-[12px] italic">Chưa có {roleLabel}</div>
-                          </div>
-                        </div>
-                        <Text className="text-[12px] font-black text-slate-200">—</Text>
-                      </div>
-                    </Card>
-                  );
+                {councilAssignments.map((a: any, idx: number) => {
+                  const g = councilGrades.find((cg: any) => cg.rater_id === a.reviewer_id);
+                  return renderCouncilMember(a, g, idx + 1);
                 })}
-
-
               </div>
             </section>
 
