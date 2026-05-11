@@ -417,6 +417,7 @@ export class GradingService {
           },
         },
         registrations: {
+          where: { midterm_status: 'PASS' },
           select: { student_id: true, group_id: true },
         },
       },
@@ -571,6 +572,7 @@ export class GradingService {
       where: { id: topicId },
       include: {
         grades: true,
+        registrations: true, // Thêm dòng này để fix lỗi
         assignments: {
           where: { assignment_type: AssignmentType.COMMITTEE }
         }
@@ -610,9 +612,16 @@ export class GradingService {
       throw new Error(ERROR_CODES.ALREADY_FINALIZED);
     }
 
-    // Update all final scores for this topic
+    // Update only final scores for students who passed midterm
+    const activeStudentIds = topic.registrations
+      .filter((reg: any) => reg.midterm_status === 'PASS')
+      .map((reg: any) => reg.student_id);
+
     await prisma.finalScore.updateMany({
-      where: { topic_id: topicId },
+      where: { 
+        topic_id: topicId,
+        student_id: { in: activeStudentIds }
+      },
       data: {
         finalized: true,
         finalized_by: userId,
@@ -629,9 +638,12 @@ export class GradingService {
       },
     });
 
-    // Update all student progress
+    // Update progress for active students
     await prisma.topicRegistration.updateMany({
-      where: { topic_id: topicId },
+      where: { 
+        topic_id: topicId,
+        student_id: { in: activeStudentIds }
+      },
       data: {
         student_progress_status: StudentProgressStatus.COMPLETED,
       },

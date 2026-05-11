@@ -284,19 +284,38 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
           <div className="flex items-center gap-1.5 mb-3 px-1">
             <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{topic.students?.length || 0} sinh viên</Text>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {topic.students?.map((s: any) => (
-                <div key={s.student.id} className="flex items-center gap-3 group">
-                  <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100">
-                     {s.student.full_name?.charAt(0)}
-                  </Avatar>
-                  <div className="flex flex-col overflow-hidden">
-                    <Text className="text-[14px] font-bold text-slate-700 truncate line-clamp-1 leading-tight">
-                      <HighlightText text={s.student.full_name} keyword={keyword} />
+                <div key={s.student.id} className="flex items-center justify-between group bg-white/40 p-1.5 rounded-lg border border-transparent hover:border-slate-100 hover:bg-white/80 transition-all">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100 flex-shrink-0">
+                       {s.student.full_name?.charAt(0)}
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                      <Text className="text-[13px] font-bold text-slate-700 truncate leading-tight">
+                        <HighlightText text={s.student.full_name} keyword={keyword} />
+                      </Text>
+                      <Text className="text-[9px] text-slate-400 font-mono font-bold">
+                        <HighlightText text={s.student.student_code} keyword={keyword} />
+                      </Text>
+                    </div>
+                  </div>
+                  
+                  {/* Individual Score & Classification */}
+                  <div className="flex flex-col items-end flex-shrink-0">
+                    <Text className={`text-[12px] font-black tabular-nums ${s.finalScore?.final_score ? 'text-blue-600' : 'text-slate-300'}`}>
+                      {s.finalScore?.final_score ? s.finalScore.final_score.toFixed(2) : '—'}đ
                     </Text>
-                    <Text className="text-[10px] text-slate-400 font-mono font-bold">
-                      <HighlightText text={s.student.student_code} keyword={keyword} />
-                    </Text>
+                    {s.finalScore?.grade_classification && (
+                      <Tag className={`m-0 text-[8px] px-1 py-0 border-none font-black rounded uppercase ${
+                        s.finalScore.grade_classification.startsWith('Xuất sắc') ? 'bg-amber-100 text-amber-600' :
+                        s.finalScore.grade_classification.startsWith('Giỏi') ? 'bg-green-100 text-green-600' :
+                        s.finalScore.grade_classification.startsWith('Khá') ? 'bg-blue-100 text-blue-600' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {s.finalScore.grade_classification}
+                      </Tag>
+                    )}
                   </div>
                 </div>
             ))}
@@ -336,44 +355,8 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
           </div>
         </Col>
 
-        {/* Classification Column */}
-        <Col span={3} className="text-center border-l border-slate-100 bg-slate-50/30">
-          {(isFinalized || isComplete) ? (
-            <div className="flex flex-col items-center">
-              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-1">Xếp loại</Text>
-              <div className="mb-1">
-                {(() => {
-                  const cls = topic.final_score?.grade_classification || '—';
-                  let colorClass = 'bg-slate-100 text-slate-500';
-                  if (cls.startsWith('Xuất sắc')) colorClass = 'bg-amber-100 text-amber-700 border border-amber-200';
-                  else if (cls.startsWith('Giỏi')) colorClass = 'bg-green-100 text-green-700 border border-green-200';
-                  else if (cls.startsWith('Khá')) colorClass = 'bg-blue-100 text-blue-700 border border-blue-200';
-                  else if (cls.startsWith('Trung bình')) colorClass = 'bg-orange-100 text-orange-700 border border-orange-200';
-                  else if (cls.startsWith('Yếu') || cls.startsWith('Kém')) colorClass = 'bg-red-100 text-red-700 border border-red-200';
-                  
-                  return (
-                    <div className={`px-2 py-1 rounded-lg text-[13px] font-black uppercase tracking-tight shadow-sm ${colorClass}`}>
-                      {cls}
-                    </div>
-                  );
-                })()}
-              </div>
-              <Text className="text-[11px] font-bold text-slate-400 tabular-nums">
-                {topic.final_score?.final_score?.toFixed(2)}đ
-              </Text>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center opacity-40">
-              <Text className="text-[10px] uppercase font-black text-slate-400 tracking-tighter mb-1">Xếp loại</Text>
-              <div className="px-2 py-1 rounded-lg bg-slate-100 text-slate-400 text-[11px] font-bold border border-slate-200 dashed">
-                CHỜ ĐIỂM
-              </div>
-            </div>
-          )}
-        </Col>
 
-        {/* Actions Column */}
-        <Col span={3} className="flex flex-col gap-2">
+        <Col span={6} className="flex flex-col gap-2">
           {isFinalized ? (
             <Button 
               icon={<EyeOutlined />} 

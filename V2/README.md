@@ -1,143 +1,108 @@
-# Thesis Project V2
+# 🎓 Thesis Management System (TMS) - V2
 
-Kho lưu trữ này chứa mã nguồn cho Hệ thống Quản lý Luận văn (Thesis Management System), bao gồm Backend (Node.js/Express) và Frontend (React/Vite).
-
-## Yêu cầu tiên quyết (Prerequisites)
-
-- **Node.js**: Khuyên dùng phiên bản v18 trở lên.
-- **PostgreSQL**: Đảm bảo bạn đã cài đặt và đang chạy PostgreSQL.
-- **npm**: Trình quản lý gói (thường đi kèm với Node.js).
-
-## Cấu trúc dự án
-
-- `thesis-be - Copy`: Ứng dụng Backend (Express, Prisma, PostgreSQL).
-- `thesis-tapestry-main - Copy`: Ứng dụng Frontend (React, Vite, TailwindCSS, Shadcn/UI).
-
-## Cài đặt & Thiết lập (Installation & Setup)
-
-### 1. Thiết lập Backend
-
-Di chuyển vào thư mục backend:
-
-```bash
-cd "thesis-be - Copy"
-```
-
-Cài đặt các thư viện phụ thuộc:
-> **[LẦN ĐẦU]**: Bước này chỉ cần chạy một lần khi mới tải code về hoặc khi có thư viện mới.
-```bash
-npm install
-```
-
-**Cấu hình môi trường (.env):**
-> **[LẦN ĐẦU]**: Tạo file `.env` trong thư mục `thesis-be - Copy`. Copy nội dung từ `.env.example` (nếu có) hoặc đảm bảo có các biến sau (ví dụ):
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/thesis_db?schema=public"
-JWT_SECRET="your_super_secret_key"
-PORT=5000
-```
-
-Thiết lập Cơ sở dữ liệu (Database):
-> **[LẦN ĐẦU]**: Chạy các lệnh sau để khởi tạo database.
-```bash
-# Tạo Prisma client (Chạy lại mỗi khi sửa schema.prisma)
-npm run prisma:generate
-
-# Chạy migration để tạo bảng trong database (Chạy lần đầu hoặc khi sửa schema)
-npm run prisma:migrate
-
-# (Tùy chọn) Tạo dữ liệu mẫu ban đầu
-npm run seed
-```
-
-### 2. Thiết lập Frontend
-
-Di chuyển vào thư mục frontend:
-
-```bash
-cd "../thesis-tapestry-main - Copy"
-```
-
-Cài đặt các thư viện phụ thuộc:
-> **[LẦN ĐẦU]**: Bước này chỉ cần chạy một lần.
-```bash
-npm install
-```
-
-**Cấu hình môi trường (.env):**
-> **[LẦN ĐẦU]**: Tạo file `.env` nếu cần thiết (thường frontend Vite sẽ dùng `.env` để chứa API URL). Ví dụ:
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
-## Chạy ứng dụng (Running the App)
-
-Bạn cần mở 2 cửa sổ terminal để chạy cả Backend và Frontend cùng lúc.
-
-### Chạy Backend
-
-Tại thư mục `thesis-be - Copy`:
-
-```bash
-npm run dev
-```
-Server sẽ khởi động (thường là port 5000).
-
-### Chạy Frontend
-
-Tại thư mục `thesis-tapestry-main - Copy`:
-
-```bash
-npm run dev
-```
-Ứng dụng sẽ chạy tại địa chỉ hiển thị trên terminal (thường là `http://localhost:5173`).
+Hệ thống Quản lý Khóa luận Tốt nghiệp toàn diện dành cho sinh viên, giảng viên và quản lý khoa. Giải pháp hiện đại giúp số hóa toàn bộ quy trình từ đăng ký đề tài đến chấm điểm và bảo vệ khóa luận.
 
 ---
 
-## Kế hoạch kiểm thử (Test Plan) - Kiểm tra thủ công
+## 🚀 Tính năng chính
 
-Do dự án chưa có nhiều test tự động, hãy làm theo các bước sau để kiểm tra hệ thống hoạt động đúng.
+### 👤 Người dùng & Phân quyền
+- **Xác thực:** Đăng nhập, đăng ký, phân quyền dựa trên vai trò (Sinh viên, Giảng viên, Trưởng bộ môn, Giáo vụ).
+- **Hồ sơ:** Quản lý thông tin cá nhân và thông báo hệ thống.
 
-### 1. Xác thực (Authentication)
-- **Đăng ký (Register)**:
-    - Vào trang đăng ký.
-    - Tạo tài khoản mới với email và mật khẩu.
-    - Kiểm tra xem có chuyển hướng đến trang Login hoặc Dashboard không.
-    - (Tùy chọn) Kiểm tra database xem user đã được tạo chưa.
-- **Đăng nhập (Login)**:
-    - Đăng nhập với tài khoản vừa tạo.
-    - Kiểm tra chuyển hướng thành công vào Dashboard.
-- **Đăng xuất (Logout)**:
-    - Nhấn nút đăng xuất.
-    - Kiểm tra chuyển hướng về trang Login.
+### 📝 Quản lý Đề tài & Đăng ký
+- **Đề tài:** Giảng viên đề xuất đề tài, Trưởng bộ môn phê duyệt.
+- **Đăng ký:** Sinh viên đăng ký đề tài theo nhóm hoặc cá nhân.
+- **Phân công:** Tự động hoặc thủ công phân công Giảng viên hướng dẫn (GVHD) và Giảng viên phản biện (GVPB).
 
-### 2. Dashboard & Điều hướng
-- **Phân quyền (Role-based Access)**:
-    - Đăng nhập với vai trò **Sinh viên (Student)**: Kiểm tra các menu dành cho sinh viên (Ví dụ: Đăng ký đề tài, Nộp bài).
-    - Đăng nhập với vai trò **Giảng viên (Teacher/Reviewer)**: Kiểm tra các menu dành cho giảng viên (Ví dụ: Chấm điểm, Quản lý đề tài).
-- **Điều hướng (Navigation)**:
-    - Click vào các mục trên thanh menu (Sidebar).
-    - Đảm bảo không có lỗi 404 hoặc trang trắng.
+### 📊 Hệ thống Chấm điểm Đa cấp
+- **Grading Workflow:** Quy trình chấm điểm linh hoạt qua 3 giai đoạn: GVHD, GVPB và Hội đồng bảo vệ.
+- **Tiêu chí chấm điểm:** Tùy biến tiêu chí dựa trên quy định của từng bộ môn.
+- **Điểm cộng:** Quản lý và phê duyệt điểm thưởng cho sinh viên.
+- **Tổng hợp:** Tự động tính toán điểm trung bình và xếp loại theo trọng số.
 
-### 3. Chức năng chính (Core Features)
-- **Đề tài (Topics)**:
-    - (Giảng viên) Tạo đề tài mới.
-    - Xem danh sách đề tài.
-    - (Sinh viên) Đăng ký đề tài.
-- **Bài tập (Assignments)**:
-    - (Giảng viên) Tạo bài tập mới, đặt hạn nộp.
-    - (Sinh viên) Xem bài tập và nộp file/text.
-- **Chấm điểm (Grading)**:
-    - (Giảng viên) Xem danh sách bài nộp.
-    - (Giảng viên) Nhập điểm và nhận xét.
-    - (Sinh viên) Xem điểm và nhận xét của mình.
+### 🏛️ Hội đồng & Bảo vệ
+- **Hội đồng:** Thành lập hội đồng bảo vệ, phân công thành viên (Chủ tịch, Thư ký, Ủy viên).
+- **Phòng bảo vệ:** Quản lý địa điểm và sắp xếp lịch bảo vệ.
 
-### 4. Xử lý lỗi (Error Handling)
-- **Sai mật khẩu**: Thử đăng nhập sai pass -> Mong đợi thông báo lỗi.
-- **Thiếu thông tin**: Thử submit form (Đăng ký, Tạo bài tập) mà bỏ trống trường bắt buộc -> Mong đợi lỗi validate.
+### 📱 Tiện ích khác
+- **Mobile App:** Ứng dụng dành cho giảng viên để chấm điểm nhanh chóng và theo dõi lịch trình.
+- **Dashboard:** Thống kê dữ liệu trực quan cho quản lý khoa.
+- **Audit Log:** Lưu vết mọi thao tác quan trọng trên hệ thống.
 
-## Khắc phục sự cố (Troubleshooting)
+---
 
-- **Lỗi kết nối Database**: Kiểm tra `DATABASE_URL` trong file `.env` backend. Đảm bảo PostgreSQL đang chạy.
-- **Lỗi CORS**: Nếu frontend không gọi được API backend, kiểm tra cấu hình `cors` trong `src/server.ts` hoặc `src/index.ts` ở backend.
-- **Module Not Found**: Đảm bảo bạn đã chạy `npm install` ở cả 2 thư mục (backend và frontend).
+## 🛠️ Công nghệ sử dụng
+
+### 💻 Backend
+- **Core:** Node.js, Express.js, TypeScript.
+- **Database:** PostgreSQL với **Prisma ORM**.
+- **Security:** JWT, BcryptJS, Helmet, Rate Limiting.
+- **Docs:** Swagger UI.
+- **Logging:** Winston & Morgan.
+
+### 🎨 Frontend (Web)
+- **Framework:** ReactJS, Vite, TypeScript.
+- **UI:** Shadcn/UI (TailwindCSS + Radix UI), Ant Design.
+- **State Management:** Zustand, TanStack Query.
+- **Animations:** Framer Motion.
+- **Charts:** Recharts.
+
+### 📱 Mobile App
+- **Framework:** React Native, Expo, TypeScript.
+- **Styling:** NativeWind (TailwindCSS for Mobile).
+- **Navigation:** Expo Router.
+
+---
+
+## ⚙️ Cài đặt & Khởi chạy
+
+### 1. Yêu cầu hệ thống
+- Node.js >= 18
+- PostgreSQL >= 14
+- npm hoặc yarn
+
+### 2. Thiết lập Backend
+```bash
+cd thesis-be
+npm install
+cp .env.example .env # Cấu hình DATABASE_URL và JWT_SECRET
+npx prisma generate
+npx prisma migrate dev
+npm run dev
+```
+
+### 3. Thiết lập Frontend
+```bash
+cd thesis-fe
+npm install
+cp .env.example .env # Cấu hình VITE_API_URL
+npm run dev
+```
+
+### 4. Thiết lập Mobile
+```bash
+cd thesis-mobile
+npm install
+npx expo start
+```
+
+---
+
+## 📁 Cấu trúc dự án
+```text
+.
+├── thesis-be/         # Source code Backend (Node.js/Express)
+├── thesis-fe/         # Source code Frontend Web (React/Vite)
+├── thesis-mobile/     # Source code Mobile App (React Native/Expo)
+├── ACCESS_CONTROL.md  # Tài liệu quy định phân quyền
+└── SITEMAP.md         # Sơ đồ cấu trúc trang web
+```
+
+---
+
+## 📄 Giấy phép
+Dự án được phát triển nhằm mục đích phục vụ cho Khóa luận tốt nghiệp.
+
+---
+**Phát triển bởi:** [Tên của bạn]
