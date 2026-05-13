@@ -47,7 +47,6 @@ async function main() {
     where: { id: topic.semester_id },
     data: {
       defense_end: newDeadline,
-      council_grading_deadline: newDeadline,
       end_date: newDeadline
     }
   });

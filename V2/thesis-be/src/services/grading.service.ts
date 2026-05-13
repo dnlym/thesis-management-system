@@ -1939,8 +1939,8 @@ export class GradingService {
     const existingGrade = await prisma.grade.findFirst({
       where: {
         topic_id: request.topic_id,
-        student_id: request.student_id ?? undefined,
-        criterion_id: request.criterion_id,
+        student_id: request.student_id as string,
+        criterion_id: request.criterion_id as string,
         rater_role: request.rater_role,
         grader_id: request.grader_id
       }
@@ -1958,11 +1958,11 @@ export class GradingService {
       await prisma.grade.create({
         data: {
           topic_id: request.topic_id,
-          student_id: request.student_id ?? undefined,
+          student_id: request.student_id as string,
           grader_id: request.grader_id,
-          criterion_id: request.criterion_id,
+          criterion_id: request.criterion_id as string,
           rater_role: request.rater_role,
-          score: request.new_score ?? 0,
+          score: request.new_score as number,
           comments: request.reason
         }
       });
@@ -1971,12 +1971,12 @@ export class GradingService {
     // 2. Log History
     await prisma.gradeHistory.create({
       data: {
-        student_id: request.student_id ?? '',
+        student_id: request.student_id as string,
         grader_id: request.grader_id,
         topic_id: request.topic_id,
-        criterion_id: request.criterion_id,
+        criterion_id: request.criterion_id as string,
         old_score: request.old_score ?? undefined,
-        new_score: request.new_score ?? 0,
+        new_score: request.new_score as number,
         reason: `[Phê duyệt bởi HOD] ${request.reason}`,
         rater_role: request.rater_role
       }
