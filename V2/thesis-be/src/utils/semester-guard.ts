@@ -82,13 +82,24 @@ export class SemesterGuard {
     }
 
     // [5] DEFENSE: defense_start → defense_end
-    // Fallback: Dept Defense Date -> Global Defense Start
-    const effectiveDefenseStart = deptConfig?.defense_date || semester.defense_start;
-    const effectiveDefenseEnd = deptConfig?.defense_date || semester.defense_end;
+    // Ceiling Logic: Dept dates must be WITHIN the global semester defense window.
+    const globalStart = semester.defense_start;
+    const globalEnd = semester.defense_end;
+    
+    let effectiveDefenseStart = globalStart;
+    let effectiveDefenseEnd = globalEnd;
+
+    if (deptConfig?.defense_date) {
+      const deptDate = dayjs(deptConfig.defense_date);
+      // If dept date is before global start, use global start.
+      effectiveDefenseStart = deptDate.isBefore(dayjs(globalStart)) ? globalStart : deptConfig.defense_date;
+      // If dept date is after global end, use global end (Ceiling).
+      effectiveDefenseEnd = deptDate.isAfter(dayjs(globalEnd)) ? globalEnd : deptConfig.defense_date;
+    }
 
     if (
       effectiveDefenseStart &&
-      now.isSameOrAfter(dayjs(effectiveDefenseStart)) &&
+      now.isSameOrAfter(dayjs(effectiveDefenseStart).startOf('day')) &&
       effectiveDefenseEnd &&
       now.isBefore(dayjs(effectiveDefenseEnd).endOf('day'))
     ) {

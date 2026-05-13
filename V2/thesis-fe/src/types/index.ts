@@ -86,7 +86,6 @@ export interface DepartmentSemesterConfig {
   department_id: string;
   semester_id: string;
   defense_date?: string;
-  council_grading_deadline?: string;
   is_registration_open: boolean;
   updated_by: string;
   updated_at: string;
@@ -108,7 +107,6 @@ export interface Semester {
   thesis_deadline: string;
   defense_start: string;
   defense_end: string;
-  council_grading_deadline?: string;
   status: SemesterStatus;
   is_registration_override?: boolean;
   deptConfig?: DepartmentSemesterConfig;
@@ -274,20 +272,27 @@ export interface GradeScore {
 export interface GradeHistory {
   id: string;
   topic_id: string;
-  grade_id: string;
+  student_id: string;
+  grader_id: string;
+  criterion_id: string;
   old_score: number;
   new_score: number;
   reason: string;
-  changed_by_id: string;
+  rater_role: RaterRole;
   user_role: string;
+  changed_at: string;
   created_at: string;
-  grade?: Grade & {
-    criterion?: GradingCriteria;
-    student?: any;
-  };
-  changed_by?: {
+  student?: {
+    id: string;
     full_name: string;
-    role: string;
+  };
+  criterion?: {
+    id: string;
+    name: string;
+  };
+  grader?: {
+    id: string;
+    full_name: string;
   };
 }
 
@@ -398,6 +403,7 @@ export interface GradeSubmissionForm {
   rater_role: RaterRole;
   reviewer_order?: number | null;
   committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
+  reason?: string;
   scores: {
     criterion_id: string;
     score: number;

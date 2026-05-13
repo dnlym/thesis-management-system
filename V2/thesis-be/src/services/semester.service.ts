@@ -61,7 +61,6 @@ export class SemesterService {
     topic_registration_end?: Date;
     midterm_start?: Date;
     midterm_end?: Date;
-    council_grading_deadline?: Date;
   }) {
     // Parse all date strings to Date objects
     // Using toEndDate for all deadlines / phase boundaries
@@ -77,7 +76,6 @@ export class SemesterService {
     const topic_registration_end = toEndDate(data.topic_registration_end);
     const midterm_start = toDate(data.midterm_start);
     const midterm_end = toEndDate(data.midterm_end);
-    const council_grading_deadline = toEndDate(data.council_grading_deadline);
 
     // Validate timeline integrity
     this.validateTimelineIntegrity({
@@ -93,7 +91,6 @@ export class SemesterService {
       defense_end,
       midterm_start,
       midterm_end,
-      council_grading_deadline
     });
 
     // Check for semester overlapping
@@ -124,7 +121,6 @@ export class SemesterService {
         topic_registration_end: topic_registration_end,
         midterm_start: midterm_start,
         midterm_end: midterm_end,
-        council_grading_deadline: council_grading_deadline,
         status: SemesterStatus.PLANNING,
       },
     });
@@ -156,7 +152,6 @@ export class SemesterService {
     topic_registration_end?: Date;
     midterm_start?: Date;
     midterm_end?: Date;
-    council_grading_deadline?: Date;
     isActive?: boolean;
     phase?: SemesterPhase;
     manualPhaseOverride?: SemesterPhase | null;
@@ -183,7 +178,6 @@ export class SemesterService {
     const final_topic_registration_end = toEndDate(data.topic_registration_end) ?? semester.topic_registration_end;
     const final_midterm_start = toDate(data.midterm_start) ?? semester.midterm_start;
     const final_midterm_end = toEndDate(data.midterm_end) ?? semester.midterm_end;
-    const final_council_grading_deadline = toEndDate(data.council_grading_deadline) ?? semester.council_grading_deadline;
 
     // Validate timeline integrity of the final merged result
     this.validateTimelineIntegrity({
@@ -199,7 +193,6 @@ export class SemesterService {
       defense_end: final_defense_end,
       midterm_start: final_midterm_start,
       midterm_end: final_midterm_end,
-      council_grading_deadline: final_council_grading_deadline
     });
 
     // Check for semester overlapping
@@ -219,7 +212,6 @@ export class SemesterService {
       topic_registration_end: toEndDate(data.topic_registration_end),
       midterm_start: toDate(data.midterm_start),
       midterm_end: toEndDate(data.midterm_end),
-      council_grading_deadline: toEndDate(data.council_grading_deadline),
     };
 
     const oldPhase = SemesterGuard.calculateCurrentPhase(semester);
@@ -463,7 +455,6 @@ export class SemesterService {
     defense_end?: Date | null;
     midterm_start?: Date | null;
     midterm_end?: Date | null;
-    council_grading_deadline?: Date | null;
   }) {
     const {
       start_date,
@@ -477,7 +468,6 @@ export class SemesterService {
       defense_end,
       midterm_start,
       midterm_end,
-      council_grading_deadline
     } = data;
 
     // 1. Array-based Boundary Lock (Fail-Fast: Prevent NULL bypass)
@@ -514,9 +504,6 @@ export class SemesterService {
     if (timeline[1].date!.getTime() !== timeline[0].date!.getTime()) {
       throw new Error('Timeline must start from semester start (Giai đoạn Xem đề tài phải bắt đầu cùng ngày Khai giảng học kỳ).');
     }
-    if (timeline[7].date!.getTime() !== timeline[8].date!.getTime()) {
-      throw new Error('Timeline must end at semester end (Giai đoạn Bảo vệ phải kết thúc cùng ngày Bế giảng học kỳ).');
-    }
 
     // 4. Midterm Bounds (Must strictly resolve inside WORK phase)
     // WORK phase: topic_registration_end -> proposal_deadline
@@ -538,19 +525,6 @@ export class SemesterService {
       }
     }
 
-    // 5. Council Grading Deadline validation
-    if (council_grading_deadline) {
-      const cDeadline = dayjs(council_grading_deadline);
-      const dStart = defense_start ? dayjs(defense_start) : null;
-      const eDate = dayjs(end_date);
-
-      if (dStart && cDeadline.isBefore(dStart, 'day')) {
-        throw new Error('Hạn chót chấm điểm Hội đồng phải sau hoặc cùng ngày với khi bắt đầu Bảo vệ.');
-      }
-      if (cDeadline.isAfter(eDate, 'day')) {
-        throw new Error('Hạn chót chấm điểm Hội đồng không được vượt quá ngày kết thúc học kỳ.');
-      }
-    }
   }
 
   async toggleRegistrationOverride(userId: string, semesterId: string, override: boolean, reason: string) {

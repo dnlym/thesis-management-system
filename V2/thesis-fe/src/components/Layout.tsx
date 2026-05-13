@@ -64,6 +64,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
       {
         title: 'HỆ THỐNG',
         items: [
+          { key: '/semester-operation', label: 'Lộ trình học kỳ', icon: <SettingOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
       },
@@ -89,6 +90,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
       {
         title: 'Hệ thống',
         items: [
+          { key: '/semester-operation', label: 'Lộ trình học kỳ', icon: <SettingOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
       },
@@ -142,7 +144,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
       {
         title: 'HỆ THỐNG',
         items: [
-          { key: '/head/semester-settings', label: 'Cài đặt học kỳ', icon: <SettingOutlined /> },
+          { key: '/semester-operation', label: 'Vận hành học kỳ', icon: <SettingOutlined /> },
         ]
       },
     ];
@@ -187,7 +189,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
     {
       title: 'HỆ THỐNG',
       items: [
-        { key: '/head/semester-settings', label: 'Vận hành học kỳ', icon: <SettingOutlined /> },
+        { key: '/semester-operation', label: 'Vận hành học kỳ', icon: <SettingOutlined /> },
         { key: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
         { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
       ]

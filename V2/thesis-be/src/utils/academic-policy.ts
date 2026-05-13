@@ -223,24 +223,30 @@ export class AcademicPolicy {
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        // All roles can proceed to the grading logic. 
+        // Direct save vs Request workflow is handled in GradingService.
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'GVHD chỉ được chấm điểm từ giai đoạn Phản biện trở đi.', code: 'INVALID_PHASE' };
+          return { allowed: false, reason: 'Chưa tới giai đoạn chấm điểm.', code: 'INVALID_PHASE' };
         }
-        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
+        return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        // All roles can proceed to the grading logic. 
+        // Direct save vs Request workflow is handled in GradingService.
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'GVPB chỉ được chấm điểm từ giai đoạn Phản biện trở đi.', code: 'INVALID_PHASE' };
+          return { allowed: false, reason: 'Chưa tới giai đoạn chấm điểm.', code: 'INVALID_PHASE' };
         }
-        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
+        return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_COMMITTEE:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        // All roles can proceed to the grading logic. 
+        // Direct save vs Request workflow is handled in GradingService.
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm từ giai đoạn Bảo vệ trở đi.', code: 'INVALID_PHASE' };
+          return { allowed: false, reason: 'Chưa tới giai đoạn bảo vệ.', code: 'INVALID_PHASE' };
         }
-        return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
+        return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.ASSIGN_DEFENSE_PIVOT:
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {

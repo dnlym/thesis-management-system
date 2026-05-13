@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination, Modal, Popover } from 'antd';
 import { notify } from '@/utils/notification';
-import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined, SwapOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
@@ -210,24 +210,20 @@ const Evaluation = () => {
     const now = dayjs();
     const globalDeadline = activeSemester?.thesis_deadline;
     
-    // 1. Date-based global cutoff
-    if (globalDeadline && now.isAfter(dayjs(globalDeadline))) return true;
+    // 1. Phase-based locking (The master logic)
+    // The activeSemester.calculated_phase already accounts for the Semester Ceiling.
 
     // 2. Role-specific milestone logic
     if (activeTab === 'advisor') {
-      // Locked when moving to REVIEWING or later
-      return ['REVIEWING', 'DEFENSE', 'FINAL'].includes(phase || '');
+      // Giảng viên hướng dẫn được chấm đến khi chốt học kỳ
+      return phase === 'FINAL';
     }
     if (activeTab === 'reviewer') {
-      // Locked when moving to DEFENSE or later
+      // Phản biện bị khóa khi bắt đầu giai đoạn Bảo vệ
       return ['DEFENSE', 'FINAL'].includes(phase || '');
     }
     if (activeTab === 'council') {
-      // Locked based on specific date from deptConfig
-      if (deptConfig?.council_grading_deadline) {
-        return now.isAfter(dayjs(deptConfig.council_grading_deadline));
-      }
-      // Fallback: Locked when FINAL
+      // Hội đồng được chấm trong suốt giai đoạn Bảo vệ, khóa khi sang FINAL
       return phase === 'FINAL';
     }
     
@@ -235,8 +231,12 @@ const Evaluation = () => {
   }, [activeSemester, activeTab]);
 
   const isFinalized = selectedTopic?.status === 'FINALIZED';
-  const isLocked = (isFinalized || !isPhaseAllowed || isPastDeadline) && !isRequestMode;
-  const canEditAfterSubmit = !isFinalized && isPhaseAllowed && user?.role !== 'STUDENT' && !isPastDeadline;
+  const isAdminOrHead = user?.role === 'ADMIN' || user?.role === 'HEAD';
+  
+  // Admin and HOD are NEVER locked unless the topic is completely finalized (even then they might need to edit, but let's keep finalized as a hard lock for now)
+  const isLocked = (isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead)) && !isRequestMode;
+  
+  const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead);
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -293,13 +293,6 @@ const Evaluation = () => {
         // If we have a reason, the backend will handle the routing to GradeChangeRequest
       }
 
-      // CASE 2: Regular Update (Pre-Deadline but already submitted)
-      const isUpdating = myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
-      if (!isPastDeadline && isUpdating && !reason && user?.role !== 'ADMIN') {
-        setPendingSubmission(values);
-        setReasonModalVisible(true);
-        return;
-      }
 
       const submissions = students.map(student => {
         const gradeScores: GradeScore[] = criteria.map(criterion => {
@@ -332,11 +325,15 @@ const Evaluation = () => {
       for (const sub of submissions) {
         await submitGradeMutation.mutateAsync(sub);
       }
-      notify.success('Đã lưu điểm thành công!');
-
+      if (isRequestMode) {
+        notify.success('Yêu cầu sửa điểm đã được gửi thành công!');
+      } else {
+        notify.success('Đã lưu điểm thành công!');
+      }
 
       setReasonModalVisible(false);
       setSubmitReason('');
+      setIsRequestMode(false);
       queryClient.invalidateQueries({ queryKey: ['my-grades', topicId] });
       refetchHistory();
     } catch (error: any) {
@@ -509,62 +506,62 @@ const Evaluation = () => {
                         </div>
                       ),
                       key: `sv_${s.id}`, width: 140, align: 'center',
-                      render: (_, r, rowIndex) => (
-                        <Space direction="vertical" size={2} className="w-full">
-                          <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0">
-                            <InputNumber
-                              id={`grade-input-${i}-${rowIndex}`}
-                              min={0}
-                              max={10}
-                              step={0.5}
-                              className="w-full text-center grade-input"
-                              disabled={isLocked}
-                              onFocus={(e) => e.target.select()}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                                  e.preventDefault();
-                                  const nextWrapper = document.getElementById(`grade-input-${i}-${rowIndex + 1}`);
-                                  if (nextWrapper) {
-                                    const input = nextWrapper.tagName === 'INPUT' ? nextWrapper : nextWrapper.querySelector('input');
-                                    if (input) (input as HTMLElement).focus();
-                                  }
-                                } else if (e.key === 'ArrowUp') {
-                                  e.preventDefault();
-                                  const prevWrapper = document.getElementById(`grade-input-${i}-${rowIndex - 1}`);
-                                  if (prevWrapper) {
-                                    const input = prevWrapper.tagName === 'INPUT' ? prevWrapper : prevWrapper.querySelector('input');
-                                    if (input) (input as HTMLElement).focus();
-                                  }
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                          {gradeHistory?.some((h: any) => {
-                            const hRole = h.rater_role || h.grade?.rater_role;
-                            const currentRoleGroup = getRaterRole(); // SUPERVISOR, REVIEWER, COMMITTEE
+                      render: (_, r, rowIndex) => {
+                        const hasHistory = gradeHistory?.some((h: any) => {
+                          const hRole = h.rater_role || h.grade?.rater_role;
+                          const currentRoleGroup = getRaterRole();
+                          let isSameRoleGroup = false;
+                          if (currentRoleGroup === 'SUPERVISOR') isSameRoleGroup = hRole === 'SUPERVISOR';
+                          else if (currentRoleGroup === 'REVIEWER') {
+                            if (currentAssignment?.reviewer_order) isSameRoleGroup = hRole === `REVIEWER_${currentAssignment.reviewer_order}`;
+                            else isSameRoleGroup = hRole?.startsWith('REVIEWER');
+                          } else if (currentRoleGroup === 'COMMITTEE') isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
+                          return h.criterion_id === r.id && h.student_id === s.id && isSameRoleGroup;
+                        });
 
-                            let isSameRoleGroup = false;
-                            if (currentRoleGroup === 'SUPERVISOR') {
-                              isSameRoleGroup = hRole === 'SUPERVISOR';
-                            } else if (currentRoleGroup === 'REVIEWER') {
-                              // Phải khớp đúng vị trí phản biện (1, 2, 3)
-                              if (currentAssignment?.reviewer_order) {
-                                isSameRoleGroup = hRole === `REVIEWER_${currentAssignment.reviewer_order}`;
-                              } else {
-                                isSameRoleGroup = hRole?.startsWith('REVIEWER');
-                              }
-                            } else if (currentRoleGroup === 'COMMITTEE') {
-                              isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
-                            }
-
-                            return h.criterion_id === r.id && h.student_id === s.id && isSameRoleGroup;
-                          }) && (
-                              <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
-                                <Badge status="warning" text={<span className="text-[9px] text-amber-600 font-medium">Đã sửa</span>} className="cursor-help" />
-                              </Tooltip>
+                        return (
+                          <div className="relative py-1 flex flex-col items-center">
+                            <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0 w-full">
+                              <InputNumber
+                                id={`grade-input-${i}-${rowIndex}`}
+                                min={0}
+                                max={10}
+                                step={0.5}
+                                className="w-full text-center grade-input"
+                                disabled={isLocked}
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    const nextWrapper = document.getElementById(`grade-input-${i}-${rowIndex + 1}`);
+                                    if (nextWrapper) {
+                                      const input = nextWrapper.tagName === 'INPUT' ? nextWrapper : nextWrapper.querySelector('input');
+                                      if (input) (input as HTMLElement).focus();
+                                    }
+                                  } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    const prevWrapper = document.getElementById(`grade-input-${i}-${rowIndex - 1}`);
+                                    if (prevWrapper) {
+                                      const input = prevWrapper.tagName === 'INPUT' ? prevWrapper : prevWrapper.querySelector('input');
+                                      if (input) (input as HTMLElement).focus();
+                                    }
+                                  }
+                                }}
+                              />
+                            </Form.Item>
+                            {hasHistory && (
+                              <div className="absolute bottom-[-10px] left-0 right-0 flex justify-center pointer-events-none">
+                                <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
+                                  <div className="flex items-center gap-1 bg-white/80 px-1 rounded pointer-events-auto">
+                                    <Badge status="warning" />
+                                    <span className="text-[9px] text-amber-600 font-medium leading-none">Đã sửa</span>
+                                  </div>
+                                </Tooltip>
+                              </div>
                             )}
-                        </Space>
-                      )
+                          </div>
+                        );
+                      }
                     }))
                   },
                   {
@@ -617,7 +614,7 @@ const Evaluation = () => {
                 </div>
               )}
 
-              {isPastDeadline && !isRequestMode && !isFinalized && (
+              {isPastDeadline && !isRequestMode && !isFinalized && !isAdminOrHead && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
                   <Button 
                     size="large" 
@@ -755,13 +752,7 @@ const Evaluation = () => {
             <Space size={4} className="text-[10px] text-gray-400">
               <Text type="secondary" className="text-[10px]">GVHD: <HighlightText text={topicObj.supervisor?.full_name} keyword={debouncedLecturerSearch} /></Text>
               <Divider type="vertical" className="m-0 border-gray-300" />
-              {activeTab === 'council' && activeSemester?.deptConfig?.council_grading_deadline ? (
-                <Text type="danger" className="text-[10px] font-bold italic">
-                  Hạn chốt điểm HĐ: {dayjs(activeSemester.deptConfig.council_grading_deadline).format('HH:mm DD/MM/YYYY')}
-                </Text>
-              ) : (
-                <Text type="warning" className="text-[10px]">Hạn nộp báo cáo: {dayjs(topicObj.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
-              )}
+              <Text type="warning" className="text-[10px]">Hạn nộp báo cáo: {dayjs(topicObj.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
             </Space>
           </div>
         )
@@ -1304,19 +1295,28 @@ const Evaluation = () => {
 
 
       <Modal
-        title={<Space><WarningOutlined className="text-amber-500" /> Xác nhận thay đổi điểm số</Space>}
+        title={
+          <Space>
+            {isRequestMode ? <FlagOutlined className="text-blue-500" /> : <WarningOutlined className="text-amber-500" />}
+            {isRequestMode ? 'Xác nhận gửi yêu cầu sửa điểm' : 'Xác nhận thay đổi điểm số'}
+          </Space>
+        }
         open={reasonModalVisible}
         onOk={handleReasonSubmit}
         onCancel={() => {
           setReasonModalVisible(false);
           setSubmitReason('');
         }}
-        okText="Xác nhận lưu"
+        okText={isRequestMode ? "Gửi yêu cầu" : "Xác nhận lưu"}
         cancelText="Hủy"
         confirmLoading={submitGradeMutation.isPending}
       >
         <div className="mb-4">
-          <Text>Bạn đang thực hiện thay đổi điểm số đã lưu trước đó. Vui lòng nhập lý do điều chỉnh để hệ thống ghi lại nhật ký chuyên môn.</Text>
+          <Text>
+            {isRequestMode 
+              ? 'Bạn đang thực hiện gửi yêu cầu điều chỉnh điểm số sau khi hết hạn. Vui lòng nhập lý do giải trình để Trưởng bộ môn phê duyệt.'
+              : 'Bạn đang thực hiện thay đổi điểm số đã lưu trước đó. Vui lòng nhập lý do điều chỉnh để hệ thống ghi lại nhật ký chuyên môn.'}
+          </Text>
         </div>
         <TextArea
           rows={4}
@@ -1327,48 +1327,121 @@ const Evaluation = () => {
       </Modal>
 
       <Modal
-        title={<Title level={4}><Space><FlagOutlined className="text-blue-600" /> Lịch sử biến động điểm</Space></Title>}
+        title={
+          <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <FlagOutlined className="text-blue-600 text-lg" />
+            </div>
+            <div>
+              <Title level={4} className="mb-0">Lịch sử biến động điểm</Title>
+              <Text type="secondary" className="text-[11px]">Chi tiết các lần điều chỉnh điểm số sau khi phê duyệt</Text>
+            </div>
+          </div>
+        }
         open={historyModalVisible}
         onCancel={() => {
           setHistoryModalVisible(false);
           setSelectedTopicForHistory(null);
         }}
-        footer={[<Button key="close" onClick={() => {
-          setHistoryModalVisible(false);
-          setSelectedTopicForHistory(null);
-        }}>Đóng</Button>]}
-        width={1100}
+        footer={[
+          <Button key="close" type="primary" className="rounded-lg px-6" onClick={() => {
+            setHistoryModalVisible(false);
+            setSelectedTopicForHistory(null);
+          }}>Đóng</Button>
+        ]}
+        width={900}
+        centered
+        className="history-modal"
       >
         <Table
           dataSource={gradeHistory}
           rowKey="id"
-          pagination={{ pageSize: 5 }}
+          size="small"
+          pagination={{ pageSize: 8, showSizeChanger: false, className: "mt-4" }}
+          className="compact-history-table mt-4"
+          expandable={{
+            expandedRowRender: (record: GradeHistory) => (
+              <div className="bg-gray-50/50 p-4 rounded-lg border border-dashed border-gray-200 ml-8 mr-4 mb-2">
+                <Row gutter={[24, 16]}>
+                  <Col span={12}>
+                    <div className="flex flex-col gap-1">
+                      <Text className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Tiêu chí chấm điểm</Text>
+                      <Text className="text-gray-700 font-medium">{record.criterion?.name}</Text>
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="flex flex-col gap-1">
+                      <Text className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Vai trò chấm</Text>
+                      <div>
+                        {(() => {
+                          const role = record.rater_role;
+                          if (role === 'SUPERVISOR') return <Tag color="blue" className="m-0 text-[11px]">Hướng dẫn</Tag>;
+                          if (role?.startsWith('REVIEWER')) return <Tag color="cyan" className="m-0 text-[11px]">Phản biện {role.split('_')[1] || ''}</Tag>;
+                          if (role?.startsWith('COMMITTEE')) return <Tag color="purple" className="m-0 text-[11px]">Hội đồng</Tag>;
+                          return <Tag className="m-0 text-[11px]">{role}</Tag>;
+                        })()}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="flex flex-col gap-1">
+                      <Text className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Người thực hiện</Text>
+                      <Tag className="m-0 w-fit text-[11px] border-blue-100 bg-blue-50 text-blue-600 font-medium" icon={<UserOutlined />}>
+                        {record.grader?.full_name}
+                      </Tag>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            ),
+            expandRowByClick: true,
+          }}
           columns={[
-            { title: 'Thời gian', dataIndex: 'created_at', key: 'time', width: 140, render: (t) => dayjs(t).format('HH:mm DD/MM/YYYY') },
-            {
-              title: 'Vai trò', key: 'role', width: 120,
-              render: (_, r: GradeHistory) => {
-                const role = r.grade?.rater_role;
-                if (role === 'SUPERVISOR') return <Tag color="blue">Hướng dẫn</Tag>;
-                if (role?.startsWith('REVIEWER')) return <Tag color="cyan">Phản biện {role.split('_')[1] || ''}</Tag>;
-                if (role?.startsWith('COMMITTEE')) return <Tag color="purple">Hội đồng</Tag>;
-                return <Tag>{role}</Tag>;
-              }
-            },
-            { title: 'Sinh viên', key: 'student', width: 160, render: (_, r: GradeHistory) => r.grade?.student?.full_name },
-            { title: 'Tiêu chí', key: 'criterion', width: 250, render: (_, r: GradeHistory) => r.grade?.criterion?.name },
-            {
-              title: 'Biến động', key: 'change', align: 'center', width: 120,
-              render: (_, r: GradeHistory) => (
-                <Space>
-                  <Text delete type="secondary">{r.old_score}</Text>
-                  <Text strong className="text-blue-600">→</Text>
-                  <Text strong className="text-green-600">{r.new_score}</Text>
-                </Space>
+            { 
+              title: 'Thời gian', 
+              dataIndex: 'changed_at', 
+              key: 'time', 
+              width: 120, 
+              render: (t) => (
+                <div className="flex flex-col">
+                  <Text className="text-[13px] font-medium">{dayjs(t).format('HH:mm')}</Text>
+                  <Text className="text-[11px] text-gray-400">{dayjs(t).format('DD/MM/YYYY')}</Text>
+                </div>
               )
             },
-            { title: 'Lý do', dataIndex: 'reason', key: 'reason' },
-            { title: 'Người sửa', key: 'user', width: 180, render: (_, r: GradeHistory) => <Tag className="m-0" color={r.user_role === 'ADMIN' ? 'red' : 'blue'}>{r.changed_by?.full_name}</Tag> },
+            { 
+              title: 'Sinh viên', 
+              key: 'student', 
+              width: 180, 
+              render: (_, r: GradeHistory) => (
+                <Text strong className="text-gray-700">{r.student?.full_name}</Text>
+              )
+            },
+            {
+              title: 'Biến động', 
+              key: 'change', 
+              align: 'center', 
+              width: 120,
+              render: (_, r: GradeHistory) => (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-gray-400 text-xs line-through">{r.old_score}</span>
+                  <SwapOutlined className="text-blue-400 text-[10px]" />
+                  <span className="text-blue-600 font-bold text-base">{r.new_score}</span>
+                </div>
+              )
+            },
+            { 
+              title: 'Lý do giải trình', 
+              dataIndex: 'reason', 
+              key: 'reason',
+              render: (reason) => (
+                <div className="max-w-[300px]">
+                  <Paragraph className="mb-0 text-gray-600 italic text-[12px]" ellipsis={{ rows: 2, tooltip: reason }}>
+                    {reason?.replace('[Phê duyệt bởi HOD] ', '') || 'Không có lý do chi tiết'}
+                  </Paragraph>
+                </div>
+              )
+            },
           ]}
         />
       </Modal>

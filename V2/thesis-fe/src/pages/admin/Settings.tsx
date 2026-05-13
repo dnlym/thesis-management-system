@@ -98,12 +98,14 @@ const computeAutoFillPhases = (startFrom: dayjs.Dayjs, endAt: dayjs.Dayjs) => {
   currentStart = currentEnd;
 
   // [4] DEFENSE
-  currentEnd = endAt.startOf('day');
-  const finalDefenseStart = currentStart.isAfter(currentEnd) ? currentEnd : currentStart;
-  phases.push({ start: finalDefenseStart, end: currentEnd });
+  // Defense ends about 5 days before the semester officially ends to allow for summary
+  const defenseBuffer = Math.max(2, Math.floor(totalDays * 0.05));
+  currentEnd = endAt.subtract(defenseBuffer, 'day').startOf('day');
+  if (currentEnd.isBefore(currentStart)) currentEnd = currentStart;
+  phases.push({ start: currentStart, end: currentEnd });
 
-  // [5] FINAL
-  phases.push({ start: endAt.startOf('day'), end: endAt.startOf('day') });
+  // [5] FINAL (Summary phase)
+  phases.push({ start: currentEnd.add(1, 'day'), end: endAt.startOf('day') });
 
   return phases;
 };
@@ -126,13 +128,12 @@ const mapPhasesToDto = (
   code: string,
   phases: { start: dayjs.Dayjs; end: dayjs.Dayjs }[],
   midtermStart: dayjs.Dayjs | null,
-  midtermEnd: dayjs.Dayjs | null,
-  councilGradingDeadline: dayjs.Dayjs | null,
+  midtermEnd: dayjs.Dayjs | null
 ) => ({
   name,
   code,
   start_date: phases[0].start.toISOString(),
-  end_date: phases[4].end.toISOString(),
+  end_date: phases[5].end.toISOString(),
   topic_viewing_start: phases[0].start.toISOString(),
   topic_viewing_end: phases[0].end.toISOString(),
   topic_registration_start: phases[1].start.toISOString(),
@@ -143,7 +144,6 @@ const mapPhasesToDto = (
   defense_end: phases[4].end.toISOString(),
   midterm_start: midtermStart?.toISOString() ?? null,
   midterm_end: midtermEnd?.toISOString() ?? null,
-  council_grading_deadline: councilGradingDeadline?.toISOString() ?? null,
 });
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -160,7 +160,6 @@ const AdminSettings = () => {
   const [phaseDates, setPhaseDates] = useState<{ start: dayjs.Dayjs; end: dayjs.Dayjs }[]>([]);
   const [midtermStart, setMidtermStart] = useState<dayjs.Dayjs | null>(null);
   const [midtermEnd, setMidtermEnd] = useState<dayjs.Dayjs | null>(null);
-  const [councilGradingDeadline, setCouncilGradingDeadline] = useState<dayjs.Dayjs | null>(null);
   const { t, i18n } = useTranslation();
   const [semesterForm] = Form.useForm();
   const [deptForm] = Form.useForm();
@@ -192,9 +191,6 @@ const AdminSettings = () => {
     const middle = workPhase.start.add(halfDays, 'day');
     setMidtermStart(middle);
     setMidtermEnd(middle.add(3, 'day'));
-
-    // Auto suggest council deadline: 1 day after defense ends
-    setCouncilGradingDeadline(computed[4].end.add(1, 'day').endOf('day'));
 
     if (!silent) notify.success('Đã tự động tính toán và điền dòng thời gian!');
   };
@@ -240,6 +236,14 @@ const AdminSettings = () => {
           setMidtermEnd(middle.add(3, 'day'));
         }
       }
+
+      // Tự động cập nhật phase FINAL (index 5) khi phase DEFENSE (index 4) thay đổi
+      if (index === 4 && field === 'end') {
+        next[5] = {
+          start: date.add(1, 'day'),
+          end: semesterDates[1]?.startOf('day') || date.add(1, 'day')
+        };
+      }
       return next;
     });
   };
@@ -254,7 +258,6 @@ const AdminSettings = () => {
     setPhaseDates([]);
     setMidtermStart(null);
     setMidtermEnd(null);
-    setCouncilGradingDeadline(null);
     semesterForm.resetFields();
     setSemesterModalVisible(true);
   };
@@ -268,7 +271,6 @@ const AdminSettings = () => {
     setPhaseDates(extractPhasesFromSemester(semester));
     setMidtermStart(semester.midterm_start ? dayjs(semester.midterm_start) : null);
     setMidtermEnd(semester.midterm_end ? dayjs(semester.midterm_end) : null);
-    setCouncilGradingDeadline(semester.council_grading_deadline ? dayjs(semester.council_grading_deadline) : null);
     semesterForm.setFieldsValue({ name: semester.name, code: semester.code });
     setSemesterModalVisible(true);
   };
@@ -276,7 +278,7 @@ const AdminSettings = () => {
   const handleSemesterModalOk = async () => {
     try {
       const values = await semesterForm.validateFields();
-      const dto = mapPhasesToDto(values.name, values.code, phaseDates, midtermStart, midtermEnd, councilGradingDeadline);
+      const dto = mapPhasesToDto(values.name, values.code, phaseDates, midtermStart, midtermEnd);
 
       const onSuccess = () => {
         setSemesterModalVisible(false);
@@ -288,7 +290,6 @@ const AdminSettings = () => {
         setPhaseDates([]);
         setMidtermStart(null);
         setMidtermEnd(null);
-        setCouncilGradingDeadline(null);
       };
 
       const onError = (error: any) => {
@@ -615,7 +616,7 @@ const AdminSettings = () => {
                 <Tag color="cyan" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">Gantt View</Tag>
               </div>
               <div className="h-6 w-full bg-slate-100 rounded-full flex overflow-hidden border border-slate-200 shadow-sm relative group">
-                {SEMESTER_PHASES.slice(0, 5).map((phase, idx) => {
+                {SEMESTER_PHASES.map((phase, idx) => {
                   const total = semesterDates[1]!.diff(semesterDates[0]!, 'day') + 1;
                   const phaseDuration = phaseDates[idx].end.diff(phaseDates[idx].start, 'day') + 1;
                   const width = ((phaseDuration / total) * 100).toFixed(1);
@@ -627,7 +628,7 @@ const AdminSettings = () => {
                       style={{
                         width: `${width}%`,
                         backgroundColor: phase.color,
-                        borderRight: idx < 4 ? '1px solid rgba(255,255,255,0.3)' : 'none'
+                        borderRight: idx < 5 ? '1px solid rgba(255,255,255,0.3)' : 'none'
                       }}
                       title={`${phase.label}: ${phaseDuration} ngày (${width}%)`}
                     >
@@ -668,7 +669,7 @@ const AdminSettings = () => {
               </div>
 
               <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-200 space-y-3 shadow-inner">
-                {SEMESTER_PHASES.slice(0, 5).map((phase, idx) => (
+                {SEMESTER_PHASES.map((phase, idx) => (
                   <div key={phase.key} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:border-blue-200">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 font-bold shadow-sm" style={{ background: phase.color }}>
                       {idx + 1}
@@ -684,6 +685,7 @@ const AdminSettings = () => {
                         onChange={(d) => updatePhase(idx, 'start', d)}
                         format="DD/MM/YYYY"
                         allowClear={false}
+                        disabled={idx === 5} // Final phase start is derived from defense end
                       />
                       <span className="text-gray-400 font-bold">→</span>
                       <DatePicker
@@ -692,6 +694,7 @@ const AdminSettings = () => {
                         onChange={(d) => updatePhase(idx, 'end', d)}
                         format="DD/MM/YYYY"
                         allowClear={false}
+                        disabled={idx === 5} // Final phase end is the semester end date
                       />
                     </div>
                   </div>
@@ -716,38 +719,6 @@ const AdminSettings = () => {
                   </div>
                 </div>
 
-                {/* Block 4: Council Deadline */}
-                <div className="mt-4 rounded-xl p-4 bg-[#f0f9ff] border border-blue-200 shadow-sm relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 shrink-0 font-bold bg-blue-100">
-                      ⚖️
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-blue-900 text-sm m-0">Hạn chót chấm Hội đồng (Hệ thống)</p>
-                      <p className="text-blue-700/70 text-[11px] m-0 mb-3">Sau mốc Bảo vệ và trước khi kết thúc học kỳ</p>
-                      <div className="flex items-center gap-3">
-                        <DatePicker 
-                          showTime
-                          size="small" 
-                          className="w-48 border-blue-200" 
-                          value={councilGradingDeadline} 
-                          onChange={(d) => { setIsTimelineAuto(false); setCouncilGradingDeadline(d); }} 
-                          format="HH:mm DD/MM/YYYY" 
-                          disabledDate={(d) => {
-                            const defenseStart = phaseDates[4]?.start;
-                            const semesterEnd = semesterDates[1];
-                            if (!defenseStart || !semesterEnd) return false;
-                            return d.isBefore(defenseStart, 'day') || d.isAfter(semesterEnd, 'day');
-                          }}
-                        />
-                        <Tag color="processing" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">
-                          Hạn mặc định toàn hệ thống
-                        </Tag>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
               </div>
             </div>

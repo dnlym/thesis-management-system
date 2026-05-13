@@ -49,6 +49,7 @@ export default function GradeChangeApprovals() {
             setDetailsModalVisible(false);
             setSelectedRequest(null);
             queryClient.invalidateQueries({ queryKey: ['gradeChangeRequests'] });
+            queryClient.invalidateQueries({ queryKey: ['grade-history'] });
         },
         onError: (error: any) => notify.error(error.message || 'Lỗi khi phê duyệt'),
     });
@@ -61,6 +62,7 @@ export default function GradeChangeApprovals() {
             setDetailsModalVisible(false);
             setSelectedRequest(null);
             queryClient.invalidateQueries({ queryKey: ['gradeChangeRequests'] });
+            queryClient.invalidateQueries({ queryKey: ['grade-history'] });
         },
         onError: (error: any) => notify.error(error.message || 'Lỗi khi từ chối'),
     });

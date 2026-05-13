@@ -255,12 +255,12 @@ export const routes: RouteConfig[] = [
     },
   },
   {
-    path: '/head/semester-settings',
+    path: '/semester-operation',
     element: SemesterSettings,
     meta: {
       title: 'navigation.semesterSettings',
       icon: SettingOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
     },
   },
   {
@@ -380,6 +380,11 @@ export const getMenuItems = (userRole: UserRole) => {
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
       },
+      {
+        key: '/semester-operation',
+        icon: <SettingOutlined />,
+        label: 'navigation.semesterSettings',
+      },
     ];
   }
 
@@ -415,6 +420,11 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/schedule',
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
+      },
+      {
+        key: '/semester-operation',
+        icon: <SettingOutlined />,
+        label: 'navigation.semesterSettings',
       },
     ];
   }
@@ -455,7 +465,7 @@ export const getMenuItems = (userRole: UserRole) => {
         label: 'navigation.schedule',
       },
       {
-        key: '/head/semester-settings',
+        key: '/semester-operation',
         icon: <SettingOutlined />,
         label: 'navigation.semesterSettings',
       },
@@ -491,6 +501,11 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/schedule',
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
+      },
+      {
+        key: '/semester-operation',
+        icon: <SettingOutlined />,
+        label: 'navigation.semesterSettings',
       },
     ];
   }

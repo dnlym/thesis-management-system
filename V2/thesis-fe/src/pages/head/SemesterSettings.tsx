@@ -142,17 +142,14 @@ const getPhaseTimeRange = (phase: any, semester: any, deptConfig: any) => {
                 </div>
             );
         case 'FINAL':
-            const councilDeadline = deptConfig?.council_grading_deadline;
             return (
                 <div className="flex flex-col">
                     <span className="font-bold text-blue-600">
                         {formatD(semester.defense_end)} - {formatD(semester.end_date)}
                     </span>
-                    {councilDeadline && (
-                        <span className="text-[11px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full mt-1 w-fit border border-amber-100">
-                            Hạn chót nhập điểm: {dayjs(councilDeadline).format('HH:mm DD/MM/YYYY')}
-                        </span>
-                    )}
+                    <span className="text-[11px] text-slate-400 italic mt-1">
+                        Học kỳ đã đóng, đang trong giai đoạn tổng kết.
+                    </span>
                 </div>
             );
         default:
@@ -165,6 +162,8 @@ const SemesterSettings = () => {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN';
+    const isHead = user?.role === 'HEAD';
+    const canManage = isAdmin || isHead;
 
     const { data: activeSemester, isLoading } = useActiveSemester();
     const [selectedDeptId, setSelectedDeptId] = useState<string | undefined>(user?.department_id || undefined);
@@ -178,7 +177,7 @@ const SemesterSettings = () => {
     });
 
     const updateDateMutation = useMutation({
-        mutationFn: (values: { defense_date?: string; council_grading_deadline?: string }) => SemestersApi.updateDeptConfig(activeSemester!.id, { 
+        mutationFn: (values: { defense_date?: string }) => SemestersApi.updateDeptConfig(activeSemester!.id, { 
             ...values,
             departmentId: selectedDeptId
         }),
@@ -243,10 +242,6 @@ const SemesterSettings = () => {
         updateDateMutation.mutate({ defense_date: defenseDate.toISOString() });
     };
 
-    const handleSaveCouncilDeadline = (date: dayjs.Dayjs | null) => {
-        if (!date) return;
-        updateDateMutation.mutate({ council_grading_deadline: date.toISOString() });
-    };
 
 
 
@@ -290,7 +285,7 @@ const SemesterSettings = () => {
                             </div>
                         </div>
 
-                        {isAdmin && (
+                        {canManage && isAdmin && (
                             <div className="flex items-center gap-3 bg-blue-50/50 p-2 pl-4 rounded-xl border border-blue-100/50">
                                 <span className="text-[13px] font-bold text-blue-600 uppercase tracking-wider">Bộ môn:</span>
                                 <Select
@@ -313,9 +308,9 @@ const SemesterSettings = () => {
                 </Card>
                     <div className="max-w-[1200px] mx-auto space-y-6">
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className={`grid grid-cols-1 ${canManage ? 'lg:grid-cols-12' : 'lg:grid-cols-1'} gap-6`}>
                     {/* Left: Phase Status (Non-interactive) */}
-                    <div className="lg:col-span-7">
+                    <div className={canManage ? 'lg:col-span-7' : 'lg:col-span-12'}>
                         <Card
                             className="page-card h-full"
                             styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
@@ -396,202 +391,166 @@ const SemesterSettings = () => {
                     </div>
 
                     {/* Right: Controls */}
-                    <div className="lg:col-span-5 space-y-6">
-                        {isAdmin && !selectedDeptId ? (
-                            <Card className="page-card h-full flex items-center justify-center py-20 bg-slate-50/50 border-dashed border-2">
-                                <Empty
-                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    description={
-                                        <div className="text-center">
-                                            <p className="text-slate-500 font-bold">Chế độ xem chung</p>
-                                            <p className="text-xs text-slate-400">Vui lòng chọn bộ môn ở phía trên để<br/>thiết lập cấu hình riêng hoặc mở đăng ký.</p>
-                                        </div>
-                                    }
-                                />
-                            </Card>
-                        ) : (
-                            <>
-                                {/* Panel 2: Registration Override Management */}
-                        <Card
-                            title={
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cơ chế mở đăng ký bổ sung (Bộ môn)</h2>
-                                    </div>
-                                    {isOverrideActive ? (
-                                        <Tag color="error" className="rounded-full px-3 border-none font-bold animate-pulse">MỞ ĐĂNG KÝ</Tag>
-                                    ) : statusTag}
-                                </div>
-                            }
-                            className="page-card"
-                            styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
-                        >
-                            <div className="space-y-6">
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="section-label">Hạn đăng ký gốc</span>
-                                        <span className="text-[14px] font-bold text-slate-700">
-                                            {activeSemester.topic_registration_end ? dayjs(activeSemester.topic_registration_end).format('DD/MM/YYYY HH:mm') : '---'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="section-label">Trạng thái hiện tại</span>
-                                        <span className={`text-[12px] font-bold ${isOverrideActive ? 'text-red-500' : 'text-slate-400'}`}>
-                                            {isOverrideActive ? 'ĐANG MỞ THỦ CÔNG' : 'TUÂN THỦ TIMELINE'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <Space direction="vertical" style={{ width: '100%' }}>
-                                    <Button
-                                        type={isOverrideActive ? 'default' : 'primary'}
-                                        danger={isOverrideActive}
-                                        icon={isOverrideActive ? <LockOutlined /> : <UnlockOutlined />}
-                                        block
-                                        size="large"
-                                        onClick={() => setIsOverrideModalOpen(true)}
-                                        disabled={!canOverride}
-                                        className={`h-12 rounded-xl shadow-md font-bold transition-all hover:scale-[1.02] ${!isOverrideActive ? 'bg-blue-600 border-none' : ''}`}
-                                    >
-                                        {isOverrideActive ? 'Thiết lập Đóng đăng ký' : 'Thiết lập mở đăng ký'}
-                                    </Button>
-                                    <Button
-                                        icon={<HistoryOutlined />}
-                                        block
-                                        className="h-12 rounded-xl border-dashed font-medium text-slate-500"
-                                        onClick={() => setIsHistoryModalOpen(true)}
-                                    >
-                                        Xem nhật ký Override
-                                    </Button>
-                                </Space>
-
-                                {isOverrideActive && (
-                                    <Alert
-                                        type="warning"
-                                        message={<span className="font-bold">Hệ thống đang mở Override</span>}
-                                        description="Sinh viên có thể đăng ký đề tài kể cả khi đã quá hạn. Hãy đóng lại khi hoàn tất đợt đăng ký bổ sung."
-                                        showIcon
-                                        className="rounded-2xl border-amber-200 bg-amber-50"
+                    {canManage && (
+                        <div className="lg:col-span-5 space-y-6">
+                            {isAdmin && !selectedDeptId ? (
+                                <Card className="page-card h-full flex items-center justify-center py-20 bg-slate-50/50 border-dashed border-2">
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description={
+                                            <div className="text-center">
+                                                <p className="text-slate-500 font-bold">Chế độ xem chung</p>
+                                                <p className="text-xs text-slate-400">Vui lòng chọn bộ môn ở phía trên để<br/>thiết lập cấu hình riêng hoặc mở đăng ký.</p>
+                                            </div>
+                                        }
                                     />
-                                )}
-                            </div>
-                        </Card>
-
-                        {/* Panel 1: Global Config */}
-                        <Card
-                            title={
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình Hội đồng & Điểm (Bộ môn)</h2>
+                                </Card>
+                            ) : (
+                                <>
+                                    {/* Panel 2: Registration Override Management */}
+                            <Card
+                                title={
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
+                                            <h2 className="text-[16px] font-bold text-slate-800 m-0">Cơ chế mở đăng ký bổ sung (Bộ môn)</h2>
+                                        </div>
+                                        {isOverrideActive ? (
+                                            <Tag color="error" className="rounded-full px-3 border-none font-bold animate-pulse">MỞ ĐĂNG KÝ</Tag>
+                                        ) : statusTag}
                                     </div>
-                                </div>
-                            }
-                            className="page-card"
-                            styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
-                        >
-                            <div className="space-y-4">
-                                <div className="bg-gray-50 p-4 rounded-xl space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="section-label">
-                                            Ngày bảo vệ dự kiến (riêng Bộ môn)
-                                        </label>
-                                        <div className="flex gap-2">
-                                            <DatePicker
-                                                className="flex-1 h-12 rounded-xl border-gray-200"
-                                                format="DD/MM/YYYY"
-                                                value={defenseDate}
-                                                onChange={setDefenseDate}
-                                                disabled={isLocked}
-                                                disabledDate={(current) => {
-                                                    if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
-                                                    return current && (
-                                                        current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
-                                                        current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
-                                                    );
-                                                }}
-                                            />
-                                            <Button 
-                                                type="primary" 
-                                                className="h-12 rounded-xl" 
-                                                icon={<SaveOutlined />} 
-                                                onClick={handleSaveDate}
-                                                loading={updateDateMutation.isPending && updateDateMutation.variables?.defense_date !== undefined}
-                                                disabled={isLocked || !defenseDate}
-                                            />
+                                }
+                                className="page-card"
+                                styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
+                            >
+                                <div className="space-y-6">
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="section-label">Hạn đăng ký gốc</span>
+                                            <span className="text-[14px] font-bold text-slate-700">
+                                                {activeSemester.topic_registration_end ? dayjs(activeSemester.topic_registration_end).format('DD/MM/YYYY HH:mm') : '---'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="section-label">Trạng thái hiện tại</span>
+                                            <span className={`text-[12px] font-bold ${isOverrideActive ? 'text-red-500' : 'text-slate-400'}`}>
+                                                {isOverrideActive ? 'ĐANG MỞ THỦ CÔNG' : 'TUÂN THỦ TIMELINE'}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <Divider className="my-2 border-gray-200" />
+                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Button
+                                            type={isOverrideActive ? 'default' : 'primary'}
+                                            danger={isOverrideActive}
+                                            icon={isOverrideActive ? <LockOutlined /> : <UnlockOutlined />}
+                                            block
+                                            size="large"
+                                            onClick={() => setIsOverrideModalOpen(true)}
+                                            disabled={!canOverride}
+                                            className={`h-12 rounded-xl shadow-md font-bold transition-all hover:scale-[1.02] ${!isOverrideActive ? 'bg-blue-600 border-none' : ''}`}
+                                        >
+                                            {isOverrideActive ? 'Thiết lập Đóng đăng ký' : 'Thiết lập mở đăng ký'}
+                                        </Button>
+                                        <Button
+                                            icon={<HistoryOutlined />}
+                                            block
+                                            className="h-12 rounded-xl border-dashed font-medium text-slate-500"
+                                            onClick={() => setIsHistoryModalOpen(true)}
+                                        >
+                                            Xem nhật ký Override
+                                        </Button>
+                                    </Space>
 
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-end pr-1">
-                                            <label className="section-label">
-                                                Hạn chót nhập điểm Hội đồng (Final)
-                                            </label>
-                                            {!deptConfig?.council_grading_deadline && activeSemester?.council_grading_deadline && (
-                                                <Tag color="default" className="m-0 text-[10px] border-none bg-gray-100 text-gray-500 rounded-full px-2">
-                                                    Đang dùng hạn mặc định
-                                                </Tag>
-                                            )}
-                                            {deptConfig?.council_grading_deadline && (
-                                                <Tag color="processing" className="m-0 text-[10px] border-none bg-blue-50 text-blue-600 rounded-full px-2">
-                                                    Đã thiết lập hạn riêng
-                                                </Tag>
-                                            )}
-                                        </div>
-                                        <DatePicker
-                                            showTime
-                                            className="w-full h-12 rounded-xl border-gray-200"
-                                            format="HH:mm DD/MM/YYYY"
-                                            placeholder={activeSemester?.council_grading_deadline 
-                                                ? `Mặc định: ${dayjs(activeSemester.council_grading_deadline).format('HH:mm DD/MM/YYYY')}` 
-                                                : "Chọn ngày và giờ khóa điểm"
-                                            }
-                                            value={deptConfig?.council_grading_deadline 
-                                                ? dayjs(deptConfig.council_grading_deadline) 
-                                                : (activeSemester?.council_grading_deadline ? dayjs(activeSemester.council_grading_deadline) : null)
-                                            }
-                                            onChange={handleSaveCouncilDeadline}
-                                            disabled={isLocked}
-                                            disabledDate={(current) => {
-                                                if (!activeSemester.defense_start) return false;
-                                                return current && (
-                                                    current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
-                                                    current.isAfter(dayjs(activeSemester.end_date).endOf('day'))
-                                                );
-                                            }}
+                                    {isOverrideActive && (
+                                        <Alert
+                                            type="warning"
+                                            message={<span className="font-bold">Hệ thống đang mở Override</span>}
+                                            description="Sinh viên có thể đăng ký đề tài kể cả khi đã quá hạn. Hãy đóng lại khi hoàn tất đợt đăng ký bổ sung."
+                                            showIcon
+                                            className="rounded-2xl border-amber-200 bg-amber-50"
                                         />
-                                        <Text type="secondary" className="text-[11px] italic block px-1">
-                                            {deptConfig?.council_grading_deadline 
-                                                ? "Bộ môn đã thiết lập hạn riêng. Điểm Hội đồng sẽ bị khóa vào mốc này." 
-                                                : activeSemester?.council_grading_deadline 
-                                                    ? "Chưa có hạn riêng, đang áp dụng hạn mặc định của Học kỳ."
-                                                    : "Sau thời gian này, điểm Hội đồng sẽ bị khóa. Muốn sửa phải qua quy trình phê duyệt."
-                                            }
-                                        </Text>
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* Panel 1: Global Config */}
+                            <Card
+                                title={
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
+                                            <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình Hội đồng & Điểm (Bộ môn)</h2>
+                                        </div>
+                                    </div>
+                                }
+                                className="page-card"
+                                styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
+                            >
+                                <div className="space-y-4">
+                                    <div className="bg-gray-50 p-4 rounded-xl space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="section-label">
+                                                Ngày bảo vệ dự kiến (Bộ môn)
+                                            </label>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex gap-2">
+                                                    <DatePicker
+                                                        className="flex-1 h-12 rounded-xl border-gray-200"
+                                                        format="DD/MM/YYYY"
+                                                        value={defenseDate}
+                                                        onChange={setDefenseDate}
+                                                        disabled={isLocked}
+                                                        disabledDate={(current) => {
+                                                            if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
+                                                            return current && (
+                                                                current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
+                                                                current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
+                                                            );
+                                                        }}
+                                                    />
+                                                    <Button 
+                                                        type="primary" 
+                                                        className="h-12 rounded-xl bg-blue-600 border-none shadow-md" 
+                                                        icon={<SaveOutlined />} 
+                                                        onClick={handleSaveDate}
+                                                        loading={updateDateMutation.isPending && updateDateMutation.variables?.defense_date !== undefined}
+                                                        disabled={isLocked || !defenseDate}
+                                                    >
+                                                        Lưu ngày
+                                                    </Button>
+                                                </div>
+                                                <Alert
+                                                    className="rounded-xl border-none bg-blue-50/50 py-2"
+                                                    message={
+                                                        <span className="text-[11px] text-blue-600 italic">
+                                                            Lưu ý: Ngày bảo vệ của bộ môn phải nằm trong khung thời gian của Khoa ({dayjs(activeSemester.defense_start).format('DD/MM/YYYY')} - {dayjs(activeSemester.defense_end).format('DD/MM/YYYY')}).
+                                                        </span>
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </Card>
+                            </Card>
 
-                        <Alert
-                            className="rounded-xl border border-blue-100 bg-blue-50/50"
-                            icon={<InfoCircleOutlined className="text-blue-400" />}
-                            showIcon
-                            message={<span className="text-blue-700 font-medium">Lưu ý về quy tắc mở đăng ký</span>}
-                            description={
-                                <ul className="text-xs text-blue-600/80 mt-1 list-disc pl-4 space-y-1">
-                                    <li>Chỉ SV chưa đăng ký mới được phép đăng ký trong thời gian mở đăng ký.</li>
-                                    <li>Không thể mở đăng ký lùi thời gian so với hạn hiện tại.</li>
-                                    <li>Lịch sử mở đăng ký sẽ được lưu vĩnh viễn để phục vụ thanh tra.</li>
-                                </ul>
-                            }
-                        />
-                            </>
-                        )}
-                    </div>
+                            <Alert
+                                className="rounded-xl border border-blue-100 bg-blue-50/50"
+                                icon={<InfoCircleOutlined className="text-blue-400" />}
+                                showIcon
+                                message={<span className="text-blue-700 font-medium">Lưu ý về quy tắc mở đăng ký</span>}
+                                description={
+                                    <ul className="text-xs text-blue-600/80 mt-1 list-disc pl-4 space-y-1">
+                                        <li>Chỉ SV chưa đăng ký mới được phép đăng ký trong thời gian mở đăng ký.</li>
+                                        <li>Không thể mở đăng ký lùi thời gian so với hạn hiện tại.</li>
+                                        <li>Lịch sử mở đăng ký sẽ được lưu vĩnh viễn để phục vụ thanh tra.</li>
+                                    </ul>
+                                }
+                            />
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Override Modal */}
