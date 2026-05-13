@@ -246,9 +246,12 @@ const MyRegisteredTopic = () => {
 
           {/* Topic Info Card */}
           <Card className="shadow-soft border-0 mb-6 overflow-hidden">
-            <div className="absolute top-0 right-0 p-4">
+            <div className="absolute top-0 right-0 p-4 flex gap-2">
               {myRegistration.midterm_status === 'PASS' && (
                 <Badge count="Đã đạt Giữa kỳ" style={{ backgroundColor: '#52c41a' }} />
+              )}
+              {myRegistration.midterm_status === 'FAIL' && (
+                <Badge count="Không đạt Giữa kỳ" style={{ backgroundColor: '#ff4d4f' }} />
               )}
             </div>
 
@@ -256,6 +259,23 @@ const MyRegisteredTopic = () => {
               <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
               <span className="text-slate-800 font-bold">Thông tin đề tài đăng ký</span>
             </div>
+
+            {myRegistration.midterm_status === 'FAIL' && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 animate-in slide-in-from-top duration-500">
+                <CloseCircleOutlined className="text-red-500 mt-1 text-lg" />
+                <div>
+                  <Text strong className="text-red-700 block text-base">Bạn không đạt đánh giá giữa kỳ</Text>
+                  <Text className="text-red-600 text-sm">
+                    Rất tiếc, dựa trên đánh giá của Giảng viên hướng dẫn, bạn không đủ điều kiện để tiếp tục thực hiện khóa luận tốt nghiệp trong học kỳ này.
+                  </Text>
+                  {myRegistration.midterm_feedback && (
+                    <div className="mt-2 p-2 bg-white/50 rounded border border-red-50 italic text-red-500 text-xs">
+                      Phản hồi: {myRegistration.midterm_feedback}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="mb-6 mt-3 text-slate-800 font-bold leading-snug" style={{ fontSize: '15px' }}>
               {topic?.title}
@@ -338,10 +358,11 @@ const MyRegisteredTopic = () => {
             </Descriptions>
           </Card>
 
-          <Row gutter={[24, 24]}>
-            <Col xs={24} lg={16}>
-              {/* Group Members List */}
-              {hasGroup && (
+          {myRegistration.midterm_status !== 'FAIL' && (
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={16}>
+                {/* Group Members List */}
+                {hasGroup && (
                 <Card
                   title={
                     <div className="flex items-center gap-2">
@@ -596,8 +617,9 @@ const MyRegisteredTopic = () => {
               </Card>
             </Col>
           </Row>
-        </div>
+        )}
       </div>
+    </div>
       <style dangerouslySetInnerHTML={{
         __html: `
           .topic-html-content {

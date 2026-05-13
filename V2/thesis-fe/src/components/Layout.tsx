@@ -18,6 +18,7 @@ import {
   CrownOutlined,
   AuditOutlined,
   LeftOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
@@ -125,6 +126,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
+          { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
           { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
         ]
       },
@@ -162,6 +164,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         { key: '/committee-assignment', label: 'Phân công hội đồng', icon: <CrownOutlined /> },
         { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
         { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
+        { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
         { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
       ]
     },

@@ -142,7 +142,19 @@ const getPhaseTimeRange = (phase: any, semester: any, deptConfig: any) => {
                 </div>
             );
         case 'FINAL':
-            return renderRange(semester.defense_end, semester.end_date, semester.defense_end, semester.end_date);
+            const councilDeadline = deptConfig?.council_grading_deadline;
+            return (
+                <div className="flex flex-col">
+                    <span className="font-bold text-blue-600">
+                        {formatD(semester.defense_end)} - {formatD(semester.end_date)}
+                    </span>
+                    {councilDeadline && (
+                        <span className="text-[11px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full mt-1 w-fit border border-amber-100">
+                            Hạn chót nhập điểm: {dayjs(councilDeadline).format('HH:mm DD/MM/YYYY')}
+                        </span>
+                    )}
+                </div>
+            );
         default:
             return '';
     }
@@ -166,8 +178,8 @@ const SemesterSettings = () => {
     });
 
     const updateDateMutation = useMutation({
-        mutationFn: (date: string) => SemestersApi.updateDeptConfig(activeSemester!.id, { 
-            defense_date: date,
+        mutationFn: (values: { defense_date?: string; council_grading_deadline?: string }) => SemestersApi.updateDeptConfig(activeSemester!.id, { 
+            ...values,
             departmentId: selectedDeptId
         }),
         onSuccess: () => {
@@ -228,7 +240,12 @@ const SemesterSettings = () => {
             notify.warning(t('semesterSettings.dateRequired', 'Vui lòng chọn ngày bảo vệ'));
             return;
         }
-        updateDateMutation.mutate(defenseDate.toISOString());
+        updateDateMutation.mutate({ defense_date: defenseDate.toISOString() });
+    };
+
+    const handleSaveCouncilDeadline = (date: dayjs.Dayjs | null) => {
+        if (!date) return;
+        updateDateMutation.mutate({ council_grading_deadline: date.toISOString() });
     };
 
 
@@ -467,7 +484,7 @@ const SemesterSettings = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình thời gian bảo vệ (Bộ môn)</h2>
+                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">Cấu hình Hội đồng & Điểm (Bộ môn)</h2>
                                     </div>
                                 </div>
                             }
@@ -475,39 +492,87 @@ const SemesterSettings = () => {
                             styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
                         >
                             <div className="space-y-4">
-                                <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+                                <div className="bg-gray-50 p-4 rounded-xl space-y-4">
                                     <div className="space-y-2">
                                         <label className="section-label">
                                             Ngày bảo vệ dự kiến (riêng Bộ môn)
                                         </label>
+                                        <div className="flex gap-2">
+                                            <DatePicker
+                                                className="flex-1 h-12 rounded-xl border-gray-200"
+                                                format="DD/MM/YYYY"
+                                                value={defenseDate}
+                                                onChange={setDefenseDate}
+                                                disabled={isLocked}
+                                                disabledDate={(current) => {
+                                                    if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
+                                                    return current && (
+                                                        current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
+                                                        current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
+                                                    );
+                                                }}
+                                            />
+                                            <Button 
+                                                type="primary" 
+                                                className="h-12 rounded-xl" 
+                                                icon={<SaveOutlined />} 
+                                                onClick={handleSaveDate}
+                                                loading={updateDateMutation.isPending && updateDateMutation.variables?.defense_date !== undefined}
+                                                disabled={isLocked || !defenseDate}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <Divider className="my-2 border-gray-200" />
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-end pr-1">
+                                            <label className="section-label">
+                                                Hạn chót nhập điểm Hội đồng (Final)
+                                            </label>
+                                            {!deptConfig?.council_grading_deadline && activeSemester?.council_grading_deadline && (
+                                                <Tag color="default" className="m-0 text-[10px] border-none bg-gray-100 text-gray-500 rounded-full px-2">
+                                                    Đang dùng hạn mặc định
+                                                </Tag>
+                                            )}
+                                            {deptConfig?.council_grading_deadline && (
+                                                <Tag color="processing" className="m-0 text-[10px] border-none bg-blue-50 text-blue-600 rounded-full px-2">
+                                                    Đã thiết lập hạn riêng
+                                                </Tag>
+                                            )}
+                                        </div>
                                         <DatePicker
+                                            showTime
                                             className="w-full h-12 rounded-xl border-gray-200"
-                                            format="DD/MM/YYYY"
-                                            value={defenseDate}
-                                            onChange={setDefenseDate}
+                                            format="HH:mm DD/MM/YYYY"
+                                            placeholder={activeSemester?.council_grading_deadline 
+                                                ? `Mặc định: ${dayjs(activeSemester.council_grading_deadline).format('HH:mm DD/MM/YYYY')}` 
+                                                : "Chọn ngày và giờ khóa điểm"
+                                            }
+                                            value={deptConfig?.council_grading_deadline 
+                                                ? dayjs(deptConfig.council_grading_deadline) 
+                                                : (activeSemester?.council_grading_deadline ? dayjs(activeSemester.council_grading_deadline) : null)
+                                            }
+                                            onChange={handleSaveCouncilDeadline}
                                             disabled={isLocked}
                                             disabledDate={(current) => {
-                                                if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
+                                                if (!activeSemester.defense_start) return false;
                                                 return current && (
                                                     current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
-                                                    current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
+                                                    current.isAfter(dayjs(activeSemester.end_date).endOf('day'))
                                                 );
                                             }}
                                         />
+                                        <Text type="secondary" className="text-[11px] italic block px-1">
+                                            {deptConfig?.council_grading_deadline 
+                                                ? "Bộ môn đã thiết lập hạn riêng. Điểm Hội đồng sẽ bị khóa vào mốc này." 
+                                                : activeSemester?.council_grading_deadline 
+                                                    ? "Chưa có hạn riêng, đang áp dụng hạn mặc định của Học kỳ."
+                                                    : "Sau thời gian này, điểm Hội đồng sẽ bị khóa. Muốn sửa phải qua quy trình phê duyệt."
+                                            }
+                                        </Text>
                                     </div>
                                 </div>
-                                <Button
-                                    type="primary"
-                                    size="large"
-                                    block
-                                    icon={<SaveOutlined />}
-                                    onClick={handleSaveDate}
-                                    loading={updateDateMutation.isPending}
-                                    disabled={isLocked || !defenseDate}
-                                    className="h-12 rounded-xl"
-                                >
-                                    Lưu thay đổi
-                                </Button>
                             </div>
                         </Card>
 

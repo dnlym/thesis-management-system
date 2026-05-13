@@ -61,6 +61,7 @@ export class SemesterService {
     topic_registration_end?: Date;
     midterm_start?: Date;
     midterm_end?: Date;
+    council_grading_deadline?: Date;
   }) {
     // Parse all date strings to Date objects
     // Using toEndDate for all deadlines / phase boundaries
@@ -76,6 +77,7 @@ export class SemesterService {
     const topic_registration_end = toEndDate(data.topic_registration_end);
     const midterm_start = toDate(data.midterm_start);
     const midterm_end = toEndDate(data.midterm_end);
+    const council_grading_deadline = toEndDate(data.council_grading_deadline);
 
     // Validate timeline integrity
     this.validateTimelineIntegrity({
@@ -90,7 +92,8 @@ export class SemesterService {
       defense_start,
       defense_end,
       midterm_start,
-      midterm_end
+      midterm_end,
+      council_grading_deadline
     });
 
     // Check for semester overlapping
@@ -121,6 +124,7 @@ export class SemesterService {
         topic_registration_end: topic_registration_end,
         midterm_start: midterm_start,
         midterm_end: midterm_end,
+        council_grading_deadline: council_grading_deadline,
         status: SemesterStatus.PLANNING,
       },
     });
@@ -152,6 +156,7 @@ export class SemesterService {
     topic_registration_end?: Date;
     midterm_start?: Date;
     midterm_end?: Date;
+    council_grading_deadline?: Date;
     isActive?: boolean;
     phase?: SemesterPhase;
     manualPhaseOverride?: SemesterPhase | null;
@@ -178,6 +183,7 @@ export class SemesterService {
     const final_topic_registration_end = toEndDate(data.topic_registration_end) ?? semester.topic_registration_end;
     const final_midterm_start = toDate(data.midterm_start) ?? semester.midterm_start;
     const final_midterm_end = toEndDate(data.midterm_end) ?? semester.midterm_end;
+    const final_council_grading_deadline = toEndDate(data.council_grading_deadline) ?? semester.council_grading_deadline;
 
     // Validate timeline integrity of the final merged result
     this.validateTimelineIntegrity({
@@ -192,7 +198,8 @@ export class SemesterService {
       defense_start: final_defense_start,
       defense_end: final_defense_end,
       midterm_start: final_midterm_start,
-      midterm_end: final_midterm_end
+      midterm_end: final_midterm_end,
+      council_grading_deadline: final_council_grading_deadline
     });
 
     // Check for semester overlapping
@@ -212,6 +219,7 @@ export class SemesterService {
       topic_registration_end: toEndDate(data.topic_registration_end),
       midterm_start: toDate(data.midterm_start),
       midterm_end: toEndDate(data.midterm_end),
+      council_grading_deadline: toEndDate(data.council_grading_deadline),
     };
 
     const oldPhase = SemesterGuard.calculateCurrentPhase(semester);
@@ -455,6 +463,7 @@ export class SemesterService {
     defense_end?: Date | null;
     midterm_start?: Date | null;
     midterm_end?: Date | null;
+    council_grading_deadline?: Date | null;
   }) {
     const {
       start_date,
@@ -467,7 +476,8 @@ export class SemesterService {
       defense_start,
       defense_end,
       midterm_start,
-      midterm_end
+      midterm_end,
+      council_grading_deadline
     } = data;
 
     // 1. Array-based Boundary Lock (Fail-Fast: Prevent NULL bypass)
@@ -525,6 +535,20 @@ export class SemesterService {
       }
       if (proposal_deadline && mEnd.isAfter(dayjs(proposal_deadline), 'day')) {
         throw new Error('Giai đoạn chấm giữa kỳ phải kết thúc trước hoặc cùng ngày hạn nộp báo cáo (kết thúc giai đoạn Thực hiện).');
+      }
+    }
+
+    // 5. Council Grading Deadline validation
+    if (council_grading_deadline) {
+      const cDeadline = dayjs(council_grading_deadline);
+      const dStart = defense_start ? dayjs(defense_start) : null;
+      const eDate = dayjs(end_date);
+
+      if (dStart && cDeadline.isBefore(dStart, 'day')) {
+        throw new Error('Hạn chót chấm điểm Hội đồng phải sau hoặc cùng ngày với khi bắt đầu Bảo vệ.');
+      }
+      if (cDeadline.isAfter(eDate, 'day')) {
+        throw new Error('Hạn chót chấm điểm Hội đồng không được vượt quá ngày kết thúc học kỳ.');
       }
     }
   }

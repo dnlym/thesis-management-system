@@ -74,29 +74,7 @@ export class GradingService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
-    // 0. Check if group is finalized (HOD lock)
-    if (data.groupId) {
-      const finalizedScore = await (prisma.finalScore as any).findFirst({
-        where: {
-          group_id: data.groupId,
-          finalized: true
-        }
-      });
-      if (finalizedScore) {
-        throw new Error('Nhóm này đã được chốt điểm bởi Trưởng bộ môn. Không thể chỉnh sửa.');
-      }
-    } else if (data.studentId) {
-      // Check if student is finalized individually
-      const finalizedScore = await prisma.finalScore.findFirst({
-        where: {
-          student_id: data.studentId,
-          finalized: true
-        }
-      });
-      if (finalizedScore) {
-        throw new Error('Sinh viên này đã được chốt điểm bởi Trưởng bộ môn. Không thể chỉnh sửa.');
-      }
-    }
+    // [DEPRECATED] Hard finalization check removed. Now relying on Semester Deadline logic.
 
     // Determine academic action based on role
     let action = AcademicAction.GRADE_REVIEWER;
@@ -151,9 +129,9 @@ export class GradingService {
     this.validateCriteriaWeights(criteria);
 
     // Validate all criteria are provided
-    const providedCriteriaIds = data.grades.map(g => g.criterionId);
-    const requiredCriteriaIds = criteria.map(c => c.id);
-    const missingCriteria = requiredCriteriaIds.filter(id => !providedCriteriaIds.includes(id));
+    const providedCriteriaIds = data.grades.map((g: any) => g.criterionId);
+    const requiredCriteriaIds = criteria.map((c: GradingCriterion) => c.id);
+    const missingCriteria = requiredCriteriaIds.filter((id: string) => !providedCriteriaIds.includes(id));
 
     if (missingCriteria.length > 0) {
       console.log(`[GradingService] Validation Failed: Missing criteria for role ${raterRole}`);
@@ -165,7 +143,7 @@ export class GradingService {
 
     // Validate scores (0-10 and range)
     for (const grade of data.grades) {
-      const criterion = criteria.find(c => c.id === grade.criterionId);
+      const criterion = criteria.find((c: GradingCriterion) => c.id === grade.criterionId);
       if (!criterion) {
         throw new Error(`Tiêu chí không hợp lệ: ${grade.criterionId}`);
       }
@@ -190,6 +168,42 @@ export class GradingService {
       },
     });
 
+    // --- DEADLINE CHECK & ROUTING (MILESTONE LOGIC) ---
+    const phase = AcademicPolicy.getPhase(semester) || SemesterPhase.PLANNING;
+    
+    // Fetch department configuration for this semester to get specific council deadline
+    const deptConfig = await prisma.departmentSemesterConfig.findUnique({
+      where: {
+        department_id_semester_id: {
+          department_id: topic.departmentId,
+          semester_id: topic.semester_id
+        }
+      }
+    });
+
+    const isPastDeadline = this.isPastMilestone(
+      raterRole, 
+      phase, 
+      semester.thesis_deadline, 
+      deptConfig, 
+      semester.council_grading_deadline
+    );
+    
+    // If it's a modification after deadline, we MUST use the Request-Approval workflow
+    if (isPastDeadline) {
+      const changedGrades = data.grades.filter(newGrade => {
+        const old = existingGrades.find(eg => eg.criterion_id === newGrade.criterionId);
+        return !old || old.score !== roundScore(newGrade.score);
+      });
+
+      if (changedGrades.length > 0) {
+        return await this.requestGradeChange(userId, data, raterRole, existingGrades, resolvedTopicId);
+      }
+      
+      // If nothing changed, just return existing (idempotent)
+      return existingGrades;
+    }
+
     // We will use upsert instead of delete-create to preserve graded_at for yellow dot detection
     /* 
     await prisma.grade.deleteMany({
@@ -208,7 +222,6 @@ export class GradingService {
     const grades = await Promise.all(
       data.grades.map(async (grade) => {
         const roundedScore = roundScore(grade.score);
-        const oldGrade = existingGrades.find(eg => eg.criterion_id === grade.criterionId);
         
         // Find existing grade manually to handle nulls in compound unique constraints
         const existingGradeRecord = await prisma.grade.findFirst({
@@ -250,37 +263,8 @@ export class GradingService {
           });
         }
 
-        // Save GradeHistory ONLY if score has changed
-        if (oldGrade && oldGrade.score !== roundedScore) {
-          // Determine students to log history for
-          let studentIds: string[] = [];
-          if (data.studentId) {
-            studentIds = [data.studentId];
-          } else if (data.groupId) {
-            // Get all students in the group
-            const groupStudents = topic.registrations
-              .filter(r => r.group_id === data.groupId)
-              .map(r => r.student_id);
-            studentIds = groupStudents;
-          }
-
-          // Create history for each student
-          for (const sid of studentIds) {
-            await prisma.gradeHistory.create({
-              data: {
-                student_id: sid,
-                grader_id: userId,
-                topic_id: resolvedTopicId,
-                group_id: data.groupId || null,
-                criterion_id: grade.criterionId,
-                old_score: oldGrade.score,
-                new_score: roundedScore,
-                reason: grade.comments || 'Cập nhật điểm',
-                rater_role: raterRole
-              }
-            });
-          }
-        }
+        // [POLICY] Pre-deadline modifications are NOT logged to GradeHistory per user request
+        // Only post-deadline approved changes will be captured in approveGradeChangeRequest
 
         return savedGrade;
       })
@@ -550,163 +534,11 @@ export class GradingService {
     return results;
   }
 
-  async finalizeFinalScore(userId: string, topicId: string) {
-    const finalScores = await prisma.finalScore.findMany({
-      where: { topic_id: topicId },
-    });
-
-    if (finalScores.length === 0) {
-      throw new Error(ERROR_CODES.GRADE_NOT_FOUND);
-    }
-
-    // Check academic policy
-    const topicCheck = await prisma.topic.findUnique({
-      where: { id: topicId },
-      include: { semester: true, grades: true }
-    });
-    if (!topicCheck) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
-    AcademicPolicy.enforce(AcademicAction.FINALIZE_SCORE, { id: userId, role: UserRole.HEAD }, topicCheck.semester, { topic: topicCheck });
-
-    // NEW: Proper complete validation before finalizing
-    const topic = await prisma.topic.findUnique({
-      where: { id: topicId },
-      include: {
-        grades: true,
-        registrations: true, // Thêm dòng này để fix lỗi
-        assignments: {
-          where: { assignment_type: AssignmentType.COMMITTEE }
-        }
-      }
-    });
-
-    if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
-
-    const supervisorGrades = topic.grades.filter(g => g.rater_role === RaterRole.SUPERVISOR);
-    const gradedReviewerIds = [...new Set(topic.grades
-      .filter(g => isReviewer(g.rater_role))
-      .map(g => g.grader_id))];
-    const committeeAssignedIds = topic.assignments.map(a => a.reviewer_id);
-    const committeeGradedIds = [...new Set(topic.grades
-      .filter((g: any) => isCommittee(g.rater_role))
-      .map((g: any) => g.grader_id))];
-
-    const isCommitteeComplete = committeeAssignedIds.length > 0 &&
-      committeeGradedIds.length >= committeeAssignedIds.length;
-
-    const reviewerRequired = topic.reviewer_required_count || 2;
-    const isReviewerComplete = gradedReviewerIds.length >= reviewerRequired;
-
-    if (!supervisorGrades.length || !isReviewerComplete || !isCommitteeComplete) {
-      console.error(`[GradingService] Incomplete grades for topic ${topicId}:`, {
-        hasSupervisor: supervisorGrades.length > 0,
-        reviewerCount: gradedReviewerIds.length,
-        reviewerRequired,
-        committeeCount: committeeGradedIds.length,
-        committeeRequired: committeeAssignedIds.length
-      });
-      throw new Error(ERROR_CODES.INCOMPLETE_GRADES);
-    }
-
-    const alreadyFinalized = finalScores.some(fs => fs.finalized);
-    if (alreadyFinalized) {
-      throw new Error(ERROR_CODES.ALREADY_FINALIZED);
-    }
-
-    // Update only final scores for students who passed midterm
-    const activeStudentIds = topic.registrations
-      .filter((reg: any) => reg.midterm_status === 'PASS')
-      .map((reg: any) => reg.student_id);
-
-    await prisma.finalScore.updateMany({
-      where: { 
-        topic_id: topicId,
-        student_id: { in: activeStudentIds }
-      },
-      data: {
-        finalized: true,
-        finalized_by: userId,
-        finalized_at: new Date(),
-      },
-    });
-
-    // Update topic status
-    await prisma.topic.update({
-      where: { id: topicId },
-      data: {
-        status: TopicStatus.FINALIZED,
-        progress_stage: ProgressStage.DONE,
-      },
-    });
-
-    // Update progress for active students
-    await prisma.topicRegistration.updateMany({
-      where: { 
-        topic_id: topicId,
-        student_id: { in: activeStudentIds }
-      },
-      data: {
-        student_progress_status: StudentProgressStatus.COMPLETED,
-      },
-    });
-
-    // Create audit log
-    await AuditLogger.log({
-      userId,
-      action: 'FINALIZE_SCORE',
-      entityType: 'FinalScore',
-      entityId: topicId,
-      newValue: { finalized: true, studentCount: finalScores.length },
-      description: `Trưởng bộ môn/Admin ${userId} đã chốt điểm cho đề tài ${topicId}`
-    });
-
-    // Notify Students
-    await notificationService.notifyScoreFinalized(topicId);
-
-    return { message: 'Final score finalized successfully' };
-  }
-
   /**
-   * HOD Finalizes all grades for a specific group
+   * HOD Finalizes all grades for a specific group (DEPRECATED)
    */
   async finalizeGroup(userId: string, groupId: string) {
-    // 1. Check user role
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== 'HEAD' && user.role !== 'ADMIN')) {
-      throw new Error(ERROR_CODES.FORBIDDEN);
-    }
-
-    // 2. Get group members
-    const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          where: { status: 'ACCEPTED' }
-        }
-      }
-    });
-
-    if (!group) throw new Error('Không tìm thấy nhóm');
-
-    // 3. Compute final scores for the whole topic once
-    await this.computeFinalScore(group.topic_id!);
-
-    // 4. For each student in this group, update finalized flag
-    const results = await Promise.all(group.members.map(async (m) => {
-      return await prisma.finalScore.updateMany({
-        where: {
-          topic_id: group.topic_id!,
-          student_id: m.user_id,
-          group_id: groupId
-        },
-        data: {
-          finalized: true,
-          finalized_by: userId,
-          finalized_at: new Date()
-        }
-      });
-    }));
-
-    return results;
+    throw new Error('Cơ chế chốt điểm thủ công đã bị loại bỏ. Hệ thống hiện quản lý theo Deadline.');
   }
 
   /**
@@ -1177,7 +1009,7 @@ export class GradingService {
     return grouped;
   }
 
-  private getGradeClassification(score: number): string {
+  public getGradeClassification(score: number): string {
     if (score >= 9.0) return 'Xuất sắc (A)';
     if (score >= 8.5) return 'Xuất sắc (A-)';
     if (score >= 8.0) return 'Giỏi (B+)';
@@ -1189,7 +1021,7 @@ export class GradingService {
     return 'Kém (F)';
   }
 
-  private async getPriorityCriteria(role: RaterRole, departmentId: string) {
+  public async getPriorityCriteria(role: RaterRole, departmentId: string): Promise<GradingCriterion[]> {
     // 1. Canonical Role lookup
     const roleGroup = ROLE_GROUP_MAP[role] || RoleGroup.SUPERVISOR;
     const canonicalRole = roleGroup as unknown as RaterRole;
@@ -1260,7 +1092,7 @@ export class GradingService {
     throw new Error(`Không tìm thấy tiêu chí chấm điểm cho vai trò ${role}`);
   }
 
-  private validateCriteriaWeights(criteria: GradingCriterion[]) {
+  public validateCriteriaWeights(criteria: GradingCriterion[]): void {
     const totalWeight = criteria.reduce((sum, c) => sum + (c.weight || 0), 0);
     // Use float tolerance for weight validation
     if (Math.abs(totalWeight - 1.0) > 0.001) {
@@ -1268,7 +1100,7 @@ export class GradingService {
     }
   }
 
-  private async checkAllReviewersGraded(topicId: string): Promise<boolean> {
+  public async checkAllReviewersGraded(topicId: string): Promise<boolean> {
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
       include: {
@@ -1296,7 +1128,7 @@ export class GradingService {
     return reviewerIds.length > 0 && reviewerIds.every(id => gradedReviewerIds.includes(id));
   }
 
-  private async checkAllCommitteeGraded(topicId: string): Promise<boolean> {
+  public async checkAllCommitteeGraded(topicId: string): Promise<boolean> {
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
       include: {
@@ -1986,6 +1818,262 @@ export class GradingService {
         new_value: { isEligible, reason },
       }
     });
+  }
+  /**
+   * Create a grade change request for HOD approval
+   */
+  public async requestGradeChange(
+    userId: string, 
+    data: SubmitGradeRequest, 
+    raterRole: RaterRole, 
+    existingGrades: any[], 
+    topicId: string
+  ) {
+    const requests = await Promise.all(
+      data.grades.map(async (g) => {
+        const existing = existingGrades.find(eg => eg.criterion_id === g.criterionId);
+        const newScore = roundScore(g.score);
+        
+        // Only create request if score actually changed
+        if (existing && existing.score === newScore) return null;
+
+        return prisma.gradeChangeRequest.create({
+          data: {
+            topic_id: topicId,
+            student_id: data.studentId || '', // Handle group grading in logic if needed
+            grader_id: userId,
+            criterion_id: g.criterionId,
+            rater_role: raterRole,
+            old_score: existing?.score || null,
+            new_score: newScore,
+            reason: g.comments || 'Cập nhật điểm sau thời hạn',
+            status: 'PENDING'
+          }
+        });
+      })
+    );
+
+    const createdRequests = requests.filter(r => r !== null);
+
+    // Notify HOD
+    const topic = await prisma.topic.findUnique({ where: { id: topicId }, select: { departmentId: true } });
+    if (topic?.departmentId) {
+      const hods = await prisma.user.findMany({ 
+        where: { departmentId: topic.departmentId, role: UserRole.HEAD } 
+      });
+      for (const hod of hods) {
+        await notificationService.createNotification(
+          hod.id,
+          'GRADE_CHANGE_REQUEST',
+          'Yêu cầu sửa điểm mới',
+          `Giảng viên vừa gửi yêu cầu sửa điểm cho sinh viên sau thời hạn.`,
+          topicId
+        );
+      }
+    }
+
+    return { 
+      message: 'Đã gửi yêu cầu sửa điểm tới Trưởng bộ môn phê duyệt.',
+      status: 'PENDING_APPROVAL',
+      requestCount: createdRequests.length 
+    };
+  }
+
+  /**
+   * Get pending requests for HOD
+   */
+  public async getPendingGradeChangeRequests(departmentId: string) {
+    return prisma.gradeChangeRequest.findMany({
+      where: {
+        status: 'PENDING',
+        topic: { departmentId }
+      },
+      include: {
+        grader: { select: { id: true, full_name: true } },
+        student: { select: { id: true, full_name: true, student_code: true } },
+        topic: { select: { id: true, title: true } },
+        criterion: true
+      },
+      orderBy: { created_at: 'desc' }
+    });
+  }
+
+  /**
+   * Approve a grade change request
+   */
+  public async approveGradeChangeRequest(hodId: string, requestId: string) {
+    const request = await prisma.gradeChangeRequest.findUnique({
+      where: { id: requestId },
+      include: { topic: true }
+    });
+
+    if (!request) throw new Error('Không tìm thấy yêu cầu');
+    
+    // Check permission (HOD of the same department)
+    const hod = await prisma.user.findUnique({ where: { id: hodId } });
+    if (hod?.role !== UserRole.HEAD || hod.departmentId !== request.topic.departmentId) {
+      throw new Error(ERROR_CODES.FORBIDDEN);
+    }
+
+    // 1. Update the actual Grade
+    const existingGrade = await prisma.grade.findFirst({
+      where: {
+        topic_id: request.topic_id,
+        student_id: request.student_id,
+        criterion_id: request.criterion_id,
+        rater_role: request.rater_role,
+        grader_id: request.grader_id
+      }
+    });
+
+    if (existingGrade) {
+      await prisma.grade.update({
+        where: { id: existingGrade.id },
+        data: { 
+          score: request.new_score,
+          comments: request.reason 
+        }
+      });
+    } else {
+      await prisma.grade.create({
+        data: {
+          topic_id: request.topic_id,
+          student_id: request.student_id,
+          grader_id: request.grader_id,
+          criterion_id: request.criterion_id,
+          rater_role: request.rater_role,
+          score: request.new_score,
+          comments: request.reason
+        }
+      });
+    }
+
+    // 2. Log History
+    await prisma.gradeHistory.create({
+      data: {
+        student_id: request.student_id,
+        grader_id: request.grader_id,
+        topic_id: request.topic_id,
+        criterion_id: request.criterion_id,
+        old_score: request.old_score,
+        new_score: request.new_score,
+        reason: `[Phê duyệt bởi HOD] ${request.reason}`,
+        rater_role: request.rater_role
+      }
+    });
+
+    // 3. Update Request status
+    const updatedRequest = await prisma.gradeChangeRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'APPROVED',
+        reviewed_by: hodId,
+        reviewed_at: new Date()
+      }
+    });
+
+    // 4. Notify Grader
+    await notificationService.createNotification(
+      request.grader_id,
+      'GRADE_CHANGE_APPROVED',
+      'Yêu cầu sửa điểm đã được duyệt',
+      `Trưởng bộ môn đã phê duyệt thay đổi điểm cho sinh viên.`,
+      request.topic_id
+    );
+
+    // 5. Re-calculate final score
+    await this.computeFinalScore(request.topic_id);
+
+    return updatedRequest;
+  }
+
+  /**
+   * Reject a grade change request
+   */
+  public async rejectGradeChangeRequest(hodId: string, requestId: string, reason: string) {
+    const request = await prisma.gradeChangeRequest.findUnique({
+      where: { id: requestId },
+      include: { topic: true }
+    });
+
+    if (!request) throw new Error('Không tìm thấy yêu cầu');
+
+    const updatedRequest = await prisma.gradeChangeRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'REJECTED',
+        reviewed_by: hodId,
+        reviewed_at: new Date(),
+        rejection_reason: reason
+      }
+    });
+
+    // Notify Grader
+    await notificationService.createNotification(
+      request.grader_id,
+      'GRADE_CHANGE_REJECTED',
+      'Yêu cầu sửa điểm bị từ chối',
+      `Trưởng bộ môn đã từ chối yêu cầu sửa điểm. Lý do: ${reason}`,
+      request.topic_id
+    );
+
+    return updatedRequest;
+  }
+
+  /**
+   * Helper to determine if a rater is past their specific milestone (deadline)
+   * Milestone logic:
+   * - Supervisor: Past if phase >= REVIEWING (User: "điểm hướng dẫn hạ khi qua phase phản biện")
+   * - Reviewer: Past if phase >= DEFENSE (User: "điểm phản biện hạn là khi qua phase hội đồng")
+   * - Council: Past if now > council_grading_deadline (User: "điểm hội đồng chính là phase cuối mà chúng ta sẽ cài đặt chọn ngày")
+   */
+  private isPastMilestone(
+    role: RaterRole, 
+    phase: SemesterPhase, 
+    globalDeadline: Date | string, 
+    deptConfig: any,
+    semesterCouncilDeadline?: Date | string | null
+  ): boolean {
+    const now = new Date();
+    
+    // 0. Hard cutoff by global date (if set)
+    if (globalDeadline && now > new Date(globalDeadline)) return true;
+
+    // 1. Milestone logic by role
+    switch (role) {
+      case RaterRole.SUPERVISOR:
+        // Locked when REVIEWING starts
+        return ([SemesterPhase.REVIEWING, SemesterPhase.DEFENSE, SemesterPhase.FINAL] as string[]).includes(phase as string);
+
+      case RaterRole.REVIEWER:
+      case RaterRole.REVIEWER_1:
+      case RaterRole.REVIEWER_2:
+      case RaterRole.REVIEWER_3:
+        // Locked when DEFENSE (Council) starts
+        return ([SemesterPhase.DEFENSE, SemesterPhase.FINAL] as string[]).includes(phase as string);
+
+      case RaterRole.COMMITTEE:
+      case RaterRole.COMMITTEE_CHAIR:
+      case RaterRole.COMMITTEE_SECRETARY:
+      case RaterRole.COMMITTEE_MEMBER:
+      case RaterRole.COMMITTEE_MEMBER_1:
+      case RaterRole.COMMITTEE_MEMBER_2:
+      case RaterRole.POSTER_COMMITTEE:
+      case RaterRole.ORAL_COMMITTEE:
+        // Priority 1: Specific date configured in DeptConfig (Override)
+        if (deptConfig?.council_grading_deadline) {
+          return now > new Date(deptConfig.council_grading_deadline);
+        }
+        // Priority 2: Default date configured in Semester (Admin)
+        if (semesterCouncilDeadline) {
+          return now > new Date(semesterCouncilDeadline);
+        }
+        // Fallback: If no date set anywhere, lock when semester is FINAL
+        return phase === SemesterPhase.FINAL;
+
+      default:
+        return false;
+    }
   }
 }
 

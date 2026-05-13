@@ -172,5 +172,29 @@ export const GradingApi = {
         });
         return res.data.data;
     },
+
+    /**
+     * Get pending grade change requests (HOD only)
+     */
+    async getPendingChangeRequests() {
+        const res = await api.get<ApiResponse<any[]>>('/grading/change-requests/pending');
+        return res.data.data;
+    },
+
+    /**
+     * Approve a grade change request
+     */
+    async approveChangeRequest(requestId: string) {
+        const res = await api.post<ApiResponse<any>>(`/grading/change-requests/${requestId}/approve`);
+        return res.data.data;
+    },
+
+    /**
+     * Reject a grade change request
+     */
+    async rejectChangeRequest(requestId: string, reason: string) {
+        const res = await api.post<ApiResponse<any>>(`/grading/change-requests/${requestId}/reject`, { reason });
+        return res.data.data;
+    },
 };
 

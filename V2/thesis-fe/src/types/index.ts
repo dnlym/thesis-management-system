@@ -86,6 +86,7 @@ export interface DepartmentSemesterConfig {
   department_id: string;
   semester_id: string;
   defense_date?: string;
+  council_grading_deadline?: string;
   is_registration_open: boolean;
   updated_by: string;
   updated_at: string;
@@ -107,6 +108,7 @@ export interface Semester {
   thesis_deadline: string;
   defense_start: string;
   defense_end: string;
+  council_grading_deadline?: string;
   status: SemesterStatus;
   is_registration_override?: boolean;
   deptConfig?: DepartmentSemesterConfig;

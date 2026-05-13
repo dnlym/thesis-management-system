@@ -101,7 +101,7 @@ export const SemestersApi = {
         return res.data.data;
     },
 
-    async updateDeptConfig(semesterId: string, data: { defense_date?: string; is_registration_open?: boolean; departmentId?: string }) {
+    async updateDeptConfig(semesterId: string, data: { defense_date?: string; council_grading_deadline?: string; is_registration_open?: boolean; departmentId?: string }) {
         const res = await api.post<ApiResponse<any>>(`/semesters/${semesterId}/dept-config`, data);
         return res.data.data;
     },

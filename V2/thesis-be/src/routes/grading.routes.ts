@@ -57,6 +57,28 @@ router.get(
   gradingController.getGradeSummary.bind(gradingController)
 );
 
+// Grade Change Requests (HOD only)
+router.get(
+  '/change-requests/pending',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  gradingController.getPendingGradeChangeRequests.bind(gradingController)
+);
+
+router.post(
+  '/change-requests/:requestId/approve',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  gradingController.approveGradeChangeRequest.bind(gradingController)
+);
+
+router.post(
+  '/change-requests/:requestId/reject',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  validate([
+    body('reason').notEmpty().withMessage('Lý do từ chối là bắt buộc')
+  ]),
+  gradingController.rejectGradeChangeRequest.bind(gradingController)
+);
+
 // Grade History
 router.get(
   '/history',
@@ -125,21 +147,7 @@ router.post(
   gradingController.computeFinalScore.bind(gradingController)
 );
 
-router.post(
-  '/:topicId/finalize',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
-  enforceAcademicAction(AcademicAction.FINALIZE_SCORE),
-  validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
-  gradingController.finalizeFinalScore.bind(gradingController)
-);
-
-router.post(
-  '/groups/:groupId/finalize',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
-  enforceAcademicAction(AcademicAction.FINALIZE_SCORE),
-  validate([param('groupId').isUUID().withMessage('Invalid group ID')]),
-  gradingController.finalizeGroup.bind(gradingController)
-);
+// Manual finalization routes removed (deprecated)
 
 // Get current user's grades for a topic (for read-only confirmed state)
 router.get(

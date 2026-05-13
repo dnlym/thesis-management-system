@@ -53,7 +53,7 @@ export class DeptSemesterConfigController {
       const { semesterId } = req.params;
       const userRole = req.user!.role;
       let targetDepartmentId: string | undefined;
-      const { defense_date, is_registration_open, departmentId: bodyDeptId } = req.body;
+      const { defense_date, is_registration_open, council_grading_deadline, departmentId: bodyDeptId } = req.body;
 
       if (userRole === 'ADMIN') {
         targetDepartmentId = bodyDeptId;
@@ -82,6 +82,7 @@ export class DeptSemesterConfigController {
         semesterId,
         {
           defense_date: defense_date ? new Date(defense_date) : undefined,
+          council_grading_deadline: council_grading_deadline ? new Date(council_grading_deadline) : undefined,
           is_registration_open
         }
       );

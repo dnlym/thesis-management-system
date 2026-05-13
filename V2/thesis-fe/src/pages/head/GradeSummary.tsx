@@ -38,17 +38,7 @@ const GradeSummary = () => {
 
   const topics = data?.allTopics || [];
 
-  const finalizeMutation = useMutation({
-    mutationFn: (topicId: string) => GradingApi.finalizeGrades(topicId),
-    onSuccess: () => {
-      notify.success('Đã xác nhận và chốt điểm thành công!');
-      queryClient.invalidateQueries({ queryKey: ['grade-summary'] });
-      setSelectedTopicId(null);
-    },
-    onError: (err: any) => {
-      notify.error(err.message || 'Không thể chốt điểm');
-    },
-  });
+  // Finalize mutation removed (manual finalization is deprecated)
 
   const filteredTopics = useMemo(() => {
     let result = topics;
@@ -178,8 +168,6 @@ const GradeSummary = () => {
                 topic={topic}
                 keyword={debouncedSearch}
                 onViewDetails={() => setSelectedTopicId(topic.id)}
-                onFinalize={() => finalizeMutation.mutate(topic.id)}
-                isFinalizing={finalizeMutation.isPending && selectedTopicId === topic.id}
               />
             ))
           ) : (
@@ -202,8 +190,6 @@ const GradeSummary = () => {
       <GradeDetailDrawer
         topicId={selectedTopicId}
         onClose={() => setSelectedTopicId(null)}
-        onFinalize={(id: string) => finalizeMutation.mutate(id)}
-        isFinalizing={finalizeMutation.isPending}
       />
 
       <style>{`
@@ -230,8 +216,7 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
   if (gs?.isCommitteeComplete) doneCount++;
 
   const getStatusBadge = () => {
-    if (isFinalized) return <Tag className="rounded-full px-3 py-1 border-none bg-slate-100 text-slate-500 font-bold text-[11px] tracking-tight">ĐÃ CHỐT ĐIỂM</Tag>;
-    if (isComplete) return <Tag className="rounded-full px-3 py-1 border-none bg-green-50 text-green-600 font-bold text-[11px] tracking-tight">SẴN SÀNG CHỐT</Tag>;
+    if (isComplete) return <Tag className="rounded-full px-3 py-1 border-none bg-green-50 text-green-600 font-bold text-[11px] tracking-tight">ĐÃ ĐỦ ĐIỂM</Tag>;
     
     return (
       <div className="flex items-center gap-1.5 bg-amber-50/50 px-2 py-0.5 rounded-full border border-amber-100/50">
@@ -357,48 +342,15 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
 
 
         <Col span={6} className="flex flex-col gap-2">
-          {isFinalized ? (
-            <Button 
-              icon={<EyeOutlined />} 
-              size="middle"
-              className="rounded-lg h-9 border-slate-200 text-slate-600 font-bold text-[12px] hover:bg-slate-50 shadow-sm" 
-              onClick={onViewDetails}
-            >
-              Xem kết quả
-            </Button>
-          ) : (
-            <>
-              <Button 
-                icon={<EyeOutlined />} 
-                size="middle"
-                className="rounded-lg h-9 border-slate-200 text-slate-600 font-bold text-[12px] hover:bg-slate-50 shadow-sm" 
-                onClick={onViewDetails}
-              >
-                Chi tiết điểm
-              </Button>
-              {!isFinalized && (
-                <Popconfirm 
-                  disabled={!isComplete}
-                  title={<span className="text-sm font-black text-blue-600">XÁC NHẬN CHỐT ĐIỂM?</span>}
-                  description={<div className="text-[11px] text-slate-500 max-w-[200px]">Sau khi chốt, điểm số sẽ không thể thay đổi.</div>}
-                  onConfirm={onFinalize} 
-                  okText="CHỐT ĐIỂM"
-                  cancelText="HỦY"
-                  okButtonProps={{ className: 'bg-blue-600 h-8 rounded font-black text-xs' }}
-                >
-                  <Button 
-                    type="primary" 
-                    size="middle" 
-                    disabled={!isComplete}
-                    className={`h-9 px-4 rounded-lg font-black text-[10px] tracking-wide transition-all ${!isComplete ? 'bg-slate-200 border-none text-slate-400 shadow-none' : 'bg-blue-600 shadow-sm shadow-blue-200'}`}
-                    loading={isFinalizing}
-                  >
-                    {isComplete ? 'CHỐT ĐIỂM' : 'CHƯA ĐỦ ĐIỂM'}
-                  </Button>
-                </Popconfirm>
-              )}
-            </>
-          )}
+          <Button 
+            icon={<EyeOutlined />} 
+            size="middle"
+            type="primary"
+            className="rounded-lg h-9 bg-blue-600 shadow-sm shadow-blue-200 text-white font-bold text-[12px] hover:bg-blue-700" 
+            onClick={onViewDetails}
+          >
+            {isComplete ? 'XEM KẾT QUẢ' : 'CHI TIẾT ĐIỂM'}
+          </Button>
         </Col>
       </Row>
     </Card>
@@ -630,34 +582,9 @@ const GradeDetailDrawer = ({ topicId, onClose, onFinalize, isFinalizing }: any) 
             </div>
 
             <div className="flex gap-3">
-              <Button size="middle" className="flex-1 h-9 rounded-lg font-black text-xs border-slate-200 text-slate-500 shadow-sm" onClick={onClose}>QUAY LẠI</Button>
-              {!isFinalized && (
-                <Popconfirm 
-                  disabled={!isComplete}
-                  title={<span className="text-sm font-black text-blue-600">XÁC NHẬN CHỐT ĐIỂM?</span>}
-                  description={<div className="text-[11px] text-slate-500 max-w-[200px]">Sau khi chốt, đề tài sẽ được chuyển sang danh sách kết quả khóa luận.</div>}
-                  onConfirm={() => onFinalize(topic.id)} 
-                  okText="CHỐT ĐIỂM"
-                  cancelText="HỦY"
-                  okButtonProps={{ className: 'bg-blue-600 h-8 rounded font-black text-xs' }}
-                >
-                  <Button 
-                    type="primary" 
-                    size="middle" 
-                    disabled={!isComplete}
-                    className={`flex-[2] h-10 rounded-lg font-black text-xs tracking-wide shadow-md transition-all ${!isComplete ? 'bg-slate-200 border-none text-slate-400 shadow-none' : 'bg-blue-600 shadow-blue-200'}`}
-                    loading={isFinalizing}
-                    icon={<CheckCircleFilled />}
-                  >
-                    {isComplete ? 'CHỐT ĐIỂM NGAY' : 'CHƯA ĐỦ ĐIỂM ĐỂ CHỐT'}
-                  </Button>
-                </Popconfirm>
-              )}
-              {isFinalized && (
-                <Button type="primary" size="middle" className="flex-[2] h-9 rounded-lg bg-slate-100 text-slate-400 border-none font-black text-xs flex items-center justify-center gap-1 cursor-not-allowed" disabled>
-                  <LockOutlined className="text-sm" /> ĐÃ CHỐT
-                </Button>
-              )}
+              <Button size="middle" type="primary" className="flex-1 h-10 rounded-lg font-black text-xs bg-blue-600 shadow-md shadow-blue-100" onClick={onClose}>
+                QUAY LẠI
+              </Button>
             </div>
           </div>
         </div>

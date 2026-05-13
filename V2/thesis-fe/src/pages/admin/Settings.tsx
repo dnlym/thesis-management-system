@@ -127,6 +127,7 @@ const mapPhasesToDto = (
   phases: { start: dayjs.Dayjs; end: dayjs.Dayjs }[],
   midtermStart: dayjs.Dayjs | null,
   midtermEnd: dayjs.Dayjs | null,
+  councilGradingDeadline: dayjs.Dayjs | null,
 ) => ({
   name,
   code,
@@ -142,6 +143,7 @@ const mapPhasesToDto = (
   defense_end: phases[4].end.toISOString(),
   midterm_start: midtermStart?.toISOString() ?? null,
   midterm_end: midtermEnd?.toISOString() ?? null,
+  council_grading_deadline: councilGradingDeadline?.toISOString() ?? null,
 });
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -158,6 +160,7 @@ const AdminSettings = () => {
   const [phaseDates, setPhaseDates] = useState<{ start: dayjs.Dayjs; end: dayjs.Dayjs }[]>([]);
   const [midtermStart, setMidtermStart] = useState<dayjs.Dayjs | null>(null);
   const [midtermEnd, setMidtermEnd] = useState<dayjs.Dayjs | null>(null);
+  const [councilGradingDeadline, setCouncilGradingDeadline] = useState<dayjs.Dayjs | null>(null);
   const { t, i18n } = useTranslation();
   const [semesterForm] = Form.useForm();
   const [deptForm] = Form.useForm();
@@ -189,6 +192,10 @@ const AdminSettings = () => {
     const middle = workPhase.start.add(halfDays, 'day');
     setMidtermStart(middle);
     setMidtermEnd(middle.add(3, 'day'));
+
+    // Auto suggest council deadline: 1 day after defense ends
+    setCouncilGradingDeadline(computed[4].end.add(1, 'day').endOf('day'));
+
     if (!silent) notify.success('Đã tự động tính toán và điền dòng thời gian!');
   };
 
@@ -247,6 +254,7 @@ const AdminSettings = () => {
     setPhaseDates([]);
     setMidtermStart(null);
     setMidtermEnd(null);
+    setCouncilGradingDeadline(null);
     semesterForm.resetFields();
     setSemesterModalVisible(true);
   };
@@ -260,6 +268,7 @@ const AdminSettings = () => {
     setPhaseDates(extractPhasesFromSemester(semester));
     setMidtermStart(semester.midterm_start ? dayjs(semester.midterm_start) : null);
     setMidtermEnd(semester.midterm_end ? dayjs(semester.midterm_end) : null);
+    setCouncilGradingDeadline(semester.council_grading_deadline ? dayjs(semester.council_grading_deadline) : null);
     semesterForm.setFieldsValue({ name: semester.name, code: semester.code });
     setSemesterModalVisible(true);
   };
@@ -267,7 +276,7 @@ const AdminSettings = () => {
   const handleSemesterModalOk = async () => {
     try {
       const values = await semesterForm.validateFields();
-      const dto = mapPhasesToDto(values.name, values.code, phaseDates, midtermStart, midtermEnd);
+      const dto = mapPhasesToDto(values.name, values.code, phaseDates, midtermStart, midtermEnd, councilGradingDeadline);
 
       const onSuccess = () => {
         setSemesterModalVisible(false);
@@ -279,6 +288,7 @@ const AdminSettings = () => {
         setPhaseDates([]);
         setMidtermStart(null);
         setMidtermEnd(null);
+        setCouncilGradingDeadline(null);
       };
 
       const onError = (error: any) => {
@@ -701,6 +711,39 @@ const AdminSettings = () => {
                         <DatePicker size="small" className="w-32 border-amber-200" value={midtermStart} onChange={(d) => { setIsTimelineAuto(false); setMidtermStart(d); }} format="DD/MM/YYYY" />
                         <span className="text-amber-400 font-bold">→</span>
                         <DatePicker size="small" className="w-32 border-amber-200" value={midtermEnd} onChange={(d) => { setIsTimelineAuto(false); setMidtermEnd(d); }} format="DD/MM/YYYY" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Block 4: Council Deadline */}
+                <div className="mt-4 rounded-xl p-4 bg-[#f0f9ff] border border-blue-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 shrink-0 font-bold bg-blue-100">
+                      ⚖️
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-blue-900 text-sm m-0">Hạn chót chấm Hội đồng (Hệ thống)</p>
+                      <p className="text-blue-700/70 text-[11px] m-0 mb-3">Sau mốc Bảo vệ và trước khi kết thúc học kỳ</p>
+                      <div className="flex items-center gap-3">
+                        <DatePicker 
+                          showTime
+                          size="small" 
+                          className="w-48 border-blue-200" 
+                          value={councilGradingDeadline} 
+                          onChange={(d) => { setIsTimelineAuto(false); setCouncilGradingDeadline(d); }} 
+                          format="HH:mm DD/MM/YYYY" 
+                          disabledDate={(d) => {
+                            const defenseStart = phaseDates[4]?.start;
+                            const semesterEnd = semesterDates[1];
+                            if (!defenseStart || !semesterEnd) return false;
+                            return d.isBefore(defenseStart, 'day') || d.isAfter(semesterEnd, 'day');
+                          }}
+                        />
+                        <Tag color="processing" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">
+                          Hạn mặc định toàn hệ thống
+                        </Tag>
                       </div>
                     </div>
                   </div>

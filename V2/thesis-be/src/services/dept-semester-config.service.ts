@@ -20,10 +20,18 @@ export class DepartmentSemesterConfigService {
     semesterId: string,
     data: {
       defense_date?: Date;
+      council_grading_deadline?: Date;
       is_registration_open?: boolean;
     }
   ) {
     // Create the config
+    const upsertData = {
+      defense_date: data.defense_date,
+      council_grading_deadline: data.council_grading_deadline,
+      is_registration_open: data.is_registration_open ?? false,
+      updated_by: userId,
+    };
+
     const config = await prisma.departmentSemesterConfig.upsert({
       where: {
         department_id_semester_id: {
@@ -31,16 +39,11 @@ export class DepartmentSemesterConfigService {
           semester_id: semesterId,
         },
       },
-      update: {
-        ...data,
-        updated_by: userId,
-      },
+      update: upsertData,
       create: {
+        ...upsertData,
         department_id: departmentId,
         semester_id: semesterId,
-        defense_date: data.defense_date,
-        is_registration_open: data.is_registration_open || false,
-        updated_by: userId,
       },
     });
 
@@ -93,6 +96,19 @@ export class DepartmentSemesterConfigService {
           entity_type: 'DepartmentSemesterConfig',
           entity_id: config.id,
           new_value: { is_registration_open: data.is_registration_open, department_id: departmentId },
+        },
+      });
+    }
+
+    if (data.council_grading_deadline !== undefined) {
+      await prisma.auditLog.create({
+        data: {
+          user_id: userId,
+          action: 'UPDATE_COUNCIL_GRADING_DEADLINE',
+          entity_type: 'DepartmentSemesterConfig',
+          entity_id: config.id,
+          new_value: { council_grading_deadline: data.council_grading_deadline, department_id: departmentId },
+          description: `Đã cập nhật hạn chót nhập điểm Hội đồng mới: ${dayjs(data.council_grading_deadline).format('HH:mm DD/MM/YYYY')}`
         },
       });
     }

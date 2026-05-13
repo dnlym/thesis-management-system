@@ -67,6 +67,7 @@ const Evaluation = () => {
   const [reasonModalVisible, setReasonModalVisible] = useState(false);
   const [submitReason, setSubmitReason] = useState('');
   const [pendingSubmission, setPendingSubmission] = useState<any>(null);
+  const [isRequestMode, setIsRequestMode] = useState(false);
 
   useEffect(() => {
     const type = searchParams.get('type');
@@ -201,11 +202,41 @@ const Evaluation = () => {
 
   const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveTab();
 
-  // NEW LOCKING LOGIC: Lock if finalized OR if phase not allowed.
-  // We NO LONGER lock just because it's confirmed (SUBMITTED), unless it's also finalized.
+  // NEW LOCKING LOGIC: Lock if finalized OR if phase not allowed OR past deadline.
+  // Exception: Allow input if in Request Mode
+  const isPastDeadline = useMemo(() => {
+    const phase = activeSemester?.calculated_phase;
+    const deptConfig = activeSemester?.deptConfig;
+    const now = dayjs();
+    const globalDeadline = activeSemester?.thesis_deadline;
+    
+    // 1. Date-based global cutoff
+    if (globalDeadline && now.isAfter(dayjs(globalDeadline))) return true;
+
+    // 2. Role-specific milestone logic
+    if (activeTab === 'advisor') {
+      // Locked when moving to REVIEWING or later
+      return ['REVIEWING', 'DEFENSE', 'FINAL'].includes(phase || '');
+    }
+    if (activeTab === 'reviewer') {
+      // Locked when moving to DEFENSE or later
+      return ['DEFENSE', 'FINAL'].includes(phase || '');
+    }
+    if (activeTab === 'council') {
+      // Locked based on specific date from deptConfig
+      if (deptConfig?.council_grading_deadline) {
+        return now.isAfter(dayjs(deptConfig.council_grading_deadline));
+      }
+      // Fallback: Locked when FINAL
+      return phase === 'FINAL';
+    }
+    
+    return false;
+  }, [activeSemester, activeTab]);
+
   const isFinalized = selectedTopic?.status === 'FINALIZED';
-  const isLocked = isFinalized || !isPhaseAllowed;
-  const canEditAfterSubmit = !isFinalized && isPhaseAllowed && user?.role !== 'STUDENT';
+  const isLocked = (isFinalized || !isPhaseAllowed || isPastDeadline) && !isRequestMode;
+  const canEditAfterSubmit = !isFinalized && isPhaseAllowed && user?.role !== 'STUDENT' && !isPastDeadline;
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -252,9 +283,19 @@ const Evaluation = () => {
     try {
       const values = await form.validateFields();
 
-      // Check if we need a reason (is updating existing grades)
+      // CASE 1: Request Mode (Past Deadline)
+      if (isPastDeadline || isRequestMode) {
+        if (!reason) {
+          setPendingSubmission(values);
+          setReasonModalVisible(true);
+          return;
+        }
+        // If we have a reason, the backend will handle the routing to GradeChangeRequest
+      }
+
+      // CASE 2: Regular Update (Pre-Deadline but already submitted)
       const isUpdating = myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
-      if (isUpdating && !reason && user?.role !== 'ADMIN') {
+      if (!isPastDeadline && isUpdating && !reason && user?.role !== 'ADMIN') {
         setPendingSubmission(values);
         setReasonModalVisible(true);
         return;
@@ -360,16 +401,31 @@ const Evaluation = () => {
                   {activeTab === 'advisor' ? 'HĐ đã chốt - Hướng dẫn' : 'HĐ đã chốt - Phản biện/Hội đồng'}
                 </Tag>
               )}
+              {isPastDeadline && !isFinalized && (
+                <Tag color="volcano" icon={<LockOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
+                  Đã hết hạn nhập điểm
+                </Tag>
+              )}
             </Space>
           </div>
 
-          {isConfirmed && (
+          {isConfirmed && !isPastDeadline && (
             <Alert
               message={<span className="font-bold">Đánh giá đã hoàn tất</span>}
-              description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn đang xem ở chế độ chỉ đọc.`}
+              description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn có thể chỉnh sửa nếu cần (vẫn trong thời hạn).`}
               type="success"
               showIcon
               className="mb-6 rounded-xl border-green-100 shadow-sm"
+            />
+          )}
+
+          {isPastDeadline && !isRequestMode && (
+            <Alert
+              message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
+              description="Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn."
+              type="warning"
+              showIcon
+              className="mb-6 rounded-xl border-amber-100 shadow-sm"
             />
           )}
 
@@ -551,9 +607,26 @@ const Evaluation = () => {
 
               {!isLocked && (
                 <div className="flex justify-end gap-3 mt-10 no-print pb-4 px-6">
-                  <Button size="large" onClick={() => form.resetFields()} disabled={submitGradeMutation.isPending}>Hủy thay đổi</Button>
+                  <Button size="large" onClick={() => {
+                    form.resetFields();
+                    setIsRequestMode(false);
+                  }} disabled={submitGradeMutation.isPending}>Hủy</Button>
                   <Button size="large" type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
-                    {isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm'}
+                    {isRequestMode ? 'Gửi yêu cầu sửa điểm' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
+                  </Button>
+                </div>
+              )}
+
+              {isPastDeadline && !isRequestMode && !isFinalized && (
+                <div className="flex justify-end mt-10 no-print pb-4 px-6">
+                  <Button 
+                    size="large" 
+                    type="primary" 
+                    ghost 
+                    icon={<LockOutlined />} 
+                    onClick={() => setIsRequestMode(true)}
+                  >
+                    Yêu cầu sửa điểm
                   </Button>
                 </div>
               )}
@@ -682,7 +755,13 @@ const Evaluation = () => {
             <Space size={4} className="text-[10px] text-gray-400">
               <Text type="secondary" className="text-[10px]">GVHD: <HighlightText text={topicObj.supervisor?.full_name} keyword={debouncedLecturerSearch} /></Text>
               <Divider type="vertical" className="m-0 border-gray-300" />
-              <Text type="warning" className="text-[10px]">Hạn chốt: {dayjs(topicObj.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
+              {activeTab === 'council' && activeSemester?.deptConfig?.council_grading_deadline ? (
+                <Text type="danger" className="text-[10px] font-bold italic">
+                  Hạn chốt điểm HĐ: {dayjs(activeSemester.deptConfig.council_grading_deadline).format('HH:mm DD/MM/YYYY')}
+                </Text>
+              ) : (
+                <Text type="warning" className="text-[10px]">Hạn nộp báo cáo: {dayjs(topicObj.semester?.thesis_deadline).format('DD/MM/YYYY')}</Text>
+              )}
             </Space>
           </div>
         )

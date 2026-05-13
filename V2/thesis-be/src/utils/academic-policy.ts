@@ -230,15 +230,15 @@ export class AcademicPolicy {
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
-          return { allowed: false, reason: 'GVPB chỉ được chấm điểm trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
+        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'GVPB chỉ được chấm điểm từ giai đoạn Phản biện trở đi.', code: 'INVALID_PHASE' };
         }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 
       case AcademicAction.GRADE_COMMITTEE:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        if (phase !== SemesterPhase.DEFENSE) {
-          return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm trong giai đoạn Bảo vệ (DEFENSE).', code: 'INVALID_PHASE' };
+        if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
+          return { allowed: false, reason: 'Hội đồng chỉ được chấm điểm từ giai đoạn Bảo vệ trở đi.', code: 'INVALID_PHASE' };
         }
         return { allowed: (user.role === UserRole.LECTURER || user.role === UserRole.HEAD), code: 'ALLOWED' };
 

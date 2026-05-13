@@ -161,29 +161,30 @@ const FinalResults = () => {
             key: 'index',
             width: 55,
             align: 'center' as const,
-            render: (_: any, __: any, index: number) => (
-                <span className="text-slate-400 text-xs">{index + 1}</span>
-            ),
+            render: (_: any, __: any, index: number) => index + 1,
         },
         {
             title: 'Mã nhóm',
             key: 'groupCode',
             width: 100,
             render: (record: any) => (
-                <Tag color="blue" className="font-mono text-[11px] font-bold">
+                <Tag color="blue" className="m-0 font-mono text-[11px] font-bold">
                     <HighlightText text={record.groupName || record.code} keyword={debouncedSearch} />
                 </Tag>
             ),
         },
         {
             title: 'Tên đề tài',
-            dataIndex: 'title',
             key: 'title',
-            ellipsis: true,
-            render: (title: string) => (
-                <span className="font-semibold text-slate-800 text-[13px]">
-                    <HighlightText text={title} keyword={debouncedSearch} />
-                </span>
+            render: (text: string, record: Topic) => (
+                <div className="max-w-md">
+                    <div className="text-sm font-semibold text-slate-800 mb-1">
+                        <HighlightText text={record.title} keyword={debouncedSearch} />
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                        GVHD: <span className="font-medium text-slate-500">{record.supervisor?.full_name}</span>
+                    </div>
+                </div>
             ),
         },
         {
@@ -197,12 +198,12 @@ const FinalResults = () => {
                         <div key={s.id} className="flex items-center gap-2 h-7">
                             <Avatar size={20} src={s.avatar_url} icon={<UserOutlined />} className="bg-slate-200 flex-shrink-0" />
                             <div className="flex flex-col leading-tight overflow-hidden">
-                                <Text className="text-[12px] font-bold text-slate-700 truncate">
+                                <div className="text-[11px] font-semibold text-slate-700 truncate">
                                     <HighlightText text={s.full_name} keyword={debouncedSearch} />
-                                </Text>
-                                <Text className="text-[9px] text-slate-400 font-mono font-bold">
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-mono font-bold">
                                     <HighlightText text={s.student_code} keyword={debouncedSearch} />
-                                </Text>
+                                </div>
                             </div>
                         </div>
                     ))}

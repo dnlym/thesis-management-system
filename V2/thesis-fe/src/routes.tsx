@@ -11,6 +11,7 @@ import {
   SafetyCertificateOutlined,
   CrownOutlined,
   AuditOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import type { UserRole } from '@/types';
 
@@ -49,6 +50,7 @@ const CommitteeManagement = lazy(() => import('@/pages/head/CommitteeManagement'
 const CommitteeSchedules = lazy(() => import('@/pages/head/CommitteeSchedules'));
 const SemesterSettings = lazy(() => import('@/pages/head/SemesterSettings'));
 const GradeSummary = lazy(() => import('@/pages/head/GradeSummary'));
+const GradeChangeApprovals = lazy(() => import('@/pages/head/GradeChangeApprovals'));
 // ------------------------------
 
 export interface RouteConfig {
@@ -270,6 +272,15 @@ export const routes: RouteConfig[] = [
       roles: ['HEAD', 'ADMIN'],
     },
   },
+  {
+    path: '/head/grade-change-approvals',
+    element: GradeChangeApprovals,
+    meta: {
+      title: 'Duyệt sửa điểm',
+      icon: HistoryOutlined,
+      roles: ['HEAD', 'ADMIN'],
+    },
+  },
 
   // Admin routes
   {
@@ -429,6 +440,7 @@ export const getMenuItems = (userRole: UserRole) => {
           { key: '/head/extra-points', label: 'navigation.extraPoints', icon: <SafetyCertificateOutlined /> },
           { key: '/evaluation', label: 'navigation.evaluation', icon: <CheckCircleOutlined /> },
           { key: '/head/grade-summary', label: 'navigation.gradeSummary', icon: <BarChartOutlined /> },
+          { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
           { key: '/admin/criteria', label: 'navigation.criteria', icon: <SafetyCertificateOutlined /> },
         ],
       },

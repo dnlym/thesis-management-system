@@ -60,9 +60,13 @@ export function useSubmitGrade() {
 
     return useMutation({
         mutationFn: (data: GradeSubmissionForm) => GradingApi.submitGrade(data),
-        onSuccess: (response, variables) => {
+        onSuccess: (response: any, variables) => {
             queryClient.invalidateQueries({ queryKey: gradingKeys.topicGrades(variables.topic_id) });
-            toast.success('Nộp điểm thành công');
+            if (response?.status === 'PENDING_APPROVAL') {
+                toast.info(response.message || 'Yêu cầu sửa điểm đã được gửi tới Trưởng bộ môn');
+            } else {
+                toast.success('Nộp điểm thành công');
+            }
         },
         onError: (error: any) => {
             toast.error(error?.response?.data?.message || 'Nộp điểm thất bại');

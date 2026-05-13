@@ -163,64 +163,6 @@ class GradingController {
 
   /**
    * @swagger
-   * /grading/topics/{topicId}/finalize:
-   *   post:
-   *     summary: Finalize final score for a topic
-   *     tags: [Grading]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: topicId
-   *         schema:
-   *           type: string
-   *         required: true
-   *         description: Topic ID
-   *     responses:
-   *       200:
-   *         description: Final score finalized successfully
-   *       400:
-   *         description: Bad request
-   */
-  async finalizeFinalScore(req: AuthRequest, res: Response) {
-    try {
-      const userId = req.user!.id;
-      const topicId = req.params.topicId as string;
-      const result = await gradingService.finalizeFinalScore(userId, topicId);
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
-  /**
-   * Finalize a specific group
-   */
-  async finalizeGroup(req: AuthRequest, res: Response) {
-    try {
-      const userId = req.user!.id;
-      const groupId = req.params.groupId as string;
-      const result = await gradingService.finalizeGroup(userId, groupId);
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-
-  /**
-   * @swagger
    * /grading/topics/{topicId}/grades:
    *   get:
    *     summary: Get grades for a topic
@@ -616,6 +558,67 @@ class GradingController {
       res.json({
         success: true,
         data: history
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get pending grade change requests (HOD only)
+   */
+  async getPendingGradeChangeRequests(req: AuthRequest, res: Response) {
+    try {
+      const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+      if (!user) throw new Error('User not found');
+      const requests = await gradingService.getPendingGradeChangeRequests(user.departmentId);
+      res.json({
+        success: true,
+        data: requests
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Approve a grade change request (HOD only)
+   */
+  async approveGradeChangeRequest(req: AuthRequest, res: Response) {
+    try {
+      const hodId = req.user!.id;
+      const requestId = req.params.requestId as string;
+      const result = await gradingService.approveGradeChangeRequest(hodId, requestId);
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Reject a grade change request (HOD only)
+   */
+  async rejectGradeChangeRequest(req: AuthRequest, res: Response) {
+    try {
+      const hodId = req.user!.id;
+      const requestId = req.params.requestId as string;
+      const { reason } = req.body;
+      const result = await gradingService.rejectGradeChangeRequest(hodId, requestId, reason);
+      res.json({
+        success: true,
+        data: result
       });
     } catch (error: any) {
       res.status(400).json({
