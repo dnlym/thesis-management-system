@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
+import { env } from './config/env';
 import routes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
@@ -10,7 +10,7 @@ import { errorHandler } from './middleware/error.middleware';
 import { apiLogger } from './middleware/logger.middleware';
 import path from 'path';
 
-dotenv.config();
+// env is already loaded and validated via config/env.ts
 
 const app = express();
 
@@ -20,7 +20,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:8080'],
+  origin: env.CORS_ORIGIN,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

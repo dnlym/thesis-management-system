@@ -4,7 +4,7 @@ const envSchema = z.object({
   PORT: z.string().default("3000").transform(Number),
   DATABASE_URL: z.string().url(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  CORS_ORIGIN: z.string().default("http://localhost:5173"),
+  CORS_ORIGIN: z.string().default("*").transform((val) => val === "*" ? true : val.split(",")),
   JWT_SECRET: z.string().min(10, "JWT_SECRET should be at least 10 characters long"),
   JWT_EXPIRES_IN: z.string().default("1d"),
 });
