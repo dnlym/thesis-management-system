@@ -201,6 +201,11 @@ const MyRegisteredTopic = () => {
   const currentPhase = topic?.semester?.calculated_phase;
   const isPhaseLocked = currentPhase && !['PLANNING', 'PREVIEW', 'REGISTRATION'].includes(currentPhase);
 
+  // Extract assignments and defense schedule
+  const reviewerAssignments = topic?.assignments?.filter((a: any) => a.assignment_type === 'REVIEWER') || [];
+  const committeeAssignments = topic?.assignments?.filter((a: any) => a.assignment_type === 'COMMITTEE') || [];
+  const defenseSchedule = topic?.defense_schedules?.[0];
+
   return (
     <>
       <div className="page-container">
@@ -244,38 +249,49 @@ const MyRegisteredTopic = () => {
             </div>
           </Card>
 
-          {/* Topic Info Card */}
-          <Card className="shadow-soft border-0 mb-6 overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 flex gap-2">
-              {myRegistration.midterm_status === 'PASS' && (
-                <Badge count="Đã đạt Giữa kỳ" style={{ backgroundColor: '#52c41a' }} />
-              )}
-              {myRegistration.midterm_status === 'FAIL' && (
-                <Badge count="Không đạt Giữa kỳ" style={{ backgroundColor: '#ff4d4f' }} />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-              <span className="text-slate-800 font-bold">Thông tin đề tài đăng ký</span>
-            </div>
-
-            {myRegistration.midterm_status === 'FAIL' && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 animate-in slide-in-from-top duration-500">
-                <CloseCircleOutlined className="text-red-500 mt-1 text-lg" />
-                <div>
-                  <Text strong className="text-red-700 block text-base">Bạn không đạt đánh giá giữa kỳ</Text>
-                  <Text className="text-red-600 text-sm">
-                    Rất tiếc, dựa trên đánh giá của Giảng viên hướng dẫn, bạn không đủ điều kiện để tiếp tục thực hiện khóa luận tốt nghiệp trong học kỳ này.
+          {/* Midterm Status Card (Individual) */}
+          {myRegistration.midterm_status && (
+            <Card className="shadow-soft border-0 mb-6 overflow-hidden">
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-1 h-5 ${myRegistration.midterm_status === 'PASS' ? 'bg-emerald-500' : 'bg-red-500'} rounded-full`}></div>
+                <span className="text-slate-800 font-bold">Kết quả đánh giá giữa kỳ của sinh viên {currentUser?.full_name}</span>
+                <Tag color={myRegistration.midterm_status === 'PASS' ? 'success' : 'error'} className="ml-auto font-semibold">
+                  {myRegistration.midterm_status === 'PASS' ? 'Đạt Giữa kỳ' : 'Không đạt Giữa kỳ'}
+                </Tag>
+              </div>
+              
+              <div className={`p-4 rounded-xl border ${myRegistration.midterm_status === 'PASS' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'} flex items-start gap-3`}>
+                {myRegistration.midterm_status === 'PASS' ? (
+                  <CheckCircleOutlined className="text-emerald-500 mt-1 text-lg flex-shrink-0" />
+                ) : (
+                  <CloseCircleOutlined className="text-red-500 mt-1 text-lg flex-shrink-0" />
+                )}
+                <div className="text-sm">
+                  <Text strong className={`block text-base mb-1 ${myRegistration.midterm_status === 'PASS' ? 'text-emerald-800' : 'text-red-800'}`}>
+                    {myRegistration.midterm_status === 'PASS' ? 'Chúc mừng! Bạn đã đạt đánh giá giữa kỳ' : 'Bạn không đạt đánh giá giữa kỳ'}
+                  </Text>
+                  <Text className={`text-xs ${myRegistration.midterm_status === 'PASS' ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {myRegistration.midterm_status === 'PASS' 
+                      ? 'Bạn đủ điều kiện tiếp tục thực hiện và hoàn thiện khóa luận tốt nghiệp trong học kỳ này.' 
+                      : 'Rất tiếc, dựa trên đánh giá của Giảng viên hướng dẫn, bạn không đủ điều kiện để tiếp tục thực hiện khóa luận tốt nghiệp trong học kỳ này.'}
                   </Text>
                   {myRegistration.midterm_feedback && (
-                    <div className="mt-2 p-2 bg-white/50 rounded border border-red-50 italic text-red-500 text-xs">
-                      Phản hồi: {myRegistration.midterm_feedback}
+                    <div className={`mt-3 p-3 bg-white/80 rounded-lg border ${myRegistration.midterm_status === 'PASS' ? 'border-emerald-100 text-emerald-900' : 'border-red-100 text-red-900'} italic text-xs shadow-sm`}>
+                      <span className="font-semibold not-italic block mb-1">Ý kiến đánh giá của GVHD:</span>
+                      "{myRegistration.midterm_feedback}"
                     </div>
                   )}
                 </div>
               </div>
-            )}
+            </Card>
+          )}
+
+          {/* Topic Info Card */}
+          <Card className="shadow-soft border-0 mb-6 overflow-hidden">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+              <span className="text-slate-800 font-bold">Thông tin đề tài đăng ký</span>
+            </div>
 
             <div className="mb-6 mt-3 text-slate-800 font-bold leading-snug" style={{ fontSize: '15px' }}>
               {topic?.title}
@@ -361,6 +377,159 @@ const MyRegisteredTopic = () => {
           {myRegistration.midterm_status !== 'FAIL' && (
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={16}>
+                {/* Reviewer Information Card */}
+                {reviewerAssignments.length > 0 && (
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
+                        <span className="text-slate-800 font-bold text-lg">Thông tin Giảng viên Phản biện</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 mb-6"
+                    size="small"
+                  >
+                    <List
+                      itemLayout="horizontal"
+                      dataSource={reviewerAssignments}
+                      renderItem={(assignment: any, index: number) => (
+                        <List.Item className="bg-purple-50/20 p-4 rounded-xl mb-3 border border-purple-100/50 last:mb-0">
+                          <List.Item.Meta
+                            avatar={<Avatar size={48} src={assignment.reviewer?.avatar_url} icon={<UserOutlined />} className="bg-purple-100 text-purple-600 shadow-sm" />}
+                            title={
+                              <Space className="flex items-center flex-wrap gap-2 mb-1">
+                                <Text strong className="text-slate-800 text-base">{assignment.reviewer?.full_name}</Text>
+                                <Tag color="purple" className="m-0 text-[11px] font-semibold">Phản biện {assignment.reviewer_order || index + 1}</Tag>
+                                {assignment.room && (
+                                  <Tag color="blue" className="m-0 text-[11px]">Phòng: {assignment.room}</Tag>
+                                )}
+                              </Space>
+                            }
+                            description={
+                              <div className="text-xs text-slate-500 space-y-1 mt-1">
+                                <div className="flex items-center gap-2">
+                                  <MailOutlined className="text-purple-400" />
+                                  <span>Email: {assignment.reviewer?.email || 'N/A'}</span>
+                                  {assignment.reviewer?.phone && (
+                                    <>
+                                      <span className="text-slate-300">|</span>
+                                      <span>SĐT: {assignment.reviewer.phone}</span>
+                                    </>
+                                  )}
+                                </div>
+                                {assignment.deadline_at && (
+                                  <div className="flex items-center gap-2 text-slate-600 font-medium">
+                                    <ClockCircleOutlined className="text-amber-500" />
+                                    <span>Hạn chót phản hồi: {dayjs(assignment.deadline_at).format('DD/MM/YYYY')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                )}
+
+                {/* Committee & Defense Schedule Card */}
+                {(!!defenseSchedule || committeeAssignments.length > 0) && (
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
+                        <span className="text-slate-800 font-bold text-lg">Lịch trình & Hội đồng Bảo vệ</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 mb-6 bg-indigo-50/10"
+                    size="small"
+                  >
+                    {defenseSchedule && (
+                      <div className="mb-6 p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                        <div className="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-3 flex items-center gap-2">
+                          <ClockCircleOutlined /> Thông tin Lịch bảo vệ
+                        </div>
+                        <Row gutter={[16, 16]}>
+                          <Col xs={24} sm={8}>
+                            <div className="text-xs text-slate-400 mb-1">NGÀY BẢO VỆ</div>
+                            <div className="text-sm font-bold text-slate-700">
+                              {dayjs(defenseSchedule.defense_date).format('DD/MM/YYYY')}
+                            </div>
+                          </Col>
+                          <Col xs={24} sm={8}>
+                            <div className="text-xs text-slate-400 mb-1">GIỜ BẢO VỆ</div>
+                            <div className="text-sm font-bold text-slate-700">
+                              {defenseSchedule.defense_time || 'Theo lịch hội đồng'}
+                            </div>
+                          </Col>
+                          <Col xs={24} sm={8}>
+                            <div className="text-xs text-slate-400 mb-1">ĐỊA ĐIỂM / PHÒNG</div>
+                            <div className="text-sm font-bold text-indigo-600">
+                              {defenseSchedule.room || 'Chưa công bố'}
+                            </div>
+                          </Col>
+                        </Row>
+                        {defenseSchedule.notes && (
+                          <div className="mt-4 p-3 bg-amber-50/80 rounded-lg border border-amber-100 text-xs text-amber-800">
+                            <span className="font-semibold block mb-0.5">Lưu ý từ Hội đồng:</span>
+                            {defenseSchedule.notes}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {committeeAssignments.length > 0 && (
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 px-1">
+                          Thành phần Hội đồng chấm bảo vệ
+                        </div>
+                        <List
+                          itemLayout="horizontal"
+                          dataSource={committeeAssignments}
+                          renderItem={(assignment: any) => {
+                            const roleColorMap: any = {
+                              CHAIR: 'volcano',
+                              SECRETARY: 'geekblue',
+                              MEMBER: 'default'
+                            };
+                            const roleLabelMap: any = {
+                              CHAIR: 'Chủ tịch Hội đồng',
+                              SECRETARY: 'Thư ký Hội đồng',
+                              MEMBER: 'Ủy viên'
+                            };
+                            return (
+                              <List.Item className="bg-white p-3.5 rounded-xl mb-2.5 border border-slate-100 shadow-2xs last:mb-0">
+                                <List.Item.Meta
+                                  avatar={<Avatar size={42} src={assignment.reviewer?.avatar_url} icon={<UserOutlined />} className="bg-indigo-50 text-indigo-600 shadow-sm" />}
+                                  title={
+                                    <Space className="flex items-center flex-wrap gap-2">
+                                      <Text strong className="text-slate-800 text-sm">{assignment.reviewer?.full_name}</Text>
+                                      <Tag color={roleColorMap[assignment.committee_role] || 'default'} className="m-0 text-[11px] font-semibold">
+                                        {roleLabelMap[assignment.committee_role] || assignment.committee_role}
+                                      </Tag>
+                                    </Space>
+                                  }
+                                  description={
+                                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                      <span>Email: {assignment.reviewer?.email || 'N/A'}</span>
+                                      {assignment.reviewer?.phone && (
+                                        <>
+                                          <span className="text-slate-300">|</span>
+                                          <span>SĐT: {assignment.reviewer.phone}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  }
+                                />
+                              </List.Item>
+                            );
+                          }}
+                        />
+                      </div>
+                    )}
+                  </Card>
+                )}
+
                 {/* Group Members List */}
                 {hasGroup && (
                 <Card
@@ -376,7 +545,9 @@ const MyRegisteredTopic = () => {
                   <List
                     itemLayout="horizontal"
                     dataSource={group.members?.filter((m: any) => m.status === 'ACCEPTED')}
-                    renderItem={(member: any) => (
+                    renderItem={(member: any) => {
+                      const memberReg = member.user?.topic_registrations?.find((r: any) => r.topic_id === topic?.id) || member.user?.topic_registrations?.[0];
+                      return (
                       <List.Item
                         actions={isLeader && member.user_id !== currentUser?.id ? [
                           <Popconfirm
@@ -393,17 +564,23 @@ const MyRegisteredTopic = () => {
                         <List.Item.Meta
                           avatar={<Avatar size={48} src={member.user?.avatar_url} icon={<UserOutlined />} className="bg-slate-50 text-slate-400" />}
                           title={
-                            <Space>
+                            <Space className="flex items-center">
                               <Text strong className="text-slate-700">{member.user?.full_name}</Text>
                               {member.user_id === group.leader_id && (
                                 <Tag color="gold" className="m-0 text-[11px]">Trưởng nhóm</Tag>
+                              )}
+                              {memberReg?.midterm_status === 'PASS' && (
+                                <Tag color="success" className="m-0 text-[11px]">Đạt giữa kỳ</Tag>
+                              )}
+                              {memberReg?.midterm_status === 'FAIL' && (
+                                <Tag color="error" className="m-0 text-[11px]">Không đạt giữa kỳ</Tag>
                               )}
                             </Space>
                           }
                           description={<span className="text-slate-400">{member.user?.student_code} • {member.user?.email}</span>}
                         />
                       </List.Item>
-                    )}
+                    )}}
                   />
                 </Card>
               )}

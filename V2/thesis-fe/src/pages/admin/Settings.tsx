@@ -205,7 +205,7 @@ const AdminSettings = () => {
       } else if (!isTimelineAuto) {
         // Đã khởi tạo và BỊ chỉnh tay (isTimelineAuto = false) -> hỏi ý kiến
         Modal.confirm({
-          title: 'Timeline đã bị chỉnh sửa',
+          title: 'Lịch trình đã bị chỉnh sửa',
           content: 'Bạn có muốn làm mới lại (Tái tạo tự động) các mốc thời gian bên dưới theo ngày Khai/Bế giảng mới không?',
           okText: 'Tái tạo tự động',
           cancelText: 'Giữ nguyên chỉnh sửa',
@@ -514,7 +514,7 @@ const AdminSettings = () => {
               <CalendarOutlined />
             </div>
             <span className="text-lg font-bold">
-              {editingSemester ? 'Chỉnh sửa Học kỳ' : 'Tạo Học kỳ mới'}
+              {editingSemester ? 'Cấu hình Học kỳ' : 'Tạo Học kỳ mới'}
             </span>
           </div>
         }
@@ -574,7 +574,7 @@ const AdminSettings = () => {
             <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-blue-900 m-0 flex items-center gap-2">
-                  <CalendarOutlined /> Thời gian Học kỳ (Global Semester)
+                  <CalendarOutlined /> Thời gian Học kỳ
                 </h3>
                 {semesterDates[0] && semesterDates[1] && (
                   <Tag color="blue" className="rounded-full border-none px-3 font-semibold text-sm">
@@ -612,8 +612,8 @@ const AdminSettings = () => {
           {semesterDates[0] && semesterDates[1] && phaseDates.length >= 5 && (
             <div className="pt-2">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phân bổ giai đoạn (Visual Overview)</span>
-                <Tag color="cyan" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">Gantt View</Tag>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phân bổ giai đoạn</span>
+                <Tag color="cyan" className="m-0 border-none rounded-full px-2 text-[9px] font-bold uppercase">Sơ đồ Gantt</Tag>
               </div>
               <div className="h-6 w-full bg-slate-100 rounded-full flex overflow-hidden border border-slate-200 shadow-sm relative group">
                 {SEMESTER_PHASES.map((phase, idx) => {
@@ -647,7 +647,7 @@ const AdminSettings = () => {
                       left: `${((midtermStart.diff(semesterDates[0], 'day') / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`,
                       width: `${(((midtermEnd.diff(midtermStart, 'day') + 1) / (semesterDates[1]!.diff(semesterDates[0], 'day') + 1)) * 100)}%`
                     }}
-                    title="Giai đoạn Midterm"
+                    title="Giai đoạn Chấm giữa kỳ"
                   >
                     <div className="text-[10px]">📍</div>
                   </div>
@@ -661,10 +661,10 @@ const AdminSettings = () => {
             <div className="space-y-4 pt-4 border-t border-dashed border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-800 m-0 flex items-center gap-2">
-                  <span className="text-xl">⚡</span> Timeline (tự động – có thể chỉnh)
+                  <span className="text-xl">⚡</span> Lịch trình (tự động – có thể chỉnh)
                 </h3>
                 <Button size="small" onClick={() => handleAutoFill()} icon={<span className="text-sm">🔄</span>}>
-                  Tái tạo timeline
+                  Tái tạo lịch trình
                 </Button>
               </div>
 
@@ -708,7 +708,7 @@ const AdminSettings = () => {
                       📍
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-amber-900 text-sm m-0">Chấm giữa kỳ (Midterm)</p>
+                      <p className="font-bold text-amber-900 text-sm m-0">Chấm giữa kỳ</p>
                       <p className="text-amber-700/70 text-[11px] m-0 mb-3">Tự động gợi ý nằm trong vùng Thực hiện khóa luận</p>
                       <div className="flex items-center gap-3">
                         <DatePicker size="small" className="w-32 border-amber-200" value={midtermStart} onChange={(d) => { setIsTimelineAuto(false); setMidtermStart(d); }} format="DD/MM/YYYY" />

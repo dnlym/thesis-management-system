@@ -4,7 +4,7 @@ import {
   StyleSheet, ActivityIndicator, RefreshControl, TextInput, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useSupervisedTopics, useTopics } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';
@@ -24,9 +24,16 @@ const FILTERS = [
 
 export default function AssignedScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const { user } = useAuthStore();
   const [activeFilter, setActiveFilter] = React.useState('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  React.useEffect(() => {
+    if (params.filter && FILTERS.some(f => f.key === params.filter)) {
+      setActiveFilter(params.filter);
+    }
+  }, [params.filter]);
 
   const isHOD = user?.role === 'HEAD';
 

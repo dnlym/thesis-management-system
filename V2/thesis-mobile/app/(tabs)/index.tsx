@@ -8,9 +8,9 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import { useAssignments } from '@/hooks/useAssignments';
-import { useSupervisedTopics, useTopics } from '@/hooks/useTopics';
+import { useSupervisedTopics } from '@/hooks/useTopics';
 
-import { MapPin, Clock, Trophy, ChevronRight } from 'lucide-react-native';
+import { MapPin, Clock, Users, UserCheck, Award } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
@@ -23,26 +23,30 @@ export default function DashboardScreen() {
   const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
   const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments();
   const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
-  const { data: allDeptTopicsRes, refetch: refetchAllTopics, isLoading: isAllTopicsLoading } = useTopics({ size: 100 });
-
-  const isHOD = user?.role === 'HEAD';
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    const promises: Promise<any>[] = [refetchStats(), refetchAssignments(), refetchSupervised()];
-    if (isHOD) promises.push(refetchAllTopics());
-    await Promise.all(promises);
+    await Promise.all([refetchStats(), refetchAssignments(), refetchSupervised()]);
     setRefreshing(false);
-  }, [refetchStats, refetchAssignments, refetchSupervised, refetchAllTopics, isHOD]);
+  }, [refetchStats, refetchAssignments, refetchSupervised]);
 
   const d = new Date();
   const TODAY = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading || (isHOD && isAllTopicsLoading);
+  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading;
 
-  // Derive stats
+  // Derive stats & counts
   const assignedList = assignments || [];
   const supervisedList = supervisedTopics || [];
-  const allDeptTopics = allDeptTopicsRes?.topics || [];
+
+  const reviewerCount = assignedList.filter(a => a.assignment_type === 'REVIEWER').length;
+  const committeeCount = assignedList.filter(a => a.assignment_type === 'COMMITTEE').length;
+  const supervisedCount = supervisedList.length;
+
+  // Get active semester name
+  const currentSemesterName = React.useMemo(() => {
+    const sem = assignedList[0]?.topic?.semester?.name || supervisedList[0]?.semester?.name;
+    return sem || 'Học kỳ 2 - Năm học 2025-2026';
+  }, [assignedList, supervisedList]);
 
   // Combine all topics the user needs to interact with
   const uniqueCombinedTopics = React.useMemo(() => {
@@ -57,7 +61,7 @@ export default function DashboardScreen() {
           }
     
           return {
-            id: a.id, // Assignment ID for unique key
+            id: a.id,
             topicId: a.topic_id,
             groupId: a.group_id,
             groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
@@ -70,9 +74,9 @@ export default function DashboardScreen() {
           };
         }),
         ...supervisedList.map(t => ({
-          id: t.id, // This is groupId from getTopics
+          id: t.id,
           topicId: t.topicId,
-          groupId: t.id, // Explicitly treat t.id as groupId
+          groupId: t.id,
           groupName: t.code || t.title || 'Supervised Topic',
           status: 'ADVISOR',
           statusLabel: 'Chấm HD',
@@ -86,38 +90,20 @@ export default function DashboardScreen() {
     return list;
   }, [assignedList, supervisedList]);
 
-  // Group assignments by session or date
-  const sessions = [];
-
-  if (uniqueCombinedTopics.length > 0) {
-    sessions.push({
-      id: 's1',
-      name: 'Nhiệm vụ của tôi',
-      topics: uniqueCombinedTopics
+  // Filter topics scheduled for TODAY
+  const todayTopics = React.useMemo(() => {
+    const todayStr = new Date().toLocaleDateString('vi-VN');
+    return uniqueCombinedTopics.filter(t => {
+      if (!t.schedule?.defense_date) return false;
+      const defDateStr = new Date(t.schedule.defense_date).toLocaleDateString('vi-VN');
+      return defDateStr === todayStr;
     });
-  }
+  }, [uniqueCombinedTopics]);
 
-  if (isHOD && allDeptTopics.length > 0) {
-    sessions.push({
-      id: 'hod_all',
-      name: 'Quản lý Bộ môn',
-      topics: allDeptTopics.map(t => ({
-        id: t.id, // GroupId
-        topicId: t.topicId,
-        groupId: t.id,
-        groupName: t.code || t.title || 'Topic',
-        status: t.status,
-        statusLabel: t.status,
-        statusColor: '#64748b',
-        role: 'QUẢN LÝ',
-        schedule: t.defense_schedule,
-        room: t.room
-      }))
-    });
-  }
-
-  const totalGroups = isHOD ? allDeptTopics.length : uniqueCombinedTopics.length;
-  const notStarted = assignedList.filter(a => a.status === 'PENDING').length;
+  // Group into a single session for today
+  const sessions = todayTopics.length > 0
+    ? [{ id: 's1', name: 'Lịch chấm hôm nay', topics: todayTopics }]
+    : [];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -127,9 +113,12 @@ export default function DashboardScreen() {
       >
         {/* Modern White Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greetSmall}>Xin chào,</Text>
             <Text style={styles.greetName}>{user?.full_name || 'Giảng viên'}</Text>
+            <View style={styles.semesterBadge}>
+              <Text style={styles.semesterText}>{currentSemesterName}</Text>
+            </View>
           </View>
           <View style={styles.headerRight}>
             <View style={styles.dateBadge}>
@@ -138,39 +127,46 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Stats card - Premium design */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsCol}>
-            <Text style={styles.statsLabel}>CA CHẤM</Text>
-            <Text style={styles.statsValue}>{sessions.length}</Text>
-          </View>
-          <View style={[styles.statsCol, styles.statsBorder]}>
-            <Text style={styles.statsLabel}>TỔNG NHÓM</Text>
-            <Text style={styles.statsValue}>{totalGroups}</Text>
-          </View>
-          <View style={[styles.statsCol, styles.statsBorder]}>
-            <Text style={styles.statsLabel}>CHƯA CHẤM</Text>
-            <Text style={[styles.statsValue, { color: '#ef4444' }]}>{notStarted}</Text>
-          </View>
-        </View>
-
-        {/* HOD Quick Access */}
-        {isHOD && (
+        {/* Role-based Overview Pillboxes - Clickable */}
+        <View style={styles.pillboxContainer}>
           <TouchableOpacity 
-            style={styles.hodQuickCard} 
-            onPress={() => router.push('/grading-management' as any)}
+            style={[styles.pillbox, { borderLeftColor: BLUE, borderLeftWidth: 4 }]} 
+            onPress={() => router.push('/assigned?filter=GVHD' as any)}
             activeOpacity={0.8}
           >
-            <View style={styles.hodIconContainer}>
-              <Trophy size={22} color="#fff" />
+            <View style={styles.pillboxIconRow}>
+              <Users size={16} color={BLUE} />
+              <Text style={styles.pillboxLabel}>GV Hướng dẫn</Text>
             </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.hodCardTitle}>Quản lý chấm điểm</Text>
-              <Text style={styles.hodCardSub}>Theo dõi tiến độ & chốt điểm bộ môn</Text>
-            </View>
-            <ChevronRight size={20} color={BLUE} />
+            <Text style={[styles.pillboxValue, { color: BLUE }]}>{supervisedCount}</Text>
           </TouchableOpacity>
-        )}
+
+          <TouchableOpacity 
+            style={[styles.pillbox, { borderLeftColor: '#9333ea', borderLeftWidth: 4 }]} 
+            onPress={() => router.push('/assigned?filter=GVPB' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pillboxIconRow}>
+              <UserCheck size={16} color="#9333ea" />
+              <Text style={styles.pillboxLabel}>GV Phản biện</Text>
+            </View>
+            <Text style={[styles.pillboxValue, { color: '#9333ea' }]}>{reviewerCount}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.pillbox, { borderLeftColor: '#ea580c', borderLeftWidth: 4 }]} 
+            onPress={() => router.push('/assigned?filter=HĐBV' as any)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.pillboxIconRow}>
+              <Award size={16} color="#ea580c" />
+              <Text style={styles.pillboxLabel}>Hội đồng</Text>
+            </View>
+            <Text style={[styles.pillboxValue, { color: '#ea580c' }]}>{committeeCount}</Text>
+          </TouchableOpacity>
+        </View>
+
+
 
         {/* Sessions */}
         <View style={styles.body}>
@@ -179,8 +175,9 @@ export default function DashboardScreen() {
           {isLoading ? (
             <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 20 }} />
           ) : sessions.length === 0 ? (
-            <View style={{ alignItems: 'center', marginTop: 30 }}>
-              <Text style={{ color: '#9ca3af' }}>Không có ca chấm nào</Text>
+            <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 20 }}>
+              <Text style={{ color: '#64748b', fontSize: 15, fontWeight: '600' }}>Hôm nay không có lịch chấm điểm</Text>
+              <Text style={{ color: '#94a3b8', fontSize: 13, marginTop: 6, textAlign: 'center' }}>Các đề tài có lịch bảo vệ trong ngày hôm nay sẽ xuất hiện tại đây.</Text>
             </View>
           ) : sessions.map(session => (
             <View key={session.id} style={{ marginBottom: 20 }}>
@@ -246,22 +243,27 @@ const styles = StyleSheet.create({
   },
   greetSmall: { color: '#64748b', fontSize: 13, fontWeight: '500' },
   greetName: { color: '#111827', fontSize: 20, fontWeight: '800', marginTop: 2 },
-  headerRight: { alignItems: 'flex-end' },
+  semesterBadge: { 
+    backgroundColor: '#eff6ff', alignSelf: 'flex-start', 
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginTop: 6 
+  },
+  semesterText: { fontSize: 11, fontWeight: '700', color: BLUE },
+  headerRight: { alignItems: 'flex-end', justifyContent: 'center' },
   dateBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   dateText: { fontSize: 11, fontWeight: '700', color: '#64748b' },
-  statsCard: {
-    backgroundColor: '#fff', flexDirection: 'row',
-    marginHorizontal: 16, borderRadius: 16,
-    paddingVertical: 18, marginTop: 16,
+  pillboxContainer: {
+    flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 16,
+  },
+  pillbox: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: '#f1f5f9',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
   },
-  statsCol: { flex: 1, alignItems: 'center' },
-  statsBorder: { borderLeftWidth: 1, borderLeftColor: '#f1f5f9' },
-  statsLabel: { fontSize: 10, color: '#94a3b8', fontWeight: '800', letterSpacing: 0.5 },
-  statsValue: { fontSize: 24, fontWeight: '900', color: BLUE, marginTop: 4 },
-  body: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
+  pillboxIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pillboxLabel: { fontSize: 11, color: '#64748b', fontWeight: '700' },
+  pillboxValue: { fontSize: 22, fontWeight: '900', marginTop: 8 },
+  body: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16 },
   sessionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   sessionDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: BLUE, marginRight: 8 },
@@ -279,39 +281,5 @@ const styles = StyleSheet.create({
   roleBadge: { backgroundColor: '#eff6ff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 4 },
   roleBadgeText: { fontSize: 10, fontWeight: '700', color: BLUE },
   statusText: { fontSize: 11, fontWeight: '600' },
-  hodQuickCard: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  hodIconContainer: {
-    width: 44,
-    height: 44,
-    backgroundColor: BLUE,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hodCardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
-  hodCardSub: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-    fontWeight: '500',
-  },
+
 });

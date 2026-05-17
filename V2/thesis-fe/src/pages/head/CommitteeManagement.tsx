@@ -3,7 +3,7 @@ import { Card, Table, Button, Tag, Modal, Form, Input, Select, Space, Divider, P
 import { notify } from '@/utils/notification';
 import { 
     PlusOutlined, DeleteOutlined, EditOutlined, 
-    HomeOutlined, CrownOutlined, EditFilled, 
+    HomeOutlined, CrownOutlined, EditFilled, AppstoreOutlined,
     UsergroupAddOutlined, TagOutlined, UserOutlined, CloseOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -329,7 +329,7 @@ const CommitteeManagement = () => {
                         <div className="grid grid-cols-12 gap-3">
                             <Form.Item
                                 name="name"
-                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><TagOutlined className="mr-1" /> {t('committeeManagement.nameLabel')}</span>}
+                                label={<span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest h-5"><TagOutlined /> {t('committeeManagement.nameLabel')}</span>}
                                 rules={[{ required: true, message: t('committeeManagement.nameRequired') }]}
                                 className="col-span-5 mb-0"
                             >
@@ -337,7 +337,7 @@ const CommitteeManagement = () => {
                             </Form.Item>
                             <Form.Item
                                 name="type"
-                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phân loại</span>}
+                                label={<span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest h-5"><AppstoreOutlined /> Phân loại</span>}
                                 rules={[{ required: true }]}
                                 className="col-span-4 mb-0"
                             >
@@ -367,7 +367,7 @@ const CommitteeManagement = () => {
                             </Form.Item>
                             <Form.Item 
                                 name="roomPreference" 
-                                label={<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><HomeOutlined className="mr-1" /> Phòng</span>}
+                                label={<span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest h-5"><HomeOutlined /> Phòng</span>}
                                 className="col-span-3 mb-0"
                             >
                                 <Input placeholder="Vd: A.1.5" size="middle" className="rounded-lg text-[13px]" />

@@ -479,9 +479,24 @@ export class RegistrationService {
         topic: {
           include: {
             supervisor: {
-              select: { id: true, full_name: true, email: true, avatar_url: true },
+              select: { id: true, full_name: true, email: true, avatar_url: true, phone: true },
             },
             semester: true,
+            assignments: {
+              where: {
+                status: { notIn: ['DECLINED', 'AUTO_DECLINED'] }
+              },
+              include: {
+                reviewer: {
+                  select: { id: true, full_name: true, email: true, phone: true, avatar_url: true }
+                }
+              }
+            },
+            defense_schedules: {
+              include: {
+                committee: true
+              }
+            }
           },
         },
         group: {
@@ -489,7 +504,21 @@ export class RegistrationService {
             members: {
               include: {
                 user: {
-                  select: { id: true, full_name: true, email: true, student_code: true },
+                  select: { 
+                    id: true, 
+                    full_name: true, 
+                    email: true, 
+                    student_code: true,
+                    avatar_url: true,
+                    topic_registrations: {
+                      select: {
+                        id: true,
+                        topic_id: true,
+                        midterm_status: true,
+                        midterm_feedback: true
+                      }
+                    }
+                  },
                 },
               },
             },

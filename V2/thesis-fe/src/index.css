@@ -170,7 +170,6 @@
 
 .ant-input,
 .ant-input-password {
-  /* @apply rounded-md border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; */
   border-radius: var(--radius);
   border-color: hsl(var(--input));
   background-color: hsl(var(--background));
@@ -180,10 +179,50 @@
   transition: var(--transition-smooth);
 }
 
+input.ant-input {
+  height: 40px !important;
+}
+
+.ant-select-single .ant-select-selector {
+  border-radius: var(--radius) !important;
+  border-color: hsl(var(--input)) !important;
+  background-color: hsl(var(--background)) !important;
+  height: 40px !important;
+  padding: 0 0.75rem !important;
+  font-size: 0.875rem !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: var(--transition-smooth) !important;
+}
+
+.ant-select-single .ant-select-selection-item,
+.ant-select-single .ant-select-selection-placeholder {
+  line-height: 38px !important;
+  font-size: 0.875rem !important;
+}
+
+.ant-input-number {
+  border-radius: var(--radius) !important;
+  border-color: hsl(var(--input)) !important;
+  background-color: hsl(var(--background)) !important;
+  height: 40px !important;
+  padding: 0 0.5rem !important;
+  font-size: 0.875rem !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ant-input-number-input {
+  height: 38px !important;
+  padding: 0 !important;
+}
+
 .ant-input:focus,
 .ant-input-focused,
 .ant-input-password:focus,
-.ant-input-password-focused {
+.ant-input-password-focused,
+.ant-select-focused .ant-select-selector,
+.ant-input-number-focused {
   border-color: hsl(var(--muted-foreground) / 0.5) !important;
   box-shadow: none !important;
 }
