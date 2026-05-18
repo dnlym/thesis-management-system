@@ -48,7 +48,7 @@ export async function isCommitteeMember(userId: string, topicId: string): Promis
 export async function canEditTopic(user: { id: string, role: UserRole }, topicId: string): Promise<boolean> {
   if (user.role === UserRole.ADMIN || user.role === UserRole.HEAD) return true;
   
-  if (user.role === UserRole.LECTURER) {
+  if (user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) {
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
       select: { supervisor_id: true, status: true }

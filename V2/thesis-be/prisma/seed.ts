@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 const rawStudentData = [
   { masv: "22653531", hoDem: "Nguyễn Trần", ten: "Thành", lop: "DHHTTT18BT", nhóm: "Làm một mình", deTai: "Xây dựng hệ thống thi trực tuyến tích hợp AI nhận diện khuôn mặt chống gian lận" },
   { masv: "21077161", hoDem: "Nguyễn Thanh", ten: "Phới", lop: "DHHTTT17A", nhóm: "Làm một mình", deTai: "Tìm hiểu hệ thống Odoo và ứng dụng vào quá trình tạo và quản lý 1 hệ thống thông tin quản lý cụ thể." },
-  { masv: "21105841", hoDem: "Đạo Hoa Anh", ten: "Thư", lop: "DHHTTT17B", nhóm: "Làm một mình", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
+  { masv: "21105841", hoDem: "Đào Hoa Anh", ten: "Thư", lop: "DHHTTT17B", nhóm: "Làm một mình", deTai: "Xây dựng hệ thống xét duyệt thi đua, khen thưởng." },
   { masv: "21128931", hoDem: "Cao Bình", ten: "Uy", lop: "DHHTTT17B", nhóm: "Làm một mình", deTai: "Hệ thống quản lý rạp chiếu phim" },
   { masv: "21079291", hoDem: "Lê Minh", ten: "Khánh", lop: "DHHTTT17AT", nhóm: "Làm một mình", deTai: "Xây dựng ứng dụng website đặt và quản lý tour du lịch" },
   { masv: "21014621", hoDem: "Lư Minh", ten: "Thuận", lop: "DHHTTT17A", nhóm: "1653", deTai: "Xây dựng website quản lý sản xuất cho nhà máy" },
@@ -62,6 +62,14 @@ async function main() {
 
   // 0. CLEAR OLD DATA
   console.log('🧹 Đang dọn dẹp dữ liệu cũ...');
+  await prisma.auditLog.deleteMany();
+  await prisma.topicVersion.deleteMany();
+  await prisma.extraPointRequest.deleteMany();
+  await prisma.gradeHistory.deleteMany();
+  await prisma.grade.deleteMany();
+  await prisma.finalScore.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.defenseSchedule.deleteMany();
   await prisma.topicRegistration.deleteMany();
   await prisma.groupMember.deleteMany();
   await prisma.group.deleteMany();
@@ -96,9 +104,11 @@ async function main() {
   for (const [deptCode, names] of Object.entries(rawFacultyData)) {
     for (const rawName of names as string[]) {
       const isHod = rawName.includes('Trưởng bộ môn');
+      const isCoordinator = rawName.includes('Nguyễn Hữu Quang');
       const fullName = rawName.replace(/\s*\(.*\)$/, '');
       const email = fullName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '') + "@iuh.edu.vn";
-      const user = await prisma.user.upsert({ where: { email }, update: { full_name: fullName, role: isHod ? UserRole.HEAD : UserRole.LECTURER, departmentId: deptMap[deptCode].id }, create: { email, full_name: fullName, password_hash: commonPassword, role: isHod ? UserRole.HEAD : UserRole.LECTURER, departmentId: deptMap[deptCode].id, active: true } });
+      const role = isHod ? UserRole.HEAD : (isCoordinator ? UserRole.COORDINATOR : UserRole.LECTURER);
+      const user = await prisma.user.upsert({ where: { email }, update: { full_name: fullName, role, departmentId: deptMap[deptCode].id }, create: { email, full_name: fullName, password_hash: commonPassword, role, departmentId: deptMap[deptCode].id, active: true } });
       if (deptCode === 'IS') isLecturers.push(user);
     }
   }
@@ -157,13 +167,10 @@ async function main() {
       });
       createdStudentIds.push(studentUser.id);
     }
-    let groupId: string | null = null;
-    const isSingle = members[0].nhóm === "Làm một mình";
-    if (!isSingle) {
-      const group = await prisma.group.create({ data: { name: `Nhóm ${members[0].nhóm}`, leader_id: createdStudentIds[0], semester_id: semester.id, topic_id: topic.id } });
-      groupId = group.id;
-      for (const sid of createdStudentIds) { await prisma.groupMember.create({ data: { group_id: groupId, user_id: sid, status: 'ACCEPTED' } }); }
-    }
+    const groupName = `G1-${topic.code}`;
+    const group = await prisma.group.create({ data: { name: groupName, leader_id: createdStudentIds[0], semester_id: semester.id, topic_id: topic.id } });
+    const groupId = group.id;
+    for (const sid of createdStudentIds) { await prisma.groupMember.create({ data: { group_id: groupId, user_id: sid, status: 'ACCEPTED' } }); }
     for (const sid of createdStudentIds) {
       await prisma.topicRegistration.create({ data: { student_id: sid, topic_id: topic.id, semester_id: semester.id, group_id: groupId, status: RegistrationStatus.CONFIRMED, student_progress_status: StudentProgressStatus.HAS_TOPIC, midterm_status: MidtermStatus.PASS, confirmed_at: new Date() } });
     }

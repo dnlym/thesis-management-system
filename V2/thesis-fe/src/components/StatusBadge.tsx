@@ -40,6 +40,7 @@ const registrationStatusConfig: Record<RegistrationStatus, { labelKey: string; c
     CONFIRMED: { labelKey: 'status.registration.CONFIRMED', color: 'success' },
     REJECTED: { labelKey: 'status.registration.REJECTED', color: 'error' },
     CANCELLED: { labelKey: 'status.registration.CANCELLED', color: 'default' },
+    NO_REGISTRATION: { labelKey: 'status.registration.NO_REGISTRATION', color: 'warning' },
 };
 
 

@@ -110,14 +110,14 @@ const App = () => (
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/" element={
-                  <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
+                  <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN']}>
                     <Layout />
                   </ProtectedRoute>
                 }>
                   <Route
                     path="profile"
                     element={
-                      <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'ADMIN']}>
+                      <ProtectedRoute allowedRoles={['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN']}>
                         <Profiles />
                       </ProtectedRoute>
                     }

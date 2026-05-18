@@ -252,25 +252,25 @@ export class AcademicPolicy {
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE) {
           return { allowed: false, reason: 'Chỉ được xét duyệt hình thức bảo vệ trong giai đoạn Phản biện hoặc Bảo vệ.', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+        return { allowed: user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR, code: 'ALLOWED' };
 
       case AcademicAction.ASSIGN_REVIEWER:
         if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
           return { allowed: false, reason: 'Chỉ được phân công phản biện từ giai đoạn Phản biện trở đi (sau khi có kết quả giữa kỳ).', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+        return { allowed: user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR, code: 'ALLOWED' };
 
       case AcademicAction.ASSIGN_COMMITTEE:
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
           return { allowed: false, reason: 'Chỉ được phân công hội đồng trong giai đoạn Bảo vệ cuối kỳ.', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+        return { allowed: user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR, code: 'ALLOWED' };
 
       case AcademicAction.FINALIZE_SCORE:
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
           return { allowed: false, reason: 'Chỉ được chốt điểm trong giai đoạn Bảo vệ hoặc Tổng hợp.', code: 'INVALID_PHASE' };
         }
-        return { allowed: user.role === UserRole.HEAD, code: 'ALLOWED' };
+        return { allowed: user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR, code: 'ALLOWED' };
 
       default:
         return { allowed: false, reason: 'Hành động không xác định.' };

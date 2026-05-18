@@ -429,19 +429,24 @@ const Topics = () => {
 
         {/* Filter Bar */}
         <Card className="page-toolbar-card">
-          <Flex gap="middle" wrap="wrap" align="center">
-            <Input.Search
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center w-full">
+            <Input
+              size="large"
               placeholder="Tìm kiếm đề tài..."
+              prefix={<SearchOutlined className="text-slate-400" />}
               value={searchValue}
               onChange={handleSearch}
               allowClear
-              className="max-w-md flex-1"
+              className="sys-input-search w-full flex items-center"
+              style={{ height: 40, borderRadius: 12 }}
               disabled={!filters.semesterId}
             />
 
             <Select
+              size="large"
               placeholder="Chọn học kỳ"
-              style={{ width: 450 }}
+              className="w-full flex items-center"
+              style={{ height: 40, borderRadius: 12 }}
               value={filters.semesterId}
               onChange={handleSemesterChange}
               loading={isLoadingActive}
@@ -458,26 +463,30 @@ const Topics = () => {
               ))}
             </Select>
 
-            <Select
-              placeholder="Lọc trạng thái"
-              style={{ width: 200 }}
-              value={filters.status}
-              onChange={handleStatusChange}
-              options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
-              allowClear
-            />
+            <div className="flex items-center gap-2 w-full">
+              <Select
+                size="large"
+                placeholder="Lọc trạng thái"
+                className="w-full flex-1 flex items-center"
+                style={{ height: 40, borderRadius: 12 }}
+                value={filters.status}
+                onChange={handleStatusChange}
+                options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
+                allowClear
+              />
 
-            {(isFiltering) && (
-              <Button
-                type="link"
-                icon={<ReloadOutlined />}
-                onClick={handleClearFilters}
-                className="px-0"
-              >
-                Xóa bộ lọc
-              </Button>
-            )}
-          </Flex>
+              {(isFiltering) && (
+                <Button
+                  type="link"
+                  icon={<ReloadOutlined />}
+                  onClick={handleClearFilters}
+                  className="px-2 whitespace-nowrap"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </div>
+          </div>
         </Card>
 
         {/* Topics Table */}

@@ -72,7 +72,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.dashboard',
       icon: DashboardOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
 
@@ -106,7 +106,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.topics',
       icon: BookOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -115,7 +115,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.createTopic',
       icon: BookOutlined,
-      roles: ['LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
     },
   },
@@ -125,7 +125,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.registrations',
       icon: TeamOutlined,
-      roles: ['LECTURER'],
+      roles: ['LECTURER', 'COORDINATOR', 'HEAD'],
       hideInMenu: true,
     },
   },
@@ -135,7 +135,7 @@ export const routes: RouteConfig[] = [
     element: TopicDetail,
     meta: {
       title: 'topics.title',
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
       parentPath: '/topics',
     },
@@ -145,7 +145,7 @@ export const routes: RouteConfig[] = [
     element: EditTopic,
     meta: {
       title: 'topics.editTopic',
-      roles: ['LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
       parentPath: '/topics',
     },
@@ -167,7 +167,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.midtermEvaluation',
       icon: CheckCircleOutlined,
-      roles: ['LECTURER'],
+      roles: ['LECTURER', 'COORDINATOR'],
     },
   },
   {
@@ -176,7 +176,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.finalEvaluation',
       icon: CheckCircleOutlined,
-      roles: ['LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -185,7 +185,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.loEvaluation',
       icon: CheckCircleOutlined,
-      roles: ['LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
     },
   },
@@ -195,7 +195,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.schedule',
       icon: CalendarOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -204,7 +204,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'Kết quả khóa luận',
       icon: BarChartOutlined,
-      roles: ['HEAD', 'ADMIN', 'LECTURER'],
+      roles: ['HEAD', 'ADMIN', 'LECTURER', 'COORDINATOR'],
     },
   },
 
@@ -224,7 +224,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.reviewerAssignment',
       icon: TeamOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -233,7 +233,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeAssignment',
       icon: CrownOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -242,7 +242,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeManagement',
       icon: TeamOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -251,7 +251,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.committeeSchedules',
       icon: CalendarOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -269,7 +269,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.gradeSummary',
       icon: BarChartOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
@@ -334,7 +334,7 @@ export const routes: RouteConfig[] = [
     element: Login,
     meta: {
       title: 'auth.login',
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
     },
   },
@@ -343,7 +343,7 @@ export const routes: RouteConfig[] = [
     element: Profiles,
     meta: {
       title: 'navigation.users',
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'COORDINATOR', 'ADMIN'],
       hideInMenu: true,
     },
   },
@@ -429,6 +429,57 @@ export const getMenuItems = (userRole: UserRole) => {
     ];
   }
 
+  // Coordinator menu
+  if (userRole === 'COORDINATOR') {
+    return [
+      {
+        key: '/dashboard',
+        icon: <DashboardOutlined />,
+        label: 'navigation.dashboard',
+      },
+      {
+        key: 'guidance',
+        icon: <BookOutlined />,
+        label: 'navigation.guidance',
+        children: [
+          { key: '/topics', label: 'navigation.topics', icon: <BookOutlined /> },
+          { key: '/supervisor/registrations', label: 'navigation.registrations', icon: <TeamOutlined /> },
+          { key: '/midterm-evaluation', label: 'navigation.midtermEvaluation', icon: <CheckCircleOutlined /> },
+          { key: '/evaluation', label: 'navigation.finalEvaluation', icon: <CheckCircleOutlined /> },
+        ],
+      },
+      {
+        key: 'reviewer',
+        icon: <SafetyCertificateOutlined />,
+        label: 'navigation.reviewerCouncil',
+        children: [
+          { key: '/evaluation?type=reviewer', label: 'navigation.reviewerForm', icon: <CheckCircleOutlined /> },
+        ],
+      },
+      {
+        key: 'management',
+        icon: <TeamOutlined />,
+        label: 'Quản lý khóa luận',
+        children: [
+          { key: '/reviewer-assignment', label: 'navigation.reviewerAssignment', icon: <TeamOutlined /> },
+          { key: '/committee-assignment', label: 'navigation.committeeAssignment', icon: <CrownOutlined /> },
+          { key: '/head/committees', label: 'navigation.committeeManagement', icon: <TeamOutlined /> },
+          { key: '/head/grade-summary', label: 'navigation.gradeSummary', icon: <BarChartOutlined /> },
+        ],
+      },
+      {
+        key: '/final-results',
+        icon: <BarChartOutlined />,
+        label: 'Kết quả khóa luận',
+      },
+      {
+        key: '/schedule',
+        icon: <CalendarOutlined />,
+        label: 'navigation.schedule',
+      },
+    ];
+  }
+
   // Head menu
   if (userRole === 'HEAD') {
     return [
@@ -443,6 +494,7 @@ export const getMenuItems = (userRole: UserRole) => {
         label: 'navigation.management',
         children: [
           { key: '/topics', label: 'navigation.topics', icon: <BookOutlined /> },
+          { key: '/supervisor/registrations', label: 'navigation.registrations', icon: <TeamOutlined /> },
           { key: '/head/approve-topics', label: 'navigation.approveTopics', icon: <CheckCircleOutlined /> },
           { key: '/reviewer-assignment', label: 'navigation.reviewerAssignment', icon: <TeamOutlined /> },
           { key: '/committee-assignment', label: 'navigation.committeeAssignment', icon: <CrownOutlined /> },

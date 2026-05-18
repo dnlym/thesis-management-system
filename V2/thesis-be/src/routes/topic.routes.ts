@@ -33,7 +33,7 @@ router.post(
 
 router.put(
   '/:topicId',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   enforceAcademicAction(AcademicAction.UPDATE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.updateTopic.bind(topicController)
@@ -79,7 +79,7 @@ router.patch(
 
 router.get(
   '/stats',
-  authorize(UserRole.HEAD, UserRole.LECTURER, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.LECTURER, UserRole.ADMIN),
   topicController.getTopicStats.bind(topicController)
 );
 
@@ -94,14 +94,14 @@ router.get(
 // Get topic approval history (HEAD, SUPERVISOR, ADMIN)
 router.get(
   '/:topicId/history',
-  authorize(UserRole.HEAD, UserRole.LECTURER, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.LECTURER, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.getApprovalHistory.bind(topicController)
 );
 
 router.put(
   '/:topicId/interdisciplinary-response',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('status').isIn(['APPROVED', 'REJECTED']).withMessage('Invalid status'),
@@ -111,7 +111,7 @@ router.put(
 
 router.delete(
   '/:topicId',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   enforceAcademicAction(AcademicAction.DELETE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.deleteTopic.bind(topicController)
@@ -120,7 +120,7 @@ router.delete(
 // Hide topic (SUPERVISOR can hide their own topics)
 router.post(
   '/:topicId/hide',
-  authorize(UserRole.LECTURER, UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.hideTopic.bind(topicController)
 );
@@ -128,7 +128,7 @@ router.post(
 // Clone topic (SUPERVISOR)
 router.post(
   '/:topicId/clone',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('semesterId').notEmpty().withMessage('Semester ID is required'),
@@ -139,7 +139,7 @@ router.post(
 // Finalize defense eligibility and type (HOD)
 router.post(
   '/:topicId/finalize-defense-pivot',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.ASSIGN_DEFENSE_PIVOT),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
@@ -152,7 +152,7 @@ router.post(
 // Unhide topic (restore to previous status)
 router.post(
   '/:topicId/unhide',
-  authorize(UserRole.LECTURER, UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.unhideTopic.bind(topicController)
 );

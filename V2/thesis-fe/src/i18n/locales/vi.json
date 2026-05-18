@@ -208,7 +208,8 @@
       "PENDING": "Chờ xác nhận",
       "CONFIRMED": "Đã xác nhận",
       "REJECTED": "Từ chối",
-      "CANCELLED": "Đã hủy"
+      "CANCELLED": "Đã hủy",
+      "NO_REGISTRATION": "Chưa có sinh viên"
     },
     "submission": {
       "DRAFT": "Bản nháp",

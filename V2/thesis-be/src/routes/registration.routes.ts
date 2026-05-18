@@ -27,7 +27,7 @@ router.post(
 // GVHD registers a topic on behalf of a student (optional flow)
 router.post(
   '/register-for-student',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   enforceAcademicAction(AcademicAction.REGISTER_TOPIC),
   validate([
     body('studentId').isUUID().withMessage('Invalid student ID'),
@@ -156,7 +156,7 @@ router.get(
 // Update student progress (supervisor only)
 router.put(
   '/:registrationId/progress',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   validate([
     param('registrationId').isUUID().withMessage('Invalid registration ID'),
     body('status').notEmpty().withMessage('Status is required'),

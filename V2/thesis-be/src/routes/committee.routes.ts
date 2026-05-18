@@ -7,7 +7,7 @@ const router = Router();
 
 // All committee routes require authentication and HEAD/ADMIN role
 router.use(authenticate);
-router.use(authorize(UserRole.HEAD, UserRole.ADMIN));
+router.use(authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN));
 
 router.post('/', committeeController.createCommittee);
 router.get('/', committeeController.getCommittees);

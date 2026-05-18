@@ -92,14 +92,14 @@ router.get(
 // Get registrations for midterm grading (GVHD only)
 router.get(
   '/midterm',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   gradingController.getRegistrationsForMidtermGrading.bind(gradingController)
 );
 
 // Update midterm status (PASS/FAIL) - Only GVHD can grade
 router.put(
   '/midterm/:registrationId',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   enforceAcademicAction(AcademicAction.GRADE_MIDTERM),
   validate([
     param('registrationId').isUUID().withMessage('Invalid registration ID'),
@@ -111,7 +111,7 @@ router.put(
 
 router.post(
   '/submit',
-  authorize(UserRole.LECTURER),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
   enforceAcademicAction((req) => {
     const role = (req.body.raterRole || '').toUpperCase();
     // Committee roles: COUNCIL_MEMBER, COMMITTEE, COMMITTEE_CHAIR, COMMITTEE_SECRETARY, COMMITTEE_MEMBER, COMMITTEE_MEMBER_1, COMMITTEE_MEMBER_2, ORAL_COMMITTEE, POSTER_COMMITTEE
@@ -142,7 +142,7 @@ router.post(
 
 router.post(
   '/:topicId/compute',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   gradingController.computeFinalScore.bind(gradingController)
 );

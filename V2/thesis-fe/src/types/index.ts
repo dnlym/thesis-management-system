@@ -3,6 +3,7 @@
 export type UserRole =
   | 'STUDENT'
   | 'LECTURER'
+  | 'COORDINATOR'
   | 'HEAD'
   | 'ADMIN';
 
@@ -38,7 +39,7 @@ export type AssignmentType = 'REVIEWER' | 'COMMITTEE';
 export type AssignmentStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'AUTO_ACCEPTED' | 'AUTO_DECLINED';
 
 // Registration Status
-export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED';
+export type RegistrationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'NO_REGISTRATION';
 
 // Extra Points Status
 export type ExtraPointsStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';

@@ -150,36 +150,28 @@ const Login = () => {
                 { type: 'email', message: t('auth.emailInvalid') }
               ]}
             >
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                  <UserOutlined />
-                </div>
-                <Input
-                  id="email"
-                  name="email"
-                  autoComplete="email"
-                  placeholder={t('auth.email')}
-                  className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
-                />
-              </div>
+              <Input
+                id="email"
+                name="email"
+                autoComplete="email"
+                prefix={<UserOutlined className="text-slate-400 mr-2 group-focus-within:text-blue-600 transition-colors" />}
+                placeholder={t('auth.email')}
+                className="h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium px-4"
+              />
             </Form.Item>
 
             <Form.Item
               name="password"
               rules={[{ required: true, message: t('auth.passwordRequired') }]}
             >
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
-                  <LockOutlined />
-                </div>
-                <Input.Password
-                  id="password"
-                  name="password"
-                  autoComplete="current-password"
-                  placeholder={t('auth.password')}
-                  className="pl-12 h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium"
-                />
-              </div>
+              <Input.Password
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                prefix={<LockOutlined className="text-slate-400 mr-2 group-focus-within:text-blue-600 transition-colors" />}
+                placeholder={t('auth.password')}
+                className="h-[56px] rounded-2xl border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-base font-medium px-4"
+              />
             </Form.Item>
 
             <div className="flex justify-between items-center mb-8 px-1">

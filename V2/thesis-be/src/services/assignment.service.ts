@@ -182,19 +182,6 @@ export class AssignmentService {
       throw new Error('Giảng viên phản biện phải thuộc cùng bộ môn với đề tài');
     }
 
-    // Check workload limit
-    const workload = await prisma.userWorkloadLimit.findFirst({
-      where: {
-        user_id: data.reviewerId,
-        semester_id: topic.semester_id,
-        role_type: 'REVIEWER',
-      },
-    });
-
-    if (workload && workload.current_count >= workload.max_count) {
-      throw new Error(ERROR_CODES.WORKLOAD_EXCEEDED);
-    }
-
     const assignment = await (prisma.assignment as any).create({
       data: {
         topic_id: data.topicId,
@@ -209,16 +196,6 @@ export class AssignmentService {
         responded_at: new Date(),
       },
     });
-
-    // Update workload
-    if (workload) {
-      await prisma.userWorkloadLimit.update({
-        where: { id: workload.id },
-        data: {
-          current_count: { increment: 1 },
-        },
-      });
-    }
 
     // Update topic status if needed
     const reviewerCount = topic.assignments.filter((a: Assignment) => a.assignment_type === AssignmentType.REVIEWER).length + 1;
@@ -324,24 +301,6 @@ export class AssignmentService {
         responded_at: new Date(),
       },
     });
-
-    // Update workload
-    const workload = await prisma.userWorkloadLimit.findFirst({
-      where: {
-        user_id: userId,
-        semester_id: assignment.topic.semester_id,
-        role_type: assignment.assignment_type === AssignmentType.REVIEWER ? 'REVIEWER' : 'COMMITTEE',
-      },
-    });
-
-    if (workload) {
-      await prisma.userWorkloadLimit.update({
-        where: { id: workload.id },
-        data: {
-          current_count: { decrement: 1 },
-        },
-      });
-    }
 
     // Create audit log
     await prisma.auditLog.create({
@@ -461,24 +420,6 @@ export class AssignmentService {
           room: data.room,
         },
       });
-
-      // Update workload
-      const workload = await prisma.userWorkloadLimit.findFirst({
-        where: {
-          user_id: member.reviewer_id,
-          semester_id: topic.semester_id,
-          role_type: 'COMMITTEE',
-        },
-      });
-
-      if (workload) {
-        await prisma.userWorkloadLimit.update({
-          where: { id: workload.id },
-          data: {
-            current_count: { increment: 1 },
-          },
-        });
-      }
     }
 
     // Initial assignment of committee moves it to DEFENDING stage
@@ -805,23 +746,6 @@ export class AssignmentService {
       where: { id: assignmentId },
     });
 
-    // Update workload
-    const workload = await prisma.userWorkloadLimit.findFirst({
-      where: {
-        user_id: assignment.reviewer_id,
-        semester_id: assignment.topic.semester_id,
-        role_type: assignment.assignment_type === AssignmentType.REVIEWER ? 'REVIEWER' : 'COMMITTEE',
-      },
-    });
-
-    if (workload && workload.current_count > 0) {
-      await prisma.userWorkloadLimit.update({
-        where: { id: workload.id },
-        data: {
-          current_count: { decrement: 1 },
-        },
-      });
-    }
 
     // Create audit log
     await prisma.auditLog.create({
@@ -844,7 +768,7 @@ export class AssignmentService {
    */
   async getTopicsForReviewerAssignment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -923,7 +847,7 @@ export class AssignmentService {
    */
   async getTopicsForCommitteeAssignment(userId: string): Promise<TopicForCommitteeAssignment[]> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -931,7 +855,7 @@ export class AssignmentService {
     if (!semesterId) throw new Error('Không tìm thấy học kỳ đang hoạt động');
 
     const [deptConfig, topics] = await Promise.all([
-      user.role === UserRole.HEAD ? prisma.departmentSemesterConfig.findUnique({
+      (user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR) ? prisma.departmentSemesterConfig.findUnique({
         where: { department_id_semester_id: { department_id: user.departmentId, semester_id: semesterId } }
       }) : null,
       prisma.topic.findMany({
@@ -1082,7 +1006,7 @@ export class AssignmentService {
    */
   async getAvailableReviewers(userId: string, topicId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -1128,7 +1052,7 @@ export class AssignmentService {
    */
   async getAvailableReviewersForDepartment(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -1163,7 +1087,7 @@ export class AssignmentService {
     }
   ) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
@@ -1271,7 +1195,7 @@ export class AssignmentService {
   }
   async updateDefenseType(userId: string, topicId: string, type: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role !== UserRole.HEAD) {
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 

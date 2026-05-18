@@ -183,6 +183,50 @@ input.ant-input {
   height: 40px !important;
 }
 
+.ant-input-group-wrapper.ant-input-search {
+  vertical-align: middle !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 40px !important;
+}
+
+.ant-input-wrapper.ant-input-group {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 40px !important;
+}
+
+.ant-input-search .ant-input {
+  height: 40px !important;
+  line-height: 38px !important;
+  border-start-start-radius: var(--radius) !important;
+  border-end-start-radius: var(--radius) !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+.ant-input-search .ant-input-search-button {
+  height: 40px !important;
+  border-start-end-radius: var(--radius) !important;
+  border-end-end-radius: var(--radius) !important;
+  border-color: hsl(var(--input)) !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+}
+
+.ant-input-search .ant-input-group-addon {
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 !important;
+  border: none !important;
+  height: 40px !important;
+}
+
 .ant-select-single .ant-select-selector {
   border-radius: var(--radius) !important;
   border-color: hsl(var(--input)) !important;
@@ -332,6 +376,47 @@ input.ant-input {
   margin: 0 !important;
   padding: 12px 24px !important;
   border-top: 1px solid #f1f5f9;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.sys-table .ant-table-pagination .ant-pagination-total-text {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+  line-height: 32px !important;
+}
+
+.sys-table .ant-table-pagination .ant-pagination-options {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+}
+
+.sys-table .ant-table-pagination .ant-select {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+}
+
+.sys-table .ant-table-pagination .ant-select-selector {
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.sys-table .ant-table-pagination .ant-pagination-options-quick-jumper {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+  line-height: 32px !important;
+}
+
+.sys-table .ant-table-pagination .ant-pagination-options-quick-jumper input {
+  height: 32px !important;
+  line-height: 32px !important;
 }
 
 /* ── Global Tabs (system-wide) ───────────────────────────────── */

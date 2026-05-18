@@ -592,7 +592,7 @@ export class GradingService {
    */
   async getGradeSummary(userId: string, semesterId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
     const topics = await prisma.topic.findMany({
       where: {

@@ -97,6 +97,56 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
     ];
   }
 
+  if (role === 'COORDINATOR') {
+    const isReviewPhase = ['REVIEWING', 'DEFENSE', 'FINAL'].includes(currentPhase || '');
+    const isDefensePhase = ['DEFENSE', 'FINAL'].includes(currentPhase || '');
+
+    return [
+      {
+        items: [
+          { key: '/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
+        ]
+      },
+      {
+        title: 'HƯỚNG DẪN',
+        items: [
+          { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
+          { key: '/supervisor/registrations', label: 'Sinh viên hướng dẫn', icon: <TeamOutlined /> },
+          { key: '/midterm-evaluation', label: 'Đánh giá giữa kỳ', icon: <CheckCircleOutlined /> },
+          { key: '/evaluation', label: 'Đánh giá cuối kỳ', icon: <CheckCircleOutlined /> },
+        ]
+      },
+      {
+        title: 'QUẢN LÝ KHOÁ LUẬN',
+        items: [
+          { 
+            key: '/reviewer-assignment', 
+            label: 'Phân công phản biện', 
+            icon: <SafetyCertificateOutlined />,
+            disabled: !isReviewPhase,
+            disabledReason: 'Tính năng chỉ khả dụng từ giai đoạn Phản biện (sau khi có kết quả giữa kỳ).'
+          },
+          { 
+            key: '/committee-assignment', 
+            label: 'Phân công hội đồng', 
+            icon: <CrownOutlined />,
+            disabled: !isDefensePhase,
+            disabledReason: 'Tính năng chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ.'
+          },
+          { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
+        ]
+      },
+      {
+        title: 'BÁO CÁO - THỐNG KÊ',
+        items: [
+          { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
+          { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
+          { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+        ]
+      },
+    ];
+  }
+
   if (role === 'HEAD') {
     const isReviewPhase = ['REVIEWING', 'DEFENSE', 'FINAL'].includes(currentPhase || '');
     const isDefensePhase = ['DEFENSE', 'FINAL'].includes(currentPhase || '');
@@ -111,6 +161,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         title: 'QUẢN LÝ',
         items: [
           { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
+          { key: '/supervisor/registrations', label: 'Sinh viên hướng dẫn', icon: <TeamOutlined /> },
           { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
           { 
             key: '/reviewer-assignment', 
@@ -332,12 +383,11 @@ const AppLayout = () => {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const { token, isAuthenticated, user: current } = useAuthStore.getState();
-        const needsRefresh = isAuthenticated && token && (!current || !((current as any).full_name || (current as any).fullName));
-        if (needsRefresh) {
+        const { token, isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated && token) {
           const res = await AuthApi.me();
           if (res.success && res.data) {
-            const mapped = {
+            const freshUser = {
               id: res.data.id,
               full_name: (res.data as any).full_name || (res.data as any).fullName,
               email: res.data.email,
@@ -347,7 +397,7 @@ const AppLayout = () => {
               avatar_url: (res.data as any).avatar_url || (res.data as any).avatarUrl || undefined,
               joined_at: (res.data as any).created_at || (res.data as any).joined_at || new Date().toISOString(),
             };
-            useAuthStore.getState().login(mapped as any, token, '');
+            useAuthStore.getState().updateUser(freshUser as any);
           }
         }
       } catch { /* ignore */ }
@@ -460,7 +510,7 @@ const AppLayout = () => {
                     {(user as any)?.full_name || (user as any)?.fullName || t('common.user')}
                   </div>
                   <div className="text-xs text-gray-400 leading-tight">
-                    {user?.role === 'HEAD' ? 'Trưởng bộ môn' : user?.role === 'LECTURER' ? 'Giảng viên' : user?.role === 'STUDENT' ? 'Sinh viên' : 'Quản trị viên'}
+                    {user?.role === 'HEAD' ? 'Trưởng bộ môn' : user?.role === 'COORDINATOR' ? 'Phụ trách khóa luận' : user?.role === 'LECTURER' ? 'Giảng viên' : user?.role === 'STUDENT' ? 'Sinh viên' : 'Quản trị viên'}
                   </div>
                 </div>
               </div>

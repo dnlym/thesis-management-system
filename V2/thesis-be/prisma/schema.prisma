@@ -57,7 +57,6 @@ model Semester {
   groups                   Group[]
   topic_registrations      TopicRegistration[]
   topics                   Topic[]
-  workload_limits          UserWorkloadLimit[]
 
   @@index([code])
   @@map("semesters")
@@ -114,11 +113,9 @@ model User {
   owned_groups               Group[]             @relation("GroupLeader")
   notifications              Notification[]      @relation("UserNotifications")
   refresh_tokens             RefreshToken[]
-  updated_configs            SystemConfig[]      @relation("ConfigUpdater")
   topic_registrations        TopicRegistration[] @relation("StudentRegistrations")
   co_supervised_topics       Topic[]             @relation("CoSupervisorTopics")
   supervised_topics          Topic[]             @relation("SupervisorTopics")
-  workload_limits            UserWorkloadLimit[] @relation("UserWorkload")
   grade_change_requests_made  GradeChangeRequest[] @relation("GraderGradeChangeRequests")
   grade_change_requests_received GradeChangeRequest[] @relation("StudentGradeChangeRequests")
   grade_change_requests_reviewed GradeChangeRequest[] @relation("ReviewerGradeChangeRequests")
@@ -528,24 +525,6 @@ model CommitteeMember {
   @@map("committee_members")
 }
 
-model UserWorkloadLimit {
-  id            String   @id @default(uuid())
-  user_id       String
-  semester_id   String
-  role_type     String   @db.VarChar(50)
-  max_count     Int
-  current_count Int      @default(0)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  semester      Semester @relation(fields: [semester_id], references: [id])
-  user          User     @relation("UserWorkload", fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, semester_id, role_type])
-  @@index([user_id])
-  @@index([semester_id])
-  @@map("user_workload_limits")
-}
-
 model Notification {
   id         String   @id @default(uuid())
   user_id    String
@@ -609,19 +588,6 @@ model GradeHistory {
   @@map("grade_history")
 }
 
-model SystemConfig {
-  id            String   @id @default(uuid())
-  name          String   @unique @db.VarChar(100)
-  value         String
-  description   String?
-  updated_by_id String
-  updated_at    DateTime @updatedAt
-  updated_by    User     @relation("ConfigUpdater", fields: [updated_by_id], references: [id])
-
-  @@index([name])
-  @@map("system_config")
-}
-
 model GradeChangeRequest {
   id               String            @id @default(uuid())
   topic_id         String
@@ -678,6 +644,7 @@ model RolePermission {
 enum UserRole {
   STUDENT
   LECTURER
+  COORDINATOR
   HEAD
   ADMIN
 }
