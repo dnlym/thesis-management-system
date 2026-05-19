@@ -661,18 +661,16 @@ const MyRegisteredTopic = () => {
                     </Paragraph>
 
                     <div className="max-w-md mb-4">
-                      <Space.Compact style={{ width: '100%' }}>
+                      <Space.Compact style={{ width: '100%' }} size="large">
                         <Input 
                           placeholder="Nhập mã sinh viên (VD: 2012345)" 
                           id="student-search-input"
-                          style={{ height: 32 }}
                           disabled={sentInvites.length > 0 || searchLoading}
                           onPressEnter={(e: any) => handleSearch(e.target.value)}
                         />
                         <Button 
                           type="primary" 
-                          style={{ height: 32, backgroundColor: '#2563eb', border: 'none' }}
-                          className="px-6"
+                          className="px-6 bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
                           onClick={() => {
                             const input = document.getElementById('student-search-input') as HTMLInputElement;
                             if (input) handleSearch(input.value);

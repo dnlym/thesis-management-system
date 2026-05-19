@@ -14,6 +14,8 @@ interface UserResponse {
   department?: any;
   created_at?: string;
   updated_at?: string;
+  topic_registrations?: any[];
+  group_memberships?: any[];
 }
 
 export const UsersApi = {

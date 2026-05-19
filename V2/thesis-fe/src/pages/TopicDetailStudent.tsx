@@ -8,7 +8,7 @@ import { useRegisterTopic } from '@/hooks/useRegistrations';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth';
-import { useSemesters } from '@/hooks/useSemesters';
+import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
 import { useQuery } from '@tanstack/react-query';
 
 import { RegistrationsApi } from '@/api/registrations';
@@ -29,9 +29,8 @@ const TopicDetailStudent = () => {
     const registerMutation = useRegisterTopic();
 
     // Get active semester
-    const { data: semesters } = useSemesters();
-    // Improved logic: Find the active semester
-    const activeSemester = semesters?.find(s => s.status === 'ACTIVE');
+    const { data: activeSemesterData } = useActiveSemester();
+    const isRegistrationPhase = activeSemesterData?.calculated_phase === 'REGISTRATION';
 
     // Get my current registration (to check if student already has a topic)
     const { data: myCurrentRegistration } = useQuery({
@@ -163,6 +162,17 @@ const TopicDetailStudent = () => {
                                             className="opacity-60"
                                         >
                                             {t('topics.isFullSlotCount')}
+                                        </Button>
+                                    </Tooltip>
+                                ) : !isRegistrationPhase ? (
+                                    <Tooltip title="Hiện chưa tới thời gian đăng ký đề tài dành cho sinh viên.">
+                                        <Button
+                                            type="primary"
+                                            icon={<UserAddOutlined />}
+                                            disabled
+                                            className="opacity-60"
+                                        >
+                                            {t('topics.registerTopic')}
                                         </Button>
                                     </Tooltip>
                                 ) : (

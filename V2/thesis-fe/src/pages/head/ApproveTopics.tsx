@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Descriptions, Tag, Input, Tabs, Spin, Alert, Typography } from 'antd';
+import { Card, Table, Button, Modal, Descriptions, Tag, Input, Tabs, Spin, Alert, Typography, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
@@ -132,48 +132,52 @@ const HeadApproveTopics = () => {
         {
             title: t('common.actions'),
             key: 'actions',
+            align: 'center' as const,
+            width: 160,
             render: (_: any, record: any) => (
-                <div className="space-x-2">
-                    <Button
-                        type="link"
-                        size="small"
-                        icon={<EyeOutlined />}
-                        onClick={() => viewDetail(record)}
-                    >
-                        {t('common.view')}
-                    </Button>
+                <div className="flex items-center justify-center gap-1">
+                    <Tooltip title={t('common.view')}>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<EyeOutlined className="text-blue-600" />}
+                            onClick={() => viewDetail(record)}
+                            className="hover:bg-blue-50"
+                        />
+                    </Tooltip>
                     {record.status === 'PENDING_APPROVAL' && (
                         <>
-                            <Button
-                                type="link"
-                                size="small"
-                                icon={<CheckOutlined />}
-                                className="text-green-600 hover:text-green-700"
-                                onClick={() => handleApprove(record.id)}
-                                loading={approveMutation.isPending}
-                            >
-                                {t('approveTopics.approveButton')}
-                            </Button>
-                            <Button
-                                type="link"
-                                size="small"
-                                icon={<EditOutlined />}
-                                className="text-orange-500 hover:text-orange-600"
-                                onClick={() => handleRequireEdit(record)}
-                                loading={requireEditMutation.isPending}
-                            >
-                                {t('approveTopics.requireEditButton')}
-                            </Button>
-                            <Button
-                                type="link"
-                                danger
-                                size="small"
-                                icon={<CloseOutlined />}
-                                onClick={() => handleReject(record)}
-                                loading={rejectMutation.isPending}
-                            >
-                                {t('approveTopics.rejectButton')}
-                            </Button>
+                            <Tooltip title={t('approveTopics.approveButton')}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<CheckOutlined className="text-green-600" />}
+                                    className="hover:bg-green-50"
+                                    onClick={() => handleApprove(record.id)}
+                                    loading={approveMutation.isPending}
+                                />
+                            </Tooltip>
+                            <Tooltip title={t('approveTopics.requireEditButton')}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EditOutlined className="text-orange-500" />}
+                                    className="hover:bg-orange-50"
+                                    onClick={() => handleRequireEdit(record)}
+                                    loading={requireEditMutation.isPending}
+                                />
+                            </Tooltip>
+                            <Tooltip title={t('approveTopics.rejectButton')}>
+                                <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    icon={<CloseOutlined />}
+                                    className="hover:bg-red-50"
+                                    onClick={() => handleReject(record)}
+                                    loading={rejectMutation.isPending}
+                                />
+                            </Tooltip>
                         </>
                     )}
                 </div>

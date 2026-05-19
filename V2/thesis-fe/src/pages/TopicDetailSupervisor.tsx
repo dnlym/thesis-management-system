@@ -4,6 +4,7 @@ import { Card, Descriptions, Button, Spin, Space, Result, Modal, Select, Tag } f
 import { ArrowLeftOutlined, EditOutlined, SendOutlined, UserAddOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useTopic, useSubmitForApproval } from '@/hooks/useTopics';
 import { useRegisterForStudent } from '@/hooks/useRegistrations';
+import { useActiveSemester } from '@/hooks/useSemesters';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import TopicHistoryModal from '@/components/TopicHistoryModal';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,7 @@ const TopicDetailSupervisor = () => {
 
     // Hooks
     const { data: topic, isLoading, isError } = useTopic(id);
+    const { data: activeSemesterData } = useActiveSemester();
     const submitForApprovalMutation = useSubmitForApproval();
     const registerForStudentMutation = useRegisterForStudent();
 
@@ -95,7 +97,8 @@ const TopicDetailSupervisor = () => {
     const canEdit = isOwner && ['DRAFT', 'REQUIRES_REVISION'].includes(topic.status);
     const canSubmitForApproval = isOwner && ['DRAFT', 'REQUIRES_REVISION'].includes(topic.status);
     const isFull = (topic.current_students || 0) >= (topic.max_students || 0);
-    const canRegisterForStudent = isOwner && topic.status === 'APPROVED' && !isFull;
+    const isAllowedPhase = activeSemesterData && ['PREVIEW', 'REGISTRATION'].includes(activeSemesterData.calculated_phase);
+    const canRegisterForStudent = isOwner && topic.status === 'APPROVED' && !isFull && isAllowedPhase;
 
     return (
         <div className="page-container">
@@ -281,16 +284,32 @@ const TopicDetailSupervisor = () => {
                     value={selectedStudentId}
                     onChange={(value) => setSelectedStudentId(value)}
                     showSearch
-                    optionFilterProp="children"
+                    optionFilterProp="studentcode"
                     filterOption={(input, option) =>
-                        (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                        (option?.studentcode as unknown as string)?.toLowerCase().includes(input.toLowerCase())
                     }
                 >
-                    {students?.map((student: any) => (
-                        <Option key={student.id} value={student.id}>
-                            {student.full_name} ({student.student_code || student.email})
-                        </Option>
-                    ))}
+                    {students?.map((student: any) => {
+                        const activeReg = student.topic_registrations?.find((r: any) => ['CONFIRMED', 'PENDING'].includes(r.status));
+                        const activeGroup = student.group_memberships?.find((gm: any) => gm.status === 'ACCEPTED');
+                        const isUnavailable = !!activeReg || !!activeGroup;
+                        const labelStr = `${student.full_name} (${student.student_code || student.email})`;
+
+                        return (
+                            <Option key={student.id} value={student.id} disabled={isUnavailable} label={labelStr} studentcode={student.student_code || ''}>
+                                <div className="flex justify-between items-center py-1">
+                                    <span className={isUnavailable ? 'text-slate-400 italic' : 'text-slate-700 font-medium'}>
+                                        {labelStr}
+                                    </span>
+                                    {isUnavailable && (
+                                        <Tag color="default" className="m-0 border-slate-200 text-slate-400 text-xs">
+                                            {activeReg ? `Đã có đề tài (${activeReg.topic?.code || 'Đã ĐK'})` : 'Đã có nhóm'}
+                                        </Tag>
+                                    )}
+                                </div>
+                            </Option>
+                        );
+                    })}
                 </Select>
                 {(!students || students.length === 0) && (
                     <p className="text-sm text-orange-500 mt-2">

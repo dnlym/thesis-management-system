@@ -48,6 +48,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRegisterTopic } from '@/hooks/useRegistrations';
+import { useActiveSemester } from '@/hooks/useSemesters';
 import { useNavigate } from 'react-router-dom';
 import { notify } from '@/utils/notification';
 import dayjs from 'dayjs';
@@ -61,6 +62,8 @@ const StudentTopics = () => {
     const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
 
     const { data, isLoading } = useTopics({ search, status: statusFilter as any });
+    const { data: activeSemesterData } = useActiveSemester();
+    const isRegistrationPhase = activeSemesterData?.calculated_phase === 'REGISTRATION';
     const registerMutation = useRegisterTopic();
 
     const handleRegister = (topic: any) => {
@@ -187,10 +190,10 @@ const StudentTopics = () => {
                                     </Button>
                                     <Button 
                                       className="flex-1 rounded-xl shadow-soft group/btn"
-                                      disabled={topic.current_students >= topic.max_students || topic.status !== 'APPROVED'}
+                                      disabled={topic.current_students >= topic.max_students || topic.status !== 'APPROVED' || !isRegistrationPhase}
                                       onClick={() => handleRegister(topic)}
                                     >
-                                      {topic.current_students >= topic.max_students ? 'Đã hết chỗ' : 'Đăng ký'}
+                                      {topic.current_students >= topic.max_students ? 'Đã hết chỗ' : !isRegistrationPhase ? 'Chưa mở ĐK' : 'Đăng ký'}
                                       <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
                                     </Button>
                                 </div>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Table, Card, Tag, Input, Typography, Button, Radio, Avatar, Dropdown } from 'antd';
+import { Table, Card, Tag, Input, Typography, Button, Radio, Avatar, Dropdown, Tabs } from 'antd';
 import { SearchOutlined, UserOutlined, FileTextOutlined, DownOutlined, FileExcelOutlined, FileOutlined } from '@ant-design/icons';
 import { TopicsApi } from '@/api/topics';
 import { Topic } from '@/types';
@@ -161,7 +161,7 @@ const FinalResults = () => {
             key: 'index',
             width: 55,
             align: 'center' as const,
-            render: (_: any, __: any, index: number) => index + 1,
+            render: (_: any, __: any, index: number) => <span className="font-bold text-slate-400">{index + 1}</span>,
         },
         {
             title: 'Mã nhóm',
@@ -375,22 +375,22 @@ const FinalResults = () => {
                 </Card>
 
                 {/* Filter & Search */}
-                <Card className="page-toolbar-card">
-                    <div className="flex items-center gap-4">
-                        <Radio.Group
-                            value={councilFilter}
-                            onChange={e => setCouncilFilter(e.target.value)}
-                            buttonStyle="solid"
-                            size="middle"
-                        >
-                            <Radio.Button value="ALL">Tất cả hội đồng</Radio.Button>
-                            <Radio.Button value="ORAL">Oral</Radio.Button>
-                            <Radio.Button value="POSTER">Poster</Radio.Button>
-                        </Radio.Group>
+                <Card className="page-toolbar-card !mb-4">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+                        <Tabs
+                            activeKey={councilFilter}
+                            onChange={(key) => setCouncilFilter(key as any)}
+                            className="sys-tabs sys-tabs-capsule !mb-0 w-full md:w-auto"
+                            items={[
+                                { key: 'ALL', label: 'Tất cả hội đồng' },
+                                { key: 'ORAL', label: 'Hội đồng Oral' },
+                                { key: 'POSTER', label: 'Hội đồng Poster' },
+                            ]}
+                        />
 
                         <GlobalSearch
-                            placeholder="Tìm theo mã, tên đề tài, sinh viên..."
-                            className="flex-1"
+                            placeholder="Tìm kiếm mã, tên đề tài, sinh viên..."
+                            className="w-full md:max-w-md flex-1"
                             value={searchText}
                             onChange={setSearchText}
                         />

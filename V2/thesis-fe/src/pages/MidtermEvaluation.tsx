@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty, Tabs } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined, AuditOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
+import { useActiveSemester } from '@/hooks/useSemesters';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -23,6 +24,33 @@ const MidtermEvaluation = () => {
         isLoading, 
         isError 
     } = useMidtermRegistrations();
+    const { data: activeSemesterData } = useActiveSemester();
+
+    // Determine active semester filter from localStorage or fallback to active semester
+    const activeSemId = activeSemesterData?.id;
+    const selectedSemesterId = localStorage.getItem('sys_selected_semester_id') || activeSemId;
+
+    // Filter registrations by selected semester first
+    const registrationsInSemester = useMemo(() => {
+        if (!registrations) return [];
+        return registrations.filter((reg: MidtermRegistration) => {
+            const regSemesterId = reg.topic?.semester_id || reg.topic?.semester?.id;
+            return selectedSemesterId ? regSemesterId === selectedSemesterId : true;
+        });
+    }, [registrations, selectedSemesterId]);
+
+    // Group registrations by topic.id to get unique topics in this semester for accurate counts
+    const uniqueTopicsInSemester = useMemo(() => {
+        if (!registrationsInSemester) return [];
+        const map = new Map();
+        registrationsInSemester.forEach((reg: MidtermRegistration) => {
+            const topicId = reg.topic?.id;
+            if (topicId && !map.has(topicId)) {
+                map.set(topicId, reg);
+            }
+        });
+        return Array.from(map.values());
+    }, [registrationsInSemester]);
 
     const updateMidtermMutation = useUpdateMidtermStatus();
 
@@ -76,21 +104,21 @@ const MidtermEvaluation = () => {
     };
 
     const hasAnyRestrictedPhase = useMemo(() => {
-        if (!registrations) return false;
-        return registrations.some(r => r.permissions && !r.permissions.grade_midterm);
-    }, [registrations]);
+        if (!registrationsInSemester) return false;
+        return registrationsInSemester.some(r => r.permissions && !r.permissions.grade_midterm);
+    }, [registrationsInSemester]);
 
     // Sort and calculate row spans for grouping
     const processedData = useMemo(() => {
-        if (!registrations) return [];
+        if (!registrationsInSemester) return [];
         
         // 1. Filter
-        let filtered = registrations;
+        let filtered = registrationsInSemester;
         if (filterStatus !== 'ALL') {
             if (filterStatus === 'PENDING') {
-                filtered = registrations.filter(r => !r.midterm_status);
+                filtered = registrationsInSemester.filter(r => !r.midterm_status);
             } else {
-                filtered = registrations.filter(r => r.midterm_status === filterStatus);
+                filtered = registrationsInSemester.filter(r => r.midterm_status === filterStatus);
             }
         }
 
@@ -266,9 +294,10 @@ const MidtermEvaluation = () => {
         },
     ];
 
-    const pendingCount = registrations?.filter((r: MidtermRegistration) => !r.midterm_status).length || 0;
-    const passedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length || 0;
-    const failedCount = registrations?.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length || 0;
+    const totalTopicsCount = uniqueTopicsInSemester.length;
+    const pendingCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => !r.midterm_status).length;
+    const passedCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length;
+    const failedCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length;
 
     if (isLoading) {
         return (
@@ -325,7 +354,7 @@ const MidtermEvaluation = () => {
                             label: (
                                 <div className="flex items-center gap-2">
                                     <span>Tất cả</span>
-                                    <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">{registrations?.length || 0}</Tag>
+                                    <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">{totalTopicsCount}</Tag>
                                 </div>
                             )
                         },

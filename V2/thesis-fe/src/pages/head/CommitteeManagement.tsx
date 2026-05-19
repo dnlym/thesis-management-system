@@ -148,6 +148,13 @@ const CommitteeManagement = () => {
 
     const columns = [
         {
+            title: 'STT',
+            key: 'stt',
+            width: 60,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => <span className="font-bold text-slate-400">{index + 1}</span>,
+        },
+        {
             title: t('committeeManagement.nameLabel'),
             dataIndex: 'name',
             key: 'name',

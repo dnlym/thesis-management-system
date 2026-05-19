@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Table, Button, Tag, Space, Modal, Input, Select, Row, Col, Spin, Avatar, Popconfirm, Tooltip, Badge, Empty, Flex } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Input, Select, Row, Col, Spin, Avatar, Popconfirm, Tooltip, Badge, Empty, Flex, Tabs } from 'antd';
 import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, EyeOutlined, EyeInvisibleOutlined, SearchOutlined, FilterOutlined, CheckOutlined, CheckCircleOutlined, UserOutlined, DeleteOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/store/auth';
-import { useTopics, useApproveTopic, useHideTopic, useUnhideTopic } from '@/hooks/useTopics';
+import { useTopics, useTopicStats, useApproveTopic, useHideTopic, useUnhideTopic } from '@/hooks/useTopics';
 import { useRegisterTopic } from '@/hooks/useRegistrations';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
@@ -60,7 +60,8 @@ const Topics = () => {
   // Sync active semester once on load
   const [hasInit, setHasInit] = useState(false);
   if (!hasInit && activeSemesterData?.id) {
-    setFilters((prev: any) => ({ ...prev, semesterId: activeSemesterData.id }));
+    const savedSemesterId = localStorage.getItem('sys_selected_semester_id') || activeSemesterData.id;
+    setFilters((prev: any) => ({ ...prev, semesterId: savedSemesterId }));
     setHasInit(true);
   }
 
@@ -72,6 +73,7 @@ const Topics = () => {
   }
 
   const { data: topics, isLoading, isFetching } = useTopics(filters);
+  const { data: stats } = useTopicStats();
   const registerMutation = useRegisterTopic();
   const approveMutation = useApproveTopic();
   const hideMutation = useHideTopic();
@@ -94,6 +96,7 @@ const Topics = () => {
   };
 
   const handleSemesterChange = (value: string) => {
+    localStorage.setItem('sys_selected_semester_id', value);
     setFilters((prev: any) => ({ ...prev, semesterId: value, page: 1 }));
   };
 
@@ -167,16 +170,16 @@ const Topics = () => {
       render: (_: any, __: any, index: number) => {
         const page = filters.page || 1;
         const size = filters.size || 10;
-        return (page - 1) * size + index + 1;
+        return <span className="font-bold text-slate-400">{(page - 1) * size + index + 1}</span>;
       },
     },
     {
       title: 'Mã ĐT',
       dataIndex: 'code',
       key: 'code',
-      width: 80,
+      width: 90,
       render: (code: string) => (
-        <Tag color="blue" className="font-mono">
+        <Tag className="m-0 font-sans bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 text-xs" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
           <HighlightText text={code} keyword={debouncedSearch} />
         </Tag>
       ),
@@ -188,18 +191,18 @@ const Topics = () => {
       render: (text: string, record: any) => {
         const students = record.students || record.registrations?.map((r: any) => r.student) || [];
         return (
-          <div className="flex flex-col gap-1 py-1">
+          <div className="flex flex-col gap-1.5 py-1">
             <a
               onClick={() => navigate(`/topics/${record.topicId}`)}
-              className="text-academic-primary hover:text-academic-primary-dark font-semibold cursor-pointer hover:underline transition-all leading-snug"
+              className="text-blue-600 hover:text-blue-800 font-bold cursor-pointer hover:underline transition-all leading-snug"
             >
               <HighlightText text={text} keyword={debouncedSearch} />
             </a>
             {students.length > 0 && (
-              <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-400">
+              <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-slate-400">
                 {students.map((s: any) => (
-                  <div key={s.id} className="text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
-                    {s.full_name} ({s.student_code})
+                  <div key={s.id} className="text-[11px] font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                    {s.full_name} - {s.student_code}
                   </div>
                 ))}
               </div>
@@ -212,12 +215,13 @@ const Topics = () => {
       title: t('topics.supervisor'),
       dataIndex: 'supervisor',
       key: 'supervisor',
+      width: 260,
       render: (supervisor: any, record: any) => (
-        <div className="flex items-center gap-2">
-          <Avatar src={supervisor?.avatar_url} icon={<UserOutlined />} size="small" className="flex-shrink-0" />
+        <div className="flex items-center gap-2.5">
+          <Avatar src={supervisor?.avatar_url} icon={<UserOutlined />} size={24} className="border border-slate-200 flex-shrink-0" />
           <div className="flex flex-col">
-            <span className="font-semibold text-slate-800 leading-tight">{record.supervisor?.full_name || 'N/A'}</span>
-            <span className="text-[11px] text-slate-400 font-medium tracking-wide mt-0.5">{record.supervisor?.email}</span>
+            <span className="font-bold text-slate-700 text-[13px] leading-none">{record.supervisor?.full_name || 'N/A'}</span>
+            <span className="text-slate-400 text-[11px] mt-0.5">{record.supervisor?.email}</span>
           </div>
         </div>
       ),
@@ -225,13 +229,13 @@ const Topics = () => {
     {
       title: 'Sinh viên',
       key: 'slots',
-      width: 80,
+      width: 100,
       render: (_, record: any) => {
         const current = record.current_students || 0;
         const max = record.max_students || 2;
         const isFull = current >= max;
         return (
-          <span className={isFull ? 'text-green-600 font-bold' : 'text-red-500 font-bold'}>
+          <span className={`font-bold text-[13px] ${isFull ? 'text-green-600' : 'text-red-500'}`}>
             {current}/{max}
           </span>
         );
@@ -240,6 +244,7 @@ const Topics = () => {
     {
       title: t('common.status'),
       key: 'status',
+      width: 160,
       render: (_, record: any) => (
         <TopicStatusBadge
           status={record.status}
@@ -250,36 +255,35 @@ const Topics = () => {
       ),
     },
     {
-      title: t('topics.createdAt'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => date ? dayjs(date).format('DD/MM/YYYY') : 'N/A',
-    },
-    {
       title: t('common.actions'),
       key: 'actions',
+      width: 140,
       render: (_, record: any) => {
         const isFull = (record.current_students || 0) >= (record.max_students || 0);
         const myTopicId = myCurrentRegistration?.topicId || myCurrentRegistration?.topic_id;
         const isRegisteredForThisTopic = !!myTopicId && myTopicId === record.topicId;
 
         return (
-          <Space size="small">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => navigate(`/topics/${record.topicId}`)}
-              className="text-blue-600 hover:text-blue-700"
-            />
+          <Space size={6}>
+            <Tooltip title="Xem chi tiết đề tài">
+              <Button
+                type="text"
+                icon={<EyeOutlined className="text-slate-600 text-[15px]" />}
+                onClick={() => navigate(`/topics/${record.topicId}`)}
+                className="flex items-center justify-center h-8 w-8 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-all"
+              />
+            </Tooltip>
 
             {/* Edit Action - Creator or Admin */}
             {(record.supervisor_id === user?.id || user?.role === 'ADMIN') && (
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                onClick={() => navigate(`/topics/${record.topicId}/edit`)}
-                className="text-orange-500 hover:text-orange-600"
-              />
+              <Tooltip title="Chỉnh sửa đề tài">
+                <Button
+                  type="text"
+                  icon={<EditOutlined className="text-orange-600 text-[15px]" />}
+                  onClick={() => navigate(`/topics/${record.topicId}/edit`)}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-100 transition-all"
+                />
+              </Tooltip>
             )}
 
             {/* Delete Action - Creator or Admin */}
@@ -290,11 +294,13 @@ const Topics = () => {
                 okText={t('common.yes')}
                 cancelText={t('common.no')}
               >
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  className="text-red-500 hover:text-red-600"
-                />
+                <Tooltip title="Xóa đề tài">
+                  <Button
+                    type="text"
+                    icon={<DeleteOutlined className="text-red-600 text-[15px]" />}
+                    className="flex items-center justify-center h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 border border-red-100 transition-all"
+                  />
+                </Tooltip>
               </Popconfirm>
             )}
 
@@ -305,10 +311,10 @@ const Topics = () => {
                   <Tooltip title={t('topics.unhideTooltip')}>
                     <Button
                       type="text"
-                      icon={<EyeOutlined />}
+                      icon={<EyeOutlined className="text-green-600 text-[15px]" />}
                       onClick={() => unhideMutation.mutate(record.id)}
                       loading={unhideMutation.isPending}
-                      className="text-green-600 hover:text-green-700"
+                      className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 hover:bg-green-100 border border-green-100 transition-all"
                     />
                   </Tooltip>
                 ) : (
@@ -322,9 +328,9 @@ const Topics = () => {
                     >
                       <Button
                         type="text"
-                        icon={<EyeInvisibleOutlined />}
+                        icon={<EyeInvisibleOutlined className="text-amber-600 text-[15px]" />}
                         loading={hideMutation.isPending}
-                        className="text-orange-500 hover:text-orange-600"
+                        className="flex items-center justify-center h-8 w-8 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-100 transition-all"
                         disabled={['REGISTERED', 'COMPLETED', 'FINALIZED'].includes(record.status)}
                       />
                     </Popconfirm>
@@ -335,69 +341,71 @@ const Topics = () => {
 
             {/* Grade Action for Lecturers */}
             {user?.role === 'LECTURER' && (
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={() => navigate(`/evaluation?topicId=${record.topicId || record.id}`)}
-                className="text-green-600 hover:text-green-700"
-              />
+              <Tooltip title="Đánh giá đề tài">
+                <Button
+                  type="text"
+                  icon={<CheckOutlined className="text-green-600 text-[15px]" />}
+                  onClick={() => navigate(`/evaluation?topicId=${record.topicId || record.id}`)}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg bg-green-50 hover:bg-green-100 border border-green-100 transition-all"
+                />
+              </Tooltip>
             )}
-
-
 
             {/* HEAD Approve Action */}
             {(user?.role === 'HEAD' || user?.role === 'ADMIN') && record.status === 'PENDING_APPROVAL' && (
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={() => handleApprove(record.id)}
-                className="text-success hover:text-success/80"
-              />
+              <Tooltip title="Phê duyệt đề tài">
+                <Button
+                  type="text"
+                  icon={<CheckOutlined className="text-emerald-600 text-[15px]" />}
+                  onClick={() => handleApprove(record.id)}
+                  className="flex items-center justify-center h-8 w-8 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 transition-all"
+                />
+              </Tooltip>
             )}
 
             {/* STUDENT Register Action - Only in REGISTRATION phase */}
-            {user?.role === 'STUDENT' && 
-             ['APPROVED', 'REGISTERED'].includes(record.status) && 
-             activeSemesterData?.calculated_phase === 'REGISTRATION' && (
-              <>
-                {isRegisteredForThisTopic ? (
-                  <Button type="default" disabled className="bg-green-100 text-green-700 border-green-200" size="small">
-                    {t('topics.alreadyRegistered')}
-                  </Button>
-                ) : hasExistingRegistration ? (
-                  <Tooltip title={t('topics.alreadyHasTopicTooltip', { title: myCurrentRegistration?.topic?.title || '-' })}>
-                    <Button
-                      type="default"
-                      size="small"
-                      icon={<StopOutlined />}
-                      disabled
-                      className="opacity-60"
-                    >
-                      {t('topics.alreadyHasTopic')}
+            {user?.role === 'STUDENT' &&
+              ['APPROVED', 'REGISTERED'].includes(record.status) &&
+              activeSemesterData?.calculated_phase === 'REGISTRATION' && (
+                <>
+                  {isRegisteredForThisTopic ? (
+                    <Button type="default" disabled className="bg-green-100 text-green-700 border-green-200" size="small">
+                      {t('topics.alreadyRegistered')}
                     </Button>
-                  </Tooltip>
-                ) : isFull ? (
-                  <Tooltip title={t('topics.isFullTooltip')}>
+                  ) : hasExistingRegistration ? (
+                    <Tooltip title={t('topics.alreadyHasTopicTooltip', { title: myCurrentRegistration?.topic?.title || '-' })}>
+                      <Button
+                        type="default"
+                        size="small"
+                        icon={<StopOutlined />}
+                        disabled
+                        className="opacity-60"
+                      >
+                        {t('topics.alreadyHasTopic')}
+                      </Button>
+                    </Tooltip>
+                  ) : isFull ? (
+                    <Tooltip title={t('topics.isFullTooltip')}>
+                      <Button
+                        type="default"
+                        size="small"
+                        disabled
+                        className="opacity-60"
+                      >
+                        {t('topics.isFull')}
+                      </Button>
+                    </Tooltip>
+                  ) : (
                     <Button
-                      type="default"
+                      type="primary"
                       size="small"
-                      disabled
-                      className="opacity-60"
+                      onClick={() => handleRegister(record)}
                     >
-                      {t('topics.isFull')}
+                      {t('topics.registerTopic')}
                     </Button>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    type="primary"
-                    size="small"
-                    onClick={() => handleRegister(record)}
-                  >
-                    {t('topics.registerTopic')}
-                  </Button>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              )}
           </Space>
         );
       },
@@ -405,6 +413,7 @@ const Topics = () => {
   ];
 
   const isFiltering = filters.status || filters.search;
+  const isPastProposalPhase = activeSemesterData && ['REGISTRATION', 'WORK', 'REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemesterData.calculated_phase);
 
   return (
     <div className="page-container">
@@ -420,59 +429,75 @@ const Topics = () => {
               </div>
             </div>
             {(user?.role === 'LECTURER' || user?.role === 'HEAD' || user?.role === 'ADMIN') && (
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/supervisor/create-topic')}>
-                {t('topics.createTopic')}
-              </Button>
+              isPastProposalPhase ? (
+                <Tooltip title="Giai đoạn đề xuất đề tài đã kết thúc. Hệ thống hiện đang ở giai đoạn Đăng ký / Thực hiện đề tài.">
+                  <Button type="primary" icon={<PlusOutlined />} disabled className="bg-slate-300 border-slate-300 text-slate-500 cursor-not-allowed">
+                    {t('topics.createTopic')}
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/supervisor/create-topic')}>
+                  {t('topics.createTopic')}
+                </Button>
+              )
             )}
           </div>
         </Card>
 
         {/* Filter Bar */}
-        <Card className="page-toolbar-card">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center w-full">
-            <Input
-              size="large"
-              placeholder="Tìm kiếm đề tài..."
-              prefix={<SearchOutlined className="text-slate-400" />}
-              value={searchValue}
-              onChange={handleSearch}
-              allowClear
-              className="sys-input-search w-full flex items-center"
-              style={{ height: 40, borderRadius: 12 }}
-              disabled={!filters.semesterId}
+        <Card className="page-toolbar-card !mb-4">
+          <div className="flex flex-col xl:flex-row justify-between items-center gap-4 w-full">
+            <Tabs
+              activeKey={filters.status || 'ALL'}
+              onChange={(key) => handleStatusChange(key === 'ALL' ? undefined : key)}
+              className="sys-tabs sys-tabs-capsule !mb-0 w-full xl:w-auto overflow-x-auto"
+              items={STATUS_OPTIONS.map(opt => ({
+                key: opt.value,
+                label: (
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <span>{opt.label === 'Tất cả trạng thái' ? 'Tất cả' : opt.label}</span>
+                    <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
+                      {opt.value === 'ALL'
+                        ? (topics?.pagination?.total || Object.values(stats || {}).reduce((a: any, b: any) => a + b, 0))
+                        : (stats?.[opt.value] || 0)}
+                    </Tag>
+                  </div>
+                )
+              }))}
             />
 
-            <Select
-              size="large"
-              placeholder="Chọn học kỳ"
-              className="w-full flex items-center"
-              style={{ height: 40, borderRadius: 12 }}
-              value={filters.semesterId}
-              onChange={handleSemesterChange}
-              loading={isLoadingActive}
-              allowClear={false}
-            >
-              {semesters?.map(s => (
-                <Option key={s.id} value={s.id}>
-                  <Space>
-                    {s.id === activeSemesterData?.id && <Badge color="green" />}
-                    {s.name}
-                    {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
               <Select
                 size="large"
-                placeholder="Lọc trạng thái"
-                className="w-full flex-1 flex items-center"
+                placeholder="Chọn học kỳ"
+                className="w-full md:w-64 flex items-center"
                 style={{ height: 40, borderRadius: 12 }}
-                value={filters.status}
-                onChange={handleStatusChange}
-                options={STATUS_OPTIONS.filter(opt => opt.value !== 'ALL')}
+                value={filters.semesterId}
+                onChange={handleSemesterChange}
+                loading={isLoadingActive}
+                allowClear={false}
+              >
+                {semesters?.map(s => (
+                  <Option key={s.id} value={s.id}>
+                    <Space>
+                      {s.id === activeSemesterData?.id && <Badge color="green" />}
+                      {s.name}
+                      {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
+                    </Space>
+                  </Option>
+                ))}
+              </Select>
+
+              <Input
+                size="large"
+                placeholder="Tìm kiếm đề tài..."
+                prefix={<SearchOutlined className="text-slate-400" />}
+                value={searchValue}
+                onChange={handleSearch}
                 allowClear
+                className="sys-input-search w-full md:w-64 flex items-center"
+                style={{ height: 40, borderRadius: 12 }}
+                disabled={!filters.semesterId}
               />
 
               {(isFiltering) && (
@@ -480,7 +505,7 @@ const Topics = () => {
                   type="link"
                   icon={<ReloadOutlined />}
                   onClick={handleClearFilters}
-                  className="px-2 whitespace-nowrap"
+                  className="px-2 whitespace-nowrap text-slate-500 hover:text-slate-700"
                 >
                   Xóa bộ lọc
                 </Button>

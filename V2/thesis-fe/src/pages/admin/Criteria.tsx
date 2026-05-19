@@ -116,8 +116,9 @@ const Criteria = () => {
         {
             title: 'STT',
             key: 'stt',
-            width: '80px',
-            render: (_: any, __: any, index: number) => index + 1,
+            width: 80,
+            align: 'center' as const,
+            render: (_: any, __: any, index: number) => <span className="font-bold text-slate-400">{index + 1}</span>,
         },
         {
             title: 'LO',
@@ -187,44 +188,28 @@ const Criteria = () => {
                     </div>
                 </Card>
 
-                <Card className="page-card-flush">
+                <Card className="page-toolbar-card !mb-4">
                     <Tabs
                         activeKey={activeTab}
                         onChange={(key) => setActiveTab(key)}
-                        className="sys-tabs"
-                        tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
-                    >
-                        <TabPane tab={t('role.advisor')} key="SUPERVISOR">
-                            <Table
-                                columns={columns}
-                                dataSource={getCriteriaList('SUPERVISOR')}
-                                rowKey="id"
-                                loading={isLoading}
-                                pagination={false}
-                                className="sys-table"
-                            />
-                        </TabPane>
-                        <TabPane tab={t('role.reviewer')} key="REVIEWER">
-                            <Table
-                                columns={columns}
-                                dataSource={getCriteriaList('REVIEWER')}
-                                rowKey="id"
-                                loading={isLoading}
-                                pagination={false}
-                                className="sys-table"
-                            />
-                        </TabPane>
-                        <TabPane tab={t('role.council')} key="COMMITTEE">
-                            <Table
-                                columns={columns}
-                                dataSource={getCriteriaList('COMMITTEE')}
-                                rowKey="id"
-                                loading={isLoading}
-                                pagination={false}
-                                className="sys-table"
-                            />
-                        </TabPane>
-                    </Tabs>
+                        className="sys-tabs sys-tabs-capsule !mb-0"
+                        items={[
+                            { key: 'SUPERVISOR', label: t('role.advisor') },
+                            { key: 'REVIEWER', label: t('role.reviewer') },
+                            { key: 'COMMITTEE', label: t('role.council') }
+                        ]}
+                    />
+                </Card>
+
+                <Card className="page-card-flush">
+                    <Table
+                        columns={columns}
+                        dataSource={getCriteriaList(activeTab)}
+                        rowKey="id"
+                        loading={isLoading}
+                        pagination={false}
+                        className="sys-table"
+                    />
                 </Card>
 
                 <Modal

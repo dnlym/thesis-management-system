@@ -332,9 +332,9 @@ const SupervisorCreateTopic = () => {
                                         icon={<CopyOutlined />}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleClone(topic.id);
+                                            handleClone(topic.topicId || topic.id);
                                         }}
-                                        loading={cloneMutation.isPending && cloneMutation.variables?.topicId === topic.id}
+                                        loading={cloneMutation.isPending && cloneMutation.variables?.topicId === (topic.topicId || topic.id)}
                                     >
                                         Sử dụng
                                     </Button>
@@ -359,7 +359,7 @@ const SupervisorCreateTopic = () => {
                         type="primary" 
                         icon={<CopyOutlined />}
                         onClick={() => {
-                            handleClone(previewTopic.id);
+                            handleClone(previewTopic.topicId || previewTopic.id);
                             setPreviewTopic(null);
                         }}
                         loading={cloneMutation.isPending}
