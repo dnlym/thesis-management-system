@@ -337,6 +337,55 @@ export class NotificationService {
       }
     }
   }
+  private async getHodId(departmentId: string): Promise<string | null> {
+    const hod = await prisma.user.findFirst({
+      where: {
+        departmentId: departmentId,
+        role: 'HEAD',
+        active: true,
+      },
+    });
+    return hod?.id || null;
+  }
+
+  async notifyTopicSubmitted(topicId: string, topicTitle: string, supervisorName: string, departmentId: string) {
+    const hodId = await this.getHodId(departmentId);
+    if (!hodId) return;
+
+    await this.createNotification(
+      hodId,
+      NOTIFICATION_TYPES.TOPIC_SUBMITTED,
+      'Yêu cầu duyệt đề tài mới',
+      `Giảng viên "${supervisorName}" đã gửi yêu cầu duyệt đề tài "${topicTitle}".`,
+      topicId
+    );
+  }
+
+  async notifyGradeChangeRequested(studentName: string, supervisorName: string, departmentId: string, relatedId?: string) {
+    const hodId = await this.getHodId(departmentId);
+    if (!hodId) return;
+
+    await this.createNotification(
+      hodId,
+      NOTIFICATION_TYPES.GRADE_CHANGE_REQUESTED,
+      'Yêu cầu sửa điểm',
+      `Giảng viên "${supervisorName}" đã gửi yêu cầu sửa điểm cho sinh viên "${studentName}".`,
+      relatedId || ''
+    );
+  }
+
+  async notifyExtraPointRequestedForHod(studentName: string, supervisorName: string, points: number, departmentId: string, relatedId?: string) {
+    const hodId = await this.getHodId(departmentId);
+    if (!hodId) return;
+
+    await this.createNotification(
+      hodId,
+      NOTIFICATION_TYPES.EXTRA_POINT_REQUESTED,
+      'Yêu cầu duyệt điểm cộng',
+      `Giảng viên "${supervisorName}" đã đề xuất cộng ${points} điểm cho sinh viên "${studentName}".`,
+      relatedId || ''
+    );
+  }
 }
 
 export default new NotificationService();

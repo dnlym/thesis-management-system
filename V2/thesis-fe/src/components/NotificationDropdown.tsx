@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dropdown, Badge, Button, List, Empty, Spin, Typography, Space, Tag, Modal, message } from 'antd';
-import { BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined, TeamOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import {
+    BellOutlined, CheckOutlined, DeleteOutlined, CheckCircleOutlined,
+    TeamOutlined, CloseCircleOutlined, InfoCircleOutlined,
+    FileTextOutlined, CalendarOutlined, ExclamationCircleOutlined,
+    SettingOutlined, BulbOutlined, UserAddOutlined, ClockCircleOutlined,
+    TrophyOutlined, RiseOutlined
+} from '@ant-design/icons';
 import { useNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead, useDeleteNotification } from '@/hooks/useNotifications';
 import { RegistrationsApi } from '@/api/registrations';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import type { Notification } from '@/types';
+import { useAuthStore } from '@/store/auth';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -17,10 +24,17 @@ const { Text, Paragraph } = Typography;
 
 const NotificationDropdown = () => {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
+    const [isShowingAll, setIsShowingAll] = useState(false);
     const [inviteModalVisible, setInviteModalVisible] = useState(false);
     const [selectedInviteId, setSelectedInviteId] = useState<string | null>(null);
+
+    // Reset showing all when closed
+    useEffect(() => {
+        if (!open) setIsShowingAll(false);
+    }, [open]);
 
     const { data: notifications, isLoading } = useNotifications();
     const { data: unreadData } = useUnreadCount();
@@ -76,21 +90,72 @@ const NotificationDropdown = () => {
         },
     });
 
-    const getTypeColor = (type: string) => {
-        switch (type) {
-            case 'SUCCESS':
-            case 'GROUP_INVITE_ACCEPTED':
-                return 'green';
-            case 'WARNING':
-            case 'GROUP_INVITE_REJECTED':
-                return 'orange';
-            case 'ERROR':
-                return 'red';
-            case 'GROUP_INVITE':
-                return 'purple';
-            default:
-                return 'blue';
+    const getNotificationIcon = (type: string) => {
+        const baseClasses = "w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center text-[20px] transition-transform group-hover:scale-105 shadow-[0_2px_8px_rgba(0,0,0,0.06)]";
+
+        // 1. Phê duyệt, Thành công
+        if (type.includes('SUCCESS') || type.includes('APPROVED') || type.includes('ACCEPTED') || type.includes('CONFIRMED')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-green-100 to-green-50 text-green-600 border border-green-100/50`}><CheckCircleOutlined /></div>;
         }
+        // 2. Cảnh báo, Cần chỉnh sửa
+        if (type.includes('WARNING') || type.includes('REQUIRE_EDIT')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-orange-100 to-orange-50 text-orange-600 border border-orange-100/50`}><ExclamationCircleOutlined /></div>;
+        }
+        // 3. Từ chối, Lỗi
+        if (type.includes('ERROR') || type.includes('REJECTED')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-red-100 to-red-50 text-red-600 border border-red-100/50`}><CloseCircleOutlined /></div>;
+        }
+        // 4. Lời mời nhóm, Đăng ký nhóm
+        if (type.includes('GROUP') || type.includes('REGISTRATION')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-purple-100 to-purple-50 text-purple-600 border border-purple-100/50`}>
+                {type.includes('REGISTRATION') ? <UserAddOutlined /> : <TeamOutlined />}
+            </div>;
+        }
+        // 5. Chấm điểm, Điểm số, Đánh giá
+        if (type.includes('SCORE') || type.includes('GRADE') || type.includes('EVALUATION')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-yellow-100 to-yellow-50 text-yellow-600 border border-yellow-100/50`}><TrophyOutlined /></div>;
+        }
+        // 6. Điểm cộng (Nghiên cứu)
+        if (type.includes('EXTRA_POINT')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600 border border-emerald-100/50`}><RiseOutlined /></div>;
+        }
+        // 7. Nhiệm vụ, Lịch trình, Nhắc nhở
+        if (type.includes('SCHEDULE') || type.includes('CALENDAR') || type.includes('ASSIGNMENT') || type.includes('REMINDER')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-indigo-100 to-indigo-50 text-indigo-600 border border-indigo-100/50`}>
+                {type.includes('ASSIGNMENT') ? <ClockCircleOutlined /> : <CalendarOutlined />}
+            </div>;
+        }
+        // 8. Đề tài (Khởi tạo, Submit)
+        if (type.includes('TOPIC')) {
+            return <div className={`${baseClasses} bg-gradient-to-br from-blue-100 to-blue-50 text-blue-600 border border-blue-100/50`}><BulbOutlined /></div>;
+        }
+
+        // Default
+        return <div className={`${baseClasses} bg-gradient-to-br from-gray-100 to-gray-50 text-gray-500 border border-gray-100/50`}><BellOutlined /></div>;
+    };
+
+    const groupNotifications = (notifs: Notification[]) => {
+        const today: Notification[] = [];
+        const yesterday: Notification[] = [];
+        const older: Notification[] = [];
+
+        const now = dayjs();
+        const startOfToday = now.startOf('day');
+        const startOfYesterday = now.subtract(1, 'day').startOf('day');
+
+        notifs.forEach(n => {
+            const dateStr = n.createdAt || (n as any).created_at;
+            const date = dayjs(dateStr);
+            if (date.isAfter(startOfToday)) {
+                today.push(n);
+            } else if (date.isAfter(startOfYesterday)) {
+                yesterday.push(n);
+            } else {
+                older.push(n);
+            }
+        });
+
+        return { today, yesterday, older };
     };
 
     const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
@@ -108,114 +173,189 @@ const NotificationDropdown = () => {
     };
 
     const handleNotificationClick = (item: Notification) => {
+        const isRead = item.read !== undefined ? item.read : (item as any).is_read;
         // Mark as read first
-        if (!item.read) {
+        if (!isRead) {
             markAsRead.mutate(item.id);
         }
 
-        // Handle GROUP_INVITE type
-        // Check both camelCase and snake_case for related_id
         const relatedId = (item as any).relatedId || (item as any).related_id;
+
+        // Handle GROUP_INVITE type Modal
         if (item.type === 'GROUP_INVITE' && relatedId) {
             setSelectedInviteId(relatedId);
             setInviteModalVisible(true);
             setOpen(false); // Close dropdown
+            return;
         }
+
+        // Navigate based on type
+        if (relatedId) {
+            if (item.type.includes('TOPIC') || item.type.includes('REGISTRATION')) {
+                navigate(`/topics/${relatedId}`);
+            } else if (item.type.includes('GRADE_CHANGE')) {
+                navigate(user?.role === 'HEAD' ? '/head/grade-changes' : `/topics/${relatedId}`);
+            } else if (item.type.includes('EXTRA_POINT')) {
+                navigate(user?.role === 'HEAD' ? '/head/extra-points' : '/extra-points');
+            } else if (item.type.includes('ASSIGNMENT') || item.type.includes('SCORE') || item.type.includes('EVALUATION')) {
+                navigate(user?.role === 'STUDENT' ? '/my-topic' : '/evaluation');
+            } else if (item.type.includes('SCHEDULE') || item.type.includes('DEFENSE')) {
+                navigate('/schedule');
+            }
+        } else {
+            // Fallback for notifications without relatedId
+            if (item.type.includes('TOPIC')) navigate('/topics');
+            else if (item.type.includes('SCHEDULE')) navigate('/schedule');
+        }
+
+        setOpen(false); // Close dropdown
+    };
+
+    const displayedNotifications = isShowingAll ? notifications : notifications?.slice(0, 10);
+    const { today, yesterday, older } = displayedNotifications ? groupNotifications(displayedNotifications) : { today: [], yesterday: [], older: [] };
+
+    const renderNotificationGroup = (title: string, items: Notification[]) => {
+        if (!items.length) return null;
+        return (
+            <div className="mb-2">
+                <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {title}
+                </div>
+                <List
+                    dataSource={items}
+                    className="px-2"
+                    renderItem={(item: Notification) => {
+                        const isRead = item.read !== undefined ? item.read : (item as any).is_read;
+                        const messageContent = item.message !== undefined ? item.message : (item as any).content;
+                        const createdAtDate = item.createdAt !== undefined ? item.createdAt : (item as any).created_at;
+                        return (
+                            <List.Item
+                                className={`px-3 py-3 mb-1 cursor-pointer transition-all duration-200 relative group rounded-xl border-none
+                                    ${!isRead ? 'bg-blue-50/60 hover:bg-blue-50/90' : 'bg-transparent hover:bg-gray-100/80'}
+                                `}
+                                onClick={() => handleNotificationClick(item)}
+                            >
+                                {!isRead && (
+                                    <div className="absolute top-1/2 left-0.5 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" />
+                                )}
+                            <div className="flex gap-3.5 w-full items-start pl-1">
+                                <div className="mt-0.5 shadow-sm rounded-full">
+                                    {getNotificationIcon(item.type)}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div
+                                            className={`text-[15px] leading-tight line-clamp-2 ${!isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}
+                                            title={item.title}
+                                        >
+                                            {item.title}
+                                        </div>
+
+                                        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center -mt-1 -mr-1 bg-white/80 backdrop-blur-sm rounded-full px-1 shadow-sm border border-gray-100">
+                                            {!isRead && (
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 w-7 h-7 flex items-center justify-center rounded-full"
+                                                    icon={<CheckOutlined className="text-xs" />}
+                                                    onClick={(e) => handleMarkAsRead(item.id, e)}
+                                                    title="Đánh dấu đã đọc"
+                                                />
+                                            )}
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 w-7 h-7 flex items-center justify-center rounded-full"
+                                                icon={<DeleteOutlined className="text-xs" />}
+                                                onClick={(e) => handleDelete(item.id, e)}
+                                                title="Xóa thông báo"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className={`text-[13px] mt-1 mb-1.5 leading-relaxed line-clamp-2 ${!isRead ? 'text-gray-600' : 'text-gray-500'}`}
+                                        title={messageContent}
+                                    >
+                                        {messageContent}
+                                    </div>
+
+                                    <div className={`text-[12px] font-medium ${!isRead ? 'text-blue-600' : 'text-gray-400'}`}>
+                                        {dayjs(createdAtDate).format('HH:mm DD/MM/YYYY')}
+                                    </div>
+                                </div>
+                            </div>
+                        </List.Item>
+                        );
+                    }}
+                />
+            </div>
+        );
     };
 
     const dropdownContent = (
-        <div className="w-96 max-h-[500px] bg-white rounded-lg shadow-lg border overflow-hidden">
+        <div
+            className="dropdown-content w-[400px] max-w-[100vw] bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 overflow-hidden flex flex-col origin-top-right"
+            style={{ right: 0 }}
+        >
             {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-                <Text strong className="text-lg">Thông báo</Text>
-                {unreadCount > 0 && (
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 bg-white z-20">
+                <Text className="text-xl font-bold text-gray-800">Thông báo</Text>
+                <Space size="small">
+                    {unreadCount > 0 && (
+                        <Button
+                            type="text"
+                            size="small"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium text-sm rounded-full px-3"
+                            onClick={handleMarkAllAsRead}
+                            loading={markAllAsRead.isPending}
+                        >
+                            Đánh dấu đã đọc
+                        </Button>
+                    )}
                     <Button
-                        type="link"
+                        type="text"
                         size="small"
-                        icon={<CheckCircleOutlined />}
-                        onClick={handleMarkAllAsRead}
-                        loading={markAllAsRead.isPending}
-                    >
-                        Đánh dấu tất cả đã đọc
-                    </Button>
-                )}
+                        icon={<SettingOutlined className="text-gray-500 text-[18px]" />}
+                        className="flex items-center justify-center hover:bg-gray-100 w-8 h-8 rounded-full"
+                    />
+                </Space>
             </div>
 
             {/* Content */}
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[480px] overflow-y-auto overflow-x-hidden bg-white [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300 transition-colors">
                 {isLoading ? (
                     <div className="flex justify-center items-center h-32">
                         <Spin />
                     </div>
                 ) : !notifications || notifications.length === 0 ? (
                     <Empty
-                        description="Không có thông báo"
-                        className="py-8"
+                        description="Chưa có thông báo nào"
+                        className="py-12"
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                     />
                 ) : (
-                    <List
-                        dataSource={notifications}
-                        renderItem={(item: Notification) => (
-                            <List.Item
-                                className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${!item.read ? 'bg-blue-50' : ''
-                                    }`}
-                                onClick={() => handleNotificationClick(item)}
-                                actions={[
-                                    !item.read && (
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<CheckOutlined />}
-                                            onClick={(e) => handleMarkAsRead(item.id, e)}
-                                            title="Đánh dấu đã đọc"
-                                        />
-                                    ),
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        onClick={(e) => handleDelete(item.id, e)}
-                                        title="Xóa thông báo"
-                                    />,
-                                ].filter(Boolean)}
-                            >
-                                <List.Item.Meta
-                                    title={
-                                        <Space>
-                                            <Tag color={getTypeColor(item.type)} className="m-0">
-                                                {item.type}
-                                            </Tag>
-                                            <Text strong={!item.read}>{item.title}</Text>
-                                        </Space>
-                                    }
-                                    description={
-                                        <div>
-                                            <Paragraph
-                                                ellipsis={{ rows: 2 }}
-                                                className="mb-1 text-gray-600"
-                                            >
-                                                {item.message}
-                                            </Paragraph>
-                                            <Text type="secondary" className="text-xs">
-                                                {dayjs(item.createdAt).fromNow()}
-                                            </Text>
-                                        </div>
-                                    }
-                                />
-                            </List.Item>
-                        )}
-                    />
+                    <div className="py-1">
+                        {renderNotificationGroup('Hôm nay', today)}
+                        {renderNotificationGroup('Hôm qua', yesterday)}
+                        {renderNotificationGroup('Trước đó', older)}
+                    </div>
                 )}
             </div>
 
             {/* Footer */}
-            {notifications && notifications.length > 0 && (
-                <div className="p-2 border-t bg-gray-50 text-center">
-                    <Button type="link" size="small">
+            {notifications && notifications.length > 10 && !isShowingAll && (
+                <div
+                    className="p-3 border-t border-gray-100 bg-white text-center hover:bg-gray-50 transition-colors cursor-pointer rounded-b-2xl"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsShowingAll(true);
+                    }}
+                >
+                    <Text className="text-blue-600 font-medium text-[15px]">
                         Xem tất cả thông báo
-                    </Button>
+                    </Text>
                 </div>
             )}
         </div>
@@ -229,6 +369,8 @@ const NotificationDropdown = () => {
                 open={open}
                 onOpenChange={setOpen}
                 placement="bottomRight"
+                overlayClassName="notification-dropdown"
+                overlayStyle={{ right: 0, paddingRight: '1rem' }}
             >
                 <Badge count={unreadCount} overflowCount={99}>
                     <Button

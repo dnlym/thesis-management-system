@@ -1877,19 +1877,16 @@ export class GradingService {
 
     // Notify HOD
     const topic = await prisma.topic.findUnique({ where: { id: topicId }, select: { departmentId: true } });
-    if (topic?.departmentId) {
-      const hods = await prisma.user.findMany({ 
-        where: { departmentId: topic.departmentId, role: UserRole.HEAD } 
-      });
-      for (const hod of hods) {
-        await notificationService.createNotification(
-          hod.id,
-          'GRADE_CHANGE_REQUEST',
-          'Yêu cầu sửa điểm mới',
-          `Giảng viên vừa gửi yêu cầu sửa điểm cho sinh viên sau thời hạn.`,
-          topicId
-        );
-      }
+    const grader = await prisma.user.findUnique({ where: { id: userId }, select: { full_name: true } });
+    const studentInfo = await prisma.user.findUnique({ where: { id: studentId || data.studentId || '' }, select: { full_name: true } });
+
+    if (topic?.departmentId && grader && studentInfo) {
+      await notificationService.notifyGradeChangeRequested(
+        studentInfo.full_name,
+        grader.full_name,
+        topic.departmentId,
+        topicId
+      );
     }
 
     return { 

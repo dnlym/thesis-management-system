@@ -19,7 +19,7 @@ export function useNotifications(unreadOnly?: boolean) {
     return useQuery({
         queryKey: notificationKeys.list(unreadOnly),
         queryFn: () => NotificationsApi.getAll(unreadOnly),
-        refetchInterval: 30000, // Poll every 30 seconds
+        refetchInterval: 10000, // Poll every 10 seconds for real-time updates
     });
 }
 
@@ -30,7 +30,7 @@ export function useUnreadCount() {
     return useQuery({
         queryKey: notificationKeys.unreadCount(),
         queryFn: () => NotificationsApi.getUnreadCount(),
-        refetchInterval: 15000, // Poll every 15 seconds
+        refetchInterval: 5000, // Poll every 5 seconds for real-time count
     });
 }
 

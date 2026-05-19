@@ -12,13 +12,13 @@ router.get('/', notificationController.getNotifications.bind(notificationControl
 
 router.get('/unread-count', notificationController.getUnreadCount.bind(notificationController));
 
-router.post(
+router.put(
   '/:notificationId/read',
   validate([param('notificationId').isUUID().withMessage('Invalid notification ID')]),
   notificationController.markAsRead.bind(notificationController)
 );
 
-router.post('/read-all', notificationController.markAllAsRead.bind(notificationController));
+router.put('/read-all', notificationController.markAllAsRead.bind(notificationController));
 
 router.delete(
   '/:notificationId',

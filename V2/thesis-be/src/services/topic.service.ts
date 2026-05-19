@@ -308,7 +308,9 @@ export class TopicService {
         },
       });
 
-
+      if (initialStatus === TopicStatus.PENDING_APPROVAL) {
+        await notificationService.notifyTopicSubmitted(topic.id, topic.title, user.full_name, topicDepartmentId);
+      }
 
       return topic;
     } catch (error: any) {
@@ -506,6 +508,11 @@ export class TopicService {
         new_value: updatedTopic,
       },
     });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      await notificationService.notifyTopicSubmitted(topic.id, topic.title, user.full_name, topic.departmentId);
+    }
 
     return updatedTopic;
   }
