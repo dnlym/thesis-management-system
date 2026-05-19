@@ -951,6 +951,10 @@ export class TopicService {
           midterm_status: filter.midtermStatus,
         },
       };
+    } else if (filter.hasRegistrations) {
+      where.registrations = {
+        some: {}
+      };
     }
 
     if (andConditions.length > 0) {

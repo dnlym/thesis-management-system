@@ -617,6 +617,9 @@ export class GradingService {
             TopicStatus.FINALIZED,
           ],
         },
+        registrations: {
+          some: {}
+        }
       },
       include: topicSummaryInclude,
       orderBy: { updated_at: 'desc' },

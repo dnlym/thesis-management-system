@@ -81,7 +81,7 @@ const Evaluation = () => {
   // 1. Dashboard queries
   const { data: advisorTopics, isLoading: isLoadingAdvisor } = useQuery({
     queryKey: ['advisor-topics', user?.id],
-    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id }),
+    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, hasRegistrations: true }),
     enabled: !!user?.id && activeTab === 'advisor' && !topicId,
   });
 

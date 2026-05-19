@@ -108,7 +108,7 @@ const FinalResults = () => {
 
     const { data: results, isLoading } = useQuery({
         queryKey: ['final-results'],
-        queryFn: () => TopicsApi.getAll({ status: 'FINALIZED' }),
+        queryFn: () => TopicsApi.getAll({ status: 'FINALIZED', hasRegistrations: true }),
     });
 
     const processedData = useMemo(() => {
