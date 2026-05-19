@@ -13,8 +13,8 @@ export class UserService {
         }
 
         // Role-based scoping
-        if (currentUser?.role === UserRole.HEAD) {
-            // HODs can only see users from their own department
+        if (currentUser?.role === UserRole.HEAD || currentUser?.role === UserRole.LECTURER) {
+            // HODs and LECTURERs can only see users from their own department
             where.departmentId = currentUser.departmentId;
         } else if (filters?.departmentId) {
             // ADMINs or others can filter by departmentId
@@ -45,6 +45,16 @@ export class UserService {
             where,
             include: {
                 department: true,
+                topic_registrations: {
+                    include: {
+                        topic: true,
+                    },
+                },
+                group_memberships: {
+                    include: {
+                        group: true,
+                    },
+                },
             },
             orderBy: { created_at: 'desc' },
         });

@@ -190,13 +190,13 @@ export class AcademicPolicy {
       case AcademicAction.REGISTER_TOPIC:
       case AcademicAction.JOIN_GROUP:
       case AcademicAction.CANCEL_REGISTRATION:
-        if (phase !== SemesterPhase.REGISTRATION) {
-          return { allowed: false, reason: 'Hiện không phải thời gian đăng ký đề tài hoặc lập nhóm.' };
+        if (phase !== SemesterPhase.REGISTRATION && phase !== SemesterPhase.PREVIEW) {
+          return { allowed: false, reason: 'Hiện không phải thời gian công bố hoặc đăng ký đề tài.' };
         }
         if (registration && (registration.midterm_status === 'FAIL' || registration.midterm_status === 'fail')) {
           return { allowed: false, reason: 'Bạn không thể thực hiện thao tác này do không đạt điểm giữa kỳ.' };
         }
-        return { allowed: user.role === UserRole.STUDENT };
+        return { allowed: user.role === UserRole.STUDENT || user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
 
       // ─── WORK & EXTRA POINTS ───────────────────────────────────────────
       case AcademicAction.SUBMIT_EXTRA_POINTS:
