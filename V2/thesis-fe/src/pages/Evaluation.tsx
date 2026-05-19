@@ -81,7 +81,7 @@ const Evaluation = () => {
   // 1. Dashboard queries
   const { data: advisorTopics, isLoading: isLoadingAdvisor } = useQuery({
     queryKey: ['advisor-topics', user?.id],
-    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, hasRegistrations: true }),
+    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id }),
     enabled: !!user?.id && activeTab === 'advisor' && !topicId,
   });
 
@@ -212,7 +212,7 @@ const Evaluation = () => {
     const deptConfig = activeSemester?.deptConfig;
     const now = dayjs();
     const globalDeadline = activeSemester?.thesis_deadline;
-    
+
     // 1. Phase-based locking (The master logic)
     // The activeSemester.calculated_phase already accounts for the Semester Ceiling.
 
@@ -229,16 +229,16 @@ const Evaluation = () => {
       // Hội đồng được chấm trong suốt giai đoạn Bảo vệ, khóa khi sang FINAL
       return phase === 'FINAL';
     }
-    
+
     return false;
   }, [activeSemester, activeTab]);
 
   const isFinalized = selectedTopic?.status === 'FINALIZED';
   const isAdminOrHead = user?.role === 'ADMIN' || user?.role === 'HEAD';
-  
+
   // Admin and HOD are NEVER locked unless the topic is completely finalized (even then they might need to edit, but let's keep finalized as a hard lock for now)
   const isLocked = (isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead)) && !isRequestMode;
-  
+
   const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead);
 
   // Handle value changes to calculate averages
@@ -473,11 +473,10 @@ const Evaluation = () => {
                     {students.map((s, i) => {
                       const isFailed = s.midtermStatus === 'FAIL' || s.status === 'FAILED';
                       const cardEl = (
-                        <div key={s.id} className={`flex items-start gap-2.5 p-2 rounded-xl border border-blue-50 shadow-sm transition-all ${
-                          isFailed 
-                            ? 'bg-slate-100/60 opacity-50 line-through' 
+                        <div key={s.id} className={`flex items-start gap-2.5 p-2 rounded-xl border border-blue-50 shadow-sm transition-all ${isFailed
+                            ? 'bg-slate-100/60 opacity-50 line-through'
                             : 'bg-white/60 hover:shadow-md'
-                        }`}>
+                          }`}>
                           <Avatar
                             size={28}
                             src={s.avatar}
@@ -648,11 +647,11 @@ const Evaluation = () => {
 
               {isPastDeadline && !isRequestMode && !isFinalized && !isAdminOrHead && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
-                  <Button 
-                    size="large" 
-                    type="primary" 
-                    ghost 
-                    icon={<LockOutlined />} 
+                  <Button
+                    size="large"
+                    type="primary"
+                    ghost
+                    icon={<LockOutlined />}
                     onClick={() => setIsRequestMode(true)}
                   >
                     Yêu cầu sửa điểm
@@ -793,7 +792,7 @@ const Evaluation = () => {
     {
       title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
         const topicObj = r.topic || r;
-        
+
         // 1. Ưu tiên lấy từ property "students" (TopicService trả về cấu trúc này)
         if (r.students && Array.isArray(r.students)) {
           return (
@@ -823,7 +822,7 @@ const Evaluation = () => {
         // 2. Dự phòng lấy từ registrations (AssignmentService/Prisma include)
         const registrations = topicObj.registrations || [];
         const firstReg = registrations[0];
-        
+
         // Trường hợp nhóm
         const members = firstReg?.group?.members || [];
         if (members.length > 0) {
@@ -890,7 +889,7 @@ const Evaluation = () => {
 
         // [UI IMPROVEMENT] Status should reflect CURRENT user's grading progress in lecturer tabs
         const hasMyGrades = r.grades?.filter((g: any) => (g.grader_id === user?.id || g.graderId === user?.id)).length > 0;
-        
+
         if (hasMyGrades) {
           return <Tag color="processing" className="m-0 rounded-full px-3">Đã chấm</Tag>;
         }
@@ -989,12 +988,12 @@ const Evaluation = () => {
 
 
     const columns = [
-      { 
-        title: 'STT', 
-        key: 'idx', 
-        width: 50, 
-        align: 'center' as const, 
-        render: (_: any, __: any, i: number) => <Text className="text-[11px] font-medium text-gray-600">{i + 1}</Text> 
+      {
+        title: 'STT',
+        key: 'idx',
+        width: 50,
+        align: 'center' as const,
+        render: (_: any, __: any, i: number) => <Text className="text-[11px] font-medium text-gray-600">{i + 1}</Text>
       },
       {
         title: 'Mã nhóm',
@@ -1011,8 +1010,8 @@ const Evaluation = () => {
         }
       },
       {
-        title: 'Tên đề tài', 
-        dataIndex: 'title', 
+        title: 'Tên đề tài',
+        dataIndex: 'title',
         key: 'title',
         render: (t: string) => (
           <div className="max-w-[300px]">
@@ -1023,8 +1022,8 @@ const Evaluation = () => {
         )
       },
       {
-        title: 'Sinh viên', 
-        key: 'students', 
+        title: 'Sinh viên',
+        key: 'students',
         width: 180,
         render: (_: any, r: any) => {
           const regs = r.registrations || [];
@@ -1055,21 +1054,21 @@ const Evaluation = () => {
         }
       },
       {
-        title: 'GVHD', 
-        key: 'supervisor', 
+        title: 'GVHD',
+        key: 'supervisor',
         width: 150,
         render: (_: any, r: any) => r.supervisor
           ? <div className="flex flex-col">
-              <Text className="text-[12px] font-medium">
-                <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
-              </Text>
-              <Text className="text-[10px] text-gray-400 italic">GV Hướng dẫn</Text>
-            </div>
+            <Text className="text-[12px] font-medium">
+              <HighlightText text={r.supervisor.full_name} keyword={debouncedDeptSearch} />
+            </Text>
+            <Text className="text-[10px] text-gray-400 italic">GV Hướng dẫn</Text>
+          </div>
           : <Tag color="error" className="text-[10px]">Trống</Tag>
       },
       {
-        title: 'Tiến độ chấm điểm', 
-        key: 'progress', 
+        title: 'Tiến độ chấm điểm',
+        key: 'progress',
         width: 200,
         render: (_: any, r: any) => (
           <div className="flex flex-col gap-1.5">
@@ -1095,22 +1094,22 @@ const Evaluation = () => {
         )
       },
       {
-        title: 'Trạng thái xét', 
-        key: 'review_status', 
+        title: 'Trạng thái xét',
+        key: 'review_status',
         width: 140,
         render: (_: any, r: any) => {
           const currentPhase = activeSemester?.calculated_phase;
-          
+
           // 1. Nếu đã có quyết định chính thức từ HOD (Chỉ hiển thị từ phase DEFENSE)
           const isAtDefensePhaseOrLater = currentPhase === 'DEFENSE' || currentPhase === 'FINAL';
-          
+
           if (isAtDefensePhaseOrLater && r.is_eligible_for_defense !== null && r.is_eligible_for_defense !== undefined) {
             return (
-              <Popover 
+              <Popover
                 content={(
                   <div className="max-w-xs">
                     <div className={`mb-2 font-bold ${r.is_eligible_for_defense ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
-                      {r.is_eligible_for_defense ? <CheckCircleOutlined /> : <CloseCircleOutlined />} 
+                      {r.is_eligible_for_defense ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
                       Kết quả rà soát
                     </div>
                     <div className="text-gray-600 text-sm">
@@ -1133,7 +1132,7 @@ const Evaluation = () => {
           const reviewerScore = firstStudent?.reviewer_avg_score;
 
           const renderFailedTag = (label: string, reason: string) => (
-            <Popover 
+            <Popover
               content={(
                 <div className="max-w-xs">
                   <div className="mb-2 font-bold text-red-600 flex items-center gap-1">
@@ -1379,7 +1378,7 @@ const Evaluation = () => {
       >
         <div className="mb-4">
           <Text>
-            {isRequestMode 
+            {isRequestMode
               ? 'Bạn đang thực hiện gửi yêu cầu điều chỉnh điểm số sau khi hết hạn. Vui lòng nhập lý do giải trình để Trưởng bộ môn phê duyệt.'
               : 'Bạn đang thực hiện thay đổi điểm số đã lưu trước đó. Vui lòng nhập lý do điều chỉnh để hệ thống ghi lại nhật ký chuyên môn.'}
           </Text>
@@ -1463,11 +1462,11 @@ const Evaluation = () => {
             expandRowByClick: true,
           }}
           columns={[
-            { 
-              title: 'Thời gian', 
-              dataIndex: 'changed_at', 
-              key: 'time', 
-              width: 120, 
+            {
+              title: 'Thời gian',
+              dataIndex: 'changed_at',
+              key: 'time',
+              width: 120,
               render: (t) => (
                 <div className="flex flex-col">
                   <Text className="text-[13px] font-medium">{dayjs(t).format('HH:mm')}</Text>
@@ -1475,18 +1474,18 @@ const Evaluation = () => {
                 </div>
               )
             },
-            { 
-              title: 'Sinh viên', 
-              key: 'student', 
-              width: 180, 
+            {
+              title: 'Sinh viên',
+              key: 'student',
+              width: 180,
               render: (_, r: GradeHistory) => (
                 <Text strong className="text-gray-700">{r.student?.full_name}</Text>
               )
             },
             {
-              title: 'Biến động', 
-              key: 'change', 
-              align: 'center', 
+              title: 'Biến động',
+              key: 'change',
+              align: 'center',
               width: 120,
               render: (_, r: GradeHistory) => (
                 <div className="flex items-center justify-center gap-2">
@@ -1496,9 +1495,9 @@ const Evaluation = () => {
                 </div>
               )
             },
-            { 
-              title: 'Lý do giải trình', 
-              dataIndex: 'reason', 
+            {
+              title: 'Lý do giải trình',
+              dataIndex: 'reason',
               key: 'reason',
               render: (reason) => (
                 <div className="max-w-[300px]">

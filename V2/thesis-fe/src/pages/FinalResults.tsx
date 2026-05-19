@@ -24,7 +24,7 @@ const getExportData = (data: Topic[]) => {
             const hasScore = final?.final_score !== undefined && final?.final_score !== null;
             rows.push({
                 'STT': index === 0 ? stt : '', // Chỉ hiện STT ở dòng đầu của nhóm
-                'Mã nhóm': index === 0 ? (topic.groupName || topic.code) : '', 
+                'Mã nhóm': index === 0 ? (topic.groupName || topic.code) : '',
                 'Tên đề tài': index === 0 ? topic.title : '',
                 'MSSV': student.student_code || '',
                 'Họ tên sinh viên': student.full_name || '',
@@ -82,7 +82,7 @@ const exportExcel = async (data: Topic[]) => {
         ];
 
         const ws = XLSX.utils.aoa_to_sheet(aoaData);
-        
+
         // Merge cells cho các tiêu đề
         ws['!merges'] = [
             { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Trường
@@ -108,7 +108,7 @@ const FinalResults = () => {
 
     const { data: results, isLoading } = useQuery({
         queryKey: ['final-results'],
-        queryFn: () => TopicsApi.getAll({ status: 'FINALIZED', hasRegistrations: true }),
+        queryFn: () => TopicsApi.getAll({ status: 'FINALIZED' }),
     });
 
     const processedData = useMemo(() => {
@@ -352,7 +352,7 @@ const FinalResults = () => {
                         else if (cls.startsWith('Khá')) color = 'blue';
                         else if (cls.startsWith('Trung bình')) color = 'orange';
                         else if (cls.startsWith('Yếu') || cls.startsWith('Kém')) color = 'red';
-                        
+
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center">
                                 {isFailedGK || hasScore ? (

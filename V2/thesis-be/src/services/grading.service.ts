@@ -86,7 +86,7 @@ export class GradingService {
 
     // Refresh semester and user data to ensure absolute consistency
     const [semester, user] = await Promise.all([
-      prisma.semester.findUnique({ 
+      prisma.semester.findUnique({
         where: { id: topic.semester_id },
         include: {
           department_configs: {
@@ -190,12 +190,12 @@ export class GradingService {
 
     // --- DEADLINE CHECK & ROUTING (MILESTONE LOGIC) ---
     const phase = AcademicPolicy.getPhase(semester) || SemesterPhase.PLANNING;
-    
+
     const isPastDeadline = this.isPastMilestone(
-      raterRole, 
+      raterRole,
       phase
     );
-    
+
     // If it's a modification after deadline, we MUST use the Request-Approval workflow (Except for ADMIN/HOD)
     // Ensure studentId is available for comparison (essential for individual grading within topics)
     const studentId = data.studentId || (data as any).student_id;
@@ -209,7 +209,7 @@ export class GradingService {
       if (changedGrades.length > 0) {
         return await this.requestGradeChange(userId, data, raterRole, existingGrades, resolvedTopicId, studentId);
       }
-      
+
       // If nothing changed, just return existing (idempotent)
       return existingGrades;
     }
@@ -232,7 +232,7 @@ export class GradingService {
     const grades = await Promise.all(
       data.grades.map(async (grade) => {
         const roundedScore = roundScore(grade.score);
-        
+
         // Find existing grade manually to handle nulls in compound unique constraints
         const existingGradeRecord = await prisma.grade.findFirst({
           where: {
@@ -277,7 +277,7 @@ export class GradingService {
         if (isPastDeadline && (user?.role === UserRole.ADMIN || user?.role === UserRole.HEAD)) {
           const oldScore = existingGradeRecord?.score || null;
           const newScore = roundedScore;
-          
+
           if (oldScore !== newScore) {
             await prisma.gradeHistory.create({
               data: {
@@ -617,9 +617,6 @@ export class GradingService {
             TopicStatus.FINALIZED,
           ],
         },
-        registrations: {
-          some: {}
-        }
       },
       include: topicSummaryInclude,
       orderBy: { updated_at: 'desc' },
@@ -1736,7 +1733,7 @@ export class GradingService {
     // Fetch audit logs
     // Fetch detailed grade history for auditing (per student/grader)
     const gradeHistory = await (prisma.gradeHistory as any).findMany({
-      where: { 
+      where: {
         topic_id: topicId,
         grader_id: userId
       },
@@ -1879,27 +1876,27 @@ export class GradingService {
    * Create a grade change request for HOD approval
    */
   public async requestGradeChange(
-    userId: string, 
-    data: SubmitGradeRequest, 
-    raterRole: RaterRole, 
-    existingGrades: any[], 
+    userId: string,
+    data: SubmitGradeRequest,
+    raterRole: RaterRole,
+    existingGrades: any[],
     topicId: string,
     studentId?: string
   ) {
     console.log(`[GradingService] Creating change request for topic ${topicId}. Global reason: "${data.reason}", student: ${studentId}`);
-    
+
     const requests = await Promise.all(
       data.grades.map(async (g) => {
         const existing = existingGrades.find(eg => eg.criterion_id === g.criterionId);
         const newScore = roundScore(g.score);
-        
+
         // Only create request if score actually changed
         if (existing && existing.score === newScore) return null;
 
         return prisma.gradeChangeRequest.create({
           data: {
             topic_id: topicId,
-            student_id: studentId || data.studentId || '', 
+            student_id: studentId || data.studentId || '',
             grader_id: userId,
             criterion_id: g.criterionId,
             rater_role: raterRole,
@@ -1928,10 +1925,10 @@ export class GradingService {
       );
     }
 
-    return { 
+    return {
       message: 'Đã gửi yêu cầu sửa điểm tới Trưởng bộ môn phê duyệt.',
       status: 'PENDING_APPROVAL',
-      requestCount: createdRequests.length 
+      requestCount: createdRequests.length
     };
   }
 
@@ -1964,7 +1961,7 @@ export class GradingService {
     });
 
     if (!request) throw new Error('Không tìm thấy yêu cầu');
-    
+
     // Check permission (HOD of the same department)
     const hod = await prisma.user.findUnique({ where: { id: hodId } });
     if (hod?.role !== UserRole.HEAD || hod.departmentId !== request.topic.departmentId) {
@@ -1985,9 +1982,9 @@ export class GradingService {
     if (existingGrade) {
       await prisma.grade.update({
         where: { id: existingGrade.id },
-        data: { 
+        data: {
           score: request.new_score ?? undefined,
-          comments: request.reason 
+          comments: request.reason
         }
       });
     } else {
@@ -2084,12 +2081,12 @@ export class GradingService {
    * - Council: Past if phase === FINAL
    */
   private isPastMilestone(
-    role: RaterRole, 
+    role: RaterRole,
     phase: SemesterPhase
   ): boolean {
     // Phase-based locking is the cleanest and most intuitive approach.
     // The "Semester Ceiling" logic in SemesterGuard handles the timing boundaries.
-    
+
     switch (role) {
       case RaterRole.SUPERVISOR:
         // Supervisor can grade during REVIEWING and DEFENSE. Locked in FINAL.

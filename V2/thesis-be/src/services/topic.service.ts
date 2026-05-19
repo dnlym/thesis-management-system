@@ -951,10 +951,6 @@ export class TopicService {
           midterm_status: filter.midtermStatus,
         },
       };
-    } else if (filter.hasRegistrations) {
-      where.registrations = {
-        some: {}
-      };
     }
 
     if (andConditions.length > 0) {
@@ -989,9 +985,9 @@ export class TopicService {
             }
           },
           registrations: {
-            where: filter.midtermStatus 
-                ? { midterm_status: filter.midtermStatus } 
-                : undefined,
+            where: filter.midtermStatus
+              ? { midterm_status: filter.midtermStatus }
+              : undefined,
             include: {
               student: {
                 select: {
@@ -1081,8 +1077,8 @@ export class TopicService {
             .map((reg: any) => {
               const student = reg.student;
               const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
-              return { 
-                ...student, 
+              return {
+                ...student,
                 finalScore,
                 midtermStatus: reg.midterm_status,
                 midtermFeedback: reg.midterm_feedback,
@@ -1111,8 +1107,8 @@ export class TopicService {
           .map((reg: any) => {
             const student = reg.student;
             const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
-            return { 
-              ...student, 
+            return {
+              ...student,
               finalScore,
               midtermStatus: reg.midterm_status,
               midtermFeedback: reg.midterm_feedback,

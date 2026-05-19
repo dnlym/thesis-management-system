@@ -192,7 +192,6 @@ export class TopicController {
         supervisorId: req.query.supervisorId as string,
         includeAll,
         midtermStatus: req.query.midtermStatus as 'PASS' | 'FAIL' | undefined,
-        hasRegistrations: req.query.hasRegistrations === 'true' ? true : undefined,
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
         limit: req.query.size ? parseInt(req.query.size as string) : undefined,
       };
@@ -251,11 +250,11 @@ export class TopicController {
       const topicId = req.params.topicId as string;
       const groupId = req.query.groupId as string | undefined;
       const topic = await topicService.getTopicById(userId, topicId, groupId);
-      
+
       // Calculate allowed actions for the UI
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      const semester = await prisma.semester.findUnique({ 
-        where: { id: (topic as any).semester_id } 
+      const semester = await prisma.semester.findUnique({
+        where: { id: (topic as any).semester_id }
       });
 
       if (semester && user) {
