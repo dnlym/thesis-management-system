@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card, Tag, Button, Typography, Space, Progress,
   Row, Col, Input, Drawer,
-  Empty, Spin, Avatar, Tabs, Popconfirm, Divider, Flex
+  Empty, Spin, Avatar, Tabs, Popconfirm, Divider, Flex, Tooltip
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
@@ -55,11 +55,11 @@ const GradeSummary = () => {
       result = result.filter((t: any) =>
         matchKeyword(
           debouncedSearch,
-          t.title,
-          t.code,
-          t.supervisor?.full_name,
-          ...t.students?.map((s: any) => s.full_name),
-          ...t.students?.map((s: any) => s.student_code)
+          t.title || '',
+          t.code || '',
+          t.supervisor?.full_name || '',
+          ...(t.students || []).map((s: any) => s.student?.full_name || ''),
+          ...(t.students || []).map((s: any) => s.student?.student_code || '')
         )
       );
     }
@@ -270,14 +270,21 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
             <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{topic.students?.length || 0} sinh viên</Text>
           </div>
           <div className="space-y-3">
-            {topic.students?.map((s: any) => (
-                <div key={s.student.id} className="flex items-center justify-between group bg-white/40 p-1.5 rounded-lg border border-transparent hover:border-slate-100 hover:bg-white/80 transition-all">
+            {topic.students?.map((s: any, idx: number) => {
+              if (!s || !s.student) return null;
+              const isFailed = s.student.midtermStatus === 'FAIL' || s.student.registrationStatus === 'FAILED';
+              const cardEl = (
+                <div key={s.student.id || idx} className={`flex items-center justify-between group p-1.5 rounded-lg border border-transparent transition-all ${
+                  isFailed
+                    ? 'bg-slate-100/60 opacity-50 line-through'
+                    : 'bg-white/40 hover:border-slate-100 hover:bg-white/80'
+                }`}>
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <Avatar size={24} className="bg-blue-50 text-blue-600 font-bold text-[10px] border border-blue-100 flex-shrink-0">
-                       {s.student.full_name?.charAt(0)}
+                    <Avatar size={24} className={`${isFailed ? 'bg-slate-200 text-slate-400' : 'bg-blue-50 text-blue-600'} font-bold text-[10px] border border-blue-100 flex-shrink-0`}>
+                       {s.student.full_name?.charAt(0) || ''}
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
-                      <Text className="text-[13px] font-bold text-slate-700 truncate leading-tight">
+                       <Text className="text-[13px] font-bold text-slate-700 truncate leading-tight">
                         <HighlightText text={s.student.full_name} keyword={keyword} />
                       </Text>
                       <Text className="text-[9px] text-slate-400 font-mono font-bold">
@@ -288,10 +295,12 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
                   
                   {/* Individual Score & Classification */}
                   <div className="flex flex-col items-end flex-shrink-0">
-                    <Text className={`text-[12px] font-black tabular-nums ${s.finalScore?.final_score ? 'text-blue-600' : 'text-slate-300'}`}>
-                      {s.finalScore?.final_score ? s.finalScore.final_score.toFixed(2) : '—'}đ
+                    <Text className={`text-[12px] font-black tabular-nums ${isFailed ? 'text-red-500' : s.finalScore?.final_score ? 'text-blue-600' : 'text-slate-300'}`}>
+                      {isFailed ? '0.00đ' : s.finalScore?.final_score ? `${s.finalScore.final_score.toFixed(2)}đ` : '—'}
                     </Text>
-                    {s.finalScore?.grade_classification && (
+                    {isFailed ? (
+                      <Tag className="m-0 text-[8px] px-1 py-0 border-none font-black rounded uppercase bg-red-100 text-red-600">Rớt</Tag>
+                    ) : s.finalScore?.grade_classification && (
                       <Tag className={`m-0 text-[8px] px-1 py-0 border-none font-black rounded uppercase ${
                         s.finalScore.grade_classification.startsWith('Xuất sắc') ? 'bg-amber-100 text-amber-600' :
                         s.finalScore.grade_classification.startsWith('Giỏi') ? 'bg-green-100 text-green-600' :
@@ -303,7 +312,14 @@ const TopicCard = ({ index, topic, keyword, onViewDetails, onFinalize, isFinaliz
                     )}
                   </div>
                 </div>
-            ))}
+              );
+
+              return isFailed ? (
+                <Tooltip key={s.student.id || idx} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.student.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                  {cardEl}
+                </Tooltip>
+              ) : cardEl;
+            })}
           </div>
         </Col>
 

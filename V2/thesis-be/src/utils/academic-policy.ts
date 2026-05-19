@@ -132,6 +132,15 @@ export class AcademicPolicy {
       return { allowed: true };
     }
 
+    // Midterm FAIL Lockout: Block all academic actions if registration failed midterm
+    if (registration && (registration.midterm_status === 'FAIL' || registration.status === 'FAILED')) {
+      return {
+        allowed: false,
+        reason: 'Sinh viên này đã rớt đánh giá giữa kỳ và bị khóa toàn bộ quyền thao tác học thuật.',
+        code: 'MIDTERM_FAILED'
+      };
+    }
+
     const phase = this.getPhase(semester);
     const timeline = SemesterGuard.getTimelineContext(semester);
 

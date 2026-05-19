@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Tooltip, message, Empty, Tabs } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined, AuditOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined, AuditOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useActiveSemester } from '@/hooks/useSemesters';
 import { useAuthStore } from '@/store/auth';
@@ -64,9 +64,11 @@ const MidtermEvaluation = () => {
     // Detail Modal states
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const [selectedDetail, setSelectedDetail] = useState<MidtermRegistration | null>(null);
+    const [topicExpanded, setTopicExpanded] = useState(false);
 
     const handleOpenDetailModal = (registration: MidtermRegistration) => {
         setSelectedDetail(registration);
+        setTopicExpanded(false);
         setDetailModalVisible(true);
     };
 
@@ -204,15 +206,30 @@ const MidtermEvaluation = () => {
             title: 'Sinh viên',
             key: 'student',
             width: 250,
-            render: (_: any, record: MidtermRegistration) => (
-                <div className="flex items-center gap-2.5">
-                    <Avatar size={24} src={record.student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
-                    <div className="flex flex-col">
-                        <span className="font-bold text-slate-700 text-[13px] leading-none">{record.student.full_name}</span>
-                        <span className="text-slate-400 text-[11px] mt-0.5">{record.student.student_code}</span>
+            render: (_: any, record: MidtermRegistration) => {
+                const isFailed = record.midterm_status === 'FAIL';
+                const studentEl = (
+                    <div 
+                        className="flex items-center gap-2.5"
+                        style={isFailed ? { opacity: 0.5, textDecoration: 'line-through' } : undefined}
+                    >
+                        <Avatar size={24} src={record.student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
+                        <div className="flex flex-col">
+                            <span className="font-bold text-slate-700 text-[13px] leading-none">{record.student.full_name}</span>
+                            <span className="text-slate-400 text-[11px] mt-0.5">{record.student.student_code}</span>
+                        </div>
                     </div>
-                </div>
-            ),
+                );
+
+                if (isFailed) {
+                    return (
+                        <Tooltip title={`Sinh viên này đã rớt đánh giá giữa kỳ. Lý do: ${record.midterm_feedback || 'Không có ý kiến.'}`}>
+                            {studentEl}
+                        </Tooltip>
+                    );
+                }
+                return studentEl;
+            },
         },
         {
             title: 'Ngày đăng ký',
@@ -294,10 +311,10 @@ const MidtermEvaluation = () => {
         },
     ];
 
-    const totalTopicsCount = uniqueTopicsInSemester.length;
-    const pendingCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => !r.midterm_status).length;
-    const passedCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length;
-    const failedCount = uniqueTopicsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length;
+    const totalTopicsCount = registrationsInSemester.length;
+    const pendingCount = registrationsInSemester.filter((r: MidtermRegistration) => !r.midterm_status).length;
+    const passedCount = registrationsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'PASS').length;
+    const failedCount = registrationsInSemester.filter((r: MidtermRegistration) => r.midterm_status === 'FAIL').length;
 
     if (isLoading) {
         return (
@@ -417,22 +434,65 @@ const MidtermEvaluation = () => {
                 onCancel={() => {
                     setDetailModalVisible(false);
                     setSelectedDetail(null);
+                    setTopicExpanded(false);
                 }}
                 footer={[
-                    <Button key="close" type="primary" onClick={() => setDetailModalVisible(false)} className="px-6 rounded-lg font-bold h-9">
+                    <Button key="close" type="primary" onClick={() => {
+                        setDetailModalVisible(false);
+                        setTopicExpanded(false);
+                    }} className="px-6 rounded-lg font-bold h-9">
                         Đóng
                     </Button>
                 ]}
-                width={540}
+                width={580}
                 className="sys-modal"
             >
                 {selectedDetail && (
                     <div className="space-y-4 py-1">
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tên đề tài</div>
-                            <div className="text-[14px] font-bold text-slate-800 leading-snug">
+                        {/* Expandable Topic Info Pillbox */}
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 transition-all">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tên đề tài</div>
+                                <button 
+                                    onClick={() => setTopicExpanded(!topicExpanded)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 border-none bg-transparent cursor-pointer p-0 transition-all"
+                                >
+                                    <span>{topicExpanded ? 'Thu gọn' : 'Xem mô tả chi tiết'}</span>
+                                    {topicExpanded ? <UpOutlined /> : <DownOutlined />}
+                                </button>
+                            </div>
+                            <div 
+                                className="text-[14px] font-bold text-slate-800 leading-snug cursor-pointer hover:text-blue-600 transition-colors"
+                                onClick={() => setTopicExpanded(!topicExpanded)}
+                            >
                                 {selectedDetail.topic.title}
                             </div>
+
+                            {topicExpanded && (
+                                <div className="mt-3.5 pt-3.5 border-t border-slate-200 space-y-3.5 animate-in fade-in duration-300">
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mô tả đề tài</div>
+                                        <div 
+                                            className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
+                                            dangerouslySetInnerHTML={{ __html: selectedDetail.topic.description || 'Không có mô tả' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mục tiêu đề tài</div>
+                                        <div 
+                                            className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
+                                            dangerouslySetInnerHTML={{ __html: selectedDetail.topic.objectives || 'Không có mục tiêu' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Yêu cầu đối với sinh viên</div>
+                                        <div 
+                                            className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
+                                            dangerouslySetInnerHTML={{ __html: selectedDetail.topic.requirements || 'Không có yêu cầu' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
@@ -501,9 +561,14 @@ const MidtermEvaluation = () => {
             {/* Grade Modal */}
             <Modal
                 title={
-                    <div className="flex items-center gap-2">
-                        <ExclamationCircleOutlined className={selectedStatus === 'PASS' ? 'text-green-600' : 'text-red-600'} />
-                        <span>Xác nhận đánh giá {selectedStatus}</span>
+                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                        <div className={`p-2 rounded-xl flex items-center justify-center shadow-sm ${selectedStatus === 'PASS' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            {selectedStatus === 'PASS' ? <CheckCircleOutlined className="text-lg" /> : <CloseCircleOutlined className="text-lg" />}
+                        </div>
+                        <div>
+                            <span className="text-lg font-bold text-slate-800">Xác nhận đánh giá {selectedStatus}</span>
+                            <div className="text-xs text-slate-400 font-normal mt-0.5">Vui lòng kiểm tra kỹ thông tin trước khi xác nhận</div>
+                        </div>
                     </div>
                 }
                 open={gradeModalVisible}
@@ -517,41 +582,80 @@ const MidtermEvaluation = () => {
                 confirmLoading={updateMidtermMutation.isPending}
                 okText="Xác nhận"
                 cancelText="Hủy"
-                width={480}
+                width={520}
+                centered
                 okButtonProps={{
-                    danger: selectedStatus === 'FAIL',
-                    className: selectedStatus === 'PASS' ? 'bg-green-600 hover:bg-green-700' : undefined,
+                    className: `rounded-xl h-10 px-5 font-semibold text-sm shadow-sm transition-all duration-200 border-none
+                        ${selectedStatus === 'PASS' 
+                            ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100' 
+                            : 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-100'
+                        }
+                    `,
+                }}
+                cancelButtonProps={{
+                    className: "rounded-xl h-10 px-5 font-medium text-sm border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300 transition-all duration-150"
                 }}
             >
                 {selectedRegistration && (
-                    <div className="space-y-4">
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-500 mb-1">Đề tài</div>
-                            <div className="font-medium">{selectedRegistration.topic.title}</div>
+                    <div className="space-y-4 pt-4">
+                        {/* Topic Information Card */}
+                        <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                            <div className={`absolute top-0 left-0 w-1 h-full ${selectedStatus === 'PASS' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Đề tài</div>
+                            <div className="text-[15px] font-semibold text-slate-800 leading-snug">{selectedRegistration.topic.title}</div>
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="text-sm text-gray-500 mb-2">Sinh viên</div>
-                            {selectedRegistration.group && selectedRegistration.group.members ? (
-                                selectedRegistration.group.members.map((m) => (
-                                    <div key={m.user.id} className="flex items-center gap-2 mb-1">
-                                        <Avatar size="small" src={m.user.avatar_url} icon={<UserOutlined />} />
-                                        <span>{m.user.full_name}</span>
-                                        <span className="text-gray-500">({m.user.student_code})</span>
+                        {/* Students Card */}
+                        <div className="bg-slate-50/50 border border-slate-100/80 rounded-xl p-4">
+                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Sinh viên thực hiện</div>
+                            <div className="space-y-2.5">
+                                {selectedRegistration.group && selectedRegistration.group.members ? (
+                                    selectedRegistration.group.members.map((m) => (
+                                        <div key={m.user.id} className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar 
+                                                    size="default" 
+                                                    src={m.user.avatar_url} 
+                                                    icon={<UserOutlined />} 
+                                                    className="bg-blue-50 text-blue-600 shadow-inner border border-blue-100/50"
+                                                />
+                                                <div>
+                                                    <div className="text-[14px] font-semibold text-slate-700">{m.user.full_name}</div>
+                                                    <div className="text-xs text-slate-400 font-medium">Mã SV: {m.user.student_code}</div>
+                                                </div>
+                                            </div>
+                                            <Tag className="rounded-full px-2.5 py-0.5 border-none font-semibold text-[11px] bg-blue-50 text-blue-600 m-0">Thành viên</Tag>
+                                        </div>
+                                    ))
+                                ) : selectedRegistration.student ? (
+                                    <div className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar 
+                                                size="default" 
+                                                src={selectedRegistration.student.avatar_url} 
+                                                icon={<UserOutlined />} 
+                                                className="bg-blue-50 text-blue-600 shadow-inner border border-blue-100/50"
+                                            />
+                                            <div>
+                                                <div className="text-[14px] font-semibold text-slate-700">{selectedRegistration.student.full_name}</div>
+                                                <div className="text-xs text-slate-400 font-medium">Mã SV: {selectedRegistration.student.student_code}</div>
+                                            </div>
+                                        </div>
+                                        <Tag className="rounded-full px-2.5 py-0.5 border-none font-semibold text-[11px] bg-blue-50 text-blue-600 m-0">Thành viên</Tag>
                                     </div>
-                                ))
-                            ) : selectedRegistration.student ? (
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Avatar size="small" src={selectedRegistration.student.avatar_url} icon={<UserOutlined />} />
-                                    <span>{selectedRegistration.student.full_name}</span>
-                                    <span className="text-gray-500">({selectedRegistration.student.student_code})</span>
-                                </div>
-                            ) : null}
+                                ) : (
+                                    <div className="text-slate-400 text-sm italic py-2 text-center">Không tìm thấy thông tin sinh viên</div>
+                                )}
+                            </div>
                         </div>
 
+                        {/* Feedback / Comments Field */}
                         <div>
-                            <div className="text-sm text-gray-500 mb-2">
-                                Nhận xét {selectedStatus === 'FAIL' && <span className="text-red-500">*</span>}
+                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                <span>Nhận xét đánh giá</span>
+                                {selectedStatus === 'FAIL' && (
+                                    <span className="text-[11px] font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100/50">Bắt buộc</span>
+                                )}
                             </div>
                             <TextArea
                                 rows={4}
@@ -559,13 +663,15 @@ const MidtermEvaluation = () => {
                                 onChange={(e) => setFeedback(e.target.value)}
                                 placeholder={
                                     selectedStatus === 'FAIL'
-                                        ? 'Vui lòng nhập lý do FAIL (bắt buộc)...'
-                                        : 'Nhận xét (không bắt buộc)...'
+                                        ? 'Vui lòng nhập rõ lý do đánh giá không đạt (FAIL)...'
+                                        : 'Nhập nhận xét hoặc lưu ý cho sinh viên (không bắt buộc)...'
                                 }
+                                className="rounded-xl border-slate-200 hover:border-blue-400 focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.08)] transition-all duration-200 p-3 text-slate-700 placeholder-slate-400"
                             />
                             {selectedStatus === 'FAIL' && !feedback.trim() && (
-                                <div className="text-red-500 text-sm mt-1">
-                                    Vui lòng nhập lý do khi FAIL sinh viên
+                                <div className="text-rose-500 text-xs mt-1.5 flex items-center gap-1.5 font-medium pl-1">
+                                    <ExclamationCircleOutlined />
+                                    <span>Vui lòng nhập nhận xét/lý do đánh giá không đạt.</span>
                                 </div>
                             )}
                         </div>

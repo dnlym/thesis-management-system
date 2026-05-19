@@ -200,11 +200,26 @@ const Topics = () => {
             </a>
             {students.length > 0 && (
               <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-slate-400">
-                {students.map((s: any) => (
-                  <div key={s.id} className="text-[11px] font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                    {s.full_name} - {s.student_code}
-                  </div>
-                ))}
+                {students.map((s: any) => {
+                  const isFailed = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                  const label = `${s.full_name || s.fullName} - ${s.student_code || s.studentCode}`;
+                  const tagEl = (
+                    <div key={s.id} className={`text-[11px] font-medium px-2 py-0.5 rounded border transition-all ${
+                      isFailed
+                        ? 'text-slate-400 bg-slate-100 border-slate-200 opacity-60 line-through cursor-help'
+                        : 'text-slate-600 bg-slate-50 border-slate-200'
+                    }`}>
+                      {label}
+                      {isFailed && <span className="ml-1 text-[9px] text-red-500 font-bold">(Rớt GK)</span>}
+                    </div>
+                  );
+
+                  return isFailed ? (
+                    <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || s.midterm_feedback || 'Không có ý kiến phản hồi.'}`}>
+                      {tagEl}
+                    </Tooltip>
+                  ) : tagEl;
+                })}
               </div>
             )}
           </div>

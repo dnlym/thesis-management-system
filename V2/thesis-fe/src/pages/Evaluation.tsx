@@ -81,7 +81,7 @@ const Evaluation = () => {
   // 1. Dashboard queries
   const { data: advisorTopics, isLoading: isLoadingAdvisor } = useQuery({
     queryKey: ['advisor-topics', user?.id],
-    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, midtermStatus: 'PASS' }),
+    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id }),
     enabled: !!user?.id && activeTab === 'advisor' && !topicId,
   });
 
@@ -181,7 +181,10 @@ const Evaluation = () => {
       name: reg.student?.fullName || reg.student?.full_name || reg.fullName || reg.studentName || 'Chưa xác định',
       code: reg.student?.studentCode || reg.student?.student_code || reg.studentCode || reg.code || 'N/A',
       studentClass: reg.className || reg.class_name || reg.student?.className || reg.student?.class_name || reg.class || reg.student?.class || 'N/A',
-      avatar: reg.student?.avatarUrl || reg.student?.avatar_url || reg.avatarUrl || reg.avatar
+      avatar: reg.student?.avatarUrl || reg.student?.avatar_url || reg.avatarUrl || reg.avatar,
+      midtermStatus: reg.midterm_status || reg.midtermStatus || reg.student?.midterm_status || reg.student?.midtermStatus,
+      midtermFeedback: reg.midterm_feedback || reg.midtermFeedback || reg.student?.midterm_feedback || reg.student?.midtermFeedback,
+      status: reg.status || reg.student?.status || reg.student?.registrationStatus
     }));
   }, [selectedTopic, myGradesData, groupId]);
 
@@ -467,24 +470,39 @@ const Evaluation = () => {
                     </Text>
                   </div>
                   <div className="space-y-2">
-                    {students.map((s, i) => (
-                      <div key={s.id} className="flex items-start gap-2.5 bg-white/60 p-2 rounded-xl border border-blue-50 shadow-sm hover:shadow-md transition-all">
-                        <Avatar
-                          size={28}
-                          src={s.avatar}
-                          className="flex-shrink-0 border border-blue-100"
-                          icon={<UserOutlined />}
-                        />
-                        <div className="flex flex-col">
-                          <Text strong className="text-gray-800 text-[13px] leading-tight">{s.name}</Text>
-                          <Text className="text-[10px] text-gray-500 mt-0.5">
-                          <span className="font-mono bg-blue-50 px-1 rounded text-blue-600">{s.code}</span>
-                          <Divider type="vertical" className="border-gray-300 mx-1" />
-                          <span>{s.studentClass}</span>
-                        </Text>
+                    {students.map((s, i) => {
+                      const isFailed = s.midtermStatus === 'FAIL' || s.status === 'FAILED';
+                      const cardEl = (
+                        <div key={s.id} className={`flex items-start gap-2.5 p-2 rounded-xl border border-blue-50 shadow-sm transition-all ${
+                          isFailed 
+                            ? 'bg-slate-100/60 opacity-50 line-through' 
+                            : 'bg-white/60 hover:shadow-md'
+                        }`}>
+                          <Avatar
+                            size={28}
+                            src={s.avatar}
+                            className="flex-shrink-0 border border-blue-100"
+                            icon={<UserOutlined />}
+                          />
+                          <div className="flex flex-col">
+                            <Text strong className={`text-gray-800 text-[13px] leading-tight ${isFailed ? 'text-gray-400 line-through font-normal' : ''}`}>
+                              {s.name}
+                            </Text>
+                            <Text className="text-[10px] text-gray-500 mt-0.5">
+                              <span className="font-mono bg-blue-50 px-1 rounded text-blue-600">{s.code}</span>
+                              <Divider type="vertical" className="border-gray-300 mx-1" />
+                              <span>{s.studentClass}</span>
+                            </Text>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+
+                      return isFailed ? (
+                        <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                          {cardEl}
+                        </Tooltip>
+                      ) : cardEl;
+                    })}
                   </div>
                 </Col>
               </Row>
@@ -496,73 +514,87 @@ const Evaluation = () => {
                   { title: 'STT', key: 'idx', width: 60, align: 'center', render: (_, __, i) => i + 1 },
                   { title: 'Tiêu chí đánh giá', dataIndex: 'name', key: 'name', width: 400, render: (t) => <Text strong>{t}</Text> },
                   {
-                    title: 'Kết quả', children: students.map((s, i) => ({
-                      title: (
-                        <div className="flex flex-col items-center py-1">
-                          <Text className="text-[10px] text-gray-400 font-normal mb-0.5 uppercase">Sinh viên {i + 1}</Text>
-                          <Text strong className="text-blue-600 text-[13px] uppercase tracking-tight">
-                            {getFirstName(s.name)}
-                          </Text>
-                        </div>
-                      ),
-                      key: `sv_${s.id}`, width: 140, align: 'center',
-                      render: (_, r, rowIndex) => {
-                        const hasHistory = gradeHistory?.some((h: any) => {
-                          const hRole = h.rater_role || h.grade?.rater_role;
-                          const currentRoleGroup = getRaterRole();
-                          let isSameRoleGroup = false;
-                          if (currentRoleGroup === 'SUPERVISOR') isSameRoleGroup = hRole === 'SUPERVISOR';
-                          else if (currentRoleGroup === 'REVIEWER') {
-                            if (currentAssignment?.reviewer_order) isSameRoleGroup = hRole === `REVIEWER_${currentAssignment.reviewer_order}`;
-                            else isSameRoleGroup = hRole?.startsWith('REVIEWER');
-                          } else if (currentRoleGroup === 'COMMITTEE') isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
-                          return h.criterion_id === r.id && h.student_id === s.id && isSameRoleGroup;
-                        });
-
-                        return (
-                          <div className="relative py-1 flex flex-col items-center">
-                            <Form.Item name={['grades', s.id, r.id]} rules={[{ required: true }]} className="mb-0 w-full">
-                              <InputNumber
-                                id={`grade-input-${i}-${rowIndex}`}
-                                min={0}
-                                max={10}
-                                step={0.5}
-                                className="w-full text-center grade-input"
-                                disabled={isLocked}
-                                onFocus={(e) => e.target.select()}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                                    e.preventDefault();
-                                    const nextWrapper = document.getElementById(`grade-input-${i}-${rowIndex + 1}`);
-                                    if (nextWrapper) {
-                                      const input = nextWrapper.tagName === 'INPUT' ? nextWrapper : nextWrapper.querySelector('input');
-                                      if (input) (input as HTMLElement).focus();
-                                    }
-                                  } else if (e.key === 'ArrowUp') {
-                                    e.preventDefault();
-                                    const prevWrapper = document.getElementById(`grade-input-${i}-${rowIndex - 1}`);
-                                    if (prevWrapper) {
-                                      const input = prevWrapper.tagName === 'INPUT' ? prevWrapper : prevWrapper.querySelector('input');
-                                      if (input) (input as HTMLElement).focus();
-                                    }
-                                  }
-                                }}
-                              />
-                            </Form.Item>
-                            {hasHistory && (
-                              <div className="absolute bottom-[-10px] left-0 right-0 flex justify-center pointer-events-none">
-                                <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
-                                  <div className="flex items-center gap-1 bg-white/80 px-1 rounded pointer-events-auto">
-                                    <Badge status="warning" />
-                                    <span className="text-[9px] text-amber-600 font-medium leading-none">Đã sửa</span>
-                                  </div>
-                                </Tooltip>
-                              </div>
+                    title: 'Kết quả', children: students.map((s, i) => {
+                      const isFailed = s.midtermStatus === 'FAIL' || s.status === 'FAILED';
+                      return {
+                        title: (
+                          <div className={`flex flex-col items-center py-1 ${isFailed ? 'opacity-50 line-through' : ''}`}>
+                            <Text className="text-[10px] text-gray-400 font-normal mb-0.5 uppercase">Sinh viên {i + 1}</Text>
+                            <Text strong className="text-blue-600 text-[13px] uppercase tracking-tight">
+                              {getFirstName(s.name)}
+                            </Text>
+                            {isFailed && (
+                              <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                                <Tag color="error" className="m-0 text-[8px] scale-90">Rớt giữa kỳ</Tag>
+                              </Tooltip>
                             )}
                           </div>
-                        );
-                      }
-                    }))
+                        ),
+                        key: `sv_${s.id}`, width: 140, align: 'center',
+                        render: (_, r, rowIndex) => {
+                          const hasHistory = gradeHistory?.some((h: any) => {
+                            const hRole = h.rater_role || h.grade?.rater_role;
+                            const currentRoleGroup = getRaterRole();
+                            let isSameRoleGroup = false;
+                            if (currentRoleGroup === 'SUPERVISOR') isSameRoleGroup = hRole === 'SUPERVISOR';
+                            else if (currentRoleGroup === 'REVIEWER') {
+                              if (currentAssignment?.reviewer_order) isSameRoleGroup = hRole === `REVIEWER_${currentAssignment.reviewer_order}`;
+                              else isSameRoleGroup = hRole?.startsWith('REVIEWER');
+                            } else if (currentRoleGroup === 'COMMITTEE') isSameRoleGroup = hRole?.startsWith('COMMITTEE') || hRole?.startsWith('COUNCIL');
+                            return h.criterion_id === r.id && h.student_id === s.id && isSameRoleGroup;
+                          });
+
+                          const cellEl = (
+                            <div className={`relative py-1 flex flex-col items-center ${isFailed ? 'opacity-50' : ''}`}>
+                              <Form.Item name={['grades', s.id, r.id]} rules={isFailed ? [] : [{ required: true }]} className="mb-0 w-full">
+                                <InputNumber
+                                  id={`grade-input-${i}-${rowIndex}`}
+                                  min={0}
+                                  max={10}
+                                  step={0.5}
+                                  className="w-full text-center grade-input"
+                                  disabled={isLocked || isFailed}
+                                  onFocus={(e) => e.target.select()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                      e.preventDefault();
+                                      const nextWrapper = document.getElementById(`grade-input-${i}-${rowIndex + 1}`);
+                                      if (nextWrapper) {
+                                        const input = nextWrapper.tagName === 'INPUT' ? nextWrapper : nextWrapper.querySelector('input');
+                                        if (input) (input as HTMLElement).focus();
+                                      }
+                                    } else if (e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                      const prevWrapper = document.getElementById(`grade-input-${i}-${rowIndex - 1}`);
+                                      if (prevWrapper) {
+                                        const input = prevWrapper.tagName === 'INPUT' ? prevWrapper : prevWrapper.querySelector('input');
+                                        if (input) (input as HTMLElement).focus();
+                                      }
+                                    }
+                                  }}
+                                />
+                              </Form.Item>
+                              {hasHistory && (
+                                <div className="absolute bottom-[-10px] left-0 right-0 flex justify-center pointer-events-none">
+                                  <Tooltip title="Tiêu chí này đã từng được thay đổi điểm số. Click 'Lịch sử điểm' để xem chi tiết.">
+                                    <div className="flex items-center gap-1 bg-white/80 px-1 rounded pointer-events-auto">
+                                      <Badge status="warning" />
+                                      <span className="text-[9px] text-amber-600 font-medium leading-none">Đã sửa</span>
+                                    </div>
+                                  </Tooltip>
+                                </div>
+                              )}
+                            </div>
+                          );
+
+                          return isFailed ? (
+                            <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                              {cellEl}
+                            </Tooltip>
+                          ) : cellEl;
+                        }
+                      };
+                    })
                   },
                   {
                     title: 'Ghi chú', key: 'note', render: (_, r) => (
@@ -766,16 +798,24 @@ const Evaluation = () => {
         if (r.students && Array.isArray(r.students)) {
           return (
             <div className="flex flex-col gap-1 py-1">
-              {r.students.map((s: any) => (
-                <div key={s.id} className="flex flex-col mb-1 last:mb-0 group/sv">
-                  <Text className="text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors">
-                    <HighlightText text={s.full_name} keyword={debouncedLecturerSearch} />
-                  </Text>
-                  <Text className="text-[10px] text-gray-400 mt-0.5">
-                    {s.student_code || s.username}
-                  </Text>
-                </div>
-              ))}
+              {r.students.map((s: any) => {
+                const isFailed = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED';
+                const el = (
+                  <div key={s.id} className={`flex flex-col mb-1 last:mb-0 group/sv ${isFailed ? 'opacity-50' : ''}`}>
+                    <Text className={`text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors ${isFailed ? 'text-gray-400 line-through font-normal' : ''}`}>
+                      <HighlightText text={s.full_name} keyword={debouncedLecturerSearch} />
+                    </Text>
+                    <Text className="text-[10px] text-gray-400 mt-0.5">
+                      {s.student_code || s.username}
+                    </Text>
+                  </div>
+                );
+                return isFailed ? (
+                  <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                    {el}
+                  </Tooltip>
+                ) : el;
+              })}
             </div>
           );
         }
@@ -789,16 +829,26 @@ const Evaluation = () => {
         if (members.length > 0) {
           return (
             <div className="flex flex-col gap-1 py-1">
-              {members.map((mi: any) => (
-                <div key={mi.user?.id} className="flex flex-col mb-1 last:mb-0 group/sv">
-                  <Text className="text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors">
-                    <HighlightText text={mi.user?.full_name} keyword={debouncedLecturerSearch} />
-                  </Text>
-                  <Text className="text-[10px] text-gray-400 mt-0.5">
-                    {mi.user?.student_code || mi.user?.username}
-                  </Text>
-                </div>
-              ))}
+              {members.map((mi: any) => {
+                const reg = registrations.find((reg: any) => (reg.student_id || reg.studentId) === mi.user?.id);
+                const isFailed = reg?.midterm_status === 'FAIL' || reg?.status === 'FAILED';
+                const feedback = reg?.midterm_feedback || reg?.midtermFeedback || '';
+                const el = (
+                  <div key={mi.user?.id} className={`flex flex-col mb-1 last:mb-0 group/sv ${isFailed ? 'opacity-50' : ''}`}>
+                    <Text className={`text-[12px] font-medium leading-tight group-hover/sv:text-blue-600 transition-colors ${isFailed ? 'text-gray-400 line-through font-normal' : ''}`}>
+                      <HighlightText text={mi.user?.full_name} keyword={debouncedLecturerSearch} />
+                    </Text>
+                    <Text className="text-[10px] text-gray-400 mt-0.5">
+                      {mi.user?.student_code || mi.user?.username}
+                    </Text>
+                  </div>
+                );
+                return isFailed ? (
+                  <Tooltip key={mi.user?.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${feedback || 'Không có ý kiến phản hồi.'}`}>
+                    {el}
+                  </Tooltip>
+                ) : el;
+              })}
             </div>
           );
         }
@@ -806,9 +856,12 @@ const Evaluation = () => {
         // Trường hợp cá nhân
         const student = firstReg?.student;
         if (student) {
-          return (
-            <div className="flex flex-col py-1">
-              <Text className="text-[12px] font-medium leading-tight">
+          const reg = registrations.find((reg: any) => (reg.student_id || reg.studentId) === student.id);
+          const isFailed = reg?.midterm_status === 'FAIL' || reg?.status === 'FAILED';
+          const feedback = reg?.midterm_feedback || reg?.midtermFeedback || '';
+          const el = (
+            <div className={`flex flex-col py-1 ${isFailed ? 'opacity-50' : ''}`}>
+              <Text className={`text-[12px] font-medium leading-tight ${isFailed ? 'text-gray-400 line-through font-normal' : ''}`}>
                 <HighlightText text={student.full_name} keyword={debouncedLecturerSearch} />
               </Text>
               <Text className="text-[10px] text-gray-400 mt-0.5">
@@ -816,6 +869,11 @@ const Evaluation = () => {
               </Text>
             </div>
           );
+          return isFailed ? (
+            <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${feedback || 'Không có ý kiến phản hồi.'}`}>
+              {el}
+            </Tooltip>
+          ) : el;
         }
 
         return <span className="text-gray-300 italic text-[10px]">Chưa có sinh viên</span>;
@@ -973,16 +1031,24 @@ const Evaluation = () => {
           if (regs.length === 0) return <Text type="secondary" className="text-xs">Chưa có SV</Text>;
           return (
             <div className="space-y-1.5">
-              {regs.slice(0, 2).map((reg: any) => (
-                <div key={reg.student?.id} className="flex flex-col">
-                  <Text className="text-[12px] font-medium leading-none">
-                    <HighlightText text={reg.student?.full_name} keyword={debouncedDeptSearch} />
-                  </Text>
-                  <Text className="text-[10px] text-gray-400 mt-0.5">
-                    <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} />
-                  </Text>
-                </div>
-              ))}
+              {regs.slice(0, 2).map((reg: any) => {
+                const isFailed = reg.midterm_status === 'FAIL' || reg.status === 'FAILED';
+                const el = (
+                  <div key={reg.student?.id} className={`flex flex-col ${isFailed ? 'opacity-50' : ''}`}>
+                    <Text className={`text-[12px] font-medium leading-none ${isFailed ? 'text-gray-400 line-through font-normal' : ''}`}>
+                      <HighlightText text={reg.student?.full_name} keyword={debouncedDeptSearch} />
+                    </Text>
+                    <Text className="text-[10px] text-gray-400 mt-0.5">
+                      <HighlightText text={reg.student?.student_code} keyword={debouncedDeptSearch} />
+                    </Text>
+                  </div>
+                );
+                return isFailed ? (
+                  <Tooltip key={reg.student?.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${reg.midterm_feedback || 'Không có ý kiến phản hồi.'}`}>
+                    {el}
+                  </Tooltip>
+                ) : el;
+              })}
               {regs.length > 2 && <Text type="secondary" className="text-[10px] italic">+{regs.length - 2} sinh viên khác</Text>}
             </div>
           );

@@ -62,6 +62,8 @@ const SupervisorManageRegistrations = () => {
                 avatar_url: reg.student.avatar_url,
                 registration_id: reg.id,
                 status: reg.status,
+                midterm_status: reg.midterm_status,
+                midterm_feedback: reg.midterm_feedback,
             });
         }
 
@@ -156,15 +158,31 @@ const SupervisorManageRegistrations = () => {
             render: (_: any, record: any) => (
                 <div className="space-y-2 py-1">
                     {record.allStudents?.length > 0 ? (
-                        record.allStudents.map((student: any) => (
-                            <div key={student.id} className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-xl border border-slate-100 shadow-sm">
-                                <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className="border border-slate-200" />
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-slate-700 text-[13px] leading-none">{student.full_name}</span>
-                                    <span className="text-slate-400 text-[11px] mt-0.5">{student.student_code}</span>
+                        record.allStudents.map((student: any) => {
+                            const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
+                            const cardEl = (
+                                <div key={student.id} className={`flex items-center gap-2.5 p-2 rounded-xl border shadow-sm transition-all ${
+                                    isFailed 
+                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200' 
+                                        : 'bg-slate-50 border-slate-100'
+                                }`}>
+                                    <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-200'} />
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-slate-700 text-[13px] leading-none">
+                                            {student.full_name}
+                                            {isFailed && <span className="ml-1 text-[9px] text-red-500 font-bold">(Rớt GK)</span>}
+                                        </span>
+                                        <span className="text-slate-400 text-[11px] mt-0.5">{student.student_code}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+
+                            return isFailed ? (
+                                <Tooltip key={student.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${student.midterm_feedback || 'Không có ý kiến phản hồi.'}`}>
+                                    {cardEl}
+                                </Tooltip>
+                            ) : cardEl;
+                        })
                     ) : record.group?.members?.length > 0 ? (
                         record.group.members.map((member: any) => (
                             <div key={member.user_id} className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-xl border border-slate-100 shadow-sm">
@@ -471,18 +489,36 @@ const SupervisorManageRegistrations = () => {
                                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Thành viên nhóm</div>
                                 <div className="space-y-2">
                                     {(selectedRegistration as any).allStudents?.length > 0 ? (
-                                        (selectedRegistration as any).allStudents.map((student: any) => (
-                                            <div key={student.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">
-                                                <div className="flex items-center gap-2.5">
-                                                    <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className="border border-slate-100" />
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-700 text-[12px] leading-none">{student.full_name}</span>
-                                                        <span className="text-slate-400 text-[10px] mt-0.5">{student.student_code}</span>
+                                        (selectedRegistration as any).allStudents.map((student: any) => {
+                                            const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
+                                            const cardEl = (
+                                                <div key={student.id} className={`flex items-center justify-between p-2.5 rounded-lg border shadow-sm transition-all ${
+                                                    isFailed 
+                                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200' 
+                                                        : 'bg-white border-slate-100'
+                                                }`}>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-100'} />
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-700 text-[12px] leading-none">
+                                                                {student.full_name}
+                                                                {isFailed && <span className="ml-1 text-[9px] text-red-500 font-bold">(Rớt GK)</span>}
+                                                            </span>
+                                                            <span className="text-slate-400 text-[10px] mt-0.5">{student.student_code}</span>
+                                                        </div>
                                                     </div>
+                                                    <Tag color={isFailed ? "error" : "blue"} className="m-0 text-[9px] rounded-md border-none font-bold px-1.5 py-0">
+                                                        {isFailed ? "RỚT GIỮA KỲ" : "SINH VIÊN"}
+                                                    </Tag>
                                                 </div>
-                                                <Tag color="blue" className="m-0 text-[9px] rounded-md border-none font-bold px-1.5 py-0">SINH VIÊN</Tag>
-                                            </div>
-                                        ))
+                                            );
+
+                                            return isFailed ? (
+                                                <Tooltip key={student.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${student.midterm_feedback || 'Không có ý kiến phản hồi.'}`}>
+                                                    {cardEl}
+                                                </Tooltip>
+                                            ) : cardEl;
+                                        })
                                     ) : (selectedRegistration as any).group?.members?.length > 0 ? (
                                         (selectedRegistration as any).group.members.map((m: any) => (
                                             <div key={m.user_id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">

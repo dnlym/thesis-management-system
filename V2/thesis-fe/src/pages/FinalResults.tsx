@@ -20,19 +20,21 @@ const getExportData = (data: Topic[]) => {
     data.forEach((topic) => {
         topic.students?.forEach((student: any, index: number) => {
             const final = student.finalScore;
+            const isFailedGK = student.midtermStatus === 'FAIL' || student.registrationStatus === 'FAILED' || student.midterm_status === 'FAIL' || student.status === 'FAILED';
+            const hasScore = final?.final_score !== undefined && final?.final_score !== null;
             rows.push({
                 'STT': index === 0 ? stt : '', // Chỉ hiện STT ở dòng đầu của nhóm
                 'Mã nhóm': index === 0 ? (topic.groupName || topic.code) : '', 
                 'Tên đề tài': index === 0 ? topic.title : '',
                 'MSSV': student.student_code || '',
                 'Họ tên sinh viên': student.full_name || '',
-                'Điểm HD': final?.supervisor_score?.toFixed(1) || '0',
-                'Điểm PB': final?.reviewer_avg_score?.toFixed(1) || '0',
-                'Điểm HĐ': final?.committee_score?.toFixed(1) || '0',
-                'Điểm cộng': final?.extra_points?.toFixed(1) || '0',
-                'Tổng điểm': final?.final_score?.toFixed(1) || '0',
-                'Trạng thái': (final?.final_score || 0) >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT',
-                'Xếp loại': final?.grade_classification || '—',
+                'Điểm HD': isFailedGK ? '0.0' : final?.supervisor_score !== undefined && final?.supervisor_score !== null ? final.supervisor_score.toFixed(1) : '—',
+                'Điểm PB': isFailedGK ? '0.0' : final?.reviewer_avg_score !== undefined && final?.reviewer_avg_score !== null ? final.reviewer_avg_score.toFixed(1) : '—',
+                'Điểm HĐ': isFailedGK ? '0.0' : final?.committee_score !== undefined && final?.committee_score !== null ? final.committee_score.toFixed(1) : '—',
+                'Điểm cộng': isFailedGK ? '0.0' : final?.extra_points !== undefined && final?.extra_points !== null ? final.extra_points.toFixed(1) : '—',
+                'Tổng điểm': isFailedGK ? '0.0' : final?.final_score !== undefined && final?.final_score !== null ? final.final_score.toFixed(1) : '—',
+                'Trạng thái': isFailedGK ? 'KHÔNG ĐẠT' : hasScore ? (final.final_score >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT') : '—',
+                'Xếp loại': isFailedGK ? 'RỚT (GIỮA KỲ)' : hasScore ? final.grade_classification || '—' : '—',
             });
         });
         stt++;
@@ -217,11 +219,14 @@ const FinalResults = () => {
             width: 75,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
-                    {record.students?.map((s: any) => (
-                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                            {s.finalScore?.supervisor_score?.toFixed(1) || '—'}
-                        </div>
-                    ))}
+                    {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                                {isFailedGK ? '0.0' : s.finalScore?.supervisor_score?.toFixed(1) || '—'}
+                            </div>
+                        );
+                    })}
                 </div>
             ),
         },
@@ -232,11 +237,14 @@ const FinalResults = () => {
             width: 75,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
-                    {record.students?.map((s: any) => (
-                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                            {s.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
-                        </div>
-                    ))}
+                    {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                                {isFailedGK ? '0.0' : s.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
+                            </div>
+                        );
+                    })}
                 </div>
             ),
         },
@@ -247,11 +255,14 @@ const FinalResults = () => {
             width: 75,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
-                    {record.students?.map((s: any) => (
-                        <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                            {s.finalScore?.committee_score?.toFixed(1) || '—'}
-                        </div>
-                    ))}
+                    {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
+                                {isFailedGK ? '0.0' : s.finalScore?.committee_score?.toFixed(1) || '—'}
+                            </div>
+                        );
+                    })}
                 </div>
             ),
         },
@@ -262,11 +273,14 @@ const FinalResults = () => {
             width: 60,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
-                    {record.students?.map((s: any) => (
-                        <div key={s.id} className="h-7 flex items-center justify-center text-amber-600 text-xs font-bold">
-                            {s.finalScore?.extra_points ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
-                        </div>
-                    ))}
+                    {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        return (
+                            <div key={s.id} className="h-7 flex items-center justify-center text-amber-600 text-xs font-bold">
+                                {isFailedGK ? '—' : s.finalScore?.extra_points ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
+                            </div>
+                        );
+                    })}
                 </div>
             ),
         },
@@ -277,11 +291,14 @@ const FinalResults = () => {
             width: 65,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
-                    {record.students?.map((s: any) => (
-                        <div key={s.id} className="h-7 flex items-center justify-center text-blue-600 font-black text-sm">
-                            {s.finalScore?.final_score?.toFixed(1) || '—'}
-                        </div>
-                    ))}
+                    {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        return (
+                            <div key={s.id} className={`h-7 flex items-center justify-center font-black text-sm ${isFailedGK ? 'text-red-500' : 'text-blue-600'}`}>
+                                {isFailedGK ? '0.0' : s.finalScore?.final_score?.toFixed(1) || '—'}
+                            </div>
+                        );
+                    })}
                 </div>
             ),
         },
@@ -294,13 +311,23 @@ const FinalResults = () => {
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
                     {record.students?.map((s: any) => {
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        const hasScore = s.finalScore?.final_score !== undefined && s.finalScore?.final_score !== null;
                         const score = s.finalScore?.final_score || 0;
-                        const isPass = score >= 6.0;
+                        const isPass = !isFailedGK && score >= 6.0;
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center">
-                                <Tag color={isPass ? 'success' : 'error'} className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
-                                    {isPass ? 'ĐẠT' : 'KHÔNG ĐẠT'}
-                                </Tag>
+                                {isFailedGK ? (
+                                    <Tag color="error" className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
+                                        KHÔNG ĐẠT
+                                    </Tag>
+                                ) : hasScore ? (
+                                    <Tag color={isPass ? 'success' : 'error'} className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
+                                        {isPass ? 'ĐẠT' : 'KHÔNG ĐẠT'}
+                                    </Tag>
+                                ) : (
+                                    <span className="text-slate-400 font-bold">—</span>
+                                )}
                             </div>
                         );
                     })}
@@ -315,9 +342,12 @@ const FinalResults = () => {
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
                     {record.students?.map((s: any) => {
-                        const cls = s.finalScore?.grade_classification || '';
+                        const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+                        const hasScore = s.finalScore?.final_score !== undefined && s.finalScore?.final_score !== null;
+                        const cls = isFailedGK ? 'RỚT (GIỮA KỲ)' : s.finalScore?.grade_classification || '';
                         let color = 'default';
-                        if (cls.startsWith('Xuất sắc')) color = 'gold';
+                        if (isFailedGK) color = 'red';
+                        else if (cls.startsWith('Xuất sắc')) color = 'gold';
                         else if (cls.startsWith('Giỏi')) color = 'green';
                         else if (cls.startsWith('Khá')) color = 'blue';
                         else if (cls.startsWith('Trung bình')) color = 'orange';
@@ -325,9 +355,13 @@ const FinalResults = () => {
                         
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center">
-                                <Tag color={color} className="min-w-[90px] text-center m-0 text-[10px] font-bold px-1 py-0 leading-none h-5 flex items-center justify-center uppercase">
-                                    {cls || '—'}
-                                </Tag>
+                                {isFailedGK || hasScore ? (
+                                    <Tag color={color} className="min-w-[90px] text-center m-0 text-[10px] font-bold px-1 py-0 leading-none h-5 flex items-center justify-center uppercase">
+                                        {cls || '—'}
+                                    </Tag>
+                                ) : (
+                                    <span className="text-slate-400 font-bold">—</span>
+                                )}
                             </div>
                         );
                     })}

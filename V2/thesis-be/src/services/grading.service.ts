@@ -99,9 +99,21 @@ export class GradingService {
     ]);
 
     if (!semester) throw new Error('Không tìm thấy thông tin học kỳ.');
-    if (!user) throw new Error(ERROR_CODES.FORBIDDEN);
-
+    if (!user) throw new Error('Không tìm thấy thông tin người dùng.');
     AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, { topic });
+
+    // Verify student has not failed midterm
+    if (data.studentId) {
+      const reg = await prisma.topicRegistration.findFirst({
+        where: {
+          student_id: data.studentId,
+          semester_id: semester.id,
+        },
+      });
+      if (reg && (reg.midterm_status === 'FAIL' || reg.status === 'FAILED')) {
+        throw new Error('Sinh viên này đã rớt đánh giá giữa kỳ và bị khóa toàn bộ quyền thao tác học thuật.');
+      }
+    }
 
     // Verify user has permission to grade using helpers
     let hasPermission = false;
@@ -605,11 +617,6 @@ export class GradingService {
             TopicStatus.FINALIZED,
           ],
         },
-        registrations: {
-          some: {
-            midterm_status: MidtermStatus.PASS,
-          },
-        },
       },
       include: topicSummaryInclude,
       orderBy: { updated_at: 'desc' },
@@ -635,11 +642,37 @@ export class GradingService {
         const actualGroupId = groupId === 'no-group' ? null : groupId;
 
         const studentSummaries = members.map(reg => {
+          const isFailedMidterm = reg.midterm_status === 'FAIL' || reg.status === 'FAILED';
+
           // Safe comparison for group_id
           const fs = topic.final_scores.find(s =>
             s.student_id === reg.student_id &&
             (s.group_id === actualGroupId || (s.group_id === null && actualGroupId === null))
           );
+
+          const studentObj = {
+            ...reg.student,
+            midtermStatus: reg.midterm_status,
+            midtermFeedback: reg.midterm_feedback,
+            registrationStatus: reg.status
+          };
+
+          if (isFailedMidterm) {
+            return {
+              student: studentObj,
+              finalScore: fs || {
+                id: `failed-midterm-${reg.student_id}`,
+                student_id: reg.student_id,
+                supervisor_score: 0,
+                reviewer_avg_score: 0,
+                pre_defense_score: 0,
+                extra_points: 0,
+                final_score: 0,
+                grade_classification: 'Rớt giữa kỳ',
+                finalized: true
+              }
+            };
+          }
 
           if (!fs) {
             const studentGrades = topic.grades.filter(g => g.student_id === reg.student_id);
@@ -658,7 +691,7 @@ export class GradingService {
             const ep = extraPoints.find(e => e.topic_id === topic.id && e.student_id === reg.student_id);
 
             return {
-              student: reg.student,
+              student: studentObj,
               finalScore: {
                 id: `temp-${reg.student_id}`,
                 student_id: reg.student_id,
@@ -672,7 +705,7 @@ export class GradingService {
             };
           }
           return {
-            student: reg.student,
+            student: studentObj,
             finalScore: fs
           };
         });
@@ -1254,9 +1287,9 @@ export class GradingService {
       throw new Error('Only the supervisor (GVHD) of this topic can grade midterm');
     }
 
-    // Check if registration is CONFIRMED
-    if (registration.status !== 'CONFIRMED') {
-      throw new Error('Can only grade midterm for confirmed registrations');
+    // Check if registration is CONFIRMED or FAILED
+    if (registration.status !== 'CONFIRMED' && registration.status !== 'FAILED') {
+      throw new Error('Can only grade midterm for confirmed or failed registrations');
     }
 
     // Update midterm status ONLY for this specific registration
@@ -1347,7 +1380,7 @@ export class GradingService {
 
     const registrations = await prisma.topicRegistration.findMany({
       where: {
-        status: 'CONFIRMED',
+        status: { in: ['CONFIRMED', 'FAILED'] },
         topic: {
           supervisor_id: userId,
         },
@@ -1440,12 +1473,13 @@ export class GradingService {
             }
           },
           registrations: {
-            where: { midterm_status: 'PASS' },
             select: {
               id: true,
               group_id: true,
               student_id: true,
               midterm_status: true,
+              midterm_feedback: true,
+              status: true,
               student: true,
               topic: {
                 select: {
@@ -1544,6 +1578,8 @@ export class GradingService {
         className: (reg.student as any).class_name,
         class_name: (reg.student as any).class_name,
         midterm_status: reg.midterm_status,
+        midtermFeedback: reg.midterm_feedback,
+        registrationStatus: reg.status,
         groupId: reg.group_id,
         finalScore: fs
       };

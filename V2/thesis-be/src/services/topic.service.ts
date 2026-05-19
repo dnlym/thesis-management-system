@@ -859,10 +859,16 @@ export class TopicService {
 
     // Apply filters
     if (filter.status) {
-      if (Array.isArray(filter.status)) {
-        where.status = { in: filter.status };
+      const statuses = Array.isArray(filter.status) ? filter.status : [filter.status];
+      if (statuses.includes(TopicStatus.FINALIZED)) {
+        andConditions.push({
+          OR: [
+            { status: { in: statuses } },
+            { registrations: { some: { midterm_status: 'FAIL' } } }
+          ]
+        });
       } else {
-        where.status = filter.status;
+        where.status = { in: statuses };
       }
     } else {
       // Default: Exclude REJECTED topics from all general lists 
@@ -981,7 +987,7 @@ export class TopicService {
           registrations: {
             where: filter.midtermStatus 
                 ? { midterm_status: filter.midtermStatus } 
-                : { status: { not: RegistrationStatus.FAILED } },
+                : undefined,
             include: {
               student: {
                 select: {
@@ -1071,7 +1077,13 @@ export class TopicService {
             .map((reg: any) => {
               const student = reg.student;
               const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
-              return { ...student, finalScore };
+              return { 
+                ...student, 
+                finalScore,
+                midtermStatus: reg.midterm_status,
+                midtermFeedback: reg.midterm_feedback,
+                registrationStatus: reg.status
+              };
             }) || [];
 
           const { registrations, groups: topicGroups, ...cleanTopic } = topic;
@@ -1095,7 +1107,13 @@ export class TopicService {
           .map((reg: any) => {
             const student = reg.student;
             const finalScore = topic.final_scores?.find((fs: any) => fs.student_id === student.id);
-            return { ...student, finalScore };
+            return { 
+              ...student, 
+              finalScore,
+              midtermStatus: reg.midterm_status,
+              midtermFeedback: reg.midterm_feedback,
+              registrationStatus: reg.status
+            };
           }) || [];
 
         const { registrations, groups: topicGroups, ...cleanTopic } = topic;
@@ -1116,6 +1134,9 @@ export class TopicService {
         const students = (topic.registrations as any[])?.map((reg: any) => ({
           ...reg.student,
           finalScore: topic.final_scores?.find((fs: any) => fs.student_id === reg.student.id),
+          midtermStatus: reg.midterm_status,
+          midtermFeedback: reg.midterm_feedback,
+          registrationStatus: reg.status
         })) || [];
 
         finalProcessedTopics.push({
@@ -1285,6 +1306,9 @@ export class TopicService {
         groupId: reg.group_id,
         groupCode: (reg as any).group?.name,
         finalScore,
+        midtermStatus: reg.midterm_status,
+        midtermFeedback: reg.midterm_feedback,
+        registrationStatus: reg.status
       };
     }) || [];
 
