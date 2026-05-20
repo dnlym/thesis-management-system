@@ -124,4 +124,21 @@ export const AssignmentsApi = {
         const res = await api.patch<ApiResponse<any>>(`/assignments/${topicId}/defense-type`, { type });
         return res.data.data;
     },
+
+    /**
+     * Update reviewer schedule (date, start/end time, room/Zoom details)
+     * PUT /assignments/reviewer/schedule
+     */
+    async updateReviewerSchedule(data: {
+        topicId: string;
+        groupId: string;
+        defenseFormat: 'ONLINE' | 'OFFLINE';
+        room?: string;
+        zoomPassword?: string;
+        startTime?: string;
+        endTime?: string;
+    }) {
+        const res = await api.put<ApiResponse<any>>('/assignments/reviewer/schedule', data);
+        return res.data.data;
+    },
 };

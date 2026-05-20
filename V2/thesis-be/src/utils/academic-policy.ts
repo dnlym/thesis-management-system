@@ -64,7 +64,7 @@ export class AcademicPolicy {
     return SemesterGuard.calculateCurrentPhase(semester, semester.deptConfig);
   }
 
-  private static isTopicFailed(phase: SemesterPhase | null, registration: any): { failed: boolean; reason?: string } {
+  private static isTopicFailed(phase: SemesterPhase | null, registration: any): { failed: boolean; reason?: string; code?: string } {
     if (!registration || !registration.topic) return { failed: false };
     const topic = registration.topic;
 
@@ -73,7 +73,13 @@ export class AcademicPolicy {
       return { failed: true, reason: 'Đề tài này đã bị khóa bởi quản trị viên.' };
     }
 
-    // 2. Eligibility for Defense Check
+    // 2. Midterm FAIL check: If all registrations in the topic have failed midterm, block it.
+    const registrations = topic.registrations || [];
+    if (registrations.length > 0 && registrations.every((reg: any) => reg.midterm_status === 'FAIL' || reg.status === 'FAILED')) {
+      return { failed: true, reason: 'Tất cả sinh viên trong đề tài đều đã rớt đánh giá giữa kỳ.', code: 'MIDTERM_FAILED' };
+    }
+
+    // 3. Eligibility for Defense Check
     // If we are at Defense phase, the topic MUST be marked as eligible
     if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
       if (topic.is_eligible_for_defense === false) {
@@ -81,7 +87,7 @@ export class AcademicPolicy {
       }
     }
 
-    // 3. Grading Completion Check
+    // 4. Grading Completion Check
     // For Defense phase, we require Supervisor and Reviewer to have finished
     const isAtDefensePhaseOrLater = phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
     if (isAtDefensePhaseOrLater) {
@@ -147,17 +153,19 @@ export class AcademicPolicy {
     // --- GLOBAL FAILED STATUS CHECK ---
     // Block subsequent actions if topic is failed
     const subsequentActions = [
+      AcademicAction.GRADE_SUPERVISOR,
+      AcademicAction.GRADE_REVIEWER,
+      AcademicAction.GRADE_COMMITTEE,
       AcademicAction.ASSIGN_DEFENSE_PIVOT,
       AcademicAction.ASSIGN_REVIEWER,
       AcademicAction.ASSIGN_COMMITTEE,
-      AcademicAction.GRADE_COMMITTEE,
       AcademicAction.FINALIZE_SCORE
     ];
 
     if (subsequentActions.includes(action)) {
       const failStatus = this.isTopicFailed(phase, registration);
       if (failStatus.failed) {
-        return { allowed: false, reason: failStatus.reason, code: 'TOPIC_FAILED' };
+        return { allowed: false, reason: failStatus.reason, code: failStatus.code || 'TOPIC_FAILED' };
       }
     }
 

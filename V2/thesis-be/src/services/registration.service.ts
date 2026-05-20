@@ -534,6 +534,36 @@ export class RegistrationService {
       (registration.topic.semester as any).calculated_phase = SemesterGuard.calculateCurrentPhase(registration.topic.semester);
     }
 
+    if (registration && registration.topic && (registration.topic as any).assignments) {
+      const processedAssignments = await Promise.all(
+        (registration.topic as any).assignments.map(async (assignment: any) => {
+          if (assignment.assignment_type === 'REVIEWER') {
+            const grades = await prisma.grade.findMany({
+              where: {
+                topic_id: registration.topic_id,
+                student_id: userId,
+                grader_id: assignment.reviewer_id,
+              },
+              select: {
+                comments: true,
+              },
+            });
+            const commentsList = grades
+              .map((g) => g.comments?.trim())
+              .filter((c) => !!c);
+            
+            return {
+              ...assignment,
+              comments: commentsList.length > 0 ? commentsList.join('; ') : null,
+              hasGraded: grades.length > 0,
+            };
+          }
+          return assignment;
+        })
+      );
+      (registration.topic as any).assignments = processedAssignments;
+    }
+
     return registration;
   }
 

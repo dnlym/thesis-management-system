@@ -16,6 +16,11 @@ router.post(
     body('topicId').isUUID().withMessage('Invalid topic ID'),
     body('reviewerId').isUUID().withMessage('Invalid reviewer ID'),
     body('reviewerOrder').optional().isInt({ min: 1, max: 3 }).withMessage('Reviewer order must be 1, 2, or 3'),
+    body('defenseFormat').optional().isIn(['ONLINE', 'OFFLINE']).withMessage('Invalid defense format'),
+    body('room').optional({ nullable: true }).isString(),
+    body('zoomPassword').optional({ nullable: true }).isString(),
+    body('startTime').optional({ nullable: true }).isISO8601().withMessage('Invalid start time'),
+    body('endTime').optional({ nullable: true }).isISO8601().withMessage('Invalid end time'),
   ]),
   assignmentController.createReviewerAssignment.bind(assignmentController)
 );
@@ -116,6 +121,22 @@ router.patch(
     body('type').optional({ nullable: true }).isIn(['ORAL', 'POSTER']).withMessage('Invalid defense type'),
   ]),
   assignmentController.updateDefenseType.bind(assignmentController)
+);
+
+// Update reviewer schedule (date, start/end time, room/Zoom details)
+router.put(
+  '/reviewer/schedule',
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN),
+  validate([
+    body('topicId').isUUID().withMessage('Invalid topic ID'),
+    body('groupId').isUUID().withMessage('Invalid group ID'),
+    body('defenseFormat').isIn(['ONLINE', 'OFFLINE']).withMessage('Invalid defense format'),
+    body('room').optional({ nullable: true }).isString(),
+    body('zoomPassword').optional({ nullable: true }).isString(),
+    body('startTime').optional({ nullable: true }).isISO8601().withMessage('Invalid start time'),
+    body('endTime').optional({ nullable: true }).isISO8601().withMessage('Invalid end time'),
+  ]),
+  assignmentController.updateReviewerSchedule.bind(assignmentController)
 );
 
 export default router;

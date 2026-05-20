@@ -7,6 +7,9 @@ export const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as a
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   withCredentials: true,
+  paramsSerializer: {
+    indexes: null,
+  },
 });
 
 // Attach Authorization header if token exists

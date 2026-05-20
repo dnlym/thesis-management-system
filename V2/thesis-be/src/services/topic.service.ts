@@ -953,6 +953,10 @@ export class TopicService {
       };
     }
 
+    if (filter.hasStudents) {
+      where.current_students = { gt: 0 };
+    }
+
     if (andConditions.length > 0) {
       where.AND = andConditions;
     }
@@ -1799,6 +1803,7 @@ export class TopicService {
           grades: true,
           final_scores: true,
           semester: true,
+          registrations: true,
         },
       });
 

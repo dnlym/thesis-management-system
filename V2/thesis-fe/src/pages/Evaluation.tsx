@@ -81,7 +81,7 @@ const Evaluation = () => {
   // 1. Dashboard queries
   const { data: advisorTopics, isLoading: isLoadingAdvisor } = useQuery({
     queryKey: ['advisor-topics', user?.id],
-    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id }),
+    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, hasStudents: true }),
     enabled: !!user?.id && activeTab === 'advisor' && !topicId,
   });
 
@@ -297,8 +297,10 @@ const Evaluation = () => {
       }
 
 
-      const submissions = students.map(student => {
-        const gradeScores: GradeScore[] = criteria.map(criterion => {
+      const submissions = students
+        .filter(student => student.midtermStatus !== 'FAIL' && student.status !== 'FAILED')
+        .map(student => {
+          const gradeScores: GradeScore[] = criteria.map(criterion => {
           const studentGrades = values.grades?.[student.id];
           const score = studentGrades?.[criterion.id];
           if (score === undefined || score === null) {

@@ -192,19 +192,6 @@ const TopicDetailSupervisor = () => {
                             {topic.current_students || 0} / {topic.max_students || 0}
                         </span>
                     </Descriptions.Item>
-
-                    <Descriptions.Item label={t('topics.description')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.description || '' }} />
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label={t('topics.objectives')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} />
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label={t('topics.requirements')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} />
-                    </Descriptions.Item>
-
                     <Descriptions.Item label={t('topics.createdAt')}>
                         {dayjs(topic.created_at).format('DD/MM/YYYY')}
                     </Descriptions.Item>
@@ -212,41 +199,97 @@ const TopicDetailSupervisor = () => {
                         {dayjs(topic.updated_at).format('DD/MM/YYYY')}
                     </Descriptions.Item>
                 </Descriptions>
+
+                <div className="space-y-4 pt-4">
+                    <div className="content-block">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-[3px] h-3.5 bg-blue-500 rounded-full"></div>
+                            <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.description')}</h4>
+                        </div>
+                        <div 
+                            className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
+                            dangerouslySetInnerHTML={{ __html: topic.description || '' }} 
+                        />
+                    </div>
+
+                    <div className="content-block">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-[3px] h-3.5 bg-green-500 rounded-full"></div>
+                            <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.objectives')}</h4>
+                        </div>
+                        <div 
+                            className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
+                            dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} 
+                        />
+                    </div>
+
+                    <div className="content-block">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-[3px] h-3.5 bg-purple-500 rounded-full"></div>
+                            <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.requirements')}</h4>
+                        </div>
+                        <div 
+                            className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
+                            dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} 
+                        />
+                    </div>
+                </div>
             </Card>
+
+
 
             {/* Registered Students Section */}
             {topic.registrations && topic.registrations.length > 0 && (
                 <Card className="shadow-soft mt-6" title={t('topics.registeredStudentsList')}>
                     <div className="space-y-3">
-                        {topic.registrations.map((registration: any) => (
-                            <div
-                                key={registration.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-semibold">
-                                        {registration.student?.full_name?.charAt(0) || '?'}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium">{registration.student?.full_name || 'N/A'}</div>
-                                        <div className="text-sm text-gray-500">
-                                            {registration.student?.student_code || ''} • {registration.student?.class_name || 'N/A'} • {registration.student?.email || ''}
+                        {topic.registrations.map((registration: any) => {
+                            const student = registration.student;
+                            const midtermStatus = registration.midterm_status || registration.midtermStatus;
+                            const isFailed = midtermStatus === 'FAIL';
+
+                            return (
+                                <div
+                                    key={registration.id}
+                                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                        isFailed ? 'bg-red-50/30 border-red-100 opacity-70' : 'bg-gray-50'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                                            isFailed ? 'bg-red-100 text-red-500' : 'bg-primary/10 text-primary'
+                                        }`}>
+                                            {student?.full_name?.charAt(0) || '?'}
+                                        </div>
+                                        <div>
+                                            <div className={`font-medium ${isFailed ? 'line-through text-slate-400' : ''}`}>
+                                                {student?.full_name || 'N/A'}
+                                            </div>
+                                            <div className="text-sm text-gray-500">
+                                                {student?.student_code || ''} • {student?.class_name || 'N/A'} • {student?.email || ''}
+                                            </div>
                                         </div>
                                     </div>
+                                    <div className="text-right flex flex-col items-end gap-1.5">
+                                        <div className="flex gap-1">
+                                            {midtermStatus === 'PASS' && <Tag color="success" className="m-0 font-bold text-[10px] px-1.5 py-0">Đạt giữa kỳ</Tag>}
+                                            {midtermStatus === 'FAIL' && <Tag color="error" className="m-0 font-bold text-[10px] px-1.5 py-0">Không đạt giữa kỳ</Tag>}
+                                            {!midtermStatus && <Tag color="default" className="m-0 font-bold text-[10px] px-1.5 py-0">Chưa đánh giá giữa kỳ</Tag>}
+                                        </div>
+
+                                        {registration.group ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                {t('topics.hasGroup')}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {t('topics.waitingForGroup')}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    {registration.group ? (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            {t('topics.hasGroup')}
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            {t('topics.waitingForGroup')}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
+
                     </div>
                 </Card>
             )}

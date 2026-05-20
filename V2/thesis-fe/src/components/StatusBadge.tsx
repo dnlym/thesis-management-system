@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag, Tooltip } from 'antd';
+import { EyeInvisibleOutlined, LockOutlined } from '@ant-design/icons';
 import type {
     TopicStatus,
     ProgressStage,
@@ -84,32 +85,41 @@ export const TopicStatusBadge = ({
     progressStage, 
     isVisible = true, 
     isLocked = false, 
-    className = '' 
+    className = '',
+    singleTagOnly = false
 }: { 
     status: TopicStatus; 
     progressStage?: ProgressStage; 
     isVisible?: boolean; 
     isLocked?: boolean; 
     className?: string;
+    singleTagOnly?: boolean;
 }) => {
     const { t } = useTranslation();
     const config = topicStatusConfig[status] || { labelKey: '', color: 'default' };
+    const showProgressStage = status === 'REGISTERED' && progressStage && progressStageConfig[progressStage];
 
     return (
-        <div className={`flex flex-wrap gap-1 items-center ${className}`}>
+        <div className={`flex flex-wrap gap-1.5 items-center ${className}`}>
             {!isVisible && (
                 <Tooltip title={t('topics.hiddenTooltip')}>
-                    <Tag color="default" icon={<i className="fas fa-eye-slash" />}>
-                        {t('status.topic.HIDDEN')}
-                    </Tag>
+                    {singleTagOnly ? (
+                        <Tag color="default" className="m-0 flex items-center justify-center p-0.5 border-dashed" icon={<EyeInvisibleOutlined className="text-[11px]" />} />
+                    ) : (
+                        <Tag color="default" icon={<i className="fas fa-eye-slash" />}>
+                            {t('status.topic.HIDDEN')}
+                        </Tag>
+                    )}
                 </Tooltip>
             )}
             
-            <Tag color={config.color}>
-                {config.labelKey ? t(config.labelKey) : status}
-            </Tag>
+            {(!singleTagOnly || !showProgressStage) && (
+                <Tag color={config.color}>
+                    {config.labelKey ? t(config.labelKey) : status}
+                </Tag>
+            )}
 
-            {status === 'REGISTERED' && progressStage && progressStageConfig[progressStage] && (
+            {showProgressStage && (
                 <Tag color={progressStageConfig[progressStage].color} bordered={false}>
                     {t(progressStageConfig[progressStage].labelKey)}
                 </Tag>
@@ -117,9 +127,13 @@ export const TopicStatusBadge = ({
 
             {isLocked && (
                 <Tooltip title={t('topics.lockedTooltip')}>
-                    <Tag color="volcano" icon={<i className="fas fa-lock" />}>
-                        Locked
-                    </Tag>
+                    {singleTagOnly ? (
+                        <Tag color="volcano" className="m-0 flex items-center justify-center p-0.5 border-dashed" icon={<LockOutlined className="text-[11px]" />} />
+                    ) : (
+                        <Tag color="volcano" icon={<i className="fas fa-lock" />}>
+                            Locked
+                        </Tag>
+                    )}
                 </Tooltip>
             )}
         </div>

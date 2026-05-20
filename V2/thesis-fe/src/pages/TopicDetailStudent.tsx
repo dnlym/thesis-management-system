@@ -216,15 +216,15 @@ const TopicDetailStudent = () => {
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.description')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.description || '' }} />
+                        <div className="whitespace-pre-wrap text-[13px]" dangerouslySetInnerHTML={{ __html: topic.description || '' }} />
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.objectives')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} />
+                        <div className="whitespace-pre-wrap text-[13px]" dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} />
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.requirements')} span={2}>
-                        <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} />
+                        <div className="whitespace-pre-wrap text-[13px]" dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} />
                     </Descriptions.Item>
 
                     <Descriptions.Item label={t('topics.createdAt')}>

@@ -260,15 +260,25 @@ const Topics = () => {
       title: t('common.status'),
       key: 'status',
       width: 160,
-      render: (_, record: any) => (
-        <TopicStatusBadge
-          status={record.status}
-          progressStage={record.progress_stage}
-          isVisible={record.is_visible}
-          isLocked={record.is_locked}
-        />
-      ),
+      render: (_, record: any) => {
+        const students = record.students || record.registrations?.map((r: any) => r.student) || [];
+        const hasStudents = students.length > 0;
+        const areAllFailed = hasStudents && students.every((s: any) => {
+          return s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
+        });
+        if (areAllFailed) return null;
+        return (
+          <TopicStatusBadge
+            status={record.status}
+            progressStage={record.progress_stage}
+            isVisible={record.is_visible}
+            isLocked={record.is_locked}
+            singleTagOnly={true}
+          />
+        );
+      },
     },
+
     {
       title: t('common.actions'),
       key: 'actions',
@@ -538,6 +548,15 @@ const Topics = () => {
             size="middle"
             className="sys-table"
             loading={isLoading || isFetching}
+            rowClassName={(record) => {
+              const students = record.students || record.registrations?.map((r: any) => r.student) || [];
+              const hasStudents = students.length > 0;
+              const areAllFailed = hasStudents && students.every((s: any) => 
+                s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED'
+              );
+              return areAllFailed ? 'opacity-40 bg-slate-50 text-slate-400 pointer-events-none' : '';
+            }}
+
             pagination={{
               current: topics?.pagination?.page || 1,
               pageSize: topics?.pagination?.limit || 10,
@@ -589,7 +608,7 @@ const Topics = () => {
             <div className="space-y-4">
               <div>
                 <h3 className="mb-2">{selectedTopic.title}</h3>
-                <div className="text-sm text-slate-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
+                <div className="text-[13px] text-slate-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedTopic.description || '' }} />
               </div>
 
               <div className="bg-yellow-50 border border-yellow-200 rounded p-3">

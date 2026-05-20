@@ -289,6 +289,10 @@ export class CommitteeService {
       });
       if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
 
+      if (topic.current_students === 0) {
+        throw new Error('Đề tài không có sinh viên đăng ký không được đi vào giai đoạn sau.');
+      }
+
       if (!topic.semester.defense_start) {
         throw new Error('Ngày bảo vệ của học kỳ chưa được Trưởng bộ môn thiết lập');
       }

@@ -127,7 +127,9 @@ export interface Topic {
   objectives?: string;
   requirements?: string;
   edit_notes?: string;
+  rejection_reason?: string;
   semester_id: string;
+
   department_id: string;
   supervisor_id: string;
   max_students: number;
@@ -427,6 +429,10 @@ export interface ReviewerAssignmentForm {
   reviewerOrder?: number;
   deadlineAt?: Date;
   room?: string;
+  defenseFormat?: 'ONLINE' | 'OFFLINE';
+  zoomPassword?: string;
+  startTime?: Date;
+  endTime?: Date;
 }
 
 export interface DefenseScheduleForm {

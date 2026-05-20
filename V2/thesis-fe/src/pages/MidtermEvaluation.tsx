@@ -100,9 +100,9 @@ const MidtermEvaluation = () => {
     };
 
     const getMidtermStatusTag = (status: string | null) => {
-        if (!status) return <Tag color="default">Chưa đánh giá</Tag>;
-        if (status === 'PASS') return <Tag color="success" icon={<CheckCircleOutlined />}>PASS</Tag>;
-        return <Tag color="error" icon={<CloseCircleOutlined />}>FAIL</Tag>;
+        if (!status) return <Tag color="default">Chưa đánh giá giữa kỳ</Tag>;
+        if (status === 'PASS') return <Tag color="success" icon={<CheckCircleOutlined />}>Đạt giữa kỳ</Tag>;
+        return <Tag color="error" icon={<CloseCircleOutlined />}>Không đạt giữa kỳ</Tag>;
     };
 
     const hasAnyRestrictedPhase = useMemo(() => {
@@ -288,7 +288,7 @@ const MidtermEvaluation = () => {
                                 }}
                                 disabled={!canGrade}
                             >
-                                PASS
+                                Đạt
                             </Button>
                         </Tooltip>
                         <Tooltip title={!canGrade ? reason : ''}>
@@ -302,7 +302,7 @@ const MidtermEvaluation = () => {
                                 }}
                                 disabled={!canGrade}
                             >
-                                FAIL
+                                Không đạt
                             </Button>
                         </Tooltip>
                     </Space>
@@ -388,7 +388,7 @@ const MidtermEvaluation = () => {
                             key: 'PASS', 
                             label: (
                                 <div className="flex items-center gap-2">
-                                    <span>PASS</span>
+                                    <span>Đạt giữa kỳ</span>
                                     <Tag className="m-0 rounded-full bg-green-50 text-green-600 border-none font-bold px-2">{passedCount}</Tag>
                                 </div>
                             )
@@ -397,7 +397,7 @@ const MidtermEvaluation = () => {
                             key: 'FAIL', 
                             label: (
                                 <div className="flex items-center gap-2">
-                                    <span>FAIL</span>
+                                    <span>Không đạt giữa kỳ</span>
                                     <Tag className="m-0 rounded-full bg-red-50 text-red-600 border-none font-bold px-2">{failedCount}</Tag>
                                 </div>
                             )
@@ -566,7 +566,7 @@ const MidtermEvaluation = () => {
                             {selectedStatus === 'PASS' ? <CheckCircleOutlined className="text-lg" /> : <CloseCircleOutlined className="text-lg" />}
                         </div>
                         <div>
-                            <span className="text-lg font-bold text-slate-800">Xác nhận đánh giá {selectedStatus}</span>
+                            <span className="text-lg font-bold text-slate-800">Xác nhận đánh giá: {selectedStatus === 'PASS' ? 'Đạt giữa kỳ' : 'Không đạt giữa kỳ'}</span>
                             <div className="text-xs text-slate-400 font-normal mt-0.5">Vui lòng kiểm tra kỹ thông tin trước khi xác nhận</div>
                         </div>
                     </div>

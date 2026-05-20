@@ -196,21 +196,31 @@ export class ExtraPointsService {
     const studentFinalScore = request.topic.final_scores.find(fs => fs.student_id === request.student_id);
     if (studentFinalScore) {
       const newExtraPoints = studentFinalScore.extra_points + approvedPoints;
-      const newFinalScore = Math.min(
-        studentFinalScore.computed_score + newExtraPoints,
-        10.0
-      );
 
-      const gradeClassification = this.getGradeClassification(newFinalScore);
-
-      await prisma.finalScore.update({
-        where: { topic_id_student_id_group_id: { topic_id: request.topic_id, student_id: request.student_id, group_id: studentFinalScore.group_id as string } },
-        data: {
-          extra_points: newExtraPoints,
-          final_score: newFinalScore,
-          grade_classification: gradeClassification,
-        },
-      });
+      // Only recompute final_score if base computed_score exists
+      if (studentFinalScore.computed_score !== null && studentFinalScore.computed_score !== undefined) {
+        const newFinalScore = Math.min(
+          studentFinalScore.computed_score + newExtraPoints,
+          10.0
+        );
+        const gradeClassification = this.getGradeClassification(newFinalScore);
+        await prisma.finalScore.update({
+          where: { topic_id_student_id_group_id: { topic_id: request.topic_id, student_id: request.student_id, group_id: studentFinalScore.group_id as string } },
+          data: {
+            extra_points: newExtraPoints,
+            final_score: newFinalScore,
+            grade_classification: gradeClassification,
+          },
+        });
+      } else {
+        // Grading not complete yet — only update extra_points for tracking
+        await prisma.finalScore.update({
+          where: { topic_id_student_id_group_id: { topic_id: request.topic_id, student_id: request.student_id, group_id: studentFinalScore.group_id as string } },
+          data: {
+            extra_points: newExtraPoints,
+          },
+        });
+      }
     }
 
     // Create audit log

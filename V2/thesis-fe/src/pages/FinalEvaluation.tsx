@@ -79,6 +79,8 @@ const FinalEvaluation = () => {
                             name: m.user.full_name,
                             code: m.user.student_code || 'N/A',
                             avatar: m.user.avatar_url,
+                            midtermStatus: reg.midterm_status || reg.midtermStatus,
+                            status: reg.status,
                         });
                     }
                 });
@@ -88,6 +90,8 @@ const FinalEvaluation = () => {
                     name: reg.student.full_name,
                     code: reg.student.student_code || 'N/A',
                     avatar: reg.student.avatar_url,
+                    midtermStatus: reg.midterm_status || reg.midtermStatus,
+                    status: reg.status,
                 });
             }
         });
@@ -130,22 +134,24 @@ const FinalEvaluation = () => {
         try {
             const values = await form.validateFields();
 
-            const submissions = students.map(student => {
-                const gradeScores: GradeScore[] = criteria.map(criterion => ({
-                    criterion_id: criterion.id,
-                    score: values.grades[student.id][criterion.id],
-                    comment: values.notes?.[criterion.id] || undefined,
-                }));
+            const submissions = students
+                .filter(student => student.midtermStatus !== 'FAIL' && student.status !== 'FAILED')
+                .map(student => {
+                    const gradeScores: GradeScore[] = criteria.map(criterion => ({
+                        criterion_id: criterion.id,
+                        score: values.grades[student.id][criterion.id],
+                        comment: values.notes?.[criterion.id] || undefined,
+                    }));
 
-                return {
-                    topic_id: topicId!,
-                    student_id: student.id,
-                    rater_role: getRaterRole(),
-                    reviewer_order: activeRole === 'REVIEWER' ? (permissions?.reviewer_order || 1) : undefined,
-                    committee_role: activeRole === 'COMMITTEE' ? (permissions?.committee_role || 'MEMBER') : undefined,
-                    scores: gradeScores,
-                };
-            });
+                    return {
+                        topic_id: topicId!,
+                        student_id: student.id,
+                        rater_role: getRaterRole(),
+                        reviewer_order: activeRole === 'REVIEWER' ? (permissions?.reviewer_order || 1) : undefined,
+                        committee_role: activeRole === 'COMMITTEE' ? (permissions?.committee_role || 'MEMBER') : undefined,
+                        scores: gradeScores,
+                    };
+                });
 
             await Promise.all(submissions.map(sub => submitGradeMutation.mutateAsync(sub)));
         } catch (error) {
@@ -191,21 +197,36 @@ const FinalEvaluation = () => {
         },
         {
             title: 'Kết quả',
-            children: students.map((student, sIdx) => ({
-                title: `Sinh viên ${sIdx + 1}`,
-                key: `student_${student.id}`,
-                width: 130,
-                align: 'center' as const,
-                render: (_: any, record: any) => (
-                    <Form.Item
-                        name={['grades', student.id, record.id]}
-                        rules={[{ required: true, message: 'Nhập điểm' }]}
-                        className="mb-0"
-                    >
-                        <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isLocked} />
-                    </Form.Item>
-                ),
-            })),
+            children: students.map((student, sIdx) => {
+                const isFailed = student.midtermStatus === 'FAIL' || student.status === 'FAILED';
+                return {
+                    title: (
+                        <div className={`flex flex-col items-center py-1 ${isFailed ? 'opacity-50 line-through' : ''}`}>
+                            <Text className="text-[10px] text-gray-400 font-normal mb-0.5 uppercase">Sinh viên {sIdx + 1}</Text>
+                            <Text strong className="text-blue-600 text-[13px] uppercase tracking-tight">
+                                {student.name.split(' ').pop()}
+                            </Text>
+                            {isFailed && (
+                                <Tooltip title="Sinh viên rớt giữa kỳ.">
+                                    <Tag color="error" className="m-0 text-[8px] scale-90">Rớt giữa kỳ</Tag>
+                                </Tooltip>
+                            )}
+                        </div>
+                    ),
+                    key: `student_${student.id}`,
+                    width: 130,
+                    align: 'center' as const,
+                    render: (_: any, record: any) => (
+                        <Form.Item
+                            name={['grades', student.id, record.id]}
+                            rules={isFailed ? [] : [{ required: true, message: 'Nhập điểm' }]}
+                            className="mb-0"
+                        >
+                            <InputNumber min={0} max={10} step={0.5} className="w-full text-center" disabled={isLocked || isFailed} />
+                        </Form.Item>
+                    ),
+                };
+            }),
         },
         {
             title: 'Ghi chú',

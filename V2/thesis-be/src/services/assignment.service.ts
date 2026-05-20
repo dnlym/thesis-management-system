@@ -136,6 +136,10 @@ export class AssignmentService {
       throw new Error('Chỉ có thể gán phản biện cho đề tài đã có sinh viên đăng ký (REGISTERED)');
     }
 
+    if (topic.current_students === 0) {
+      throw new Error('Đề tài không có sinh viên đăng ký không được đi vào giai đoạn sau.');
+    }
+
 
 
     // Validate reviewer order (1, 2, or 3)
@@ -182,6 +186,20 @@ export class AssignmentService {
       throw new Error('Giảng viên phản biện phải thuộc cùng bộ môn với đề tài');
     }
 
+    // [SCHEDULE CONFLICT GUARD] Reviewer must not have overlapping reviewer assignments
+    if (data.startTime && data.endTime) {
+      if (new Date(data.startTime) >= new Date(data.endTime)) {
+        throw new Error('Giờ bắt đầu phải trước giờ kết thúc');
+      }
+      await this.checkReviewerConflict(
+        data.reviewerId,
+        new Date(data.startTime),
+        new Date(data.endTime),
+        data.topicId,
+        data.groupId
+      );
+    }
+
     const assignment = await (prisma.assignment as any).create({
       data: {
         topic_id: data.topicId,
@@ -192,6 +210,10 @@ export class AssignmentService {
         assigned_by: userId,
         deadline_at: data.deadlineAt,
         room: data.room,
+        defense_format: data.defenseFormat || 'OFFLINE',
+        zoom_password: data.zoomPassword,
+        start_time: data.startTime ? new Date(data.startTime) : null,
+        end_time: data.endTime ? new Date(data.endTime) : null,
         status: AssignmentStatus.AUTO_ACCEPTED,
         responded_at: new Date(),
       },
@@ -331,11 +353,16 @@ export class AssignmentService {
         grades: true,
         final_scores: true,
         assignments: true,
+        registrations: true,
       },
     });
 
     if (!topic) {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
+    }
+
+    if (topic.current_students === 0) {
+      throw new Error('Đề tài không có sinh viên đăng ký không được đi vào giai đoạn sau.');
     }
 
     // 1. Academic Policy Guard (Phase & Failed Status checking)
@@ -561,11 +588,15 @@ export class AssignmentService {
     }
 
     const where: any = {};
+    const activeSem = await (await import('./semester.service')).default.getActiveSemester();
+    
+    where.topic = {
+      current_students: { gt: 0 }
+    };
+    
     if (!filters?.topicId) {
-      // Default to active semester if not filtering for a specific topic
-      const activeSem = await (await import('./semester.service')).default.getActiveSemester();
       if (activeSem) {
-        where.topic = { semester_id: activeSem.id };
+        where.topic.semester_id = activeSem.id;
       }
     }
 
@@ -777,6 +808,7 @@ export class AssignmentService {
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         // --- SEMESTER ISOLATION ---
         semester_id: (await (await import('./semester.service')).default.getActiveSemester())?.id,
+        current_students: { gt: 0 },
         // Only topics with PASS midterm registrations
         registrations: {
           some: {
@@ -864,6 +896,7 @@ export class AssignmentService {
           status: {
             in: [TopicStatus.REGISTERED, TopicStatus.COMPLETED, TopicStatus.FINALIZED],
           },
+          current_students: { gt: 0 },
           semester_id: semesterId,
         },
         include: topicForCommitteeAssignmentInclude,
@@ -1219,6 +1252,115 @@ export class AssignmentService {
     });
 
     return topic;
+  }
+
+  async updateReviewerSchedule(
+    userId: string,
+    data: {
+      topicId: string;
+      groupId: string;
+      defenseFormat: string;
+      room?: string;
+      zoomPassword?: string;
+      startTime?: Date;
+      endTime?: Date;
+    }
+  ) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
+      throw new Error(ERROR_CODES.FORBIDDEN);
+    }
+
+    const { topicId, groupId, defenseFormat, room, zoomPassword, startTime, endTime } = data;
+
+    if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
+      throw new Error('Giờ bắt đầu phải trước giờ kết thúc');
+    }
+
+    // Check conflict for all assigned reviewers under this group if schedule is set
+    if (startTime && endTime) {
+      const existingAssignments = await prisma.assignment.findMany({
+        where: {
+          topic_id: topicId,
+          group_id: groupId,
+          assignment_type: AssignmentType.REVIEWER,
+        },
+      });
+
+      for (const assignment of existingAssignments) {
+        await this.checkReviewerConflict(
+          assignment.reviewer_id,
+          new Date(startTime),
+          new Date(endTime),
+          topicId,
+          groupId
+        );
+      }
+    }
+
+    const result = await prisma.assignment.updateMany({
+      where: {
+        topic_id: topicId,
+        group_id: groupId,
+        assignment_type: AssignmentType.REVIEWER,
+      },
+      data: {
+        defense_format: defenseFormat || 'OFFLINE',
+        room: room || null,
+        zoom_password: zoomPassword || null,
+        start_time: startTime ? new Date(startTime) : null,
+        end_time: endTime ? new Date(endTime) : null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        user_id: userId,
+        action: 'UPDATE_REVIEWER_SCHEDULE',
+        entity_type: 'Assignment',
+        entity_id: topicId,
+        new_value: { groupId, defenseFormat, room, zoomPassword, startTime, endTime },
+      },
+    });
+
+    return result;
+  }
+
+  async checkReviewerConflict(reviewerId: string, startTime: Date, endTime: Date, currentTopicId: string, currentGroupId: string | null) {
+    const overlapping = await prisma.assignment.findFirst({
+      where: {
+        reviewer_id: reviewerId,
+        assignment_type: AssignmentType.REVIEWER,
+        status: {
+          in: [AssignmentStatus.PENDING, AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED],
+        },
+        start_time: { not: null },
+        end_time: { not: null },
+        OR: [
+          {
+            start_time: { lt: endTime },
+            end_time: { gt: startTime },
+          },
+        ],
+        NOT: {
+          topic_id: currentTopicId,
+          ...(currentGroupId && { group_id: currentGroupId }),
+        },
+      },
+      include: {
+        topic: true,
+        reviewer: true,
+      },
+    });
+
+    if (overlapping) {
+      const formattedStart = overlapping.start_time ? new Date(overlapping.start_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+      const formattedEnd = overlapping.end_time ? new Date(overlapping.end_time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+      const formattedDate = overlapping.start_time ? new Date(overlapping.start_time).toLocaleDateString('vi-VN') : '';
+      throw new Error(
+        `Giảng viên ${overlapping.reviewer.full_name} đã có lịch phản biện khác vào thời gian này (${formattedStart} - ${formattedEnd} ngày ${formattedDate} cho đề tài "${overlapping.topic.title}").`
+      );
+    }
   }
 }
 

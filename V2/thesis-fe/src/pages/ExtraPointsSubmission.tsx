@@ -227,14 +227,14 @@ export default function ExtraPointsSubmission() {
                         <div className="flex items-center gap-3">
                             <div className="page-header-icon"><FileTextOutlined className="text-base" /></div>
                             <div>
-                                <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
+                                <div className="page-header-title">Xác nhận điểm cộng</div>
                                 <div className="page-header-subtitle">Yêu cầu đạt điểm giữa kỳ để tiếp tục.</div>
                             </div>
                         </div>
                     </Card>
                     <Alert
                         message="Chưa đủ điều kiện"
-                        description="Sinh viên cần đạt điểm giữa kỳ (PASS) trước khi có thể xác nhận điểm cộng NCKH."
+                        description="Sinh viên cần đạt điểm giữa kỳ (PASS) trước khi có thể xác nhận điểm cộng."
                         type="info"
                         showIcon
                     />
@@ -285,8 +285,8 @@ export default function ExtraPointsSubmission() {
                         <div className="flex items-center gap-3">
                             <div className="page-header-icon"><TrophyOutlined className="text-base" /></div>
                             <div>
-                                <div className="page-header-title">Xác nhận Điểm cộng NCKH</div>
-                                <div className="page-header-subtitle">Học kỳ 2023-2024 • Đề tài: {myTopic.topic.title}</div>
+                                <div className="page-header-title">Xác nhận điểm cộng</div>
+                                <div className="page-header-subtitle">{(myTopic.topic as any).semester?.name} • Đề tài: {myTopic.topic.title}</div>
                             </div>
                         </div>
                     </div>

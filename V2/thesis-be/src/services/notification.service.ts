@@ -326,7 +326,7 @@ export class NotificationService {
 
     for (const registration of topic.registrations) {
       const studentFinalScore = topic.final_scores.find(fs => fs.student_id === registration.student_id);
-      if (studentFinalScore) {
+      if (studentFinalScore && studentFinalScore.final_score !== null && studentFinalScore.final_score !== undefined) {
         await this.createNotification(
           registration.student_id,
           NOTIFICATION_TYPES.SCORE_FINALIZED,

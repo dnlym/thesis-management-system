@@ -8,6 +8,10 @@ export interface CreateAssignmentRequest {
   reviewerOrder?: number;
   deadlineAt: Date;
   room?: string;
+  defenseFormat?: string;
+  zoomPassword?: string;
+  startTime?: Date;
+  endTime?: Date;
 }
 
 export interface AcceptAssignmentRequest {

@@ -19,7 +19,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { format, getDate, getMonth, getYear, isAfter, subDays, addDays } from 'date-fns';
+import { format, getDate, getMonth, getYear, isAfter } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
 import { Tooltip } from 'antd';
@@ -34,13 +34,13 @@ const Dashboard = () => {
   const activeSemester = stats.activeSemester;
   const allMilestones = stats.milestones || [];
 
-  // --- 📅 Filter Milestones: Only show Overdue or Upcoming (within 14 days) ---
+  // --- 📅 Chỉ hiển thị mốc trong tương lai (hôm nay trở đi) ---
   const today = new Date();
-  const relevantMilestones = allMilestones.filter((m: any) => {
-    const mDate = new Date(m.date);
-    // Overdue, Urgent (0-3 days, includes Today), or within next 14 days
-    return m.isOverdue || m.isUrgent || (isAfter(mDate, today) && isAfter(addDays(today, 14), mDate));
-  }).slice(0, 5); // Max 5 items for clean UI
+  today.setHours(0, 0, 0, 0);
+  const relevantMilestones = [...allMilestones]
+    .filter((m: any) => new Date(m.date) >= today)
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 6);
 
   const urgentMilestones = allMilestones.filter((m: any) => m.isUrgent);
 
@@ -244,30 +244,30 @@ const Dashboard = () => {
                     onClick={() => handleMilestoneClick(m)}
                     className={cn(
                       "p-5 rounded-[16px] flex items-center justify-between border shadow-sm transition-all cursor-pointer hover:scale-[1.01]",
-                      m.isUrgent ? "bg-[#fff1f2] border-[#fecaca]" : (m.isOverdue ? "bg-slate-50 border-rose-200 opacity-80" : "bg-[#f8fafc] border-[#e2e8f0]")
+                      m.isUrgent ? "bg-[#fff1f2] border-[#fecaca]" : "bg-[#f8fafc] border-[#e2e8f0]"
                     )}
                   >
                     <div className="flex items-center gap-4">
                       <div className={cn(
                         "h-2.5 w-2.5 rounded-full flex-shrink-0",
-                        m.isOverdue || m.isUrgent ? "bg-[#e11d48]" : "bg-[#facc15]"
+                        m.isUrgent ? "bg-[#e11d48]" : "bg-[#facc15]"
                       )} />
                       <div>
                         <h4 className={cn(
                           "text-[15px] font-bold leading-tight",
-                          m.isOverdue || m.isUrgent ? "text-[#991b1b]" : "text-[#1e293b]"
+                          m.isUrgent ? "text-[#991b1b]" : "text-[#1e293b]"
                         )}>{m.title}</h4>
                         <p className={cn(
                           "text-[12px] mt-1.5 font-semibold",
-                          m.isOverdue ? "text-[#e11d48]" : (m.isUrgent ? "text-[#ef4444]" : "text-[#94a3b8]")
+                          m.isUrgent ? "text-[#ef4444]" : "text-[#94a3b8]"
                         )}>
-                          {m.isOverdue ? `Đã quá hạn ${Math.abs(m.daysLeft)} ngày` : `Còn ${m.daysLeft} ngày ${m.isUrgent ? '(Gấp)' : ''}`}
+                          {`Còn ${m.daysLeft} ngày${m.isUrgent ? ' (Gấp)' : ''}`}
                         </p>
                       </div>
                     </div>
                     <div className={cn(
                       "text-[14px] font-bold text-right",
-                      m.isOverdue || m.isUrgent ? "text-[#991b1b]" : "text-[#475569]"
+                      m.isUrgent ? "text-[#991b1b]" : "text-[#475569]"
                     )}>
                       {format(new Date(m.date), 'dd/MM/yyyy')}
                     </div>

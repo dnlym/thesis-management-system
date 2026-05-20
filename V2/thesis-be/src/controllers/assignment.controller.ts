@@ -238,6 +238,22 @@ export class AssignmentController {
             });
         }
     }
+
+    async updateReviewerSchedule(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user!.id;
+            const result = await assignmentService.updateReviewerSchedule(userId, req.body);
+            res.json({
+                success: true,
+                data: result,
+            });
+        } catch (error: any) {
+            res.status(400).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    }
 }
 
 export default new AssignmentController();

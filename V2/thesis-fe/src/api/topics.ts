@@ -10,6 +10,7 @@ export interface TopicFilters {
     page?: number;
     size?: number;
     midtermStatus?: 'PASS' | 'FAIL';
+    hasStudents?: boolean;
 }
 
 export const TopicsApi = {

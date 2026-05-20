@@ -180,7 +180,7 @@ const TopicDetailGeneral = () => {
                             className="rounded-lg border-red-100"
                         />
                     )}
-                    {topic.status === 'REQUIRE_EDIT' && topic.edit_notes && (
+                    {topic.status === 'REQUIRES_REVISION' && topic.edit_notes && (
                         <Alert
                             message={<Text strong className="text-orange-700">Yêu cầu chỉnh sửa từ Trưởng bộ môn</Text>}
                             description={topic.edit_notes}
@@ -189,6 +189,7 @@ const TopicDetailGeneral = () => {
                             className="rounded-lg border-orange-100"
                         />
                     )}
+
 
                     <Descriptions 
                         bordered 
@@ -230,42 +231,44 @@ const TopicDetailGeneral = () => {
                         </Descriptions.Item>
                     </Descriptions>
 
-                    <div className="space-y-6 pt-2">
+                    <div className="space-y-4 pt-2">
                         <div className="content-block">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.description')}</h4>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-[3px] h-3.5 bg-blue-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.description')}</h4>
                             </div>
                             <div 
-                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
                                 dangerouslySetInnerHTML={{ __html: topic.description || '' }} 
                             />
                         </div>
 
                         <div className="content-block">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-1 h-5 bg-green-500 rounded-full"></div>
-                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.objectives')}</h4>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-[3px] h-3.5 bg-green-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.objectives')}</h4>
                             </div>
                             <div 
-                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
                                 dangerouslySetInnerHTML={{ __html: topic.objectives || '' }} 
                             />
                         </div>
 
                         <div className="content-block">
-                            <div className="flex items-center gap-2 mb-3">
-                                <div className="w-1 h-5 bg-purple-500 rounded-full"></div>
-                                <h4 className="font-bold text-slate-800 m-0 text-base">{t('topics.requirements')}</h4>
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <div className="w-[3px] h-3.5 bg-purple-500 rounded-full"></div>
+                                <h4 className="font-bold text-slate-800 m-0 text-[13px]">{t('topics.requirements')}</h4>
                             </div>
                             <div 
-                                className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed shadow-inner-sm" 
+                                className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg text-[13px] text-slate-600 leading-relaxed shadow-inner-sm" 
                                 dangerouslySetInnerHTML={{ __html: topic.requirements || '' }} 
                             />
                         </div>
                     </div>
+
                 </div>
             </Card>
+
 
             {/* Registered Students Section */}
             {((topic.registrations && topic.registrations.length > 0) || (topic.students && topic.students.length > 0)) && (
@@ -283,21 +286,32 @@ const TopicDetailGeneral = () => {
                             // Handle both registration objects and student objects
                             const student = item.student || item;
                             const groupCode = item.groupCode || item.group?.name;
+                            const midtermStatus = item.midtermStatus || item.midterm_status || student.midtermStatus || student.midterm_status;
+                            const isFailed = midtermStatus === 'FAIL';
                             
                             return (
-                                <Card key={student.id} size="small" className="bg-slate-50/50 hover:border-academic-primary/30 transition-colors">
+                                <Card 
+                                    key={student.id} 
+                                    size="small" 
+                                    className={`bg-slate-50/50 hover:border-academic-primary/30 transition-colors ${isFailed ? 'opacity-65 border-red-100' : ''}`}
+                                >
                                     <div className="flex items-center gap-4">
                                         <Avatar 
                                             size={48} 
                                             src={student.avatar_url} 
                                             icon={<UserOutlined />}
-                                            className="bg-academic-primary/10 text-academic-primary"
+                                            className={`${isFailed ? 'bg-red-50 text-red-300' : 'bg-academic-primary/10 text-academic-primary'}`}
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-bold text-slate-800 truncate">
-                                                {student.full_name || 'N/A'}
+                                            <div className="font-bold text-slate-800 flex justify-between items-center gap-2">
+                                                <span className={`truncate ${isFailed ? 'line-through text-slate-400' : ''}`}>
+                                                    {student.full_name || 'N/A'}
+                                                </span>
+                                                {midtermStatus === 'PASS' && <Tag color="success" className="mr-0 font-bold text-[10px] px-1.5 py-0">Đạt giữa kỳ</Tag>}
+                                                {midtermStatus === 'FAIL' && <Tag color="error" className="mr-0 font-bold text-[10px] px-1.5 py-0">Không đạt giữa kỳ</Tag>}
+                                                {!midtermStatus && <Tag color="default" className="mr-0 font-bold text-[10px] px-1.5 py-0">Chưa đánh giá giữa kỳ</Tag>}
                                             </div>
-                                            <div className="text-xs text-slate-500 font-medium flex justify-between items-center">
+                                            <div className="text-xs text-slate-500 font-medium flex justify-between items-center mt-1">
                                                 <span>MSSV: {student.student_code || student.studentCode || 'N/A'}</span>
                                                 {groupCode && <Tag color="blue" className="mr-0">{groupCode}</Tag>}
                                             </div>
@@ -306,6 +320,8 @@ const TopicDetailGeneral = () => {
                                 </Card>
                             );
                         })}
+
+
                     </div>
                 </Card>
             )}

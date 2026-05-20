@@ -627,6 +627,36 @@ class GradingController {
       });
     }
   }
+  /**
+   * POST /grading/recompute-all
+   * One-time fix: recompute all FinalScore records in the active semester
+   * so that stale 0-values from old code get replaced with proper null.
+   * HEAD or ADMIN only.
+   */
+  async recomputeAllFinalScores(req: AuthRequest, res: Response) {
+    try {
+      // Collect all distinct topic_ids that have FinalScore records
+      const distinctTopics = await prisma.finalScore.findMany({
+        distinct: ['topic_id'],
+        select: { topic_id: true },
+      });
+
+      const results: { topicId: string; status: string }[] = [];
+
+      for (const { topic_id } of distinctTopics) {
+        try {
+          await gradingService.computeFinalScore(topic_id);
+          results.push({ topicId: topic_id, status: 'recomputed' });
+        } catch (err: any) {
+          results.push({ topicId: topic_id, status: `error: ${err.message}` });
+        }
+      }
+
+      res.json({ success: true, data: { recomputed: results.length, results } });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 export default new GradingController();

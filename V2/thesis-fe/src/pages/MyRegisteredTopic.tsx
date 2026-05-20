@@ -37,7 +37,8 @@ import {
   ClockCircleOutlined,
   MailOutlined,
   InfoCircleOutlined,
-  UserDeleteOutlined
+  UserDeleteOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
@@ -256,7 +257,7 @@ const MyRegisteredTopic = () => {
                 <div className={`w-1 h-5 ${myRegistration.midterm_status === 'PASS' ? 'bg-emerald-500' : 'bg-red-500'} rounded-full`}></div>
                 <span className="text-slate-800 font-bold">Kết quả đánh giá giữa kỳ của sinh viên {currentUser?.full_name}</span>
                 <Tag color={myRegistration.midterm_status === 'PASS' ? 'success' : 'error'} className="ml-auto font-semibold">
-                  {myRegistration.midterm_status === 'PASS' ? 'Đạt Giữa kỳ' : 'Không đạt Giữa kỳ'}
+                  {myRegistration.midterm_status === 'PASS' ? 'Đạt giữa kỳ' : 'Không đạt giữa kỳ'}
                 </Tag>
               </div>
               
@@ -351,14 +352,14 @@ const MyRegisteredTopic = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Mô tả đề tài">
                 <div
-                  className="topic-html-content text-slate-600 py-1"
+                  className="topic-html-content text-slate-600 py-1 text-[13px]"
                   dangerouslySetInnerHTML={{ __html: topic?.description || 'Chưa có mô tả' }}
                 />
               </Descriptions.Item>
               {topic?.objectives && (
                 <Descriptions.Item label="Mục tiêu" span={2}>
                   <div
-                    className="topic-html-content text-slate-600 py-1"
+                    className="topic-html-content text-slate-600 py-1 text-[13px]"
                     dangerouslySetInnerHTML={{ __html: topic.objectives }}
                   />
                 </Descriptions.Item>
@@ -366,7 +367,7 @@ const MyRegisteredTopic = () => {
               {topic?.requirements && (
                 <Descriptions.Item label="Yêu cầu sinh viên" span={2}>
                   <div
-                    className="topic-html-content text-slate-600 py-1"
+                    className="topic-html-content text-slate-600 py-1 text-[13px]"
                     dangerouslySetInnerHTML={{ __html: topic.requirements }}
                   />
                 </Descriptions.Item>
@@ -378,59 +379,96 @@ const MyRegisteredTopic = () => {
             <Row gutter={[24, 24]}>
               <Col xs={24} lg={16}>
                 {/* Reviewer Information Card */}
-                {reviewerAssignments.length > 0 && (
-                  <Card
-                    title={
-                      <div className="flex items-center gap-2">
-                        <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
-                        <span className="text-slate-800 font-bold text-lg">Thông tin Giảng viên Phản biện</span>
-                      </div>
-                    }
-                    className="shadow-soft border-0 mb-6"
-                    size="small"
-                  >
-                    <List
-                      itemLayout="horizontal"
-                      dataSource={reviewerAssignments}
-                      renderItem={(assignment: any, index: number) => (
-                        <List.Item className="bg-purple-50/20 p-4 rounded-xl mb-3 border border-purple-100/50 last:mb-0">
-                          <List.Item.Meta
-                            avatar={<Avatar size={48} src={assignment.reviewer?.avatar_url} icon={<UserOutlined />} className="bg-purple-100 text-purple-600 shadow-sm" />}
-                            title={
-                              <Space className="flex items-center flex-wrap gap-2 mb-1">
-                                <Text strong className="text-slate-800 text-base">{assignment.reviewer?.full_name}</Text>
-                                <Tag color="purple" className="m-0 text-[11px] font-semibold">Phản biện {assignment.reviewer_order || index + 1}</Tag>
-                                {assignment.room && (
-                                  <Tag color="blue" className="m-0 text-[11px]">Phòng: {assignment.room}</Tag>
-                                )}
-                              </Space>
-                            }
-                            description={
-                              <div className="text-xs text-slate-500 space-y-1 mt-1">
-                                <div className="flex items-center gap-2">
-                                  <MailOutlined className="text-purple-400" />
-                                  <span>Email: {assignment.reviewer?.email || 'N/A'}</span>
-                                  {assignment.reviewer?.phone && (
-                                    <>
-                                      <span className="text-slate-300">|</span>
-                                      <span>SĐT: {assignment.reviewer.phone}</span>
-                                    </>
-                                  )}
-                                </div>
-                                {assignment.deadline_at && (
-                                  <div className="flex items-center gap-2 text-slate-600 font-medium">
-                                    <ClockCircleOutlined className="text-amber-500" />
-                                    <span>Hạn chót phản hồi: {dayjs(assignment.deadline_at).format('DD/MM/YYYY')}</span>
-                                  </div>
+                {reviewerAssignments.length > 0 && (() => {
+                  const sharedSchedule = reviewerAssignments.find((a: any) => a.start_time);
+                  return (
+                    <Card
+                      title={
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
+                          <span className="text-slate-800 font-bold text-lg">Thông tin Giảng viên Phản biện</span>
+                        </div>
+                      }
+                      className="shadow-soft border-0 mb-6"
+                      size="small"
+                    >
+                      {/* Shared Schedule Block */}
+                      {sharedSchedule && (
+                        <div className="mb-4 p-3 bg-purple-50/50 border border-purple-100/50 rounded-xl flex flex-wrap items-center justify-between gap-4 text-xs text-slate-700">
+                          <div className="flex items-center gap-2">
+                            <CalendarOutlined className="text-purple-600 text-sm" />
+                            <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Lịch phản biện chung:</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                            <div>📅 Ngày: <span className="font-semibold text-slate-900">{dayjs(sharedSchedule.start_time).format('DD/MM/YYYY')}</span></div>
+                            <div>⏰ Thời gian: <span className="font-semibold text-slate-900">{dayjs(sharedSchedule.start_time).format('HH:mm')}{sharedSchedule.end_time ? ` - ${dayjs(sharedSchedule.end_time).format('HH:mm')}` : ''}</span></div>
+                            <div>
+                              📍 Hình thức:{' '}
+                              {sharedSchedule.defense_format === 'ONLINE' ? (
+                                <Tag color="orange" className="m-0 font-semibold text-[10px]">Trực tuyến</Tag>
+                              ) : (
+                                <Tag color="green" className="m-0 font-semibold text-[10px]">Trực tiếp</Tag>
+                              )}
+                            </div>
+                            {sharedSchedule.defense_format === 'ONLINE' && sharedSchedule.room && (
+                              <div>
+                                🔗 Link họp: <a href={sharedSchedule.room} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all font-medium">{sharedSchedule.room}</a>
+                                {sharedSchedule.zoom_password && (
+                                  <span className="ml-2 text-slate-500">🔑 Pass: <span className="font-semibold text-slate-700 bg-slate-100 px-1 rounded">{sharedSchedule.zoom_password}</span></span>
                                 )}
                               </div>
-                            }
-                          />
-                        </List.Item>
+                            )}
+                            {sharedSchedule.defense_format !== 'ONLINE' && sharedSchedule.room && (
+                              <div>🏢 Phòng: <span className="font-semibold text-slate-900">{sharedSchedule.room}</span></div>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    />
-                  </Card>
-                )}
+
+                      <List
+                        itemLayout="horizontal"
+                        dataSource={reviewerAssignments}
+                        renderItem={(assignment: any, index: number) => (
+                          <List.Item className="bg-purple-50/10 p-4 rounded-xl mb-3 border border-purple-100/50 last:mb-0">
+                            <List.Item.Meta
+                              avatar={<Avatar size={48} src={assignment.reviewer?.avatar_url} icon={<UserOutlined />} className="bg-purple-100 text-purple-600 shadow-sm" />}
+                              title={
+                                <Space className="flex items-center flex-wrap gap-2 mb-1">
+                                  <Text strong className="text-slate-800 text-base">{assignment.reviewer?.full_name}</Text>
+                                  <Tag color="purple" className="m-0 text-[11px] font-semibold">Phản biện {assignment.reviewer_order || index + 1}</Tag>
+                                </Space>
+                              }
+                              description={
+                                <div className="text-xs text-slate-500 space-y-2 mt-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <MailOutlined className="text-purple-400" />
+                                    <span>Email: {assignment.reviewer?.email || 'N/A'}</span>
+                                    {assignment.reviewer?.phone && (
+                                      <>
+                                        <span className="text-slate-300">|</span>
+                                        <span>SĐT: {assignment.reviewer.phone}</span>
+                                      </>
+                                    )}
+                                  </div>
+
+                                  {/* Reviewer Comments */}
+                                  <div className="mt-3 p-3 bg-white rounded-lg border border-purple-100 shadow-2xs">
+                                    <span className="font-semibold text-purple-900 block mb-1 text-xs">Nhận xét của GVPB:</span>
+                                    {assignment.hasGraded ? (
+                                      <span className="text-slate-700 italic">"{assignment.comments || 'Đã chấm điểm, không có nhận xét chi tiết'}"</span>
+                                    ) : (
+                                      <span className="text-slate-400 italic">Chưa có nhận xét</span>
+                                    )}
+                                  </div>
+                                </div>
+                              }
+                            />
+                          </List.Item>
+                        )}
+                      />
+                    </Card>
+                  );
+                })()}
 
                 {/* Committee & Defense Schedule Card */}
                 {(!!defenseSchedule || committeeAssignments.length > 0) && (

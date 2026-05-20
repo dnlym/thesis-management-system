@@ -11,6 +11,12 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 const { Title, Text } = Typography;
 
+/** Hiển thị điểm: null/undefined → '—', 0 → '0.0', n → 'n.x' */
+const formatScore = (val: number | null | undefined): string => {
+    if (val === null || val === undefined) return '—';
+    return val.toFixed(1);
+};
+
 // ── Helpers xuất file ────────────────────────────────────────────────
 // ── Helpers xuất file chuyên nghiệp ─────────────────────────────────────
 const getExportData = (data: Topic[]) => {
@@ -28,12 +34,12 @@ const getExportData = (data: Topic[]) => {
                 'Tên đề tài': index === 0 ? topic.title : '',
                 'MSSV': student.student_code || '',
                 'Họ tên sinh viên': student.full_name || '',
-                'Điểm HD': isFailedGK ? '0.0' : final?.supervisor_score !== undefined && final?.supervisor_score !== null ? final.supervisor_score.toFixed(1) : '—',
-                'Điểm PB': isFailedGK ? '0.0' : final?.reviewer_avg_score !== undefined && final?.reviewer_avg_score !== null ? final.reviewer_avg_score.toFixed(1) : '—',
-                'Điểm HĐ': isFailedGK ? '0.0' : final?.committee_score !== undefined && final?.committee_score !== null ? final.committee_score.toFixed(1) : '—',
-                'Điểm cộng': isFailedGK ? '0.0' : final?.extra_points !== undefined && final?.extra_points !== null ? final.extra_points.toFixed(1) : '—',
-                'Tổng điểm': isFailedGK ? '0.0' : final?.final_score !== undefined && final?.final_score !== null ? final.final_score.toFixed(1) : '—',
-                'Trạng thái': isFailedGK ? 'KHÔNG ĐẠT' : hasScore ? (final.final_score >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT') : '—',
+                'Điểm HD': isFailedGK ? '0.0' : formatScore(final?.supervisor_score),
+                'Điểm PB': isFailedGK ? '0.0' : formatScore(final?.reviewer_avg_score),
+                'Điểm HĐ': isFailedGK ? '0.0' : formatScore(final?.committee_score),
+                'Điểm cộng': isFailedGK ? '0.0' : formatScore(final?.extra_points),
+                'Tổng điểm': isFailedGK ? '0.0' : formatScore(final?.final_score),
+                'Trạng thái': isFailedGK ? 'KHÔNG ĐẠT' : hasScore ? (final.final_score! >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT') : '—',
                 'Xếp loại': isFailedGK ? 'RỚT (GIỮA KỲ)' : hasScore ? final.grade_classification || '—' : '—',
             });
         });
@@ -108,7 +114,7 @@ const FinalResults = () => {
 
     const { data: results, isLoading } = useQuery({
         queryKey: ['final-results'],
-        queryFn: () => TopicsApi.getAll({ status: 'FINALIZED' }),
+        queryFn: () => TopicsApi.getAll({ status: ['REGISTERED', 'COMPLETED', 'FINALIZED'] }),
     });
 
     const processedData = useMemo(() => {
@@ -223,7 +229,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                                {isFailedGK ? '0.0' : s.finalScore?.supervisor_score?.toFixed(1) || '—'}
+                                {isFailedGK ? '0.0' : formatScore(s.finalScore?.supervisor_score)}
                             </div>
                         );
                     })}
@@ -241,7 +247,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                                {isFailedGK ? '0.0' : s.finalScore?.reviewer_avg_score?.toFixed(1) || '—'}
+                                {isFailedGK ? '0.0' : formatScore(s.finalScore?.reviewer_avg_score)}
                             </div>
                         );
                     })}
@@ -259,7 +265,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center text-slate-600 text-xs font-medium">
-                                {isFailedGK ? '0.0' : s.finalScore?.committee_score?.toFixed(1) || '—'}
+                                {isFailedGK ? '0.0' : formatScore(s.finalScore?.committee_score)}
                             </div>
                         );
                     })}
@@ -277,7 +283,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center text-amber-600 text-xs font-bold">
-                                {isFailedGK ? '—' : s.finalScore?.extra_points ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
+                                {isFailedGK ? '—' : (s.finalScore?.extra_points !== null && s.finalScore?.extra_points !== undefined && s.finalScore.extra_points > 0) ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
                             </div>
                         );
                     })}
@@ -295,7 +301,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className={`h-7 flex items-center justify-center font-black text-sm ${isFailedGK ? 'text-red-500' : 'text-blue-600'}`}>
-                                {isFailedGK ? '0.0' : s.finalScore?.final_score?.toFixed(1) || '—'}
+                                {isFailedGK ? '0.0' : formatScore(s.finalScore?.final_score)}
                             </div>
                         );
                     })}

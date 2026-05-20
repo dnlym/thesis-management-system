@@ -471,7 +471,7 @@ export class GradingService {
 
       // 1. Calculate weighted score for supervisor
       const supervisorGrades = studentGrades.filter(g => g.rater_role === RaterRole.SUPERVISOR);
-      const supervisorScore = supervisorGrades.length > 0 ? calculateWeightedScore(supervisorGrades) : 0;
+      const supervisorScore = supervisorGrades.length > 0 ? calculateWeightedScore(supervisorGrades) : null;
 
       // 2. Calculate average of ALL reviewers assigned
       const reviewerGrades = studentGrades.filter(g => isReviewer(g.rater_role));
@@ -480,7 +480,7 @@ export class GradingService {
         const graderGrades = reviewerGrades.filter(g => g.grader_id === graderId);
         return calculateWeightedScore(graderGrades);
       });
-      const reviewerAvgScore = reviewerScores.length > 0 ? reviewerScores.reduce((a, b) => a + b, 0) / reviewerScores.length : 0;
+      const reviewerAvgScore = reviewerScores.length > 0 ? reviewerScores.reduce((a, b) => a + b, 0) / reviewerScores.length : null;
 
       // 3. Calculate average of all assigned committee members
       // VALIDATION: ORAL topics must not have poster scores, POSTER topics must not have oral scores
@@ -498,10 +498,11 @@ export class GradingService {
       });
       const committeeAvgScore = committeeGraderScores.length > 0
         ? committeeGraderScores.reduce((a, b) => a + b, 0) / committeeGraderScores.length
-        : 0;
+        : null;
 
       // Validate all scores before final calculation
-      if (!validateScores([supervisorScore, reviewerAvgScore, committeeAvgScore])) {
+      const scoresToValidate = [supervisorScore, reviewerAvgScore, committeeAvgScore].filter(s => s !== null) as number[];
+      if (scoresToValidate.length > 0 && !validateScores(scoresToValidate)) {
         throw new Error('Detected invalid scores outside of range (0-10)');
       }
 
@@ -513,17 +514,22 @@ export class GradingService {
         },
       });
 
-      const finalScoreValue = calculateFinalScore({
-        supervisor: supervisorScore,
-        reviewerAvg: reviewerAvgScore,
-        committeeAvg: committeeAvgScore,
-        bonus: extraPoints
-      });
+      // All components must be graded to compute final score
+      const isGradingComplete = supervisorScore !== null && reviewerAvgScore !== null && committeeAvgScore !== null;
+      let finalScoreValue = null;
+      let computedScore = null;
+      let gradeClassification = null;
 
-      // computed_score = base academic score without bonus
-      const computedScore = roundScore(Math.max(finalScoreValue - extraPoints, 0));
-
-      const gradeClassification = this.getGradeClassification(finalScoreValue);
+      if (isGradingComplete) {
+        finalScoreValue = calculateFinalScore({
+          supervisor: supervisorScore!,
+          reviewerAvg: reviewerAvgScore!,
+          committeeAvg: committeeAvgScore!,
+          bonus: extraPoints
+        });
+        computedScore = roundScore(Math.max(finalScoreValue - extraPoints, 0));
+        gradeClassification = this.getGradeClassification(finalScoreValue);
+      }
 
       let resultScore;
       if (finalScore) {
@@ -537,6 +543,7 @@ export class GradingService {
             extra_points: extraPoints,
             final_score: finalScoreValue,
             grade_classification: gradeClassification,
+            finalized: isGradingComplete ? true : finalScore.finalized,
           },
         });
       } else {
@@ -552,6 +559,7 @@ export class GradingService {
             extra_points: extraPoints,
             final_score: finalScoreValue,
             grade_classification: gradeClassification,
+            finalized: isGradingComplete,
           },
         });
       }
@@ -617,6 +625,7 @@ export class GradingService {
             TopicStatus.FINALIZED,
           ],
         },
+        current_students: { gt: 0 },
       },
       include: topicSummaryInclude,
       orderBy: { updated_at: 'desc' },
@@ -684,6 +693,11 @@ export class GradingService {
             const rScores = rGraderIdsForStudent.map(grid => calculateWeightedScore(rGrades.filter(g => g.grader_id === grid)));
             const reviewer_avg_score = rScores.length > 0 ? rScores.reduce((a, b) => a + b, 0) / rScores.length : null;
 
+            const cGrades = studentGrades.filter(g => isCommittee(g.rater_role));
+            const cGraderIdsForStudent = [...new Set(cGrades.map(g => g.grader_id))];
+            const cScores = cGraderIdsForStudent.map(grid => calculateWeightedScore(cGrades.filter(g => g.grader_id === grid)));
+            const committee_score = cScores.length > 0 ? cScores.reduce((a, b) => a + b, 0) / cScores.length : null;
+
             const preDefenseScore = (supervisor_score !== null && reviewer_avg_score !== null)
               ? roundScore((supervisor_score + reviewer_avg_score) / 2)
               : null;
@@ -697,6 +711,7 @@ export class GradingService {
                 student_id: reg.student_id,
                 supervisor_score,
                 reviewer_avg_score,
+                committee_score,
                 pre_defense_score: preDefenseScore,
                 extra_points: ep?.points_requested || 0,
                 final_score: null,
@@ -1310,10 +1325,8 @@ export class GradingService {
       where: { id: registrationId },
     });
 
-    // Notify Student(s)
-    const memberIds = registration.group_id
-      ? registration.group?.members.map((m: any) => m.user_id) || []
-      : [(registration as any).student_id];
+    // Notify only the graded student
+    const memberIds = [registration.student_id];
 
     await notificationService.notifyBulkMidtermStatusUpdated(
       memberIds,
@@ -1332,20 +1345,18 @@ export class GradingService {
       },
     });
 
-    // Notify students
-    if (registration.group) {
-      await prisma.notification.createMany({
-        data: registration.group.members.map(member => ({
-          user_id: member.user_id,
-          type: status === MidtermStatus.PASS ? 'SUCCESS' : 'WARNING',
-          title: 'Kết quả đánh giá giữa kỳ',
-          content: status === MidtermStatus.PASS
-            ? 'Bạn đã PASS đánh giá giữa kỳ. Hãy tiếp tục hoàn thành khóa luận!'
-            : `Bạn đã FAIL đánh giá giữa kỳ. ${feedback || 'Vui lòng liên hệ GVHD để biết thêm chi tiết.'}`,
-          related_id: registrationId,
-        })),
-      });
-    }
+    // Notify the graded student
+    await prisma.notification.create({
+      data: {
+        user_id: registration.student_id,
+        type: status === MidtermStatus.PASS ? 'SUCCESS' : 'WARNING',
+        title: 'Kết quả đánh giá giữa kỳ',
+        content: status === MidtermStatus.PASS
+          ? 'Bạn đã PASS đánh giá giữa kỳ. Hãy tiếp tục hoàn thành khóa luận!'
+          : `Bạn đã FAIL đánh giá giữa kỳ. ${feedback || 'Vui lòng liên hệ GVHD để biết thêm chi tiết.'}`,
+        related_id: registrationId,
+      },
+    });
 
     return updatedRegistration;
   }
@@ -1383,6 +1394,7 @@ export class GradingService {
         status: { in: ['CONFIRMED', 'FAILED'] },
         topic: {
           supervisor_id: userId,
+          current_students: { gt: 0 },
         },
       },
       include: {
@@ -1819,6 +1831,7 @@ export class GradingService {
         final_scores: true,
         semester: true,
         assignments: { where: { assignment_type: 'REVIEWER' } },
+        registrations: { where: { midterm_status: 'PASS' } },
       },
     });
 
@@ -1828,13 +1841,22 @@ export class GradingService {
     await this.computeFinalScore(topicId);
     const updatedTopic = await prisma.topic.findUnique({
       where: { id: topicId },
-      include: { final_scores: true }
+      include: {
+        final_scores: true,
+        registrations: { where: { midterm_status: 'PASS' } },
+      }
     });
 
     if (!updatedTopic) return;
 
-    const fs = updatedTopic.final_scores?.[0];
-    if (!fs) return;
+    const activeRegs = updatedTopic.registrations || [];
+    if (activeRegs.length === 0) return;
+
+    const finalScores = updatedTopic.final_scores || [];
+    const hasScoresForAll = activeRegs.every(reg =>
+      finalScores.some(fs => fs.student_id === reg.student_id)
+    );
+    if (!hasScoresForAll) return;
 
     // 2. Logic: Automatic Eligibility Assessment
     const supervisorGraded = topic.grades.some(g => g.rater_role === 'SUPERVISOR');
@@ -1844,9 +1866,15 @@ export class GradingService {
 
     // 3. Auto-Pass check: All required grades are in and all are >= 6.0
     if (supervisorGraded && isReviewerComplete) {
-      if (fs.supervisor_score !== null && fs.supervisor_score >= 6 &&
-        fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6) {
-        await this.setTopicEligibility(topicId, true);
+      const allPassed = activeRegs.every(reg => {
+        const fs = finalScores.find(f => f.student_id === reg.student_id);
+        return fs &&
+               fs.supervisor_score !== null && fs.supervisor_score >= 6 &&
+               fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6;
+      });
+
+      if (allPassed) {
+        await this.setTopicEligibility(topicId, true, 'Tất cả sinh viên trong đề tài đều đạt điểm hướng dẫn và phản biện từ 6.0 trở lên.');
       }
     }
   }
@@ -1864,11 +1892,12 @@ export class GradingService {
 
     await prisma.auditLog.create({
       data: {
-        user_id: 'SYSTEM',
+        user_id: null,
         action: 'AUTO_EVALUATE_ELIGIBILITY',
         entity_type: 'Topic',
         entity_id: topicId,
         new_value: { isEligible, reason },
+        description: `Hệ thống tự động đánh giá điều kiện bảo vệ: ${isEligible ? 'Đủ điều kiện' : 'Không đủ điều kiện'}. Lý do: ${reason || 'Điểm trung bình đạt yêu cầu.'}`
       }
     });
   }

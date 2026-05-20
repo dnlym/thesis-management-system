@@ -169,4 +169,11 @@ router.get(
   gradingController.getGradeHistory.bind(gradingController)
 );
 
+// Recompute all FinalScore records (fix stale 0-values from old code → null)
+router.post(
+  '/recompute-all',
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN),
+  gradingController.recomputeAllFinalScores.bind(gradingController)
+);
+
 export default router;

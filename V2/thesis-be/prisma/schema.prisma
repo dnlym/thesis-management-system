@@ -337,6 +337,10 @@ model Assignment {
   decline_reason       String?
   room                 String?          @db.VarChar(100)
   group_id             String?          @map("group_id")
+  defense_format       String?          @default("OFFLINE") @db.VarChar(50)
+  zoom_password        String?          @db.VarChar(100)
+  start_time           DateTime?
+  end_time             DateTime?
   assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
   group                Group?           @relation("GroupAssignments", fields: [group_id], references: [id], onDelete: Cascade)
   reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
@@ -409,12 +413,12 @@ model FinalScore {
   id                   String    @id @default(uuid())
   topic_id             String
   student_id           String    @db.VarChar(36)
-  supervisor_score     Float
-  reviewer_avg_score   Float
-  committee_score      Float
-  computed_score       Float
+  supervisor_score     Float?
+  reviewer_avg_score   Float?
+  committee_score      Float?
+  computed_score       Float?
   extra_points         Float     @default(0)
-  final_score          Float
+  final_score          Float?
   grade_classification String?   @db.VarChar(30)
   finalized            Boolean   @default(false)
   finalized_by         String?

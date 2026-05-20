@@ -58,7 +58,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         items: [
           { key: '/topics', label: 'Danh sách đề tài', icon: <BookOutlined /> },
           { key: '/my-topic', label: 'Đề tài của tôi', icon: <BookOutlined /> },
-          { key: '/extra-points', label: 'Điểm cộng NCKH', icon: <SafetyCertificateOutlined /> },
+          { key: '/extra-points', label: 'Điểm cộng', icon: <SafetyCertificateOutlined /> },
         ]
       },
       {
@@ -134,12 +134,6 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
             disabledReason: 'Tính năng chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ.'
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
-        ]
-      },
-      {
-        title: 'BÁO CÁO - THỐNG KÊ',
-        items: [
-          { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
@@ -181,15 +175,9 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
           { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
           { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
-        ]
-      },
-      {
-        title: 'BÁO CÁO - THỐNG KÊ',
-        items: [
-          { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
-          { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
+          { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
         ]
       },
       {
@@ -219,12 +207,6 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
         { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
         { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
-      ]
-    },
-    {
-      title: 'BÁO CÁO - THỐNG KÊ',
-      items: [
-        { key: '/head/grade-summary', label: 'Tổng kết điểm', icon: <BarChartOutlined /> },
         { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
       ]
     },
