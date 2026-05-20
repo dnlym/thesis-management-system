@@ -98,23 +98,23 @@ export const GRADING = {
   },
 };
 
-export const WORKLOAD_LIMITS = {
-  SUPERVISOR: {
-    LECTURER: 4,
-    ASSOCIATE_PROFESSOR: 6,
-    PROFESSOR: 8,
-  },
-  REVIEWER: {
-    LECTURER: 8,
-    ASSOCIATE_PROFESSOR: 10,
-    PROFESSOR: 12,
-  },
-  COMMITTEE: {
-    LECTURER: 10,
-    ASSOCIATE_PROFESSOR: 12,
-    PROFESSOR: 15,
-  },
-};
+// export const WORKLOAD_LIMITS = {
+//   SUPERVISOR: {
+//     LECTURER: 4,
+//     ASSOCIATE_PROFESSOR: 6,
+//     PROFESSOR: 8,
+//   },
+//   REVIEWER: {
+//     LECTURER: 8,
+//     ASSOCIATE_PROFESSOR: 10,
+//     PROFESSOR: 12,
+//   },
+//   COMMITTEE: {
+//     LECTURER: 10,
+//     ASSOCIATE_PROFESSOR: 12,
+//     PROFESSOR: 15,
+//   },
+// };
 
 export const NOTIFICATION_TYPES = {
   TOPIC_CREATED: 'TOPIC_CREATED',

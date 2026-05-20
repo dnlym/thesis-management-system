@@ -17,6 +17,30 @@ const formatScore = (val: number | null | undefined): string => {
     return val.toFixed(1);
 };
 
+/** Quy đổi điểm thành xếp loại chữ theo bảng quy đổi chuẩn */
+const getLetterGrade = (score: number): string => {
+    if (score >= 9.0) return 'A+';
+    if (score >= 8.5) return 'A';
+    if (score >= 8.0) return 'B+';
+    if (score >= 7.0) return 'B';
+    if (score >= 6.0) return 'C+';
+    if (score >= 5.5) return 'C';
+    if (score >= 5.0) return 'D+';
+    if (score >= 4.0) return 'D';
+    return 'F';
+};
+
+/** Màu tag theo điểm chữ */
+const getGradeColor = (letter: string): string => {
+    if (letter === 'A+') return 'gold';
+    if (letter === 'A') return 'green';
+    if (letter === 'B+') return 'cyan';
+    if (letter === 'B') return 'blue';
+    if (letter === 'C+') return 'geekblue';
+    if (letter === 'C' || letter === 'D+' || letter === 'D') return 'orange';
+    return 'red'; // F
+};
+
 // ── Helpers xuất file ────────────────────────────────────────────────
 // ── Helpers xuất file chuyên nghiệp ─────────────────────────────────────
 const getExportData = (data: Topic[]) => {
@@ -344,26 +368,30 @@ const FinalResults = () => {
             title: 'Xếp loại',
             key: 'result',
             align: 'center' as const,
-            width: 130,
+            width: 120,
             render: (record: Topic) => (
                 <div className="flex flex-col gap-2">
                     {record.students?.map((s: any) => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         const hasScore = s.finalScore?.final_score !== undefined && s.finalScore?.final_score !== null;
-                        const cls = isFailedGK ? 'RỚT (GIỮA KỲ)' : s.finalScore?.grade_classification || '';
-                        let color = 'default';
-                        if (isFailedGK) color = 'red';
-                        else if (cls.startsWith('Xuất sắc')) color = 'gold';
-                        else if (cls.startsWith('Giỏi')) color = 'green';
-                        else if (cls.startsWith('Khá')) color = 'blue';
-                        else if (cls.startsWith('Trung bình')) color = 'orange';
-                        else if (cls.startsWith('Yếu') || cls.startsWith('Kém')) color = 'red';
+                        const score = s.finalScore?.final_score || 0;
+                        // Ưu tiên grade_classification từ DB, fallback compute từ score
+                        const rawCls = s.finalScore?.grade_classification || '';
+                        // Nếu grade_classification là dạng chữ mới (A+, B...) thì dùng trực tiếp
+                        // Nếu là dạng cũ (Xuất sắc, Giỏi...) thì tính lại từ score
+                        const isNewFormat = /^[ABCDF][+]?$/.test(rawCls);
+                        const letter = isFailedGK ? 'F' : (hasScore ? (isNewFormat ? rawCls : getLetterGrade(score)) : '');
+                        const color = isFailedGK ? 'red' : (letter ? getGradeColor(letter) : 'default');
 
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center">
-                                {isFailedGK || hasScore ? (
-                                    <Tag color={color} className="min-w-[90px] text-center m-0 text-[10px] font-bold px-1 py-0 leading-none h-5 flex items-center justify-center uppercase">
-                                        {cls || '—'}
+                                {isFailedGK ? (
+                                    <Tag color="red" className="min-w-[60px] text-center m-0 text-[10px] font-bold px-1 py-0 leading-none h-5 flex items-center justify-center">
+                                        RỚT GK
+                                    </Tag>
+                                ) : hasScore ? (
+                                    <Tag color={color} className="min-w-[40px] text-center m-0 text-[11px] font-black px-2 py-0 leading-none h-5 flex items-center justify-center">
+                                        {letter || '—'}
                                     </Tag>
                                 ) : (
                                     <span className="text-slate-400 font-bold">—</span>

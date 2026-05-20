@@ -16,12 +16,16 @@ export function GradeBreakdown({
     councilGrades,
     finalScore,
 }: GradeBreakdownProps) {
-    const getClassification = (score: number): { label: string; color: string } => {
-        if (score >= 9.0) return { label: 'Xuất sắc', color: 'text-purple-600' };
-        if (score >= 8.0) return { label: 'Giỏi', color: 'text-iuh-blue' };
-        if (score >= 7.0) return { label: 'Khá', color: 'text-iuh-green' };
-        if (score >= 5.5) return { label: 'Trung bình', color: 'text-iuh-yellow' };
-        return { label: 'Yếu', color: 'text-red-600' };
+    const getClassification = (score: number): { label: string; color: string; letter: string; point4: string; status: string } => {
+        if (score >= 9.0) return { label: 'A+', color: 'text-purple-600', letter: 'A+', point4: '4.0', status: 'Đạt' };
+        if (score >= 8.5) return { label: 'A', color: 'text-blue-600', letter: 'A', point4: '3.8', status: 'Đạt' };
+        if (score >= 8.0) return { label: 'B+', color: 'text-blue-500', letter: 'B+', point4: '3.5', status: 'Đạt' };
+        if (score >= 7.0) return { label: 'B', color: 'text-green-600', letter: 'B', point4: '3.0', status: 'Đạt' };
+        if (score >= 6.0) return { label: 'C+', color: 'text-green-500', letter: 'C+', point4: '2.5', status: 'Đạt' };
+        if (score >= 5.5) return { label: 'C', color: 'text-red-500', letter: 'C', point4: '2.0', status: 'Không đạt' };
+        if (score >= 5.0) return { label: 'D+', color: 'text-red-500', letter: 'D+', point4: '1.5', status: 'Không đạt' };
+        if (score >= 4.0) return { label: 'D', color: 'text-red-500', letter: 'D', point4: '1.0', status: 'Không đạt' };
+        return { label: 'F', color: 'text-red-600', letter: 'F', point4: '0.0', status: 'Không đạt' };
     };
 
     const calculateAverage = (scores: number[]) => {
@@ -165,11 +169,22 @@ export function GradeBreakdown({
                                     {formatScore(finalScore.final_score)}
                                     <span className="text-2xl text-gray-400">/10</span>
                                 </p>
-                                {finalScore.classification && (
-                                    <p className={`text-xl font-semibold ${getClassification(finalScore.final_score).color}`}>
-                                        {getClassification(finalScore.final_score).label}
-                                    </p>
-                                )}
+                                <div className="flex justify-center gap-4 mt-3">
+                                    <div className="px-3 py-1 bg-slate-100 rounded-lg">
+                                        <span className="text-xs text-slate-500 block">Thang 4</span>
+                                        <span className="font-bold text-slate-700">{getClassification(finalScore.final_score).point4}</span>
+                                    </div>
+                                    <div className="px-3 py-1 bg-slate-100 rounded-lg">
+                                        <span className="text-xs text-slate-500 block">Điểm chữ</span>
+                                        <span className={`font-bold ${getClassification(finalScore.final_score).color}`}>{getClassification(finalScore.final_score).letter}</span>
+                                    </div>
+                                    <div className="px-3 py-1 bg-slate-100 rounded-lg">
+                                        <span className="text-xs text-slate-500 block">Đánh giá</span>
+                                        <span className={`font-bold ${getClassification(finalScore.final_score).status === 'Đạt' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {getClassification(finalScore.final_score).status}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

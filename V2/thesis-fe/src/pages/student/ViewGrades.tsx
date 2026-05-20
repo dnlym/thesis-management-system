@@ -213,13 +213,74 @@ const StudentViewGrades = () => {
                     </Descriptions.Item>
                     <Descriptions.Item label="Điểm tối đa">10.0</Descriptions.Item>
                     <Descriptions.Item label="Điểm cộng tối đa">1.0</Descriptions.Item>
-                    <Descriptions.Item label="Phân loại">
-                        <div className="space-y-1 text-sm">
-                            <div>≥ 9.0: Xuất sắc</div>
-                            <div>≥ 8.0: Giỏi</div>
-                            <div>≥ 7.0: Khá</div>
-                            <div>≥ 5.5: Trung bình</div>
-                            <div>\u003c 5.5: Yếu (không đạt)</div>
+                    <Descriptions.Item label="Bảng quy đổi điểm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-center border-collapse border border-slate-200">
+                                <thead className="bg-amber-100/50 font-semibold text-amber-900">
+                                    <tr>
+                                        <th className="border border-slate-200 px-2 py-1">Thang điểm 10</th>
+                                        <th className="border border-slate-200 px-2 py-1">Thang điểm 4</th>
+                                        <th className="border border-slate-200 px-2 py-1">Thang chữ</th>
+                                        <th className="border border-slate-200 px-2 py-1">Đánh giá</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-slate-200 px-2 py-1">9.0 - 10</td>
+                                        <td className="border border-slate-200 px-2 py-1">4.0</td>
+                                        <td className="border border-slate-200 px-2 py-1">A+</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-green-600 font-medium">Đạt</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-200 px-2 py-1">8.5 - 8.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">3.8</td>
+                                        <td className="border border-slate-200 px-2 py-1">A</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-green-600 font-medium">Đạt</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-200 px-2 py-1">8.0 - 8.4</td>
+                                        <td className="border border-slate-200 px-2 py-1">3.5</td>
+                                        <td className="border border-slate-200 px-2 py-1">B+</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-green-600 font-medium">Đạt</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-200 px-2 py-1">7.0 - 7.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">3.0</td>
+                                        <td className="border border-slate-200 px-2 py-1">B</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-green-600 font-medium">Đạt</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-200 px-2 py-1">6.0 - 6.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">2.5</td>
+                                        <td className="border border-slate-200 px-2 py-1">C+</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-green-600 font-medium">Đạt</td>
+                                    </tr>
+                                    <tr className="bg-red-50/30">
+                                        <td className="border border-slate-200 px-2 py-1">5.5 - 5.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">2.0</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600">C</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600 font-medium">Không đạt</td>
+                                    </tr>
+                                    <tr className="bg-red-50/30">
+                                        <td className="border border-slate-200 px-2 py-1">5.0 - 5.4</td>
+                                        <td className="border border-slate-200 px-2 py-1">1.5</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600">D+</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600 font-medium">Không đạt</td>
+                                    </tr>
+                                    <tr className="bg-red-50/30">
+                                        <td className="border border-slate-200 px-2 py-1">4.0 - 4.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">1.0</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600">D</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600 font-medium">Không đạt</td>
+                                    </tr>
+                                    <tr className="bg-red-50/30">
+                                        <td className="border border-slate-200 px-2 py-1">0.0 - 3.9</td>
+                                        <td className="border border-slate-200 px-2 py-1">0.0</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600">F</td>
+                                        <td className="border border-slate-200 px-2 py-1 text-red-600 font-medium">Không đạt</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </Descriptions.Item>
                 </Descriptions>

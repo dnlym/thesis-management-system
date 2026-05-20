@@ -144,39 +144,37 @@ const CommitteeAssignment = () => {
         {
             title: t('topics.student'),
             key: 'students',
-            width: 200,
+            width: 240,
             render: (_: any, record: TopicForCommittee) => {
                 const registrations = record.registrations || [];
                 if (registrations.length === 0) return <span className="text-gray-400 text-xs">{t('topics.noStudent')}</span>;
 
                 return (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2.5">
                         {registrations.map((reg: any) => (
-                            <div key={reg.student.id} className="flex items-center gap-2">
-                                <Avatar size="small" icon={<UserOutlined />} className="bg-blue-100 text-blue-600" />
-                                <div className="text-[11px] leading-tight flex-1">
-                                    <div className="font-semibold text-slate-700">{reg.student.full_name}</div>
-                                    <div className="text-slate-400 font-mono">{reg.student.student_code}</div>
+                            <div key={reg.student.id} className="flex items-start gap-2">
+                                <Avatar size="small" icon={<UserOutlined />} className="bg-blue-100 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[11px] font-semibold text-slate-700 leading-tight truncate">{reg.student.full_name}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">{reg.student.student_code}</div>
+                                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                        {reg.supervisorScore !== null && reg.supervisorScore !== undefined && (
+                                            <Tag color="blue" className="m-0 text-[10px] font-bold h-fit px-1.5">
+                                                HD: {reg.supervisorScore.toFixed(2)}
+                                            </Tag>
+                                        )}
+                                        {reg.avgReviewerScore !== null && reg.avgReviewerScore !== undefined && (
+                                            <Tag color="gold" className="m-0 text-[10px] font-bold h-fit px-1.5">
+                                                PB: {reg.avgReviewerScore.toFixed(2)}
+                                            </Tag>
+                                        )}
+                                    </div>
                                 </div>
-                                {reg.avgReviewerScore !== undefined && reg.avgReviewerScore !== null && (
-                                    <Tag color="gold" className="m-0 text-[10px] font-bold h-fit">
-                                        {reg.avgReviewerScore.toFixed(2)}
-                                    </Tag>
-                                )}
                             </div>
                         ))}
                     </div>
                 );
             },
-        },
-        {
-            title: t('evaluation.reviewerScore'),
-            dataIndex: 'avgReviewerScore',
-            key: 'avgReviewerScore',
-            width: 120,
-            render: (val: number | null) => (
-                val ? <Tag color="gold" className="font-bold">{val.toFixed(2)}</Tag> : <span className="text-gray-400">—</span>
-            ),
         },
         {
             title: t('committeeAssignment.assignCommittee'),

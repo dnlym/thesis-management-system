@@ -945,22 +945,33 @@ export class AssignmentService {
           ([RaterRole.REVIEWER_1, RaterRole.REVIEWER_2, RaterRole.REVIEWER_3] as RaterRole[]).includes(g.rater_role)
         );
 
-        // Calculate average reviewer score PER student
+        const supervisorGrades = (topic.grades as any[]).filter(g => g.rater_role === RaterRole.SUPERVISOR);
+
+        // Calculate average reviewer score PER student + supervisor score
         const registrationsWithScores = topic.registrations.map((reg: any) => {
           const studentId = reg.student_id;
+
+          // Reviewer score per student
           const perReviewerScores = reviewerIds.map((reviewerId: string) => {
             const grades = reviewerGrades.filter((g: any) => g.grader_id === reviewerId && g.student_id === studentId);
             if (grades.length === 0) return null;
             return grades.reduce((sum: number, g: any) => sum + (g.score * (g.criterion?.weight || 0)), 0);
           }).filter(s => s !== null) as number[];
 
-          const avgScore = perReviewerScores.length > 0
+          const avgReviewerScore = perReviewerScores.length > 0
             ? Math.round((perReviewerScores.reduce((a, b) => a + b, 0) / perReviewerScores.length) * 100) / 100
+            : null;
+
+          // Supervisor score per student
+          const svGrades = supervisorGrades.filter((g: any) => g.student_id === studentId);
+          const supervisorScore = svGrades.length > 0
+            ? Math.round(svGrades.reduce((sum: number, g: any) => sum + (g.score * (g.criterion?.weight || 0)), 0) * 100) / 100
             : null;
           
           return {
             ...reg,
-            avgReviewerScore: avgScore
+            avgReviewerScore,
+            supervisorScore,
           };
         });
 

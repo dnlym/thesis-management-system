@@ -502,8 +502,10 @@ const SemesterSettings = () => {
                                                         onChange={setDefenseDate}
                                                         disabled={isLocked}
                                                         disabledDate={(current) => {
+                                                            if (!current) return false;
+                                                            if (current.isBefore(dayjs().startOf('day'))) return true;
                                                             if (!activeSemester.defense_start || !activeSemester.defense_end) return false;
-                                                            return current && (
+                                                            return (
                                                                 current.isBefore(dayjs(activeSemester.defense_start).startOf('day')) ||
                                                                 current.isAfter(dayjs(activeSemester.defense_end).endOf('day'))
                                                             );

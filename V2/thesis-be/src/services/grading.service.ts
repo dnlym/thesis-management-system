@@ -1075,15 +1075,15 @@ export class GradingService {
   }
 
   public getGradeClassification(score: number): string {
-    if (score >= 9.0) return 'Xuất sắc (A)';
-    if (score >= 8.5) return 'Xuất sắc (A-)';
-    if (score >= 8.0) return 'Giỏi (B+)';
-    if (score >= 7.0) return 'Khá (B)';
-    if (score >= 6.5) return 'Trung bình khá (C+)';
-    if (score >= 5.5) return 'Trung bình (C)';
-    if (score >= 5.0) return 'Trung bình yếu (D+)';
-    if (score >= 4.0) return 'Yếu (D)';
-    return 'Kém (F)';
+    if (score >= 9.0) return 'A+';
+    if (score >= 8.5) return 'A';
+    if (score >= 8.0) return 'B+';
+    if (score >= 7.0) return 'B';
+    if (score >= 6.0) return 'C+';
+    if (score >= 5.5) return 'C';
+    if (score >= 5.0) return 'D+';
+    if (score >= 4.0) return 'D';
+    return 'F';
   }
 
   public async getPriorityCriteria(role: RaterRole, departmentId: string): Promise<GradingCriterion[]> {

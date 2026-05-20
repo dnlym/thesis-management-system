@@ -160,11 +160,22 @@ export class DashboardService {
             }
         });
 
+        // Count committee assignments that are either ACCEPTED or AUTO_ACCEPTED
+        const councilAssignmentsCount = await prisma.assignment.count({
+            where: {
+                reviewer_id: userId,
+                assignment_type: 'COMMITTEE',
+                status: { in: [AssignmentStatus.ACCEPTED, 'AUTO_ACCEPTED' as any] },
+                ...(semesterId ? { topic: { semester_id: semesterId } } : {})
+            }
+        });
+
         return {
             role: UserRole.LECTURER,
             supervisedTopicsCount,
             pendingRegistrationsCount,
             reviewAssignmentsCount,
+            councilAssignmentsCount,
             gradedAssignmentsCount,
             pendingApprovalTopics: pendingRegistrationsCount,
             completionRate: 0

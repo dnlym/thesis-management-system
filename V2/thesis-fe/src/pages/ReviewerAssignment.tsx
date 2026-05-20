@@ -822,6 +822,7 @@ const ReviewerAssignment = () => {
                                                                 size="small"
                                                                 style={{ width: '100%' }}
                                                                 placeholder="Chọn ngày bảo vệ"
+                                                                disabledDate={(current) => current && current < dayjs().startOf('day')}
                                                             />
                                                         );
                                                     })()}
