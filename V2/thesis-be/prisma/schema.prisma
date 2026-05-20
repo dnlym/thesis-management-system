@@ -63,13 +63,13 @@ model Semester {
 }
 
 model DepartmentSemesterConfig {
-  id                       String     @id @default(uuid())
-  department_id            String
-  semester_id              String
-  defense_date             DateTime?
-  is_registration_open     Boolean    @default(false)
-  updated_by               String
-  updated_at               DateTime   @updatedAt
+  id                   String     @id @default(uuid())
+  department_id        String
+  semester_id          String
+  defense_date         DateTime?
+  is_registration_open Boolean    @default(false)
+  updated_by           String
+  updated_at           DateTime   @updatedAt
   department           Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
   semester             Semester   @relation(fields: [semester_id], references: [id], onDelete: Cascade)
 
@@ -80,46 +80,46 @@ model DepartmentSemesterConfig {
 }
 
 model User {
-  id                         String              @id @default(uuid())
-  email                      String              @unique @db.VarChar(255)
-  role                       UserRole
-  active                     Boolean             @default(true)
-  avatar_url                 String?
-  created_at                 DateTime            @default(now())
-  departmentId               String              @map("department_id")
-  full_name                  String              @db.VarChar(255)
-  last_login_at              DateTime?
-  last_login_ip              String?             @db.VarChar(50)
-  password_hash              String              @db.VarChar(255)
-  phone                      String?             @db.VarChar(20)
-  student_code               String?             @unique @db.VarChar(50)
-  updated_at                 DateTime            @updatedAt
-  class_name                 String?             @db.VarChar(50)
-  assigner_assignments       Assignment[]        @relation("AssignerAssignments")
-  reviewer_assignments       Assignment[]        @relation("ReviewerAssignments")
-  audit_logs                 AuditLog[]          @relation("UserAuditLogs")
-  committee_memberships      CommitteeMember[]
-  reviewed_extra_points      ExtraPointRequest[] @relation("ReviewerExtraPoints")
-  extra_point_requests       ExtraPointRequest[] @relation("StudentExtraPoints")
-  finalized_scores           FinalScore[]        @relation("ScoreFinalizer")
-  final_scores               FinalScore[]        @relation("StudentFinalScore")
-  grade_histories_as_grader  GradeHistory[]      @relation("GraderGradeHistory")
-  grade_histories_as_student GradeHistory[]      @relation("StudentGradeHistory")
-  grades                     Grade[]             @relation("GraderGrades")
-  student_grades             Grade[]             @relation("StudentGrades")
-  invitee_invites            GroupInvite[]       @relation("InviteeGroupInvites")
-  inviter_invites            GroupInvite[]       @relation("InviterGroupInvites")
-  group_memberships          GroupMember[]       @relation("GroupMemberUser")
-  owned_groups               Group[]             @relation("GroupLeader")
-  notifications              Notification[]      @relation("UserNotifications")
-  refresh_tokens             RefreshToken[]
-  topic_registrations        TopicRegistration[] @relation("StudentRegistrations")
-  co_supervised_topics       Topic[]             @relation("CoSupervisorTopics")
-  supervised_topics          Topic[]             @relation("SupervisorTopics")
-  grade_change_requests_made  GradeChangeRequest[] @relation("GraderGradeChangeRequests")
-  grade_change_requests_received GradeChangeRequest[] @relation("StudentGradeChangeRequests")
+  id                             String               @id @default(uuid())
+  email                          String               @unique @db.VarChar(255)
+  role                           UserRole
+  active                         Boolean              @default(true)
+  avatar_url                     String?
+  created_at                     DateTime             @default(now())
+  departmentId                   String               @map("department_id")
+  full_name                      String               @db.VarChar(255)
+  last_login_at                  DateTime?
+  last_login_ip                  String?              @db.VarChar(50)
+  password_hash                  String               @db.VarChar(255)
+  phone                          String?              @db.VarChar(20)
+  student_code                   String?              @unique @db.VarChar(50)
+  updated_at                     DateTime             @updatedAt
+  class_name                     String?              @db.VarChar(50)
+  assigner_assignments           Assignment[]         @relation("AssignerAssignments")
+  reviewer_assignments           Assignment[]         @relation("ReviewerAssignments")
+  audit_logs                     AuditLog[]           @relation("UserAuditLogs")
+  committee_memberships          CommitteeMember[]
+  reviewed_extra_points          ExtraPointRequest[]  @relation("ReviewerExtraPoints")
+  extra_point_requests           ExtraPointRequest[]  @relation("StudentExtraPoints")
+  finalized_scores               FinalScore[]         @relation("ScoreFinalizer")
+  final_scores                   FinalScore[]         @relation("StudentFinalScore")
+  grade_change_requests_made     GradeChangeRequest[] @relation("GraderGradeChangeRequests")
   grade_change_requests_reviewed GradeChangeRequest[] @relation("ReviewerGradeChangeRequests")
-  department                 Department          @relation(fields: [departmentId], references: [id])
+  grade_change_requests_received GradeChangeRequest[] @relation("StudentGradeChangeRequests")
+  grade_histories_as_grader      GradeHistory[]       @relation("GraderGradeHistory")
+  grade_histories_as_student     GradeHistory[]       @relation("StudentGradeHistory")
+  grades                         Grade[]              @relation("GraderGrades")
+  student_grades                 Grade[]              @relation("StudentGrades")
+  invitee_invites                GroupInvite[]        @relation("InviteeGroupInvites")
+  inviter_invites                GroupInvite[]        @relation("InviterGroupInvites")
+  group_memberships              GroupMember[]        @relation("GroupMemberUser")
+  owned_groups                   Group[]              @relation("GroupLeader")
+  notifications                  Notification[]       @relation("UserNotifications")
+  refresh_tokens                 RefreshToken[]
+  topic_registrations            TopicRegistration[]  @relation("StudentRegistrations")
+  co_supervised_topics           Topic[]              @relation("CoSupervisorTopics")
+  supervised_topics              Topic[]              @relation("SupervisorTopics")
+  department                     Department           @relation(fields: [departmentId], references: [id])
 
   @@index([email])
   @@index([role])
@@ -180,13 +180,13 @@ model Topic {
   defense_schedules        DefenseSchedule[]        @relation("TopicDefense")
   extra_point_requests     ExtraPointRequest[]      @relation("TopicExtraPoints")
   final_scores             FinalScore[]             @relation("TopicFinalScore")
+  grade_change_requests    GradeChangeRequest[]
   grade_histories          GradeHistory[]           @relation("TopicGradeHistory")
   grades                   Grade[]                  @relation("TopicGrades")
   group_invites            GroupInvite[]            @relation("TopicGroupInvites")
   groups                   Group[]                  @relation("TopicGroups")
   registrations            TopicRegistration[]      @relation("TopicRegistrations")
   versions                 TopicVersion[]           @relation("TopicVersions")
-  grade_change_requests    GradeChangeRequest[]
   co_supervisor            User?                    @relation("CoSupervisorTopics", fields: [co_supervisor_id], references: [id])
   department               Department               @relation("DepartmentTopics", fields: [departmentId], references: [id])
   secondary_department     Department?              @relation("SecondaryDepartmentTopics", fields: [secondary_department_id], references: [id])
@@ -338,9 +338,9 @@ model Assignment {
   room                 String?          @db.VarChar(100)
   group_id             String?          @map("group_id")
   defense_format       String?          @default("OFFLINE") @db.VarChar(50)
-  zoom_password        String?          @db.VarChar(100)
-  start_time           DateTime?
   end_time             DateTime?
+  start_time           DateTime?
+  zoom_password        String?          @db.VarChar(100)
   assigner             User             @relation("AssignerAssignments", fields: [assigned_by], references: [id], onDelete: Cascade)
   group                Group?           @relation("GroupAssignments", fields: [group_id], references: [id], onDelete: Cascade)
   reviewer             User             @relation("ReviewerAssignments", fields: [reviewer_id], references: [id], onDelete: Cascade)
@@ -357,22 +357,22 @@ model Assignment {
 }
 
 model GradingCriterion {
-  id            String      @id @default(uuid())
-  name          String      @db.VarChar(255)
-  description   String
-  weight        Float
-  max_score     Float
-  min_score     Float       @default(0)
-  order_index   Int         @default(0)
-  active        Boolean     @default(true)
-  created_at    DateTime    @default(now())
-  departmentId  String?     @map("department_id")
-  role          RaterRole   @default(SUPERVISOR)
-  criteria_type  String?        @db.VarChar(50)
-  grades         Grade[]        @relation("CriterionGrades")
-  gradeHistories GradeHistory[]
+  id                  String               @id @default(uuid())
+  name                String               @db.VarChar(255)
+  description         String
+  weight              Float
+  max_score           Float
+  min_score           Float                @default(0)
+  order_index         Int                  @default(0)
+  active              Boolean              @default(true)
+  created_at          DateTime             @default(now())
+  departmentId        String?              @map("department_id")
+  role                RaterRole            @default(SUPERVISOR)
+  criteria_type       String?              @db.VarChar(50)
   gradeChangeRequests GradeChangeRequest[]
-  department     Department?    @relation(fields: [departmentId], references: [id])
+  gradeHistories      GradeHistory[]
+  grades              Grade[]              @relation("CriterionGrades")
+  department          Department?          @relation(fields: [departmentId], references: [id])
 
   @@index([active])
   @@index([role])
@@ -568,7 +568,7 @@ model AuditLog {
 }
 
 model GradeHistory {
-  id           String   @id @default(uuid())
+  id           String           @id @default(uuid())
   student_id   String
   grader_id    String
   topic_id     String
@@ -577,13 +577,13 @@ model GradeHistory {
   old_score    Float?
   new_score    Float
   reason       String?
+  changed_at   DateTime         @default(now())
   rater_role   RaterRole?
-  changed_at   DateTime @default(now())
-  grader       User     @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
-  group        Group?   @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)
+  criterion    GradingCriterion @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
+  grader       User             @relation("GraderGradeHistory", fields: [grader_id], references: [id], onDelete: Cascade)
+  group        Group?           @relation("GroupGradeHistory", fields: [group_id], references: [id], onDelete: Cascade)
   student      User             @relation("StudentGradeHistory", fields: [student_id], references: [id], onDelete: Cascade)
   topic        Topic            @relation("TopicGradeHistory", fields: [topic_id], references: [id], onDelete: Cascade)
-  criterion    GradingCriterion @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
 
   @@index([student_id])
   @@index([grader_id])
@@ -608,12 +608,11 @@ model GradeChangeRequest {
   rejection_reason String?
   created_at       DateTime          @default(now())
   updated_at       DateTime          @updatedAt
-
-  topic     Topic            @relation(fields: [topic_id], references: [id], onDelete: Cascade)
-  student   User             @relation("StudentGradeChangeRequests", fields: [student_id], references: [id], onDelete: Cascade)
-  grader    User             @relation("GraderGradeChangeRequests", fields: [grader_id], references: [id], onDelete: Cascade)
-  reviewer  User?            @relation("ReviewerGradeChangeRequests", fields: [reviewed_by], references: [id])
-  criterion GradingCriterion @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
+  criterion        GradingCriterion  @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
+  grader           User              @relation("GraderGradeChangeRequests", fields: [grader_id], references: [id], onDelete: Cascade)
+  reviewer         User?             @relation("ReviewerGradeChangeRequests", fields: [reviewed_by], references: [id])
+  student          User              @relation("StudentGradeChangeRequests", fields: [student_id], references: [id], onDelete: Cascade)
+  topic            Topic             @relation(fields: [topic_id], references: [id], onDelete: Cascade)
 
   @@index([topic_id])
   @@index([student_id])
@@ -648,9 +647,9 @@ model RolePermission {
 enum UserRole {
   STUDENT
   LECTURER
-  COORDINATOR
   HEAD
   ADMIN
+  COORDINATOR
 }
 
 enum DefenseType {
