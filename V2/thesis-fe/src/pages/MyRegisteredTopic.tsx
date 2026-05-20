@@ -260,7 +260,7 @@ const MyRegisteredTopic = () => {
                   {myRegistration.midterm_status === 'PASS' ? 'Đạt giữa kỳ' : 'Không đạt giữa kỳ'}
                 </Tag>
               </div>
-              
+
               <div className={`p-4 rounded-xl border ${myRegistration.midterm_status === 'PASS' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'} flex items-start gap-3`}>
                 {myRegistration.midterm_status === 'PASS' ? (
                   <CheckCircleOutlined className="text-emerald-500 mt-1 text-lg flex-shrink-0" />
@@ -272,8 +272,8 @@ const MyRegisteredTopic = () => {
                     {myRegistration.midterm_status === 'PASS' ? 'Chúc mừng! Bạn đã đạt đánh giá giữa kỳ' : 'Bạn không đạt đánh giá giữa kỳ'}
                   </Text>
                   <Text className={`text-xs ${myRegistration.midterm_status === 'PASS' ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {myRegistration.midterm_status === 'PASS' 
-                      ? 'Bạn đủ điều kiện tiếp tục thực hiện và hoàn thiện khóa luận tốt nghiệp trong học kỳ này.' 
+                    {myRegistration.midterm_status === 'PASS'
+                      ? 'Bạn đủ điều kiện tiếp tục thực hiện và hoàn thiện khóa luận tốt nghiệp trong học kỳ này.'
                       : 'Rất tiếc, dựa trên đánh giá của Giảng viên hướng dẫn, bạn không đủ điều kiện để tiếp tục thực hiện khóa luận tốt nghiệp trong học kỳ này.'}
                   </Text>
                   {myRegistration.midterm_feedback && (
@@ -386,7 +386,7 @@ const MyRegisteredTopic = () => {
                       title={
                         <div className="flex items-center gap-2">
                           <div className="w-1 h-4 bg-purple-500 rounded-full"></div>
-                          <span className="text-slate-800 font-bold text-lg">Thông tin Giảng viên Phản biện</span>
+                          <span className="text-slate-800 font-bold text-lg">Thông tin phản biện</span>
                         </div>
                       }
                       className="shadow-soft border-0 mb-6"
@@ -471,52 +471,130 @@ const MyRegisteredTopic = () => {
                 })()}
 
                 {/* Committee & Defense Schedule Card */}
-                {(!!defenseSchedule || committeeAssignments.length > 0) && (
+                {!!defenseSchedule && (
                   <Card
                     title={
                       <div className="flex items-center gap-2">
                         <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
-                        <span className="text-slate-800 font-bold text-lg">Lịch trình & Hội đồng Bảo vệ</span>
+                        <span className="text-slate-800 font-bold text-lg">Thông tin hội đồng bảo vệ</span>
                       </div>
                     }
                     className="shadow-soft border-0 mb-6 bg-indigo-50/10"
                     size="small"
                   >
-                    {defenseSchedule && (
-                      <div className="mb-6 p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
-                        <div className="text-xs font-bold uppercase tracking-wider text-indigo-600 mb-3 flex items-center gap-2">
-                          <ClockCircleOutlined /> Thông tin Lịch bảo vệ
+                    {/* Schedule info block */}
+                    <div className="mb-5 p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2">
+                          <ClockCircleOutlined /> Thông tin lịch bảo vệ
                         </div>
-                        <Row gutter={[16, 16]}>
-                          <Col xs={24} sm={8}>
-                            <div className="text-xs text-slate-400 mb-1">NGÀY BẢO VỆ</div>
-                            <div className="text-sm font-bold text-slate-700">
-                              {dayjs(defenseSchedule.defense_date).format('DD/MM/YYYY')}
-                            </div>
-                          </Col>
-                          <Col xs={24} sm={8}>
-                            <div className="text-xs text-slate-400 mb-1">GIỜ BẢO VỆ</div>
-                            <div className="text-sm font-bold text-slate-700">
-                              {defenseSchedule.defense_time || 'Theo lịch hội đồng'}
-                            </div>
-                          </Col>
-                          <Col xs={24} sm={8}>
-                            <div className="text-xs text-slate-400 mb-1">ĐỊA ĐIỂM / PHÒNG</div>
-                            <div className="text-sm font-bold text-indigo-600">
-                              {defenseSchedule.room || 'Chưa công bố'}
-                            </div>
-                          </Col>
-                        </Row>
-                        {defenseSchedule.notes && (
-                          <div className="mt-4 p-3 bg-amber-50/80 rounded-lg border border-amber-100 text-xs text-amber-800">
-                            <span className="font-semibold block mb-0.5">Lưu ý từ Hội đồng:</span>
-                            {defenseSchedule.notes}
-                          </div>
+                        {defenseSchedule.committee?.type && (
+                          <Tag
+                            color={defenseSchedule.committee.type === 'ORAL' ? 'blue' : 'purple'}
+                            className="m-0 font-bold text-[12px] px-3 py-0.5"
+                          >
+                            {defenseSchedule.committee.type === 'ORAL' ? '🎤 Hội đồng Oral' : '📋 Hội đồng Poster'}
+                          </Tag>
                         )}
+                      </div>
+
+                      <Row gutter={[16, 12]}>
+                        <Col xs={24} sm={6}>
+                          <div className="text-xs text-slate-400 mb-1">📅 Ngày bảo vệ</div>
+                          <div className="text-sm font-bold text-slate-700">
+                            {dayjs(defenseSchedule.defense_date).format('DD/MM/YYYY')}
+                          </div>
+                        </Col>
+                        <Col xs={24} sm={6}>
+                          <div className="text-xs text-slate-400 mb-1">⏰ Giờ bảo vệ</div>
+                          <div className="text-sm font-bold text-slate-700">
+                            {defenseSchedule.start_time && defenseSchedule.end_time
+                              ? `${dayjs(defenseSchedule.start_time).format('HH:mm')} - ${dayjs(defenseSchedule.end_time).format('HH:mm')}`
+                              : defenseSchedule.defense_time || 'Theo lịch hội đồng'}
+                          </div>
+                        </Col>
+                        <Col xs={24} sm={6}>
+                          <div className="text-xs text-slate-400 mb-1">🏢 Phòng</div>
+                          <div className="text-sm font-bold text-indigo-600">
+                            {defenseSchedule.room || 'Chưa công bố'}
+                          </div>
+                        </Col>
+                        {defenseSchedule.committee?.name && (
+                          <Col xs={24} sm={6}>
+                            <div className="text-xs text-slate-400 mb-1">🏛️ Hội đồng</div>
+                            <div className="text-sm font-bold text-slate-700">
+                              {defenseSchedule.committee.name}
+                            </div>
+                          </Col>
+                        )}
+                      </Row>
+
+                      {defenseSchedule.notes && (
+                        <div className="mt-4 p-3 bg-amber-50/80 rounded-lg border border-amber-100 text-xs text-amber-800">
+                          <span className="font-semibold block mb-0.5">Lưu ý từ Hội đồng:</span>
+                          {defenseSchedule.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Committee members from defenseSchedule.committee */}
+                    {defenseSchedule.committee?.members && defenseSchedule.committee.members.length > 0 && (
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 px-1 flex items-center gap-2">
+                          👥 Thành phần Hội đồng chấm bảo vệ
+                        </div>
+                        <List
+                          itemLayout="horizontal"
+                          dataSource={defenseSchedule.committee.members}
+                          renderItem={(member: any) => {
+                            const roleColorMap: any = {
+                              CHAIR: 'volcano',
+                              SECRETARY: 'geekblue',
+                              MEMBER: 'default',
+                              MEMBER_1: 'default',
+                              MEMBER_2: 'default',
+                            };
+                            const roleLabelMap: any = {
+                              CHAIR: 'Chủ tịch Hội đồng',
+                              SECRETARY: 'Thư ký Hội đồng',
+                              MEMBER: 'Ủy viên',
+                              MEMBER_1: 'Ủy viên 1',
+                              MEMBER_2: 'Ủy viên 2',
+                            };
+                            return (
+                              <List.Item className="bg-white p-3.5 rounded-xl mb-2.5 border border-slate-100 shadow-2xs last:mb-0">
+                                <List.Item.Meta
+                                  avatar={<Avatar size={42} src={member.lecturer?.avatar_url} icon={<UserOutlined />} className="bg-indigo-50 text-indigo-600 shadow-sm" />}
+                                  title={
+                                    <Space className="flex items-center flex-wrap gap-2">
+                                      <Text strong className="text-slate-800 text-sm">{member.lecturer?.full_name}</Text>
+                                      <Tag color={roleColorMap[member.role] || 'default'} className="m-0 text-[11px] font-semibold">
+                                        {roleLabelMap[member.role] || member.role}
+                                      </Tag>
+                                    </Space>
+                                  }
+                                  description={
+                                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                      <MailOutlined className="text-slate-300" />
+                                      <span>{member.lecturer?.email || 'N/A'}</span>
+                                      {member.lecturer?.phone && (
+                                        <>
+                                          <span className="text-slate-300">|</span>
+                                          <span>SĐT: {member.lecturer.phone}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  }
+                                />
+                              </List.Item>
+                            );
+                          }}
+                        />
                       </div>
                     )}
 
-                    {committeeAssignments.length > 0 && (
+                    {/* Fallback: show assignments-based committee if no schedule committee */}
+                    {(!defenseSchedule.committee?.members || defenseSchedule.committee.members.length === 0) && committeeAssignments.length > 0 && (
                       <div>
                         <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 px-1">
                           Thành phần Hội đồng chấm bảo vệ
@@ -525,16 +603,8 @@ const MyRegisteredTopic = () => {
                           itemLayout="horizontal"
                           dataSource={committeeAssignments}
                           renderItem={(assignment: any) => {
-                            const roleColorMap: any = {
-                              CHAIR: 'volcano',
-                              SECRETARY: 'geekblue',
-                              MEMBER: 'default'
-                            };
-                            const roleLabelMap: any = {
-                              CHAIR: 'Chủ tịch Hội đồng',
-                              SECRETARY: 'Thư ký Hội đồng',
-                              MEMBER: 'Ủy viên'
-                            };
+                            const roleColorMap: any = { CHAIR: 'volcano', SECRETARY: 'geekblue', MEMBER: 'default' };
+                            const roleLabelMap: any = { CHAIR: 'Chủ tịch Hội đồng', SECRETARY: 'Thư ký Hội đồng', MEMBER: 'Ủy viên' };
                             return (
                               <List.Item className="bg-white p-3.5 rounded-xl mb-2.5 border border-slate-100 shadow-2xs last:mb-0">
                                 <List.Item.Meta
@@ -551,10 +621,7 @@ const MyRegisteredTopic = () => {
                                     <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
                                       <span>Email: {assignment.reviewer?.email || 'N/A'}</span>
                                       {assignment.reviewer?.phone && (
-                                        <>
-                                          <span className="text-slate-300">|</span>
-                                          <span>SĐT: {assignment.reviewer.phone}</span>
-                                        </>
+                                        <><span className="text-slate-300">|</span><span>SĐT: {assignment.reviewer.phone}</span></>
                                       )}
                                     </div>
                                   }
@@ -570,269 +637,270 @@ const MyRegisteredTopic = () => {
 
                 {/* Group Members List */}
                 {hasGroup && (
-                <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
-                      <span className="text-slate-800 font-bold text-lg">Thành viên nhóm</span>
-                    </div>
-                  }
-                  className="shadow-soft border-0 mb-6"
-                  size="small"
-                >
-                  <List
-                    itemLayout="horizontal"
-                    dataSource={group.members?.filter((m: any) => m.status === 'ACCEPTED')}
-                    renderItem={(member: any) => {
-                      const memberReg = member.user?.topic_registrations?.find((r: any) => r.topic_id === topic?.id) || member.user?.topic_registrations?.[0];
-                      return (
-                      <List.Item
-                        actions={isLeader && member.user_id !== currentUser?.id ? [
-                          <Popconfirm
-                            title="Xóa thành viên khỏi nhóm?"
-                            onConfirm={() => removeMemberMutation.mutate(member.user_id)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                            okButtonProps={{ danger: true }}
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
+                        <span className="text-slate-800 font-bold text-lg">Thành viên nhóm</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 mb-6"
+                    size="small"
+                  >
+                    <List
+                      itemLayout="horizontal"
+                      dataSource={group.members?.filter((m: any) => m.status === 'ACCEPTED')}
+                      renderItem={(member: any) => {
+                        const memberReg = member.user?.topic_registrations?.find((r: any) => r.topic_id === topic?.id) || member.user?.topic_registrations?.[0];
+                        return (
+                          <List.Item
+                            actions={isLeader && member.user_id !== currentUser?.id ? [
+                              <Popconfirm
+                                title="Xóa thành viên khỏi nhóm?"
+                                onConfirm={() => removeMemberMutation.mutate(member.user_id)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true }}
+                              >
+                                <Button danger type="link" icon={<UserDeleteOutlined />}>Gỡ</Button>
+                              </Popconfirm>
+                            ] : []}
                           >
-                            <Button danger type="link" icon={<UserDeleteOutlined />}>Gỡ</Button>
-                          </Popconfirm>
-                        ] : []}
-                      >
-                        <List.Item.Meta
-                          avatar={<Avatar size={48} src={member.user?.avatar_url} icon={<UserOutlined />} className="bg-slate-50 text-slate-400" />}
-                          title={
-                            <Space className="flex items-center">
-                              <Text strong className="text-slate-700">{member.user?.full_name}</Text>
-                              {member.user_id === group.leader_id && (
-                                <Tag color="gold" className="m-0 text-[11px]">Trưởng nhóm</Tag>
-                              )}
-                              {memberReg?.midterm_status === 'PASS' && (
-                                <Tag color="success" className="m-0 text-[11px]">Đạt giữa kỳ</Tag>
-                              )}
-                              {memberReg?.midterm_status === 'FAIL' && (
-                                <Tag color="error" className="m-0 text-[11px]">Không đạt giữa kỳ</Tag>
-                              )}
-                            </Space>
-                          }
-                          description={<span className="text-slate-400">{member.user?.student_code} • {member.user?.email}</span>}
-                        />
-                      </List.Item>
-                    )}}
-                  />
-                </Card>
-              )}
+                            <List.Item.Meta
+                              avatar={<Avatar size={48} src={member.user?.avatar_url} icon={<UserOutlined />} className="bg-slate-50 text-slate-400" />}
+                              title={
+                                <Space className="flex items-center">
+                                  <Text strong className="text-slate-700">{member.user?.full_name}</Text>
+                                  {member.user_id === group.leader_id && (
+                                    <Tag color="gold" className="m-0 text-[11px]">Trưởng nhóm</Tag>
+                                  )}
+                                  {memberReg?.midterm_status === 'PASS' && (
+                                    <Tag color="success" className="m-0 text-[11px]">Đạt giữa kỳ</Tag>
+                                  )}
+                                  {memberReg?.midterm_status === 'FAIL' && (
+                                    <Tag color="error" className="m-0 text-[11px]">Không đạt giữa kỳ</Tag>
+                                  )}
+                                </Space>
+                              }
+                              description={<span className="text-slate-400">{member.user?.student_code} • {member.user?.email}</span>}
+                            />
+                          </List.Item>
+                        )
+                      }}
+                    />
+                  </Card>
+                )}
 
-              {/* Received Invites */}
-              {canInvite && receivedInvites.length > 0 && (
-                <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                      <span className="text-slate-800 font-bold text-lg">Lời mời đồng hành</span>
-                    </div>
-                  }
-                  className="shadow-soft border-0 bg-blue-50/20 mb-6"
-                  extra={<Badge count={receivedInvites.length} />}
-                  size="small"
-                >
-                  <List
-                    dataSource={receivedInvites}
-                    renderItem={(invite: any) => (
-                      <List.Item
-                        className="bg-white p-4 rounded-xl mb-3 shadow-sm border border-blue-50/50"
-                        actions={[
+                {/* Received Invites */}
+                {canInvite && receivedInvites.length > 0 && (
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                        <span className="text-slate-800 font-bold text-lg">Lời mời đồng hành</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 bg-blue-50/20 mb-6"
+                    extra={<Badge count={receivedInvites.length} />}
+                    size="small"
+                  >
+                    <List
+                      dataSource={receivedInvites}
+                      renderItem={(invite: any) => (
+                        <List.Item
+                          className="bg-white p-4 rounded-xl mb-3 shadow-sm border border-blue-50/50"
+                          actions={[
+                            <Button
+                              type="primary"
+                              size="middle"
+                              shape="round"
+                              icon={<CheckCircleOutlined />}
+                              onClick={() => acceptInviteMutation.mutate(invite.id)}
+                              loading={acceptInviteMutation.isPending}
+                              className="bg-blue-600 px-6"
+                            >
+                              Đồng ý
+                            </Button>,
+                            <Button
+                              danger
+                              size="middle"
+                              shape="round"
+                              icon={<CloseCircleOutlined />}
+                              onClick={() => rejectInviteMutation.mutate(invite.id)}
+                              loading={rejectInviteMutation.isPending}
+                              className="px-6"
+                            >
+                              Từ chối
+                            </Button>
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={<Avatar size={48} src={invite.inviter?.avatar_url} icon={<UserOutlined />} />}
+                            title={<span className="text-base font-bold text-slate-700">{invite.inviter?.full_name}</span>}
+                            description={
+                              <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
+                                <ClockCircleOutlined />
+                                Hết hạn: {dayjs(invite.expires_at).format('HH:mm - DD/MM/YYYY')}
+                              </div>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                )}
+
+                {canInvite && (
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                        <span className="text-slate-800 font-bold">Lập nhóm đồng hành</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 mb-6"
+                    size="small"
+                  >
+                    <div className="p-3 bg-white">
+                      <Paragraph type="secondary" className="mb-3 text-xs">
+                        Nhập mã sinh viên của người bạn muốn đồng hành để thực hiện chung đề tài.
+                      </Paragraph>
+
+                      <div className="max-w-md mb-4">
+                        <Space.Compact style={{ width: '100%' }} size="large">
+                          <Input
+                            placeholder="Nhập mã sinh viên (VD: 2012345)"
+                            id="student-search-input"
+                            disabled={sentInvites.length > 0 || searchLoading}
+                            onPressEnter={(e: any) => handleSearch(e.target.value)}
+                          />
                           <Button
                             type="primary"
-                            size="middle"
-                            shape="round"
-                            icon={<CheckCircleOutlined />}
-                            onClick={() => acceptInviteMutation.mutate(invite.id)}
-                            loading={acceptInviteMutation.isPending}
-                            className="bg-blue-600 px-6"
+                            className="px-6 bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
+                            onClick={() => {
+                              const input = document.getElementById('student-search-input') as HTMLInputElement;
+                              if (input) handleSearch(input.value);
+                            }}
+                            loading={searchLoading}
+                            disabled={sentInvites.length > 0}
                           >
-                            Đồng ý
-                          </Button>,
-                          <Button
-                            danger
-                            size="middle"
-                            shape="round"
-                            icon={<CloseCircleOutlined />}
-                            onClick={() => rejectInviteMutation.mutate(invite.id)}
-                            loading={rejectInviteMutation.isPending}
-                            className="px-6"
-                          >
-                            Từ chối
+                            Tìm kiếm
                           </Button>
-                        ]}
-                      >
-                        <List.Item.Meta
-                          avatar={<Avatar size={48} src={invite.inviter?.avatar_url} icon={<UserOutlined />} />}
-                          title={<span className="text-base font-bold text-slate-700">{invite.inviter?.full_name}</span>}
-                          description={
-                            <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
-                              <ClockCircleOutlined />
-                              Hết hạn: {dayjs(invite.expires_at).format('HH:mm - DD/MM/YYYY')}
+                        </Space.Compact>
+                      </div>
+
+                      {searchResult && (
+                        <div className="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-100 flex justify-between items-center transition-all animate-in fade-in zoom-in duration-300">
+                          <div className="flex items-center gap-3">
+                            <Avatar size={48} src={searchResult.avatar_url} icon={<UserOutlined />} className="bg-blue-100 text-blue-600 shadow-sm" />
+                            <div>
+                              <div className="text-base font-bold text-slate-800 leading-tight">{searchResult.full_name}</div>
+                              <div className="text-slate-400 font-medium uppercase tracking-wider text-[10px] mt-0.5">{searchResult.student_code} • {searchResult.email}</div>
                             </div>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
-                </Card>
-              )}
-
-              {canInvite && (
-                <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                      <span className="text-slate-800 font-bold">Lập nhóm đồng hành</span>
-                    </div>
-                  }
-                  className="shadow-soft border-0 mb-6"
-                  size="small"
-                >
-                  <div className="p-3 bg-white">
-                    <Paragraph type="secondary" className="mb-3 text-xs">
-                      Nhập mã sinh viên của người bạn muốn đồng hành để thực hiện chung đề tài.
-                    </Paragraph>
-
-                    <div className="max-w-md mb-4">
-                      <Space.Compact style={{ width: '100%' }} size="large">
-                        <Input 
-                          placeholder="Nhập mã sinh viên (VD: 2012345)" 
-                          id="student-search-input"
-                          disabled={sentInvites.length > 0 || searchLoading}
-                          onPressEnter={(e: any) => handleSearch(e.target.value)}
-                        />
-                        <Button 
-                          type="primary" 
-                          className="px-6 bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
-                          onClick={() => {
-                            const input = document.getElementById('student-search-input') as HTMLInputElement;
-                            if (input) handleSearch(input.value);
-                          }}
-                          loading={searchLoading}
-                          disabled={sentInvites.length > 0}
-                        >
-                          Tìm kiếm
-                        </Button>
-                      </Space.Compact>
-                    </div>
-
-                    {searchResult && (
-                      <div className="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-100 flex justify-between items-center transition-all animate-in fade-in zoom-in duration-300">
-                        <div className="flex items-center gap-3">
-                          <Avatar size={48} src={searchResult.avatar_url} icon={<UserOutlined />} className="bg-blue-100 text-blue-600 shadow-sm" />
-                          <div>
-                            <div className="text-base font-bold text-slate-800 leading-tight">{searchResult.full_name}</div>
-                            <div className="text-slate-400 font-medium uppercase tracking-wider text-[10px] mt-0.5">{searchResult.student_code} • {searchResult.email}</div>
                           </div>
-                        </div>
-                        <Button
-                          type="primary"
-                          shape="round"
-                          size="middle"
-                          icon={<SendOutlined />}
-                          onClick={() => sendInviteMutation.mutate(searchResult.student_code)}
-                          loading={sendInviteMutation.isPending}
-                          disabled={sentInvites.length > 0}
-                          className="bg-blue-600 px-6 shadow-sm hover:shadow-md transition-all"
-                        >
-                          Mời ngay
-                        </Button>
-                      </div>
-                    )}
-
-                    {sentInvites.length > 0 && (
-                      <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-700 flex items-start gap-3">
-                        <InfoCircleOutlined className="mt-1" />
-                        <div className="text-sm">
-                          <Text strong className="text-amber-800 block mb-0.5">Yêu cầu đang chờ phản hồi</Text>
-                          Bạn đã gửi một lời mời. Vui lòng chờ phản hồi hoặc hủy lời mời cũ để mời người khác.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              )}
-            </Col>
-
-            <Col xs={24} lg={8}>
-              {/* Sent Invites Sidebar */}
-              {canInvite && sentInvites.length > 0 && (
-                <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 bg-orange-400 rounded-full"></div>
-                      <span className="text-slate-800 font-bold">Lời mời đã gửi</span>
-                    </div>
-                  }
-                  className="shadow-soft border-0 mb-6"
-                  size="small"
-                >
-                  <List
-                    dataSource={sentInvites}
-                    renderItem={(invite: any) => (
-                      <div className="p-2">
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">HẾT HẠN LÚC</div>
-                          <div className="flex items-center gap-2 text-slate-600 font-semibold">
-                            <ClockCircleOutlined className="text-orange-400" />
-                            {dayjs(invite.expires_at).format('HH:mm - DD/MM/YYYY')}
-                          </div>
-                        </div>
-                        <Popconfirm
-                          title="Xác nhận hủy lời mời?"
-                          onConfirm={() => cancelInviteMutation.mutate(invite.id)}
-                          okText="Hủy mời"
-                          cancelText="Đóng"
-                          okButtonProps={{ danger: true, loading: cancelInviteMutation.isPending }}
-                        >
-                          <Button block danger shape="round" icon={<DeleteOutlined />}>
-                            Hủy lời mời
+                          <Button
+                            type="primary"
+                            shape="round"
+                            size="middle"
+                            icon={<SendOutlined />}
+                            onClick={() => sendInviteMutation.mutate(searchResult.student_code)}
+                            loading={sendInviteMutation.isPending}
+                            disabled={sentInvites.length > 0}
+                            className="bg-blue-600 px-6 shadow-sm hover:shadow-md transition-all"
+                          >
+                            Mời ngay
                           </Button>
-                        </Popconfirm>
-                      </div>
-                    )}
-                  />
-                </Card>
-              )}
-
-              <Card
-                title={
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-4 bg-amber-400 rounded-full"></div>
-                    <span className="text-slate-800 font-bold">Lưu ý quan trọng</span>
-                  </div>
-                }
-                className="shadow-soft border-0 bg-white overflow-hidden"
-                size="small"
-              >
-                <div className="p-3">
-                  <List
-                    size="small"
-                    dataSource={[
-                      'Lời mời kết bạn sẽ tự động hết hạn sau 48 giờ nếu không được phản hồi.',
-                      'Sinh viên chỉ có thể gửi 01 lời mời tại một thời điểm.'
-                    ]}
-                    renderItem={item => (
-                      <List.Item className="border-none p-0 mb-1.5 last:mb-0">
-                        <div className="flex items-start gap-2">
-                          <div className="mt-2 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></div>
-                          <span className="text-slate-600 text-xs leading-relaxed">{item}</span>
                         </div>
-                      </List.Item>
-                    )}
-                  />
-                </div>
-              </Card>
-            </Col>
-          </Row>
-        )}
+                      )}
+
+                      {sentInvites.length > 0 && (
+                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-700 flex items-start gap-3">
+                          <InfoCircleOutlined className="mt-1" />
+                          <div className="text-sm">
+                            <Text strong className="text-amber-800 block mb-0.5">Yêu cầu đang chờ phản hồi</Text>
+                            Bạn đã gửi một lời mời. Vui lòng chờ phản hồi hoặc hủy lời mời cũ để mời người khác.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </Col>
+
+              <Col xs={24} lg={8}>
+                {/* Sent Invites Sidebar */}
+                {canInvite && sentInvites.length > 0 && (
+                  <Card
+                    title={
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-orange-400 rounded-full"></div>
+                        <span className="text-slate-800 font-bold">Lời mời đã gửi</span>
+                      </div>
+                    }
+                    className="shadow-soft border-0 mb-6"
+                    size="small"
+                  >
+                    <List
+                      dataSource={sentInvites}
+                      renderItem={(invite: any) => (
+                        <div className="p-2">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">HẾT HẠN LÚC</div>
+                            <div className="flex items-center gap-2 text-slate-600 font-semibold">
+                              <ClockCircleOutlined className="text-orange-400" />
+                              {dayjs(invite.expires_at).format('HH:mm - DD/MM/YYYY')}
+                            </div>
+                          </div>
+                          <Popconfirm
+                            title="Xác nhận hủy lời mời?"
+                            onConfirm={() => cancelInviteMutation.mutate(invite.id)}
+                            okText="Hủy mời"
+                            cancelText="Đóng"
+                            okButtonProps={{ danger: true, loading: cancelInviteMutation.isPending }}
+                          >
+                            <Button block danger shape="round" icon={<DeleteOutlined />}>
+                              Hủy lời mời
+                            </Button>
+                          </Popconfirm>
+                        </div>
+                      )}
+                    />
+                  </Card>
+                )}
+
+                <Card
+                  title={
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-4 bg-amber-400 rounded-full"></div>
+                      <span className="text-slate-800 font-bold">Lưu ý quan trọng</span>
+                    </div>
+                  }
+                  className="shadow-soft border-0 bg-white overflow-hidden"
+                  size="small"
+                >
+                  <div className="p-3">
+                    <List
+                      size="small"
+                      dataSource={[
+                        'Lời mời kết bạn sẽ tự động hết hạn sau 48 giờ nếu không được phản hồi.',
+                        'Sinh viên chỉ có thể gửi 01 lời mời tại một thời điểm.'
+                      ]}
+                      renderItem={item => (
+                        <List.Item className="border-none p-0 mb-1.5 last:mb-0">
+                          <div className="flex items-start gap-2">
+                            <div className="mt-2 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"></div>
+                            <span className="text-slate-600 text-xs leading-relaxed">{item}</span>
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          )}
+        </div>
       </div>
-    </div>
       <style dangerouslySetInnerHTML={{
         __html: `
           .topic-html-content {

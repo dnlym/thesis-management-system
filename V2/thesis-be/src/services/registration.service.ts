@@ -494,7 +494,17 @@ export class RegistrationService {
             },
             defense_schedules: {
               include: {
-                committee: true
+                committee: {
+                  include: {
+                    members: {
+                      include: {
+                        lecturer: {
+                          select: { id: true, full_name: true, email: true, phone: true, avatar_url: true }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           },
