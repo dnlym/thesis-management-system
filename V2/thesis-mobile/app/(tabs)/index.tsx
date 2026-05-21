@@ -20,7 +20,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   // Fetch actual data
-  const { data: stats, refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
+  const { refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
   const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments();
   const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
 
@@ -35,23 +35,20 @@ export default function DashboardScreen() {
   const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading;
 
   // Derive stats & counts
-  const assignedList = assignments || [];
-  const supervisedList = supervisedTopics || [];
-
-  const reviewerCount = assignedList.filter(a => a.assignment_type === 'REVIEWER').length;
-  const committeeCount = assignedList.filter(a => a.assignment_type === 'COMMITTEE').length;
-  const supervisedCount = supervisedList.length;
+  const reviewerCount = (assignments || []).filter(a => a.assignment_type === 'REVIEWER').length;
+  const committeeCount = (assignments || []).filter(a => a.assignment_type === 'COMMITTEE').length;
+  const supervisedCount = (supervisedTopics || []).length;
 
   // Get active semester name
   const currentSemesterName = React.useMemo(() => {
-    const sem = assignedList[0]?.topic?.semester?.name || supervisedList[0]?.semester?.name;
+    const sem = (assignments || [])[0]?.topic?.semester?.name || (supervisedTopics || [])[0]?.semester?.name;
     return sem || 'Học kỳ 2 - Năm học 2025-2026';
-  }, [assignedList, supervisedList]);
+  }, [assignments, supervisedTopics]);
 
   // Combine all topics the user needs to interact with
   const uniqueCombinedTopics = React.useMemo(() => {
     const list = [
-        ...assignedList.map(a => {
+        ...(assignments || []).map(a => {
           let roleLabel = 'GVPB';
           if (a.assignment_type === 'COMMITTEE') {
             const cRole = a.committee_role;
@@ -73,7 +70,7 @@ export default function DashboardScreen() {
             room: a.room || a.topic?.room
           };
         }),
-        ...supervisedList.map(t => ({
+        ...(supervisedTopics || []).map(t => ({
           id: t.id,
           topicId: t.topicId,
           groupId: t.id,
@@ -88,7 +85,7 @@ export default function DashboardScreen() {
     ];
 
     return list;
-  }, [assignedList, supervisedList]);
+  }, [assignments, supervisedTopics]);
 
   // Filter topics scheduled for TODAY
   const todayTopics = React.useMemo(() => {

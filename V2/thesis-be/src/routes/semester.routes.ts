@@ -122,6 +122,7 @@ router.post(
     param('semesterId').isUUID().withMessage('Invalid semester ID'),
     body('defense_date').optional().isISO8601().withMessage('Invalid defense date'),
     body('is_registration_open').optional().isBoolean().withMessage('is_registration_open must be a boolean'),
+    body('reason').optional().isString(),
   ]),
   deptSemesterConfigController.updateConfig.bind(deptSemesterConfigController)
 );

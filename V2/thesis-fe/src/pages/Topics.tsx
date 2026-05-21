@@ -525,16 +525,7 @@ const Topics = () => {
                 disabled={!filters.semesterId}
               />
 
-              {(isFiltering) && (
-                <Button
-                  type="link"
-                  icon={<ReloadOutlined />}
-                  onClick={handleClearFilters}
-                  className="px-2 whitespace-nowrap text-slate-500 hover:text-slate-700"
-                >
-                  Xóa bộ lọc
-                </Button>
-              )}
+
             </div>
           </div>
         </Card>

@@ -57,7 +57,7 @@ export async function canEditTopic(user: { id: string, role: UserRole }, topicId
     if (!topic || topic.supervisor_id !== user.id) return false;
     
     // Lecturers can only edit in certain statuses
-    return ['DRAFT', 'REQUIRE_EDIT', 'PENDING_APPROVAL'].includes(topic.status);
+    return ['DRAFT', 'REQUIRES_REVISION', 'PENDING_APPROVAL'].includes(topic.status);
   }
   
   return false;

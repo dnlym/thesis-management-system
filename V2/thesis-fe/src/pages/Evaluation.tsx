@@ -45,7 +45,8 @@ const Evaluation = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const topicId = searchParams.get('topicId');
-  const groupId = searchParams.get('groupId');
+  const rawGroupId = searchParams.get('groupId');
+  const groupId = (rawGroupId === 'undefined' || rawGroupId === 'null') ? null : rawGroupId;
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' ? 'department' : 'advisor'));
   const { data: activeSemester } = useActiveSemester();
 
@@ -247,15 +248,13 @@ const Evaluation = () => {
     const newAverages: Record<string, number> = {};
     students.forEach(student => {
       let total = 0;
-      let count = 0;
       criteria.forEach(criterion => {
         const score = values.grades?.[student.id]?.[criterion.id];
         if (typeof score === 'number') {
-          total += score;
-          count++;
+          total += score * (criterion.weight || 1);
         }
       });
-      newAverages[student.id] = count > 0 ? total / count : 0;
+      newAverages[student.id] = total;
     });
     setAverages(newAverages);
   };
@@ -301,31 +300,31 @@ const Evaluation = () => {
         .filter(student => student.midtermStatus !== 'FAIL' && student.status !== 'FAILED')
         .map(student => {
           const gradeScores: GradeScore[] = criteria.map(criterion => {
-          const studentGrades = values.grades?.[student.id];
-          const score = studentGrades?.[criterion.id];
-          if (score === undefined || score === null) {
-            throw new Error(`Tiêu chí "${criterion.name}" của SV ${student.name} chưa có điểm`);
-          }
+            const studentGrades = values.grades?.[student.id];
+            const score = studentGrades?.[criterion.id];
+            if (score === undefined || score === null) {
+              throw new Error(`Tiêu chí "${criterion.name}" của SV ${student.name} chưa có điểm`);
+            }
+            return {
+              criterion_id: criterion.id,
+              score: score,
+              comment: values.notes?.[criterion.id] || undefined,
+            };
+          });
+
+          console.log(`[Evaluation] Submitting ${gradeScores.length} scores for student ${student.id} using criteria IDs: ${gradeScores.map(gs => gs.criterion_id).join(', ')}`);
+
           return {
-            criterion_id: criterion.id,
-            score: score,
-            comment: values.notes?.[criterion.id] || undefined,
+            topic_id: topicId!,
+            group_id: groupId || undefined,
+            student_id: student.id,
+            rater_role: getRaterRole(),
+            reviewer_order: currentAssignment?.reviewer_order,
+            committee_role: currentAssignment?.committee_role as any,
+            scores: gradeScores,
+            reason: reason,
           };
         });
-
-        console.log(`[Evaluation] Submitting ${gradeScores.length} scores for student ${student.id} using criteria IDs: ${gradeScores.map(gs => gs.criterion_id).join(', ')}`);
-
-        return {
-          topic_id: topicId!,
-          group_id: groupId || undefined,
-          student_id: student.id,
-          rater_role: getRaterRole(),
-          reviewer_order: currentAssignment?.reviewer_order,
-          committee_role: currentAssignment?.committee_role as any,
-          scores: gradeScores,
-          reason: reason,
-        };
-      });
 
       for (const sub of submissions) {
         await submitGradeMutation.mutateAsync(sub);
@@ -476,8 +475,8 @@ const Evaluation = () => {
                       const isFailed = s.midtermStatus === 'FAIL' || s.status === 'FAILED';
                       const cardEl = (
                         <div key={s.id} className={`flex items-start gap-2.5 p-2 rounded-xl border border-blue-50 shadow-sm transition-all ${isFailed
-                            ? 'bg-slate-100/60 opacity-50 line-through'
-                            : 'bg-white/60 hover:shadow-md'
+                          ? 'bg-slate-100/60 opacity-50 line-through'
+                          : 'bg-white/60 hover:shadow-md'
                           }`}>
                           <Avatar
                             size={28}
@@ -608,7 +607,7 @@ const Evaluation = () => {
                 summary={() => (
                   <>
                     <Table.Summary.Row className="bg-gray-50 font-bold">
-                      <Table.Summary.Cell index={0} colSpan={2} className="text-right">TRUNG BÌNH CỘNG</Table.Summary.Cell>
+                      <Table.Summary.Cell index={0} colSpan={2} className="text-right">TỔNG ĐIỂM</Table.Summary.Cell>
                       {students.map(s => (
                         <Table.Summary.Cell key={`avg_${s.id}`} index={2} className="text-center">
                           <Text strong className="text-blue-600 text-lg">{(averages[s.id] || 0).toFixed(2)}</Text>
@@ -619,7 +618,7 @@ const Evaluation = () => {
                     <Table.Summary.Row className="bg-white font-bold h-24">
                       <Table.Summary.Cell index={0} colSpan={2} className="text-right">XẾP LOẠI</Table.Summary.Cell>
                       {students.map(s => {
-                        const pass = (averages[s.id] || 0) >= 5.0;
+                        const pass = (averages[s.id] || 0) >= 6.0;
                         return (
                           <Table.Summary.Cell key={`res_${s.id}`} index={2} className="text-center">
                             <div className="flex flex-col items-center gap-1">
@@ -918,7 +917,7 @@ const Evaluation = () => {
               size="small"
               onClick={() => setSearchParams({
                 topicId: r.topicId || r.topic_id || r.id,
-                groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id),
+                groupId: r.topicId ? r.id : (r.groupId || r.group_id || r.group?.id || r.registrations?.[0]?.group_id),
                 type: activeTab
               })}
               className="text-xs rounded-lg"

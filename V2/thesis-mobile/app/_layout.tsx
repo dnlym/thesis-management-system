@@ -1,14 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
-// Removed global.css
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/auth';
-import { useRouter, useSegments } from 'expo-router';
 import React from 'react';
 
 export const unstable_settings = {
@@ -39,7 +37,7 @@ export default function RootLayout() {
     } else if (isAuthenticated && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments, isMounted]);
+  }, [isAuthenticated, segments, isMounted, router]);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -15,6 +15,20 @@ import {
 
 const BLUE = '#2563eb';
 
+// Xếp loại điểm chữ (đồng bộ web)
+const getClassification = (score: number) => {
+  if (score >= 9.0) return { letter: 'A+', isPass: true };
+  if (score >= 8.5) return { letter: 'A',  isPass: true };
+  if (score >= 8.0) return { letter: 'B+', isPass: true };
+  if (score >= 7.0) return { letter: 'B',  isPass: true };
+  if (score >= 6.0) return { letter: 'C+', isPass: true };
+  if (score >= 5.5) return { letter: 'C',  isPass: false };
+  if (score >= 5.0) return { letter: 'D+', isPass: false };
+  if (score >= 4.0) return { letter: 'D',  isPass: false };
+  return { letter: 'F', isPass: false };
+};
+
+
 const FILTERS = [
   { key: 'ALL', label: 'Tất cả' },
   { key: 'GVHD', label: 'Hướng dẫn' },
@@ -127,19 +141,20 @@ export default function AssignedScreen() {
       const reg = t.registrations?.find((r: any) => r.group_id === groupId || (!r.group_id && !groupId));
       const studentId = reg?.student_id || t.students?.[0]?.id;
       
-      // A topic is considered graded if it has grades OR it has a final score in the final_scores array
-      // Match by group_id or student_id in final_scores
+      // Điểm cá nhân: chỉ dùng finalScore của sinh viên đó, không tính trung bình nhóm
       const finalScoreForStudent = (t.final_scores || []).find((fs: any) => 
-        (groupId && fs.group_id === groupId) || 
-        (studentId && fs.student_id === studentId)
+        studentId && fs.student_id === studentId
       );
 
-      const isFinalized = t.status === 'FINALIZED' || !!finalScoreForStudent;
-      const isGraded = groupGrades.length > 0 || isFinalized;
+      const isFinalized = t.status === 'FINALIZED' || (finalScoreForStudent?.finalized === true);
+      const isGraded = groupGrades.length > 0 || !!finalScoreForStudent;
       
       const groupName = t.groupName || reg?.group?.name || reg?.student?.full_name || t.students?.[0]?.full_name || 'Đề tài lẻ';
 
-      const displayScore = finalScoreForStudent?.final_score ?? (groupGrades.length > 0 ? groupGrades.reduce((acc: number, g: any) => acc + g.score, 0) / groupGrades.length : null);
+      // Chỉ hiển thị điểm cá nhân từ finalScore, không dùng average nhóm
+      const displayScore = finalScoreForStudent?.final_score ?? null;
+      const letterGrade = displayScore != null ? getClassification(displayScore).letter : null;
+      const isPassGrade = displayScore != null ? getClassification(displayScore).isPass : null;
 
       return {
         id: item.assignment?.id || `topic-${t.id}-${groupId || 'no-group'}-${item.role}`,
@@ -155,8 +170,11 @@ export default function AssignedScreen() {
         department: t.department?.name || 'CNTT',
         isGraded,
         isFinalized,
-        score: displayScore ? displayScore.toFixed(1) : null,
+        score: displayScore != null ? displayScore.toFixed(1) : null,
+        letterGrade,
+        isPassGrade,
       };
+
     });
 
     const filteredList = normalized.filter((item): item is NonNullable<typeof item> => item !== null);
@@ -284,7 +302,19 @@ export default function AssignedScreen() {
                 </Text>
               </View>
               {item.score && (
-                <Text style={styles.scoreText}>{item.score}</Text>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <Text style={styles.scoreText}>{item.score}</Text>
+                  {item.letterGrade && (
+                    <View style={[styles.statusBadge, { 
+                      backgroundColor: item.isPassGrade ? '#dcfce7' : '#fee2e2',
+                      paddingHorizontal: 6, paddingVertical: 2, marginTop: 2
+                    }]}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: item.isPassGrade ? '#166534' : '#991b1b' }}>
+                        {item.letterGrade}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               )}
               <View style={styles.chevronContainer}>
                 <ChevronRight size={20} color="#cbd5e1" />

@@ -74,6 +74,15 @@ export class GradingService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
+    // [ROBUSTNESS] Ensure groupId is valid. If omitted, extract from topic registrations.
+    let finalGroupId: string | undefined | null = data.groupId;
+    if (finalGroupId === 'undefined' || finalGroupId === 'null') {
+      finalGroupId = undefined;
+    }
+    if (!finalGroupId && topic.registrations && topic.registrations.length > 0) {
+      finalGroupId = topic.registrations[0].group_id;
+    }
+
     // [DEPRECATED] Hard finalization check removed. Now relying on Semester Deadline logic.
 
     // Determine academic action based on role
@@ -180,7 +189,7 @@ export class GradingService {
     const existingGrades = await prisma.grade.findMany({
       where: {
         topic_id: resolvedTopicId,
-        group_id: data.groupId || null,
+        group_id: finalGroupId || null,
         student_id: data.studentId || null,
         grader_id: userId,
         rater_role: raterRole,
@@ -219,7 +228,7 @@ export class GradingService {
     await prisma.grade.deleteMany({
       where: {
         topic_id: resolvedTopicId,
-        group_id: data.groupId || null,
+        group_id: finalGroupId || null,
         student_id: data.studentId || null,
         grader_id: userId,
         rater_role: raterRole,
@@ -242,7 +251,7 @@ export class GradingService {
             criterion_id: grade.criterionId,
             rater_role: raterRole,
             reviewer_order: data.reviewerOrder || null,
-            group_id: data.groupId || null,
+            group_id: finalGroupId || null,
           }
         });
 
@@ -261,7 +270,7 @@ export class GradingService {
           savedGrade = await prisma.grade.create({
             data: {
               topic_id: resolvedTopicId,
-              group_id: data.groupId || null,
+              group_id: finalGroupId || null,
               student_id: data.studentId || null,
               grader_id: userId,
               criterion_id: grade.criterionId,
@@ -1674,7 +1683,11 @@ export class GradingService {
       grader_id: userId,
     };
     if (raterRole) {
-      where.rater_role = raterRole;
+      if (isCommittee(raterRole)) {
+        where.rater_role = { in: getRolesByGroup(RoleGroup.COMMITTEE) };
+      } else {
+        where.rater_role = raterRole;
+      }
     }
 
     const grades = await prisma.grade.findMany({

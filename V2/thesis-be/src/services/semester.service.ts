@@ -4,6 +4,7 @@ import { ERROR_CODES } from '../constants';
 import { Prisma, Semester, SemesterPhase, UserRole, SemesterStatus } from '@prisma/client';
 import { SemesterGuard } from '../utils/semester-guard';
 import dayjs from '../config/dayjs';
+import deptSemesterConfigService from './dept-semester-config.service';
 
 /**
  * Convert a date string ("YYYY-MM-DD" or ISO) to a Date object.
@@ -222,6 +223,9 @@ export class SemesterService {
     });
 
     const newPhase = SemesterGuard.calculateCurrentPhase(updated);
+
+    // Auto-sync all department configs with the new global timeline
+    await deptSemesterConfigService.syncDepartmentDefenseDates(semesterId, userId);
 
     // Create audit log
     await AuditLogger.log({

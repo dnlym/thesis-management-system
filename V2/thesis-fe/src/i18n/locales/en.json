@@ -97,7 +97,9 @@
   },
   "roles": {
     "STUDENT": "Student",
+    "LECTURER": "Lecturer",
     "SUPERVISOR": "Supervisor",
+    "COORDINATOR": "Coordinator",
     "HEAD": "Department Head",
     "REVIEWER": "Reviewer",
     "COMMITTEE_CHAIR": "Committee Chair",
@@ -173,7 +175,7 @@
       "PENDING_APPROVAL": "Pending Approval",
       "APPROVED": "Approved",
       "REJECTED": "Rejected",
-      "REQUIRE_EDIT": "Revision Required",
+      "REQUIRES_REVISION": "Revision Required",
       "REGISTERED": "Registered",
       "UNDER_REVIEW": "Under Review",
       "WAITING_FOR_DEFENSE_ASSIGNMENT": "Waiting for Defense Assignment",

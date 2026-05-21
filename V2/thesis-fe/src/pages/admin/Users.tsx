@@ -73,6 +73,7 @@ const Users = () => {
       STUDENT: { color: 'blue', text: t('roles.STUDENT') },
       LECTURER: { color: 'green', text: t('roles.LECTURER') },
       SUPERVISOR: { color: 'green', text: t('roles.SUPERVISOR') },
+      COORDINATOR: { color: 'blue', text: t('roles.COORDINATOR') },
       HEAD: { color: 'purple', text: t('roles.HEAD') },
       REVIEWER: { color: 'cyan', text: t('roles.REVIEWER') },
       COMMITTEE_CHAIR: { color: 'orange', text: t('roles.COMMITTEE_CHAIR') },
@@ -123,6 +124,7 @@ const Users = () => {
       filters: [
         { text: t('roles.STUDENT'), value: 'STUDENT' },
         { text: t('roles.LECTURER'), value: 'LECTURER' },
+        { text: t('roles.COORDINATOR'), value: 'COORDINATOR' },
         { text: t('roles.HEAD'), value: 'HEAD' },
         { text: t('roles.ADMIN'), value: 'ADMIN' },
       ],
@@ -194,8 +196,15 @@ const Users = () => {
     Modal.confirm({
       title: t('users.deleteConfirmTitle'),
       content: t('users.deleteConfirmContent'),
-      onOk() {
-        notify.success(t('users.deleteSuccess'));
+      onOk: async () => {
+        try {
+          await UsersApi.delete(userId);
+          notify.success(t('users.deleteSuccess'));
+          queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        } catch (error: any) {
+          const errorMsg = error.response?.data?.error || error.message || 'Lỗi khi xóa người dùng';
+          notify.error(errorMsg);
+        }
       },
     });
   };
@@ -321,6 +330,7 @@ const Users = () => {
               <Select placeholder={t('users.selectRole')}>
                 <Select.Option value="STUDENT">{t('roles.STUDENT')}</Select.Option>
                 <Select.Option value="LECTURER">{t('roles.LECTURER')}</Select.Option>
+                <Select.Option value="COORDINATOR">{t('roles.COORDINATOR')}</Select.Option>
                 <Select.Option value="HEAD">{t('roles.HEAD')}</Select.Option>
                 <Select.Option value="ADMIN">{t('roles.ADMIN')}</Select.Option>
               </Select>

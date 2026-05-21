@@ -1601,21 +1601,32 @@ export class TopicService {
     }
 
     const statuses = [
+      TopicStatus.DRAFT,
       TopicStatus.PENDING_APPROVAL,
       TopicStatus.REQUIRES_REVISION,
       TopicStatus.APPROVED,
-      TopicStatus.REJECTED
+      TopicStatus.REJECTED,
+      TopicStatus.REGISTERED,
+      TopicStatus.COMPLETED,
+      TopicStatus.FINALIZED
     ];
 
     const stats: Record<string, number> = {};
 
     // Use Promise.all to count all statuses in parallel
     await Promise.all(statuses.map(async (status) => {
+      let currentWhere: any = {
+        ...baseWhere,
+        status: status
+      };
+
+      // Ensure HEAD/ADMIN only count their own drafts
+      if (status === TopicStatus.DRAFT && user.role !== UserRole.LECTURER) {
+        currentWhere.supervisor_id = userId;
+      }
+
       const count = await prisma.topic.count({
-        where: {
-          ...baseWhere,
-          status: status
-        }
+        where: currentWhere
       });
       stats[status] = count;
     }));

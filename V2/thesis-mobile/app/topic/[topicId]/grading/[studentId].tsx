@@ -2,12 +2,12 @@ import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     TextInput, StyleSheet, Alert, ActivityIndicator,
-    Platform, StatusBar, Pressable
+    Platform, StatusBar, Pressable, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChevronLeft, GraduationCap, MapPin, Users, User, ChevronRight,
-    Save, CheckCircle, ClipboardCheck, FileText, Info, Award
+    Save, CheckCircle, ClipboardCheck, FileText, Info, Award, AlertCircle
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OfflineStorage } from '@/api/offline';
@@ -80,8 +80,10 @@ export default function GradingScreen() {
     const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
     const [isRestoring, setIsRestoring] = React.useState(true);
     const [submitted, setSubmitted] = React.useState(false);
-    const [dbGrades, setDbGrades] = React.useState<any[]>([]);
     const [gradeHistory, setGradeHistory] = React.useState<any[]>([]);
+    const [isRequestMode, setIsRequestMode] = React.useState(false);
+    const [requestModalVisible, setRequestModalVisible] = React.useState(false);
+    const [requestReason, setRequestReason] = React.useState('');
     const inputRefs = React.useRef<Record<string, TextInput | null>>({});
 
     // Restoration Logic
@@ -99,7 +101,6 @@ export default function GradingScreen() {
                 if (myGrades) {
                     setGradeHistory(myGrades.gradeHistory || []);
                     if (myGrades.students && myGrades.students.length > 0) {
-                        setDbGrades(myGrades.students);
                         let anySubmitted = false;
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED') {
@@ -140,7 +141,7 @@ export default function GradingScreen() {
             } catch (err) { console.error(err); } finally { setIsRestoring(false); }
         };
         if (topic && !isLoadingTopic) restoreAndCheck();
-    }, [topic, isLoadingTopic, raterRole]);
+    }, [topic, isLoadingTopic, raterRole, user, topicId, groupId, studentId, students]);
 
     const isDirty = React.useMemo(() => {
         const currentId = students[idx]?.id;
@@ -197,6 +198,8 @@ export default function GradingScreen() {
     }
 
     const currentStudent = students[idx];
+    const isMidtermFailed = (currentStudent as any)?.midterm_status === 'FAIL' || (currentStudent as any)?.midtermStatus === 'FAIL' || (currentStudent as any)?.status === 'FAILED';
+    const canEditStudent = (canGrade || isRequestMode) && !isMidtermFailed;
     const scores = allScores[currentStudent?.id] || {};
     const comment = allComments[currentStudent?.id] || '';
     const isLast = idx === students.length - 1;
@@ -206,8 +209,8 @@ export default function GradingScreen() {
     );
 
     const handleScore = (cId: string, val: string, max: number = 10) => {
-        if (!canGrade) {
-            console.log('[DEBUG] Grading locked:', disableReason);
+        if (!canEditStudent) {
+            console.log('[DEBUG] Grading locked');
             return;
         }
         const normalized = val.replace(',', '.').replace(/[^0-9.]/g, '');
@@ -217,12 +220,17 @@ export default function GradingScreen() {
         setAllScores(prev => ({ ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } }));
     };
 
-    const handleNext = async () => {
+    const handleNext = async (requesting = false) => {
         const currentStudentId = students[idx].id;
         const currentScores = allScores[currentStudentId] || {};
-        const incomplete = criteria.some((c: any) => !currentScores[c.id]);
+        const incomplete = !isMidtermFailed && criteria.some((c: any) => !currentScores[c.id]);
         if (incomplete) { Alert.alert('Thiếu điểm', 'Vui lòng nhập đủ điểm trước khi lưu.'); return; }
         
+        if (requesting && !requestReason.trim()) {
+            Alert.alert('Lỗi', 'Vui lòng nhập lý do giải trình');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             const submissionData = {
@@ -230,16 +238,27 @@ export default function GradingScreen() {
                 group_id: groupId as string || undefined,
                 student_id: currentStudentId,
                 rater_role: raterRole,
-                scores: criteria.map((c: any) => ({
+                scores: isMidtermFailed ? [] : criteria.map((c: any) => ({
                     criterion_id: c.id,
                     score: parseFloat(currentScores[c.id] || '0'),
                     comment: ''
                 })),
-                general_comment: allComments[currentStudentId] || ''
+                general_comment: allComments[currentStudentId] || '',
+                reason: requesting ? requestReason : undefined
             };
 
             await GradingApi.submitGrade(submissionData as any);
             
+            if (requesting) {
+                Alert.alert('Thành công', 'Đã gửi yêu cầu sửa điểm tới Trưởng bộ môn.');
+                setRequestModalVisible(false);
+                setRequestReason('');
+                setIsRequestMode(false);
+                setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
+                setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
+                return;
+            }
+
             setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
             setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
             setSubmitted(true);
@@ -281,12 +300,22 @@ export default function GradingScreen() {
                 <View style={styles.roleBadge}><Text style={styles.roleBadgeText}>{roleLabel}</Text></View>
             </View>
 
-            {!canGrade && !submitted && (
+            {!canGrade && !submitted && !isRequestMode && (
                 <View style={styles.phaseWarning}>
                     <Info size={16} color="#92400e" />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={styles.phaseWarningTitle}>Không trong giai đoạn chấm điểm</Text>
                         <Text style={styles.phaseWarningText}>{disableReason || 'Bạn hiện không thể nhập điểm.'}</Text>
+                    </View>
+                </View>
+            )}
+
+            {isMidtermFailed && (
+                <View style={[styles.phaseWarning, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+                    <AlertCircle size={16} color="#dc2626" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={[styles.phaseWarningTitle, { color: '#dc2626' }]}>Rớt giữa kỳ</Text>
+                        <Text style={[styles.phaseWarningText, { color: '#991b1b' }]}>Sinh viên này không đủ điều kiện chấm bảo vệ cuối kỳ.</Text>
                     </View>
                 </View>
             )}
@@ -391,6 +420,11 @@ export default function GradingScreen() {
                                     <View style={styles.criterionTitleRow}>
                                         <ClipboardCheck size={16} color={BLUE} style={{ marginRight: 8 }} />
                                         <Text style={styles.criterionName} numberOfLines={2}>{c.name}</Text>
+                                        {gradeHistory.some((h: any) => h.studentName === currentStudent?.full_name && h.criterionName === c.name) && (
+                                            <View style={{ marginLeft: 6, backgroundColor: '#fef3c7', padding: 4, borderRadius: 4 }}>
+                                                <Info size={12} color="#d97706" />
+                                            </View>
+                                        )}
                                     </View>
                                 </View>
                                 <Pressable 
@@ -401,12 +435,12 @@ export default function GradingScreen() {
                                 >
                                     <TextInput
                                         ref={el => { inputRefs.current[c.id] = el; }}
-                                        style={[styles.input, !canGrade && styles.disabledInput, scores[c.id] ? styles.inputFilled : {}]}
+                                        style={[styles.input, !canEditStudent && styles.disabledInput, scores[c.id] ? styles.inputFilled : {}]}
                                         keyboardType="decimal-pad"
                                         value={scores[c.id] || ''}
                                         onChangeText={v => handleScore(c.id, v, c.max_score)}
                                         placeholder="0.0"
-                                        editable={canGrade}
+                                        editable={canEditStudent}
                                         selectTextOnFocus
                                     />
                                     <View style={styles.maxBadge}>
@@ -424,15 +458,15 @@ export default function GradingScreen() {
                         <Text style={styles.commentLabel}>NHẬN XÉT CỦA GIẢNG VIÊN</Text>
                     </View>
                     <TextInput
-                        style={[styles.commentInput, (submitted || !canGrade) && styles.disabledInput]}
+                        style={[styles.commentInput, (submitted || !canEditStudent) && styles.disabledInput]}
                         multiline
                         placeholder="Nhập nhận xét chi tiết về phần thể hiện của sinh viên..."
                         value={comment}
                         onChangeText={v => {
-                            if (!canGrade) return;
+                            if (!canEditStudent) return;
                             setAllComments(prev => ({ ...prev, [currentStudent.id]: v }));
                         }}
-                        editable={canGrade}
+                        editable={canEditStudent}
                         textAlignVertical="top"
                     />
                 </View>
@@ -465,27 +499,86 @@ export default function GradingScreen() {
             </ScrollView>
 
             <View style={styles.footer}>
-                <TouchableOpacity 
-                    style={[styles.draftBtn, !canGrade && { opacity: 0.5 }]} 
-                    onPress={handleSaveDraft}
-                    disabled={!canGrade}
-                >
-                    <Save size={18} color={BLUE} />
-                    <Text style={styles.draftBtnText}>Lưu bản nháp</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                    style={[styles.submitBtn, (!canGrade || !isDirty || isSubmitting) && styles.disabledSubmitBtn]} 
-                    onPress={handleNext}
-                    disabled={!canGrade || !isDirty || isSubmitting}
-                >
-                    {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : (
-                        <>
-                            <Text style={styles.submitBtnText}>{isLast ? 'Lưu điểm & Kết thúc' : 'Lưu & Tiếp tục'}</Text>
-                            <ChevronRight size={18} color="#fff" />
-                        </>
-                    )}
-                </TouchableOpacity>
+                {!isRequestMode ? (
+                    <>
+                        <TouchableOpacity 
+                            style={[styles.draftBtn, !canEditStudent && { opacity: 0.5 }]} 
+                            onPress={handleSaveDraft}
+                            disabled={!canEditStudent}
+                        >
+                            <Save size={18} color={BLUE} />
+                            <Text style={styles.draftBtnText}>Lưu bản nháp</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, (!canEditStudent || !isDirty || isSubmitting) && styles.disabledSubmitBtn]} 
+                            onPress={() => handleNext(false)}
+                            disabled={!canEditStudent || !isDirty || isSubmitting}
+                        >
+                            {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : (
+                                <>
+                                    <Text style={styles.submitBtnText}>{isLast ? 'Lưu điểm & Kết thúc' : 'Lưu & Tiếp tục'}</Text>
+                                    <ChevronRight size={18} color="#fff" />
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </>
+                ) : (
+                    <>
+                        <TouchableOpacity 
+                            style={styles.draftBtn} 
+                            onPress={() => setIsRequestMode(false)}
+                            disabled={isSubmitting}
+                        >
+                            <Text style={styles.draftBtnText}>Hủy</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, { backgroundColor: '#ea580c' }]} 
+                            onPress={() => setRequestModalVisible(true)}
+                            disabled={isSubmitting}
+                        >
+                            <Text style={styles.submitBtnText}>Gửi yêu cầu sửa</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
             </View>
+
+            {/* Nếu bị khóa do hết hạn, có thể hiển thị nút xin phép */}
+            {!canGrade && !isRequestMode && !isMidtermFailed && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: Platform.OS === 'ios' ? 24 : 16, backgroundColor: '#fff' }}>
+                    <TouchableOpacity 
+                        style={{ padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#ea580c', alignItems: 'center', backgroundColor: '#fff7ed' }}
+                        onPress={() => setIsRequestMode(true)}
+                    >
+                        <Text style={{ color: '#ea580c', fontWeight: '700' }}>Yêu cầu sửa điểm</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            <Modal visible={requestModalVisible} transparent animationType="fade">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+                    <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 20 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Lý do sửa điểm</Text>
+                        <TextInput 
+                            style={{ borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, minHeight: 80, textAlignVertical: 'top' }}
+                            placeholder="Nhập lý do chi tiết..."
+                            multiline
+                            value={requestReason}
+                            onChangeText={setRequestReason}
+                        />
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 12 }}>
+                            <TouchableOpacity onPress={() => setRequestModalVisible(false)} style={{ padding: 10 }}>
+                                <Text style={{ color: '#64748b', fontWeight: '600' }}>Hủy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => handleNext(true)} 
+                                style={{ backgroundColor: BLUE, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '700' }}>Gửi yêu cầu</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

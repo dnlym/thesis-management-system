@@ -122,16 +122,12 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { 
             key: '/reviewer-assignment', 
             label: 'Phân công phản biện', 
-            icon: <SafetyCertificateOutlined />,
-            disabled: !isReviewPhase,
-            disabledReason: 'Tính năng chỉ khả dụng từ giai đoạn Phản biện (sau khi có kết quả giữa kỳ).'
+            icon: <SafetyCertificateOutlined />
           },
           { 
             key: '/committee-assignment', 
             label: 'Phân công hội đồng', 
-            icon: <CrownOutlined />,
-            disabled: !isDefensePhase,
-            disabledReason: 'Tính năng chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ.'
+            icon: <CrownOutlined />
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
@@ -160,16 +156,12 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { 
             key: '/reviewer-assignment', 
             label: 'Phân công phản biện', 
-            icon: <SafetyCertificateOutlined />,
-            disabled: !isReviewPhase,
-            disabledReason: 'Tính năng chỉ khả dụng từ giai đoạn Phản biện (sau khi có kết quả giữa kỳ).'
+            icon: <SafetyCertificateOutlined />
           },
           { 
             key: '/committee-assignment', 
             label: 'Phân công hội đồng', 
-            icon: <CrownOutlined />,
-            disabled: !isDefensePhase,
-            disabledReason: 'Tính năng chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ.'
+            icon: <CrownOutlined />
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },

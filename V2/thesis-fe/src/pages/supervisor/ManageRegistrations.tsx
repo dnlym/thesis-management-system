@@ -136,18 +136,18 @@ const SupervisorManageRegistrations = () => {
             title: 'Đề tài',
             key: 'topic',
             render: (_: any, record: any) => (
-                <div 
-                    className="cursor-pointer group py-1" 
+                <div
+                    className="cursor-pointer group py-1"
                     onClick={() => viewDetail(record)}
                 >
-                   <div className="font-bold text-blue-600 group-hover:text-blue-800 group-hover:underline transition-all leading-snug text-[14px]">
-                       {record.topic?.title || 'N/A'}
-                   </div>
-                   <div className="mt-2 flex items-center gap-2">
-                       <Tag className="m-0 bg-indigo-50 text-indigo-600 border-indigo-100 font-bold px-2.5 py-0.5 text-[11px] rounded-md">
-                           GVHD: {record.topic?.supervisor?.full_name}
-                       </Tag>
-                   </div>
+                    <div className="font-bold text-blue-600 group-hover:text-blue-800 group-hover:underline transition-all leading-snug text-[14px]">
+                        {record.topic?.title || 'N/A'}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                        <Tag className="m-0 bg-indigo-50 text-indigo-600 border-indigo-100 font-bold px-2.5 py-0.5 text-[11px] rounded-md">
+                            GVHD: {record.topic?.supervisor?.full_name}
+                        </Tag>
+                    </div>
                 </div>
             ),
         },
@@ -161,11 +161,10 @@ const SupervisorManageRegistrations = () => {
                         record.allStudents.map((student: any) => {
                             const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
                             const cardEl = (
-                                <div key={student.id} className={`flex items-center gap-2.5 p-2 rounded-xl border shadow-sm transition-all ${
-                                    isFailed 
-                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200' 
+                                <div key={student.id} className={`flex items-center gap-2.5 p-2 rounded-xl border shadow-sm transition-all ${isFailed
+                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200'
                                         : 'bg-slate-50 border-slate-100'
-                                }`}>
+                                    }`}>
                                     <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-200'} />
                                     <div className="flex flex-col">
                                         <span className="font-bold text-slate-700 text-[13px] leading-none">
@@ -297,13 +296,13 @@ const SupervisorManageRegistrations = () => {
                 {/* Filter & Search Toolbar */}
                 <Card className="page-toolbar-card !mb-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <Tabs 
-                            activeKey={activeTab} 
+                        <Tabs
+                            activeKey={activeTab}
                             onChange={setActiveTab}
                             className="sys-tabs sys-tabs-capsule !mb-0"
                             items={[
-                                { 
-                                    key: 'ALL', 
+                                {
+                                    key: 'ALL',
                                     label: (
                                         <div className="flex items-center gap-2">
                                             <span>Tất cả</span>
@@ -311,8 +310,8 @@ const SupervisorManageRegistrations = () => {
                                         </div>
                                     )
                                 },
-                                { 
-                                    key: 'PENDING', 
+                                {
+                                    key: 'PENDING',
                                     label: (
                                         <div className="flex items-center gap-2">
                                             <span>Chờ xử lý</span>
@@ -320,8 +319,8 @@ const SupervisorManageRegistrations = () => {
                                         </div>
                                     )
                                 },
-                                { 
-                                    key: 'CONFIRMED', 
+                                {
+                                    key: 'CONFIRMED',
                                     label: (
                                         <div className="flex items-center gap-2">
                                             <span>Đã xác nhận</span>
@@ -329,8 +328,8 @@ const SupervisorManageRegistrations = () => {
                                         </div>
                                     )
                                 },
-                                { 
-                                    key: 'REJECTED', 
+                                {
+                                    key: 'REJECTED',
                                     label: (
                                         <div className="flex items-center gap-2">
                                             <span>Đã từ chối</span>
@@ -426,7 +425,7 @@ const SupervisorManageRegistrations = () => {
                             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 transition-all">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tên đề tài</div>
-                                    <button 
+                                    <button
                                         onClick={() => setTopicExpanded(!topicExpanded)}
                                         className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 border-none bg-transparent cursor-pointer p-0 transition-all"
                                     >
@@ -434,7 +433,7 @@ const SupervisorManageRegistrations = () => {
                                         {topicExpanded ? <UpOutlined /> : <DownOutlined />}
                                     </button>
                                 </div>
-                                <div 
+                                <div
                                     className="text-[14px] font-bold text-slate-800 leading-snug cursor-pointer hover:text-blue-600 transition-colors"
                                     onClick={() => setTopicExpanded(!topicExpanded)}
                                 >
@@ -445,21 +444,21 @@ const SupervisorManageRegistrations = () => {
                                     <div className="mt-3.5 pt-3.5 border-t border-slate-200 space-y-3.5 animate-in fade-in duration-300">
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mô tả đề tài</div>
-                                            <div 
+                                            <div
                                                 className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
                                                 dangerouslySetInnerHTML={{ __html: (selectedRegistration as any).topic?.description || 'Không có mô tả' }}
                                             />
                                         </div>
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mục tiêu đề tài</div>
-                                            <div 
+                                            <div
                                                 className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
                                                 dangerouslySetInnerHTML={{ __html: (selectedRegistration as any).topic?.objectives || 'Không có mục tiêu' }}
                                             />
                                         </div>
                                         <div>
                                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Yêu cầu đối với sinh viên</div>
-                                            <div 
+                                            <div
                                                 className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-wrap shadow-2xs"
                                                 dangerouslySetInnerHTML={{ __html: (selectedRegistration as any).topic?.requirements || 'Không có yêu cầu' }}
                                             />
@@ -492,11 +491,10 @@ const SupervisorManageRegistrations = () => {
                                         (selectedRegistration as any).allStudents.map((student: any) => {
                                             const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
                                             const cardEl = (
-                                                <div key={student.id} className={`flex items-center justify-between p-2.5 rounded-lg border shadow-sm transition-all ${
-                                                    isFailed 
-                                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200' 
+                                                <div key={student.id} className={`flex items-center justify-between p-2.5 rounded-lg border shadow-sm transition-all ${isFailed
+                                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200'
                                                         : 'bg-white border-slate-100'
-                                                }`}>
+                                                    }`}>
                                                     <div className="flex items-center gap-2.5">
                                                         <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-100'} />
                                                         <div className="flex flex-col">

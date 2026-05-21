@@ -745,53 +745,7 @@ export class RegistrationService {
       orderBy: { registered_at: 'desc' },
     });
 
-    // Bổ sung các đề tài đã duyệt (hoặc đang active) nhưng chưa có sinh viên đăng ký
-    if (user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR || user.role === UserRole.HEAD) {
-      const topicWhere: any = {
-        supervisor_id: userId,
-        status: { in: [TopicStatus.APPROVED, TopicStatus.REGISTERED, TopicStatus.COMPLETED, TopicStatus.FINALIZED] }
-      };
-      if (filters?.semesterId) {
-        topicWhere.semester_id = filters.semesterId;
-      } else {
-        const activeSem = await semesterService.getActiveSemester();
-        if (activeSem) {
-          topicWhere.semester_id = activeSem.id;
-        }
-      }
-      if (filters?.topicId) {
-        topicWhere.id = filters.topicId;
-      }
 
-      const myTopics = await prisma.topic.findMany({
-        where: topicWhere,
-        include: {
-          supervisor: {
-            select: { id: true, full_name: true, email: true }
-          },
-          semester: true,
-        }
-      });
-
-      const unassignedTopics = myTopics.filter(t => !registrations.some((r: any) => r.topic_id === t.id));
-      for (const t of unassignedTopics) {
-        registrations.push({
-          id: `dummy-${t.id}`,
-          topic_id: t.id,
-          student_id: null,
-          group_id: null,
-          status: 'NO_REGISTRATION' as any,
-          registered_at: t.created_at || new Date(),
-          confirmed_at: null,
-          rejection_reason: null,
-          semester_id: t.semester_id,
-          topic: t,
-          student: null,
-          group: null,
-          semester: t.semester,
-        } as any);
-      }
-    }
 
     // [PHASE ENFORCEMENT] Add calculated_phase to each semester for all roles
     registrations.forEach((reg: any) => {

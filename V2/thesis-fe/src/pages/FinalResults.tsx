@@ -8,6 +8,7 @@ import GlobalSearch from '@/components/GlobalSearch';
 import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 
 const { Title, Text } = Typography;
 
@@ -136,16 +137,26 @@ const FinalResults = () => {
     const debouncedSearch = useDebounce(searchText, 300);
     const [councilFilter, setCouncilFilter] = useState<'ALL' | 'ORAL' | 'POSTER'>('ALL');
 
-    const { data: results, isLoading } = useQuery({
-        queryKey: ['final-results'],
-        queryFn: () => TopicsApi.getAll({ status: ['REGISTERED', 'COMPLETED', 'FINALIZED'] }),
+    const { data: activeSemester, isLoading: isSemesterLoading } = useActiveSemester();
+
+    const { data: results, isLoading: isTopicsLoading } = useQuery({
+        queryKey: ['final-results', activeSemester?.id],
+        queryFn: () => TopicsApi.getAll({ 
+            status: ['REGISTERED', 'COMPLETED', 'FINALIZED'],
+            semesterId: activeSemester?.id,
+            size: 1000 
+        }),
+        enabled: !!activeSemester?.id,
     });
 
     const processedData = useMemo(() => {
         if (!results?.topics) return [];
-        let filtered = [...results.topics];
+        let filtered = results.topics.filter((item: any) => item.current_students > 0);
         if (councilFilter !== 'ALL') {
-            filtered = filtered.filter(item => {
+            filtered = filtered.filter((item: any) => {
+                // Nếu chưa được xét duyệt bảo vệ (chưa phân loại chính thức) thì không cho vào tab ORAL/POSTER
+                if (item.is_eligible_for_defense !== true && !item.committee) return false;
+                
                 // Ưu tiên lấy type từ Hội đồng thực tế, nếu không có mới dùng defense_type của đề tài
                 const effectiveType = item.committee?.type || item.defense_type;
                 return effectiveType === councilFilter;
@@ -171,6 +182,16 @@ const FinalResults = () => {
 
         return filtered;
     }, [results, councilFilter, debouncedSearch]);
+
+    const counts = useMemo(() => {
+        if (!results?.topics) return { ALL: 0, ORAL: 0, POSTER: 0 };
+        const validTopics = results.topics.filter((item: any) => item.current_students > 0);
+        return {
+            ALL: validTopics.length,
+            ORAL: validTopics.filter((item: any) => (item.is_eligible_for_defense === true || item.committee) && (item.committee?.type || item.defense_type) === 'ORAL').length,
+            POSTER: validTopics.filter((item: any) => (item.is_eligible_for_defense === true || item.committee) && (item.committee?.type || item.defense_type) === 'POSTER').length,
+        };
+    }, [results]);
 
     const exportMenuItems = [
         {
@@ -450,9 +471,9 @@ const FinalResults = () => {
                             onChange={(key) => setCouncilFilter(key as any)}
                             className="sys-tabs sys-tabs-capsule !mb-0 w-full md:w-auto"
                             items={[
-                                { key: 'ALL', label: 'Tất cả hội đồng' },
-                                { key: 'ORAL', label: 'Hội đồng Oral' },
-                                { key: 'POSTER', label: 'Hội đồng Poster' },
+                                { key: 'ALL', label: `Tất cả (${counts.ALL})` },
+                                { key: 'ORAL', label: `Hội đồng Oral (${counts.ORAL})` },
+                                { key: 'POSTER', label: `Hội đồng Poster (${counts.POSTER})` },
                             ]}
                         />
 
@@ -471,14 +492,15 @@ const FinalResults = () => {
                         dataSource={processedData}
                         columns={columns}
                         rowKey="id"
-                        loading={isLoading}
+                        loading={isTopicsLoading || isSemesterLoading}
                         size="middle"
                         pagination={{
                             pageSize: 10,
                             className: 'px-6 py-4 !m-0 border-t border-slate-100',
-                            showSizeChanger: false,
-                            showTotal: (total) => (
-                                <span className="text-slate-400 text-sm">Tổng {total} đề tài</span>
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) => (
+                                <span className="text-slate-500 font-medium">{`${range[0]}-${range[1]} của ${total} đề tài`}</span>
                             ),
                         }}
                         className="sys-table"

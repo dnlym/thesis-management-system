@@ -403,6 +403,7 @@ export interface TopicForm {
 
 export interface GradeSubmissionForm {
   topic_id: string;
+  group_id?: string;
   student_id?: string;
   rater_role: RaterRole;
   reviewer_order?: number | null;

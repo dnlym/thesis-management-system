@@ -1,14 +1,13 @@
 import React from 'react';
 import {
     View, Text, TouchableOpacity, ScrollView,
-    StyleSheet, StatusBar
+    StyleSheet, StatusBar, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Settings, Info, User, ChevronRight } from 'lucide-react-native';
-import { ActivityIndicator } from 'react-native';
 
 const BLUE = '#2563eb';
 

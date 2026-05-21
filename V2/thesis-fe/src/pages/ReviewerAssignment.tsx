@@ -464,6 +464,16 @@ const ReviewerAssignment = () => {
 
                 {/* Filter Tabs */}
                 <Card className="page-toolbar-card !mb-4">
+                    {/* Phase Check Alert */}
+                    {activeSemester && !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '') && (
+                        <Alert
+                            message="Chưa đến hạn phân công phản biện"
+                            description="Tính năng phân công chỉ khả dụng từ giai đoạn Phản biện (sau khi có kết quả giữa kỳ)."
+                            type="warning"
+                            showIcon
+                            className="mb-4 rounded-xl border-orange-200 bg-orange-50/50 text-orange-800"
+                        />
+                    )}
                     <Tabs 
                         activeKey={filterStatus} 
                         onChange={setFilterStatus}
@@ -629,6 +639,7 @@ const ReviewerAssignment = () => {
                                                                 size="small" 
                                                                 className="text-[10px] h-6 px-1.5 flex-shrink-0"
                                                                 loading={submittingGroupId === selectedTopic.groupId}
+                                                                disabled={!activeSemester || !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')}
                                                                 onClick={async () => {
                                                                     try {
                                                                         setSubmittingGroupId(selectedTopic.groupId);
@@ -689,6 +700,7 @@ const ReviewerAssignment = () => {
                                                                 size="small" 
                                                                 className="text-[10px] h-6 px-1.5 flex-shrink-0"
                                                                 loading={submittingGroupId === selectedTopic.groupId}
+                                                                disabled={!activeSemester || !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')}
                                                                 onClick={async () => {
                                                                     try {
                                                                         setSubmittingGroupId(selectedTopic.groupId);
@@ -896,6 +908,7 @@ const ReviewerAssignment = () => {
                                                 onClick={() => handleAssignBoth(selectedTopic)}
                                                 loading={submittingGroupId === selectedTopic.groupId}
                                                 disabled={(() => {
+                                                    if (!activeSemester || !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')) return true;
                                                     const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
                                                     return !sel.reviewer1 && !sel.reviewer2 && selectedTopic.assignments.length === 0;
                                                 })()}

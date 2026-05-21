@@ -97,10 +97,10 @@ export const TopicsApi = {
 
     /**
      * Require edit (HEAD only)
-     * PUT /topics/:id/require-edit
+     * PATCH /topics/:id/revision
      */
     async requireEdit(id: string, notes: string) {
-        const res = await api.put<ApiResponse<Topic>>(`/topics/${id}/require-edit`, { notes });
+        const res = await api.patch<ApiResponse<Topic>>(`/topics/${id}/revision`, { notes });
         return res.data.data;
     },
 

@@ -16,6 +16,7 @@ interface TopicForCommittee {
     supervisor: { id: string; full_name: string; email: string };
     registrations: any[];
     hasCommittee: boolean;
+    status: string;
     avgReviewerScore: number | null;
     defense_type?: string | null;
     currentSchedule?: {
@@ -80,8 +81,8 @@ const CommitteeAssignment = () => {
         setCommitteeId(topic.currentSchedule?.committee_id || null);
         if (topic.currentSchedule?.start_time && topic.currentSchedule?.end_time) {
             setTimeRange([
-                dayjs(`2000-01-01 ${topic.currentSchedule.start_time}`),
-                dayjs(`2000-01-01 ${topic.currentSchedule.end_time}`)
+                dayjs(topic.currentSchedule.start_time),
+                dayjs(topic.currentSchedule.end_time)
             ]);
         } else {
             setTimeRange([null, null]);
@@ -91,7 +92,7 @@ const CommitteeAssignment = () => {
 
     const handleAssign = () => {
         const effectiveDefenseDate = deptDefenseDate || activeSemester?.defense_start;
-        
+
         if (!selectedTopic || !committeeId || !effectiveDefenseDate || !timeRange[0] || !timeRange[1]) {
             if (!effectiveDefenseDate) {
                 notify.error(t('committeeAssignment.setDefenseDateFirst', 'Vui lòng thiết lập ngày bảo vệ học kỳ trước'));
@@ -206,16 +207,24 @@ const CommitteeAssignment = () => {
         {
             title: t('common.actions'),
             key: 'action',
-            render: (_: any, record: TopicForCommittee) => (
-                <Button
-                    type="primary"
-                    icon={<CrownOutlined />}
-                    ghost
-                    onClick={() => handleOpenAssignModal(record)}
-                >
-                    {record.hasCommittee ? t('common.edit') : t('committeeAssignment.assignCommittee')}
-                </Button>
-            ),
+            render: (_: any, record: TopicForCommittee) => {
+                // Nếu đề tài đã chấm xong (COMPLETED hoặc FINALIZED), ẩn luôn chức năng
+                if (record.status === 'COMPLETED' || record.status === 'FINALIZED') {
+                    return null;
+                }
+
+                return (
+                    <Button
+                        type="primary"
+                        icon={<CrownOutlined />}
+                        ghost
+                        disabled={!activeSemester || !['DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')}
+                        onClick={() => handleOpenAssignModal(record)}
+                    >
+                        {record.hasCommittee || record.currentSchedule ? t('common.edit') : 'Phân công'}
+                    </Button>
+                );
+            },
         },
     ];
 
@@ -225,153 +234,164 @@ const CommitteeAssignment = () => {
     return (
         <div className="page-container">
             <div className="page-inner">
-            {/* Header */}
-            <Card className="page-header-card">
-                <div className="flex items-center gap-3">
-                    <div className="page-header-icon"><TeamOutlined className="text-base" /></div>
-                    <div>
-                        <div className="page-header-title">{t('committeeAssignment.title')}</div>
-                        <div className="page-header-subtitle">{t('committeeAssignment.description')}</div>
-                    </div>
-                </div>
-            </Card>
-
-            <Card className="page-card-flush">
-                <Table
-                    dataSource={topics || []}
-                    columns={columns}
-                    rowKey="id"
-                    size="middle"
-                    className="sys-table"
-                    pagination={{ 
-                        pageSize: pageSize,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        onShowSizeChange: (_, size) => setPageSize(size)
-                    }}
-                />
-            </Card>
-
-            <Modal
-                title={<div className="text-lg font-bold text-slate-800">{t('committeeAssignment.assignCommittee', 'Gán hội đồng')}</div>}
-                open={assignModalVisible}
-                onOk={handleAssign}
-                onCancel={() => setAssignModalVisible(false)}
-                confirmLoading={assignMutation.isPending}
-                width={700}
-                centered
-                className="custom-modal"
-                footer={[
-                    <Button key="cancel" onClick={() => setAssignModalVisible(false)} className="rounded-md border-slate-200">
-                        {t('common.cancel', 'Hủy')}
-                    </Button>,
-                    <Button key="submit" type="primary" onClick={handleAssign} loading={assignMutation.isPending} className="rounded-md bg-blue-600 hover:bg-blue-700 px-8">
-                        {t('common.save', 'Xác nhận')}
-                    </Button>
-                ]}
-            >
-                {selectedTopic && (
-                    <div className="py-2 space-y-6">
-                        {/* Topic Summary Card */}
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <div className="flex items-start gap-3">
-                                <div className="bg-blue-600 p-2 rounded-lg mt-1">
-                                    <CrownOutlined className="text-white text-base" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">{t('common.name', 'Tên đề tài')}</div>
-                                    <div className="text-base font-bold text-slate-800 leading-snug uppercase">{selectedTopic.title}</div>
-                                    <div className="mt-2 flex gap-4">
-                                        <Tag color="blue" className="m-0 border-none bg-blue-100 text-blue-700 font-mono text-[10px]">{selectedTopic.code}</Tag>
-                                        <div className="text-[11px] text-slate-500 italic">GVHD: <span className="font-semibold text-slate-700">{selectedTopic.supervisor?.full_name}</span></div>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Header */}
+                <Card className="page-header-card">
+                    <div className="flex items-center gap-3">
+                        <div className="page-header-icon"><TeamOutlined className="text-base" /></div>
+                        <div>
+                            <div className="page-header-title">{t('committeeAssignment.title')}</div>
+                            <div className="page-header-subtitle">{t('committeeAssignment.description')}</div>
                         </div>
+                    </div>
+                </Card>
 
-                        <div className="grid grid-cols-1 gap-5 px-1">
-                            {/* Committee Select */}
-                            <div>
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
-                                    <TeamOutlined className="text-blue-500" />
-                                    {t('committeeAssignment.selectCommittee', 'Chọn hội đồng')}
-                                </label>
-                                <Select
-                                    placeholder={t('committeeAssignment.selectPlaceholder', 'Tìm và chọn hội đồng...')}
-                                    style={{ width: '100%' }}
-                                    size="large"
-                                    value={committeeId}
-                                    onChange={setCommitteeId}
-                                    className="sys-select"
-                                    options={committees?.map(c => ({
-                                        value: c.id,
-                                        label: (
-                                            <div className="flex justify-between items-center w-full pr-2">
-                                                <span className="font-semibold text-slate-700">{c.name}</span>
-                                                {c.room_preference && (
-                                                    <Tag className="text-[10px] m-0 bg-slate-100 border-none text-slate-400">
-                                                        <EnvironmentOutlined /> {c.room_preference}
-                                                    </Tag>
-                                                )}
-                                            </div>
-                                        )
-                                    }))}
-                                />
-                            </div>
+                {/* Phase Check Alert */}
+                {activeSemester && !['DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '') && (
+                    <Alert
+                        message="Chưa đến hạn phân công hội đồng"
+                        description="Tính năng phân công chỉ khả dụng trong giai đoạn Bảo vệ cuối kỳ."
+                        type="warning"
+                        showIcon
+                        className="mb-4 rounded-xl border-orange-200 bg-orange-50/50 text-orange-800"
+                    />
+                )}
 
-                            {/* Date & Time Row */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
-                                        <CalendarOutlined className="text-blue-500" />
-                                        {t('committeeAssignment.defenseDate', 'Ngày bảo vệ')}
-                                    </label>
-                                    <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200 h-[50px] shadow-sm">
-                                        <div className="bg-blue-50 p-2 rounded-md">
-                                            <CalendarOutlined className="text-blue-600" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-slate-800">
-                                                {deptDefenseDate || activeSemester?.defense_start
-                                                    ? dayjs(deptDefenseDate || activeSemester?.defense_start).format('DD/MM/YYYY')
-                                                    : <span className="text-red-500">{t('committeeAssignment.dateNotSet', 'Chưa thiết lập')}</span>}
-                                            </span>
-                                            <span className={`text-[10px] font-medium ${deptDefenseDate ? 'text-green-600' : 'text-slate-400'}`}>
-                                                {deptDefenseDate 
-                                                    ? t('committeeAssignment.deptDate', 'Ngày của bộ môn') 
-                                                    : t('committeeAssignment.fixedDate', 'Ngày mặc định')}
-                                            </span>
+                <Card className="page-card-flush">
+                    <Table
+                        dataSource={topics || []}
+                        columns={columns}
+                        rowKey="id"
+                        size="middle"
+                        className="sys-table"
+                        pagination={{
+                            pageSize: pageSize,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            onShowSizeChange: (_, size) => setPageSize(size)
+                        }}
+                    />
+                </Card>
+
+                <Modal
+                    title={<div className="text-lg font-bold text-slate-800">{t('committeeAssignment.assignCommittee', 'Gán hội đồng')}</div>}
+                    open={assignModalVisible}
+                    onOk={handleAssign}
+                    onCancel={() => setAssignModalVisible(false)}
+                    confirmLoading={assignMutation.isPending}
+                    width={700}
+                    centered
+                    className="custom-modal"
+                    footer={[
+                        <Button key="cancel" onClick={() => setAssignModalVisible(false)} className="rounded-md border-slate-200">
+                            {t('common.cancel', 'Hủy')}
+                        </Button>,
+                        <Button key="submit" type="primary" onClick={handleAssign} loading={assignMutation.isPending} className="rounded-md bg-blue-600 hover:bg-blue-700 px-8">
+                            {t('common.save', 'Xác nhận')}
+                        </Button>
+                    ]}
+                >
+                    {selectedTopic && (
+                        <div className="py-2 space-y-6">
+                            {/* Topic Summary Card */}
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div className="flex items-start gap-3">
+                                    <div className="bg-blue-600 p-2 rounded-lg mt-1">
+                                        <CrownOutlined className="text-white text-base" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">{t('common.name', 'Tên đề tài')}</div>
+                                        <div className="text-base font-bold text-slate-800 leading-snug uppercase">{selectedTopic.title}</div>
+                                        <div className="mt-2 flex gap-4">
+                                            <Tag color="blue" className="m-0 border-none bg-blue-100 text-blue-700 font-mono text-[10px]">{selectedTopic.code}</Tag>
+                                            <div className="text-[11px] text-slate-500 italic">GVHD: <span className="font-semibold text-slate-700">{selectedTopic.supervisor?.full_name}</span></div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
+                            <div className="grid grid-cols-1 gap-5 px-1">
+                                {/* Committee Select */}
                                 <div>
                                     <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
-                                        <EnvironmentOutlined className="text-blue-500" />
-                                        {t('committeeAssignment.defenseTimeLabel', 'Giờ thực hiện')}
+                                        <TeamOutlined className="text-blue-500" />
+                                        {t('committeeAssignment.selectCommittee', 'Chọn hội đồng')}
                                     </label>
-                                    <TimePicker.RangePicker
-                                        style={{ width: '100%', height: '50px' }}
+                                    <Select
+                                        placeholder={t('committeeAssignment.selectPlaceholder', 'Tìm và chọn hội đồng...')}
+                                        style={{ width: '100%' }}
                                         size="large"
-                                        format="HH:mm"
-                                        value={timeRange}
-                                        onChange={setTimeRange}
-                                        className="rounded-lg shadow-sm"
+                                        value={committeeId}
+                                        onChange={setCommitteeId}
+                                        className="sys-select"
+                                        options={committees?.map(c => ({
+                                            value: c.id,
+                                            label: (
+                                                <div className="flex justify-between items-center w-full pr-2">
+                                                    <span className="font-semibold text-slate-700">{c.name}</span>
+                                                    {c.room_preference && (
+                                                        <Tag className="text-[10px] m-0 bg-slate-100 border-none text-slate-400">
+                                                            <EnvironmentOutlined /> {c.room_preference}
+                                                        </Tag>
+                                                    )}
+                                                </div>
+                                            )
+                                        }))}
                                     />
                                 </div>
+
+                                {/* Date & Time Row */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
+                                            <CalendarOutlined className="text-blue-500" />
+                                            {t('committeeAssignment.defenseDate', 'Ngày bảo vệ')}
+                                        </label>
+                                        <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200 h-[50px] shadow-sm">
+                                            <div className="bg-blue-50 p-2 rounded-md">
+                                                <CalendarOutlined className="text-blue-600" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-slate-800">
+                                                    {deptDefenseDate || activeSemester?.defense_start
+                                                        ? dayjs(deptDefenseDate || activeSemester?.defense_start).format('DD/MM/YYYY')
+                                                        : <span className="text-red-500">{t('committeeAssignment.dateNotSet', 'Chưa thiết lập')}</span>}
+                                                </span>
+                                                <span className={`text-[10px] font-medium ${deptDefenseDate ? 'text-green-600' : 'text-slate-400'}`}>
+                                                    {deptDefenseDate
+                                                        ? t('committeeAssignment.deptDate', 'Ngày của bộ môn')
+                                                        : t('committeeAssignment.fixedDate', 'Ngày mặc định')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
+                                            <EnvironmentOutlined className="text-blue-500" />
+                                            {t('committeeAssignment.defenseTimeLabel', 'Giờ thực hiện')}
+                                        </label>
+                                        <TimePicker.RangePicker
+                                            style={{ width: '100%', height: '50px' }}
+                                            size="large"
+                                            format="HH:mm"
+                                            value={timeRange}
+                                            onChange={setTimeRange}
+                                            className="rounded-lg shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+
                             </div>
 
+                            <Alert
+                                type="info"
+                                showIcon
+                                className="bg-blue-50 border-blue-100 rounded-xl mt-2"
+                                message={<span className="text-[11px] text-blue-700 font-medium">{t('committeeAssignment.autoCheckHint', 'Hệ thống sẽ tự động kiểm tra trùng lịch và xung đột GVHD sau khi bạn nhấn Xác nhận.')}</span>}
+                            />
                         </div>
-
-                        <Alert
-                            type="info"
-                            showIcon
-                            className="bg-blue-50 border-blue-100 rounded-xl mt-2"
-                            message={<span className="text-[11px] text-blue-700 font-medium">{t('committeeAssignment.autoCheckHint', 'Hệ thống sẽ tự động kiểm tra trùng lịch và xung đột GVHD sau khi bạn nhấn Xác nhận.')}</span>}
-                        />
-                    </div>
-                )}
-            </Modal>
+                    )}
+                </Modal>
             </div>
         </div>
     );

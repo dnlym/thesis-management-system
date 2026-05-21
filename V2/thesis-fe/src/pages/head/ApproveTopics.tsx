@@ -239,11 +239,11 @@ const HeadApproveTopics = () => {
                             <div className="flex items-center space-x-2">
                                 <span>{t('approveTopics.requireEditTab')}</span>
                                 <Tag color="warning" className="mr-0 rounded-full px-2 min-w-[24px] text-center border-none bg-yellow-100 text-yellow-600 font-bold">
-                                    {stats?.REQUIRE_EDIT || 0}
+                                    {stats?.REQUIRES_REVISION || 0}
                                 </Tag>
                             </div>
                         } 
-                        key="REQUIRE_EDIT"
+                        key="REQUIRES_REVISION"
                     >
                         <Spin spinning={isLoading}>
                             <Table

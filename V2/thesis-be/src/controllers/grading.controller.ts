@@ -93,7 +93,7 @@ class GradingController {
         else if (assignment?.reviewer_order === 2) raterRole = RaterRole.REVIEWER_2;
         else if (assignment?.reviewer_order === 3) raterRole = RaterRole.REVIEWER_3;
         else raterRole = RaterRole.REVIEWER_1; // fallback
-      } else if (raterRole === 'COUNCIL_MEMBER') {
+      } else if (raterRole === 'COUNCIL_MEMBER' || raterRole === 'COMMITTEE') {
         // Auto-detect committee role from assignment
         const assignment = await prisma.assignment.findFirst({
           where: {
@@ -512,7 +512,7 @@ class GradingController {
         else if (assignment?.reviewer_order === 2) raterRole = RaterRole.REVIEWER_2;
         else if (assignment?.reviewer_order === 3) raterRole = RaterRole.REVIEWER_3;
         else raterRole = RaterRole.REVIEWER_1;
-      } else if (raterRole === 'COUNCIL_MEMBER') {
+      } else if (raterRole === 'COUNCIL_MEMBER' || raterRole === 'COMMITTEE') {
         const assignment = await prisma.assignment.findFirst({
           where: {
             topic_id: topicId,

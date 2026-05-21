@@ -38,6 +38,11 @@ export const UsersApi = {
     return res.data.data;
   },
 
+  async delete(id: string) {
+    const res = await api.delete<ApiResponse<any>>(`/users/${id}`);
+    return res.data;
+  },
+
   async getRoleSummary() {
     const res = await api.get<ApiResponse<Array<{ id: string; userCount: number }>>>('/users/roles/summary');
     return res.data.data;

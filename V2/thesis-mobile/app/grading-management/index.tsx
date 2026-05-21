@@ -6,9 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { 
-    Trophy, ChevronLeft, Search, Filter, 
+    Trophy, ChevronLeft, 
     CheckCircle2, Clock, AlertCircle, Lock,
-    ChevronRight, Users, GraduationCap
+    ChevronRight, Users
 } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { GradingApi } from '@/api/grading';
@@ -16,7 +16,21 @@ import { GradingApi } from '@/api/grading';
 const BLUE = '#2563eb';
 const LIGHT_BLUE = '#eff6ff';
 
+// Xếp loại điểm cá nhân (đồng bộ web)
+const getClassification = (score: number) => {
+    if (score >= 9.0) return { letter: 'A+', isPass: true };
+    if (score >= 8.5) return { letter: 'A',  isPass: true };
+    if (score >= 8.0) return { letter: 'B+', isPass: true };
+    if (score >= 7.0) return { letter: 'B',  isPass: true };
+    if (score >= 6.0) return { letter: 'C+', isPass: true };
+    if (score >= 5.5) return { letter: 'C',  isPass: false };
+    if (score >= 5.0) return { letter: 'D+', isPass: false };
+    if (score >= 4.0) return { letter: 'D',  isPass: false };
+    return { letter: 'F', isPass: false };
+};
+
 type FilterType = 'all' | 'ready' | 'missing_supervisor' | 'missing_reviewer' | 'finalized';
+
 
 export default function GradingManagementScreen() {
     const router = useRouter();
@@ -237,19 +251,49 @@ function TopicMonitoringCard({ topic, onPress }: any) {
             <Text style={styles.topicTitle} numberOfLines={2}>{topic.title}</Text>
             
             <View style={styles.studentInfo}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Users size={14} color="#94a3b8" />
-                    <Text style={styles.studentNames}>
-                        {topic.students?.map((s: any) => s.student?.full_name).join(', ')}
-                    </Text>
+                <View style={{ flex: 1 }}>
+                    {topic.students?.map((s: any, idx: number) => {
+                        const score = s.finalScore?.final_score;
+                        const isMidtermFailed = s.finalScore?.grade_classification === 'Rớt giữa kỳ';
+                        const cls = score != null && !isMidtermFailed ? getClassification(score) : null;
+                        return (
+                            <View
+                                key={s.student?.id || idx}
+                                style={[
+                                    styles.studentRow,
+                                    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
+                                    idx < topic.students.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#f1f5f9', marginBottom: 4 }
+                                ]}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                    <Users size={13} color="#94a3b8" />
+                                    <Text style={[styles.studentNames, { flex: 1 }]} numberOfLines={1}>
+                                        {s.student?.full_name || 'N/A'}
+                                    </Text>
+                                </View>
+                                {isMidtermFailed ? (
+                                    <View style={[styles.scoreBadge, { backgroundColor: '#fee2e2' }]}>
+                                        <Text style={[styles.scoreValue, { color: '#dc2626', fontSize: 10 }]}>Rớt GK</Text>
+                                    </View>
+                                ) : score != null ? (
+                                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                                        <Text style={styles.scoreValue}>{score.toFixed(1)}</Text>
+                                        <View style={[
+                                            styles.scoreBadge,
+                                            { backgroundColor: cls?.isPass ? '#dcfce7' : '#fee2e2', paddingHorizontal: 6, paddingVertical: 1 }
+                                        ]}>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: cls?.isPass ? '#166534' : '#991b1b' }}>
+                                                {cls?.letter}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '600' }}>Chưa có</Text>
+                                )}
+                            </View>
+                        );
+                    })}
                 </View>
-                {topic.students?.[0]?.finalScore?.final_score !== null && topic.students?.[0]?.finalScore?.final_score !== undefined && (
-                    <View style={styles.scoreBadge}>
-                        <Text style={styles.scoreValue}>
-                            {topic.students[0].finalScore.final_score.toFixed(1)}
-                        </Text>
-                    </View>
-                )}
             </View>
 
             <View style={styles.divider} />
@@ -378,7 +422,8 @@ const styles = StyleSheet.create({
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusText: { fontSize: 10, fontWeight: '800' },
     topicTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', lineHeight: 22, marginBottom: 8 },
-    studentInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+    studentInfo: { flexDirection: 'column', marginBottom: 12 },
+    studentRow: {},
     studentNames: { fontSize: 13, color: '#64748b', flex: 1 },
     divider: { height: 1, backgroundColor: '#f1f5f9', marginBottom: 12 },
     progressSection: { flexDirection: 'row', alignItems: 'center', gap: 16 },

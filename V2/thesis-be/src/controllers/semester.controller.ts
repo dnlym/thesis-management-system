@@ -370,12 +370,42 @@ export class SemesterController {
   async getOverrideLogs(req: AuthRequest, res: Response) {
     try {
       const semesterId = req.params.semesterId as string;
+      const departmentId = req.query.departmentId as string;
+
+      const userRole = req.user!.role;
+      let targetDepartmentId: string | undefined = departmentId;
+      
+      if (userRole !== 'ADMIN' && !targetDepartmentId) {
+        const user = await prisma.user.findUnique({
+          where: { id: req.user!.id },
+          select: { departmentId: true }
+        });
+        targetDepartmentId = user?.departmentId || undefined;
+      }
+
+      if (!targetDepartmentId) {
+        return res.status(400).json({ success: false, message: 'Missing department ID' });
+      }
+
+      const config = await prisma.departmentSemesterConfig.findUnique({
+        where: {
+          department_id_semester_id: {
+            department_id: targetDepartmentId as string,
+            semester_id: semesterId
+          }
+        }
+      });
+
+      if (!config) {
+        return res.json({ success: true, data: [] });
+      }
+
       const logs = await prisma.auditLog.findMany({
         where: {
-          entity_type: 'Semester',
-          entity_id: semesterId,
+          entity_type: 'DepartmentSemesterConfig',
+          entity_id: config.id,
           action: {
-            in: ['REGISTRATION_OVERRIDE_ENABLED', 'REGISTRATION_OVERRIDE_DISABLED']
+            in: ['DEPT_REGISTRATION_OPENED', 'DEPT_REGISTRATION_CLOSED']
           }
         },
         include: {

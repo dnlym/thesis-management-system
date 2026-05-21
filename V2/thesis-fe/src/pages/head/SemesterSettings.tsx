@@ -208,8 +208,8 @@ const SemesterSettings = () => {
     }, [deptConfig, activeSemester]);
 
     const { data: overrideLogs = [], isLoading: loadingOverrideLogs } = useQuery({
-        queryKey: ['registration-override-logs', activeSemester?.id],
-        queryFn: () => SemestersApi.getOverrideLogs(activeSemester!.id),
+        queryKey: ['registration-override-logs', activeSemester?.id, selectedDeptId],
+        queryFn: () => SemestersApi.getOverrideLogs(activeSemester!.id, selectedDeptId),
         enabled: !!activeSemester?.id,
     });
 
@@ -220,7 +220,8 @@ const SemesterSettings = () => {
         mutationFn: ({ open, reason }: { open: boolean, reason: string }) =>
             SemestersApi.updateDeptConfig(activeSemester.id, { 
                 is_registration_open: open,
-                departmentId: selectedDeptId
+                departmentId: selectedDeptId,
+                reason
             }),
         onSuccess: () => {
             notify.success('Cập nhật trạng thái mở đăng ký thành công');
@@ -257,11 +258,17 @@ const SemesterSettings = () => {
 
     // Override Mode Logic (Department Specific)
     const isOverrideActive = deptConfig?.is_registration_open === true;
-    const canOverride = activeSemester.status === 'ACTIVE' &&
-        currentPhase !== 'FINAL';
+    const now = dayjs();
+    
+    // Rule: Can only turn ON override before midterm grading starts
+    // But if it is already ON, we always allow turning it OFF.
+    const isBeforeMidterm = activeSemester.midterm_start 
+        ? now.isBefore(dayjs(activeSemester.midterm_start))
+        : ['PREVIEW', 'REGISTRATION', 'WORK'].includes(currentPhase || '');
+
+    const canOverride = activeSemester.status === 'ACTIVE' && (isOverrideActive || isBeforeMidterm);
 
     const originalDeadline = activeSemester.topic_registration_end;
-    const now = dayjs();
     const isExpired = originalDeadline ? now.isAfter(dayjs(originalDeadline)) : false;
 
     let statusTag = <Tag color="default">CHƯA BẮT ĐẦU</Tag>;
@@ -458,7 +465,7 @@ const SemesterSettings = () => {
                                             className="h-12 rounded-xl border-dashed font-medium text-slate-500"
                                             onClick={() => setIsHistoryModalOpen(true)}
                                         >
-                                            Xem nhật ký Override
+                                            Lịch sử thao tác
                                         </Button>
                                     </Space>
 
@@ -469,6 +476,15 @@ const SemesterSettings = () => {
                                             description="Sinh viên có thể đăng ký đề tài kể cả khi đã quá hạn. Hãy đóng lại khi hoàn tất đợt đăng ký bổ sung."
                                             showIcon
                                             className="rounded-2xl border-amber-200 bg-amber-50"
+                                        />
+                                    )}
+                                    {!canOverride && !isOverrideActive && (
+                                        <Alert
+                                            type="error"
+                                            message={<span className="font-bold">Đã hết hạn mở đăng ký bổ sung</span>}
+                                            description="Chức năng này chỉ khả dụng trước thời điểm chấm giữa kỳ để đảm bảo tiến độ học thuật."
+                                            showIcon
+                                            className="rounded-2xl"
                                         />
                                     )}
                                 </div>
@@ -614,7 +630,7 @@ const SemesterSettings = () => {
                 </Modal>
 
                 <Modal
-                    title="Nhật ký Mở đăng ký thủ công"
+                    title="Lịch sử thao tác"
                     open={isHistoryModalOpen}
                     onCancel={() => setIsHistoryModalOpen(false)}
                     footer={null}
@@ -629,16 +645,16 @@ const SemesterSettings = () => {
                             {
                                 title: 'Thời điểm',
                                 dataIndex: 'created_at',
-                                width: 160,
-                                render: (val) => dayjs(val).format('DD/MM/YYYY HH:mm'),
+                                width: 170,
+                                render: (val) => dayjs(val).format('DD/MM/YYYY HH:mm:ss'),
                             },
                             {
                                 title: 'Thao tác',
                                 dataIndex: 'action',
                                 width: 180,
                                 render: (action) => (
-                                    <Tag color={action === 'REGISTRATION_OVERRIDE_ENABLED' ? 'error' : 'default'} className="rounded-full border-none px-3 font-bold">
-                                        {action === 'REGISTRATION_OVERRIDE_ENABLED' ? 'MỞ ĐĂNG KÝ' : 'ĐÓNG ĐĂNG KÝ'}
+                                    <Tag color={action === 'DEPT_REGISTRATION_OPENED' ? 'error' : 'default'} className="rounded-full border-none px-3 font-bold">
+                                        {action === 'DEPT_REGISTRATION_OPENED' ? 'MỞ ĐĂNG KÝ' : 'ĐÓNG ĐĂNG KÝ'}
                                     </Tag>
                                 )
                             },

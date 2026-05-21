@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    StyleSheet, ActivityIndicator, StatusBar, Alert
+    StyleSheet, ActivityIndicator, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,9 +9,8 @@ import { useTopic } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';
 import { Grade } from '@/types';
 
-import { ChevronLeft, MoreVertical, MapPin, Users } from 'lucide-react-native';
+import { ChevronLeft, MapPin, Users } from 'lucide-react-native';
 
-const NAVY = '#1e293b';
 const BLUE = '#2563eb';
 
 export default function TopicDetailScreen() {
@@ -31,7 +30,7 @@ export default function TopicDetailScreen() {
             const sGroupId = s.groupId || s.group_id;
             return sGroupId === effectiveGroupId || (!sGroupId && !effectiveGroupId) || (effectiveGroupId && sGroupId === effectiveGroupId);
         });
-    }, [topic?.students, groupId]);
+    }, [topic, topicId, groupId]);
 
     if (isLoading || !topic) {
         return (

@@ -10,11 +10,11 @@ import {
     GraduationCap, Lock, Clock, Edit3, AlertCircle,
     User, Users, Award, Info, FileText
 } from 'lucide-react-native';
-import { useTopic, topicKeys } from '@/hooks/useTopics';
+import { useTopic } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria } from '@/hooks/useGrading';
 import { GradingApi } from '@/api/grading';
-import { Grade, FinalScore, RaterRole, CriteriaType } from '@/types';
+import { Grade, FinalScore } from '@/types';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface TopicGradesResponse {
@@ -204,7 +204,18 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const BLUE = '#2563eb';
 const LIGHT_BLUE = '#eff6ff';
-const GREEN = '#16a34a';
+// Hệ thống xếp loại mới (đồng bộ với web GradeBreakdown)
+const getClassification = (score: number) => {
+    if (score >= 9.0) return { letter: 'A+', point4: '4.0', status: 'Đạt', color: '#7c3aed' };
+    if (score >= 8.5) return { letter: 'A',  point4: '3.8', status: 'Đạt', color: '#2563eb' };
+    if (score >= 8.0) return { letter: 'B+', point4: '3.5', status: 'Đạt', color: '#3b82f6' };
+    if (score >= 7.0) return { letter: 'B',  point4: '3.0', status: 'Đạt', color: '#16a34a' };
+    if (score >= 6.0) return { letter: 'C+', point4: '2.5', status: 'Đạt', color: '#22c55e' };
+    if (score >= 5.5) return { letter: 'C',  point4: '2.0', status: 'Không đạt', color: '#ef4444' };
+    if (score >= 5.0) return { letter: 'D+', point4: '1.5', status: 'Không đạt', color: '#ef4444' };
+    if (score >= 4.0) return { letter: 'D',  point4: '1.0', status: 'Không đạt', color: '#ef4444' };
+    return { letter: 'F', point4: '0.0', status: 'Không đạt', color: '#dc2626' };
+};
 
 export default function GradeReviewScreen() {
     const { topicId, studentId: initialStudentId, groupId } = useLocalSearchParams();
@@ -244,11 +255,7 @@ export default function GradeReviewScreen() {
                 }
             }
         }
-    }, [isHead, topic]);
-
-    const toggleCriteria = (id: string) => {
-        // No-op - expansion removed
-    };
+    }, [isHead, topic, currentUser?.id]);
 
     const raterRole = React.useMemo(() => {
         if (!topic || !currentUser) return 'REVIEWER_1';
@@ -295,7 +302,7 @@ export default function GradeReviewScreen() {
             const sGroupId = s.groupId || s.group_id;
             return sGroupId === effectiveGroupId || (!sGroupId && !effectiveGroupId) || (effectiveGroupId && sGroupId === effectiveGroupId);
         });
-    }, [topic?.students, groupId]);
+    }, [topic?.students, groupId, topicId]);
 
     React.useEffect(() => {
         const fetchAllData = async () => {
@@ -348,7 +355,8 @@ export default function GradeReviewScreen() {
         const finalScore = rawFinalScore ? {
             ...rawFinalScore,
             final_score: rawFinalScore.final_score ?? rawFinalScore.total_score ?? 0,
-            result: rawFinalScore.result || ((rawFinalScore.final_score ?? rawFinalScore.total_score ?? 0) >= 5 ? 'PASS' : 'FAIL')
+            // Ngưỡng đạt 6.0 (đồng bộ web)
+            result: rawFinalScore.result || ((rawFinalScore.final_score ?? rawFinalScore.total_score ?? 0) >= 6.0 ? 'PASS' : 'FAIL')
         } : undefined;
 
         const isSummaryMode = viewRole === 'SUMMARY';
@@ -380,7 +388,6 @@ export default function GradeReviewScreen() {
         const calculatedScore10 = maxPossibleValue > 0 ? (totalScoreValue / maxPossibleValue) * 10 : 0;
         
         const score10 = (isSummaryMode && finalScore?.final_score !== undefined) ? finalScore.final_score : calculatedScore10;
-        const score4 = (score10 / 10) * 4;
         
         return {
             isSummary: isSummaryMode,
@@ -390,8 +397,6 @@ export default function GradeReviewScreen() {
             graded_at: isSummaryMode ? finalScore?.created_at : firstGrade?.graded_at,
             items: gradedItems,
             totalScore: score10,
-            totalScore4: score4,
-            maxPossible: 10,
             finalScore: finalScore as FinalScore | undefined,
             isReadyForDecision: !!topicGradesData.gradingStatus?.isReadyForDecision,
             gradingStatus: topicGradesData.gradingStatus,
@@ -531,17 +536,36 @@ export default function GradeReviewScreen() {
                                 </View>
                                 <Text style={[styles.statsValue, { color: BLUE }]}>
                                     {(reviewData.finalScore.final_score ?? reviewData.finalScore.total_score)?.toFixed(1) || '0.0'}
+                                    <Text style={[styles.statsMax, { color: '#93c5fd' }]}> / 10</Text>
+                                </Text>
+                                <Text style={{ fontSize: 11, color: BLUE, fontWeight: '700', marginTop: 2 }}>
+                                    Thang 4: {getClassification(reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0).point4}
                                 </Text>
                             </View>
                             <View style={[styles.statsDivider, { backgroundColor: '#e0f2fe' }]} />
                             <View style={styles.statsCol}>
                                 <View style={styles.statsLabelRow}>
-                                    <CheckCircle2 size={14} color={reviewData.finalScore.result === 'PASS' ? '#059669' : '#dc2626'} />
-                                    <Text style={[styles.statsLabel, { color: reviewData.finalScore.result === 'PASS' ? '#059669' : '#dc2626' }]}>KẾT QUẢ</Text>
+                                    <Info size={14} color="#64748b" />
+                                    <Text style={[styles.statsLabel, { color: '#64748b' }]}>XẾP LOẠI</Text>
                                 </View>
-                                <Text style={[styles.statsValue, { fontSize: 24, color: reviewData.finalScore.result === 'PASS' ? '#059669' : '#dc2626' }]}>
-                                    {reviewData.finalScore.result || 'N/A'}
-                                </Text>
+                                {(() => {
+                                    const finalVal = reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0;
+                                    const cls = getClassification(finalVal);
+                                    const letter = reviewData.finalScore.grade_classification || cls.letter;
+                                    const isPass = cls.status === 'Đạt';
+                                    return (
+                                        <View style={{ alignItems: 'center', gap: 4 }}>
+                                            <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
+                                                <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
+                                                    {letter}
+                                                </Text>
+                                            </View>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
+                                                {isPass ? 'Đạt' : 'Không đạt'}
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         </View>
                     </View>
@@ -554,16 +578,18 @@ export default function GradeReviewScreen() {
                     </View>
                 ) : (
                     <>
-                        <View style={styles.statsCard}>
+<View style={styles.statsCard}>
                             <View style={styles.statsCol}>
                                 <View style={styles.statsLabelRow}>
                                     <Award size={14} color="#94a3b8" />
-                                    <Text style={styles.statsLabel}>TỔNG ĐIỂM</Text>
+                                    <Text style={styles.statsLabel}>ĐIỂM TRUNG BÌNH</Text>
                                 </View>
                                 <Text style={styles.statsValue}>
                                     {reviewData.totalScore.toFixed(1)} 
                                     <Text style={styles.statsMax}> / 10</Text>
-                                    <Text style={[styles.statsMax, { color: BLUE, marginLeft: 8 }]}> ({reviewData.totalScore4.toFixed(2)})</Text>
+                                </Text>
+                                <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', marginTop: 2 }}>
+                                    Thang 4: {getClassification(reviewData.totalScore).point4}
                                 </Text>
                             </View>
                             <View style={styles.statsDivider} />
@@ -572,13 +598,22 @@ export default function GradeReviewScreen() {
                                     <Info size={14} color="#94a3b8" />
                                     <Text style={styles.statsLabel}>XẾP LOẠI</Text>
                                 </View>
-                                <View style={styles.gradeBadge}>
-                                    <Text style={styles.gradeBadgeText}>
-                                        {reviewData?.finalScore?.grade_classification || 
-                                         (reviewData.totalScore / 10 >= 0.8 ? 'Giỏi' : 
-                                         (reviewData.totalScore / 10 >= 0.65 ? 'Khá' : 'Trung bình'))}
-                                    </Text>
-                                </View>
+                                {(() => {
+                                    const cls = getClassification(reviewData.totalScore);
+                                    const isPass = cls.status === 'Đạt';
+                                    return (
+                                        <View style={{ alignItems: 'center', gap: 4 }}>
+                                            <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
+                                                <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
+                                                    {cls.letter}
+                                                </Text>
+                                            </View>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
+                                                {isPass ? 'Đạt' : 'Không đạt'}
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         </View>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMyTopicRegistration, useStudentsSameTopic } from '@/hooks/useRegistrations';
+import { useMyTopicRegistration, useStudentsSameTopic, useCancelRegistration } from '@/hooks/useRegistrations';
 import { RegistrationsApi } from '@/api/registrations';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth';
@@ -169,6 +169,8 @@ const MyRegisteredTopic = () => {
     },
   });
 
+  // Cancel individual registration mutation
+  const cancelRegistrationMutation = useCancelRegistration();
 
 
   if (isLoading) {
@@ -229,7 +231,7 @@ const MyRegisteredTopic = () => {
                 >
                   Quay lại
                 </Button>
-                {group && (
+                {group ? (
                   <Popconfirm
                     title="Xác nhận giải tán nhóm?"
                     description="Hành động này sẽ đưa bạn và các thành viên khác về trạng thái làm việc cá nhân."
@@ -239,9 +241,25 @@ const MyRegisteredTopic = () => {
                     okButtonProps={{ danger: true, loading: disbandGroupMutation.isPending }}
                     disabled={isPhaseLocked}
                   >
-                    <Tooltip title={isPhaseLocked ? "Không thể giải tán nhóm trong giai đoạn thực hiện khóa luận" : ""}>
+                    <Tooltip title={isPhaseLocked ? "Không thể giải tán nhóm trong giai đoạn này" : ""}>
                       <Button danger icon={<DeleteOutlined />} disabled={isPhaseLocked}>
                         Giải tán nhóm
+                      </Button>
+                    </Tooltip>
+                  </Popconfirm>
+                ) : (
+                  <Popconfirm
+                    title="Hủy đăng ký đề tài?"
+                    description="Bạn có chắc chắn muốn hủy đăng ký đề tài này không?"
+                    onConfirm={() => cancelRegistrationMutation.mutate()}
+                    okText="Xác nhận hủy"
+                    cancelText="Đóng"
+                    okButtonProps={{ danger: true, loading: cancelRegistrationMutation.isPending }}
+                    disabled={isPhaseLocked}
+                  >
+                    <Tooltip title={isPhaseLocked ? "Không thể hủy đăng ký trong giai đoạn này" : ""}>
+                      <Button danger icon={<CloseCircleOutlined />} disabled={isPhaseLocked}>
+                        Hủy đăng ký
                       </Button>
                     </Tooltip>
                   </Popconfirm>

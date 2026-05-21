@@ -189,20 +189,37 @@ export class UserService {
 
     async deleteUser(adminId: string, id: string) {
         const existingUser = await this.getUserById(id);
-        await prisma.user.delete({
-            where: { id },
-        });
+        let action = 'DELETE_USER';
+        let message = 'User deleted successfully';
+
+        try {
+            await prisma.user.delete({
+                where: { id },
+            });
+        } catch (error: any) {
+            // P2003 is the Prisma error code for Foreign Key constraint failed
+            if (error.code === 'P2003') {
+                await prisma.user.update({
+                    where: { id },
+                    data: { active: false }
+                });
+                action = 'DEACTIVATE_USER';
+                message = 'Người dùng đã có dữ liệu ràng buộc, hệ thống đã chuyển sang trạng thái Vô hiệu hóa.';
+            } else {
+                throw new Error('Không thể xóa người dùng: ' + error.message);
+            }
+        }
 
         await AuditLogger.log({
             userId: adminId,
-            action: 'DELETE_USER',
+            action: action,
             entityType: 'User',
             entityId: id,
             oldValue: existingUser,
-            description: `Admin ${adminId} đã xóa người dùng: ${existingUser.full_name}`
+            description: `Admin ${adminId} đã ${action === 'DELETE_USER' ? 'xóa' : 'vô hiệu hóa'} người dùng: ${existingUser.full_name}`
         });
 
-        return { message: 'User deleted successfully' };
+        return { message };
     }
 
     async getRoleSummary() {
@@ -210,7 +227,7 @@ export class UserService {
         const summary = await Promise.all(
             roles.map(async (role) => {
                 const count = await prisma.user.count({
-                    where: { role },
+                    where: { role, active: true },
                 });
                 return {
                     id: role,

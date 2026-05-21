@@ -89,8 +89,10 @@ export const SemestersApi = {
         return res.data.data;
     },
 
-    async getOverrideLogs(semesterId: string) {
-        const res = await api.get<ApiResponse<any[]>>(`/semesters/${semesterId}/override-logs`);
+    async getOverrideLogs(semesterId: string, departmentId?: string) {
+        const res = await api.get<ApiResponse<any[]>>(`/semesters/${semesterId}/override-logs`, {
+            params: { departmentId }
+        });
         return res.data.data;
     },
 
@@ -101,7 +103,7 @@ export const SemestersApi = {
         return res.data.data;
     },
 
-    async updateDeptConfig(semesterId: string, data: { defense_date?: string; is_registration_open?: boolean; departmentId?: string }) {
+    async updateDeptConfig(semesterId: string, data: { defense_date?: string; is_registration_open?: boolean; departmentId?: string; reason?: string }) {
         const res = await api.post<ApiResponse<any>>(`/semesters/${semesterId}/dept-config`, data);
         return res.data.data;
     },
