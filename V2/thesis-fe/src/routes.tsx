@@ -259,7 +259,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.semesterSettings',
       icon: SettingOutlined,
-      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN'],
+      roles: ['STUDENT', 'LECTURER', 'HEAD', 'ADMIN', 'COORDINATOR'],
     },
   },
   {
@@ -465,6 +465,11 @@ export const getMenuItems = (userRole: UserRole) => {
         key: '/schedule',
         icon: <CalendarOutlined />,
         label: 'navigation.schedule',
+      },
+      {
+        key: '/semester-operation',
+        icon: <SettingOutlined />,
+        label: 'navigation.semesterSettings',
       },
     ];
   }

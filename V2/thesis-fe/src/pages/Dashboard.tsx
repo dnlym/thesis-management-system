@@ -76,7 +76,7 @@ const Dashboard = () => {
       return [
         { label: 'Đang hướng dẫn', value: stats.supervisedTopicsCount || 0, color: 'text-blue-600', sub: 'đề tài', path: '/supervisor/registrations' },
         { label: 'Chờ phản biện', value: stats.reviewAssignmentsCount || 0, color: 'text-rose-600', sub: 'đề tài', path: '/evaluation?type=reviewer' },
-        { label: 'Hội đồng', value: stats.councilAssignmentsCount || 0, color: 'text-indigo-600', sub: 'lịch bảo vệ', path: '/evaluation' },
+        { label: 'Hội đồng', value: stats.councilAssignmentsCount || 0, color: 'text-indigo-600', sub: 'lịch bảo vệ', path: '/evaluation?type=council' },
         { label: 'Sắp tới', value: urgentMilestones.length, color: 'text-orange-600', sub: 'mốc quan trọng', path: '#milestones' },
       ];
     }
@@ -118,7 +118,7 @@ const Dashboard = () => {
     } else if (m.type === 'REVIEW') {
       navigate('/evaluation?type=reviewer');
     } else if (m.type === 'DEFENSE_START') {
-      navigate('/evaluation');
+      navigate('/evaluation?type=council');
     } else {
       navigate('/schedule');
     }

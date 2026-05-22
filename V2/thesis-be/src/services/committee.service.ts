@@ -322,6 +322,10 @@ export class CommitteeService {
         throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu');
       }
 
+      if (start <= new Date()) {
+        throw new Error('Lịch bảo vệ hội đồng phải bắt đầu vào một mốc thời gian trong tương lai (lớn hơn thời điểm hiện tại)');
+      }
+
       const overlap = await tx.defenseSchedule.findFirst({
         where: {
           committee_id: data.committeeId,

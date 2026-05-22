@@ -10,6 +10,7 @@ import {
     Save, CheckCircle, ClipboardCheck, FileText, Info, Award, AlertCircle
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { OfflineStorage } from '@/api/offline';
 import { useAuthStore } from '@/store/auth';
 import { useTopic } from '@/hooks/useTopics';
@@ -22,6 +23,7 @@ const LIGHT_BLUE = '#eff6ff';
 export default function GradingScreen() {
     const { topicId, studentId, groupId } = useLocalSearchParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { user } = useAuthStore();
 
     // Topic Data
@@ -116,9 +118,10 @@ const {
     }, [startIdx]);
 
     const [allScores, setAllScores] = React.useState<Record<string, Record<string, string>>>({});
-    const [allComments, setAllComments] = React.useState<Record<string, string>>({});
+    const [allComments, setAllComments] = React.useState<Record<string, Record<string, string>>>({});
     const [originalScores, setOriginalScores] = React.useState<Record<string, Record<string, string>>>({});
-    const [originalComments, setOriginalComments] = React.useState<Record<string, string>>({});
+    const [originalComments, setOriginalComments] = React.useState<Record<string, Record<string, string>>>({});
+    const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
     const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
     const [isRestoring, setIsRestoring] = React.useState(true);
     const [submittedStudents, setSubmittedStudents] = React.useState<Record<string, boolean>>({});
@@ -128,6 +131,10 @@ const {
     const [requestReason, setRequestReason] = React.useState('');
     const [myGradesData, setMyGradesData] = React.useState<any>(null);
     const inputRefs = React.useRef<Record<string, TextInput | null>>({});
+
+    React.useEffect(() => {
+        setExpandedComments({});
+    }, [idx]);
 
     // Restoration Logic
     React.useEffect(() => {
@@ -140,7 +147,7 @@ const {
                 const myGrades = await GradingApi.getMyGrades(topicId as string, raterRole);
                 setMyGradesData(myGrades);
                 const restoredScores: Record<string, Record<string, string>> = {};
-                const restoredComments: Record<string, string> = {};
+                const restoredComments: Record<string, Record<string, string>> = {};
 
                 if (myGrades) {
                     setGradeHistory(myGrades.gradeHistory || []);
@@ -150,9 +157,15 @@ const {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
                                 restoredSubmitted[sGrade.studentId] = true;
                                 const sScores: Record<string, string> = {};
-                                sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
+                                const sComments: Record<string, string> = {};
+                                sGrade.grades.forEach((g: any) => {
+                                    sScores[g.criterionId] = g.score.toString();
+                                    if (g.comment) {
+                                        sComments[g.criterionId] = g.comment;
+                                    }
+                                });
                                 restoredScores[sGrade.studentId] = sScores;
-                                restoredComments[sGrade.studentId] = sGrade.generalComment || '';
+                                restoredComments[sGrade.studentId] = sComments;
                                 if (sGrade.studentId === studentId) {
                                     setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
                                 }
@@ -175,7 +188,7 @@ const {
                     const draft = await OfflineStorage.getDraft(user.id, topicId as string, groupId as string || null, raterRole, student.id);
                     if (draft) {
                         if (draft.scores) restoredScores[student.id] = draft.scores;
-                        if (draft.comment) restoredComments[student.id] = draft.comment;
+                        if (draft.comment) restoredComments[student.id] = typeof draft.comment === 'object' ? draft.comment : {};
                     }
                 }
                 setAllScores(restoredScores);
@@ -192,7 +205,7 @@ const {
         if (!currentId) return false;
         
         const scoresChanged = JSON.stringify(allScores[currentId] || {}) !== JSON.stringify(originalScores[currentId] || {});
-        const commentChanged = (allComments[currentId] || '') !== (originalComments[currentId] || '');
+        const commentChanged = JSON.stringify(allComments[currentId] || {}) !== JSON.stringify(originalComments[currentId] || {});
         
         return scoresChanged || commentChanged;
     }, [allScores, originalScores, allComments, originalComments, idx, eligibleStudents]);
@@ -213,16 +226,22 @@ const {
 
                     if (myGrades.students && myGrades.students.length > 0) {
                         const restoredScores: Record<string, Record<string, string>> = {};
-                        const restoredComments: Record<string, string> = {};
+                        const restoredComments: Record<string, Record<string, string>> = {};
                         const restoredSubmitted: Record<string, boolean> = {};
 
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
                                 restoredSubmitted[sGrade.studentId] = true;
                                 const sScores: Record<string, string> = {};
-                                sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
+                                const sComments: Record<string, string> = {};
+                                sGrade.grades.forEach((g: any) => {
+                                    sScores[g.criterionId] = g.score.toString();
+                                    if (g.comment) {
+                                        sComments[g.criterionId] = g.comment;
+                                    }
+                                });
                                 restoredScores[sGrade.studentId] = sScores;
-                                restoredComments[sGrade.studentId] = sGrade.generalComment || '';
+                                restoredComments[sGrade.studentId] = sComments;
                                 if (sGrade.studentId === studentId) {
                                     setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
                                 }
@@ -339,7 +358,6 @@ const {
     const isMidtermFailed = isStudentMidtermFailed(currentStudent);
     const canEditStudent = (canGrade || isRequestMode) && !isMidtermFailed;
     const scores = allScores[currentStudent?.id] || {};
-    const comment = allComments[currentStudent?.id] || '';
 
     const isLastEligibleStudent = idx === eligibleStudents.length - 1;
 
@@ -358,10 +376,29 @@ const {
             const nextScores = { ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } };
             if (user && topic) {
                 OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
-                    scores: nextScores[currentStudent.id], comment: allComments[currentStudent.id] || ''
+                    scores: nextScores[currentStudent.id], comment: allComments[currentStudent.id] || {}
                 }).catch(console.error);
             }
             return nextScores;
+        });
+    };
+
+    const handleComment = (cId: string, val: string) => {
+        if (!canEditStudent) return;
+        setAllComments(prev => {
+            const nextComments = {
+                ...prev,
+                [currentStudent.id]: {
+                    ...(prev[currentStudent.id] || {}),
+                    [cId]: val
+                }
+            };
+            if (user && topic) {
+                OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
+                    scores: allScores[currentStudent.id] || {}, comment: nextComments[currentStudent.id]
+                }).catch(console.error);
+            }
+            return nextComments;
         });
     };
 
@@ -389,14 +426,22 @@ const {
                 scores: criteria.map((c: any) => ({
                     criterion_id: c.id,
                     score: parseFloat(currentScores[c.id] || '0'),
-                    comment: ''
+                    comment: (allComments[currentStudentId] || {})[c.id] || ''
                 })),
-                general_comment: allComments[currentStudentId] || '',
+                general_comment: '',
                 reason: requesting ? requestReason : undefined
             };
 
             const response = await GradingApi.submitGrade(submissionData as any);
             const isPendingApproval = response && !Array.isArray(response) && response.status === 'PENDING_APPROVAL';
+
+            // Invalidate React Query caches to trigger refetch of topic and grades
+            try {
+                await queryClient.invalidateQueries({ queryKey: ['topics'] });
+                await queryClient.invalidateQueries({ queryKey: ['grading'] });
+            } catch (err) {
+                console.error('Failed to invalidate queries:', err);
+            }
 
             if (requesting || isPendingApproval) {
                 const alertMsg = (response && !Array.isArray(response) && response.message) || 'Đã gửi yêu cầu phê duyệt điểm tới Trưởng bộ môn do quá hạn.';
@@ -407,7 +452,7 @@ const {
                     setIsRequestMode(false);
                 }
                 setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
-                setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
+                setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
                 setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
                 setSubmittedAt(new Date().toISOString());
 
@@ -420,7 +465,7 @@ const {
             }
 
             setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
-            setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
+            setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
             setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
             setSubmittedAt(new Date().toISOString());
             
@@ -441,7 +486,7 @@ const {
         if (!user || !currentStudent) return;
         const currentScores = allScores[currentStudent.id] || {};
         await OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
-            scores: currentScores, comment: allComments[currentStudent.id] || ''
+            scores: currentScores, comment: allComments[currentStudent.id] || {}
         });
         Alert.alert('Thành công', 'Đã lưu bản nháp cho sinh viên này');
     };
@@ -599,70 +644,85 @@ const {
                 </View>
 
                 <View style={styles.criteriaContainer}>
-                    {criteria.map((c: any, i: number) => (
-                        <View key={c.id} style={styles.criterionCard}>
-                            <View style={styles.criterionMain}>
-                                <View style={styles.criterionInfo}>
-                                    <View style={styles.criterionTitleRow}>
-                                        <ClipboardCheck size={16} color={BLUE} style={{ marginRight: 8 }} />
-                                        <Text style={styles.criterionName} numberOfLines={2}>{c.name}</Text>
-                                        {gradeHistory.some((h: any) => h.studentName === currentStudent?.full_name && h.criterionName === c.name) && (
-                                            <View style={{ marginLeft: 6, backgroundColor: '#fef3c7', padding: 4, borderRadius: 4 }}>
-                                                <Info size={12} color="#d97706" />
-                                            </View>
-                                        )}
+                    {criteria.map((c: any, i: number) => {
+                        const hasCriterionComment = !!(allComments[currentStudent.id] || {})[c.id];
+                        const isExpanded = !!expandedComments[c.id];
+                        return (
+                            <View key={c.id} style={styles.criterionCard}>
+                                <View style={styles.criterionMain}>
+                                    <View style={styles.criterionInfo}>
+                                        <View style={styles.criterionTitleRow}>
+                                            <ClipboardCheck size={16} color={BLUE} style={{ marginRight: 8 }} />
+                                            <Text style={styles.criterionName} numberOfLines={2}>{c.name}</Text>
+                                            {gradeHistory.some((h: any) => h.studentName === currentStudent?.full_name && h.criterionName === c.name) && (
+                                                <View style={{ marginLeft: 6, backgroundColor: '#fef3c7', padding: 4, borderRadius: 4 }}>
+                                                    <Info size={12} color="#d97706" />
+                                                </View>
+                                            )}
+                                        </View>
                                     </View>
+                                    <Pressable 
+                                        style={styles.scoreInputGroup}
+                                        onPress={() => {
+                                            inputRefs.current[c.id]?.focus();
+                                        }}
+                                    >
+                                        <TextInput
+                                            ref={el => { inputRefs.current[c.id] = el; }}
+                                            style={[styles.input, !canEditStudent && styles.disabledInput, scores[c.id] ? styles.inputFilled : {}]}
+                                            keyboardType="decimal-pad"
+                                            value={scores[c.id] || ''}
+                                            onChangeText={v => handleScore(c.id, v, c.max_score)}
+                                            placeholder="0.0"
+                                            editable={canEditStudent}
+                                            selectTextOnFocus
+                                        />
+                                        <View style={styles.maxBadge}>
+                                            <Text style={styles.maxBadgeText}>/{c.max_score}</Text>
+                                        </View>
+                                    </Pressable>
                                 </View>
-                                <Pressable 
-                                    style={styles.scoreInputGroup}
-                                    onPress={() => {
-                                        inputRefs.current[c.id]?.focus();
-                                    }}
-                                >
-                                    <TextInput
-                                        ref={el => { inputRefs.current[c.id] = el; }}
-                                        style={[styles.input, !canEditStudent && styles.disabledInput, scores[c.id] ? styles.inputFilled : {}]}
-                                        keyboardType="decimal-pad"
-                                        value={scores[c.id] || ''}
-                                        onChangeText={v => handleScore(c.id, v, c.max_score)}
-                                        placeholder="0.0"
-                                        editable={canEditStudent}
-                                        selectTextOnFocus
-                                    />
-                                    <View style={styles.maxBadge}>
-                                        <Text style={styles.maxBadgeText}>/{c.max_score}</Text>
-                                    </View>
-                                </Pressable>
-                            </View>
-                        </View>
-                    ))}
-                </View>
 
-                <View style={styles.commentSection}>
-                    <View style={styles.commentHeader}>
-                        <FileText size={16} color="#64748b" />
-                        <Text style={styles.commentLabel}>NHẬN XÉT CỦA GIẢNG VIÊN</Text>
-                    </View>
-                    <TextInput
-                        style={[styles.commentInput, (submitted || !canEditStudent) && styles.disabledInput]}
-                        multiline
-                        placeholder="Nhập nhận xét chi tiết về phần thể hiện của sinh viên..."
-                        value={comment}
-                        onChangeText={v => {
-                            if (!canEditStudent) return;
-                            setAllComments(prev => {
-                                const nextComments = { ...prev, [currentStudent.id]: v };
-                                if (user && topic) {
-                                    OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
-                                        scores: allScores[currentStudent.id] || {}, comment: v
-                                    }).catch(console.error);
-                                }
-                                return nextComments;
-                            });
-                        }}
-                        editable={canEditStudent}
-                        textAlignVertical="top"
-                    />
+                                {(hasCriterionComment || isExpanded) && (
+                                    <View style={styles.commentInputWrapper}>
+                                        <View style={styles.commentInputHeader}>
+                                            <Text style={styles.commentInputLabel}>Nhận xét tiêu chí:</Text>
+                                            {canEditStudent && (
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        handleComment(c.id, '');
+                                                        setExpandedComments(prev => ({ ...prev, [c.id]: false }));
+                                                    }}
+                                                >
+                                                    <Text style={styles.removeCommentText}>Xóa</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        <TextInput
+                                            style={[styles.criterionCommentInput, (submitted || !canEditStudent) && styles.disabledInput]}
+                                            multiline
+                                            placeholder="Nhập nhận xét chi tiết..."
+                                            value={(allComments[currentStudent.id] || {})[c.id] || ''}
+                                            onChangeText={v => handleComment(c.id, v)}
+                                            editable={canEditStudent}
+                                            textAlignVertical="top"
+                                        />
+                                    </View>
+                                )}
+
+                                {!hasCriterionComment && !isExpanded && (
+                                    <TouchableOpacity 
+                                        style={styles.addCommentBtn}
+                                        onPress={() => setExpandedComments(prev => ({ ...prev, [c.id]: true }))}
+                                        disabled={!canEditStudent}
+                                    >
+                                        <FileText size={12} color={canEditStudent ? BLUE : '#94a3b8'} style={{ marginRight: 4 }} />
+                                        <Text style={[styles.addCommentBtnText, !canEditStudent && { color: '#94a3b8' }]}>Thêm nhận xét</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        );
+                    })}
                 </View>
 
                 {gradeHistory && gradeHistory.length > 0 && (
@@ -866,6 +926,52 @@ const styles = StyleSheet.create({
     commentInput: {
         backgroundColor: '#fff', borderRadius: 12, padding: 12, minHeight: 80,
         fontSize: 13, color: '#334155', borderWidth: 1, borderColor: '#e2e8f0', lineHeight: 18
+    },
+
+    commentInputWrapper: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+    },
+    commentInputHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    commentInputLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#64748b',
+    },
+    removeCommentText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#ef4444',
+    },
+    criterionCommentInput: {
+        backgroundColor: '#f8fafc',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        fontSize: 12,
+        color: '#334155',
+        minHeight: 40,
+        maxHeight: 100,
+    },
+    addCommentBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+        alignSelf: 'flex-start',
+    },
+    addCommentBtnText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: BLUE,
     },
 
     footer: {

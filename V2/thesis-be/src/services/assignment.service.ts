@@ -186,6 +186,17 @@ export class AssignmentService {
       throw new Error('Giảng viên phản biện phải thuộc cùng bộ môn với đề tài');
     }
 
+    // Validate that dates are in the future
+    if (data.deadlineAt && new Date(data.deadlineAt) <= new Date()) {
+      throw new Error('Hạn chót nộp điểm phản biện phải lớn hơn thời gian hiện tại');
+    }
+    if (data.startTime && new Date(data.startTime) <= new Date()) {
+      throw new Error('Thời gian bắt đầu phản biện phải lớn hơn thời gian hiện tại');
+    }
+    if (data.endTime && new Date(data.endTime) <= new Date()) {
+      throw new Error('Thời gian kết thúc phản biện phải lớn hơn thời gian hiện tại');
+    }
+
     // [SCHEDULE CONFLICT GUARD] Reviewer must not have overlapping reviewer assignments
     if (data.startTime && data.endTime) {
       if (new Date(data.startTime) >= new Date(data.endTime)) {
@@ -409,6 +420,20 @@ export class AssignmentService {
     const uniqueMembers = new Set(allMembers);
     if (uniqueMembers.size !== allMembers.length) {
       throw new Error('Committee members must be unique');
+    }
+
+    // Validate defense date/time in the future
+    if (data.defenseDate) {
+      let combinedDate = new Date(data.defenseDate);
+      if (data.defenseTime) {
+        const timeParts = data.defenseTime.split(':');
+        if (timeParts.length >= 2) {
+          combinedDate.setHours(parseInt(timeParts[0]), parseInt(timeParts[1]), 0, 0);
+        }
+      }
+      if (combinedDate <= new Date()) {
+        throw new Error('Lịch bảo vệ hội đồng phải bắt đầu vào một mốc thời gian trong tương lai (lớn hơn thời điểm hiện tại)');
+      }
     }
 
     // Create defense schedule
@@ -1143,6 +1168,11 @@ export class AssignmentService {
       throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
     }
 
+    // Validate defenseDate in the future
+    if (data.defenseDate && new Date(data.defenseDate) <= new Date()) {
+      throw new Error('Ngày bảo vệ hội đồng phải lớn hơn thời gian hiện tại');
+    }
+
     // Validate: GVHD cannot be committee member
     const allMembers = [data.chairId, data.secretaryId, ...data.memberIds];
     if (allMembers.includes(topic.supervisor_id)) {
@@ -1286,6 +1316,13 @@ export class AssignmentService {
 
     if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
       throw new Error('Giờ bắt đầu phải trước giờ kết thúc');
+    }
+
+    if (startTime && new Date(startTime) <= new Date()) {
+      throw new Error('Thời gian bắt đầu phản biện phải lớn hơn thời gian hiện tại');
+    }
+    if (endTime && new Date(endTime) <= new Date()) {
+      throw new Error('Thời gian kết thúc phản biện phải lớn hơn thời gian hiện tại');
     }
 
     // Check conflict for all assigned reviewers under this group if schedule is set

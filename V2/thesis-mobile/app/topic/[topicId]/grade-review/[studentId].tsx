@@ -519,6 +519,7 @@ export default function GradeReviewScreen() {
             return {
                 criterion: c,
                 score: g?.score ?? 0,
+                comment: g?.comments || '',
                 isGraded: !!g,
                 isModified,
                 isPending: g ? (g as any).isPending || false : false
@@ -809,23 +810,20 @@ export default function GradeReviewScreen() {
                                                     <Text style={styles.itemMax}>/{item.criterion.max_score}</Text>
                                                 </View>
                                             </View>
+                                            {item.comment ? (
+                                                <View style={styles.criterionCommentBox}>
+                                                    <Text style={styles.criterionCommentText}>
+                                                        Nhận xét: {item.comment}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
                                         </View>
                                     ))}
                                 </View>
                             </>
                         )}
 
-                        {reviewData.generalComment ? (
-                            <View style={styles.commentSection}>
-                                <View style={styles.commentHeader}>
-                                    <FileText size={16} color="#64748b" />
-                                    <Text style={styles.commentLabel}>GHI CHÚ / NHẬN XÉT</Text>
-                                </View>
-                                <View style={styles.commentBox}>
-                                    <Text style={styles.commentContent}>{reviewData.generalComment}</Text>
-                                </View>
-                            </View>
-                        ) : null}
+
 
                         {reviewData.gradeHistory && reviewData.gradeHistory.length > 0 && (
                             <View style={[styles.summarySection, { padding: 16, marginTop: 10 }]}>
@@ -942,6 +940,18 @@ const styles = StyleSheet.create({
     scoreContainer: { alignItems: 'flex-end', minWidth: 40 },
     itemScore: { fontSize: 16, fontWeight: '900', color: BLUE },
     itemMax: { fontSize: 10, color: '#cbd5e1', fontWeight: '700' },
+    criterionCommentBox: {
+        marginTop: 6,
+        paddingTop: 6,
+        borderTopWidth: 1,
+        borderTopColor: '#f1f5f9',
+    },
+    criterionCommentText: {
+        fontSize: 11,
+        color: '#64748b',
+        fontStyle: 'italic',
+        lineHeight: 16,
+    },
 
     commentSection: { padding: 16, marginTop: 8 },
     commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },

@@ -134,6 +134,12 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
       },
+      {
+        title: 'HỆ THỐNG',
+        items: [
+          { key: '/semester-operation', label: 'Vận hành học kỳ', icon: <SettingOutlined /> },
+        ]
+      },
     ];
   }
 

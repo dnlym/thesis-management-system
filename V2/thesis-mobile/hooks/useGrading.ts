@@ -75,6 +75,7 @@ export function useComputeFinalScore() {
         mutationFn: (topicId: string) => GradingApi.computeFinalScore(topicId),
         onSuccess: (response, topicId) => {
             queryClient.invalidateQueries({ queryKey: gradingKeys.topicGrades(topicId) });
+            queryClient.invalidateQueries({ queryKey: topicKeys.all });
             Alert.alert('Thành công', 'Tính điểm tổng hợp thành công');
         },
         onError: (error: any) => {
@@ -94,6 +95,7 @@ export function useFinalizeGrades() {
         mutationFn: (topicId: string) => GradingApi.finalizeGrades(topicId),
         onSuccess: (response, topicId) => {
             queryClient.invalidateQueries({ queryKey: gradingKeys.topicGrades(topicId) });
+            queryClient.invalidateQueries({ queryKey: topicKeys.all });
             Alert.alert('Thành công', 'Hoàn tất chấm điểm thành công');
         },
         onError: (error: any) => {

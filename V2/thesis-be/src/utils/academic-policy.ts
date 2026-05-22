@@ -244,28 +244,26 @@ export class AcademicPolicy {
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
         
-        const isSupervisorAllowedPhase = phase === SemesterPhase.REVIEWING || 
-          (phase === SemesterPhase.WORK && registration && (registration.midterm_status === 'PASS' || registration.midterm_status === 'pass'));
+        const isSupervisorAllowedPhase = phase === SemesterPhase.REVIEWING;
           
         if (!isSupervisorAllowedPhase) {
           if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
             return { allowed: false, reason: 'Giai đoạn chấm điểm hướng dẫn đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
           }
-          return { allowed: false, reason: 'Chỉ được chấm điểm hướng dẫn sau khi sinh viên đạt đánh giá giữa kỳ (PASS) hoặc trong giai đoạn Phản biện.', code: 'MIDTERM_REQUIRED' };
+          return { allowed: false, reason: 'Chỉ được chấm điểm hướng dẫn trong giai đoạn Phản biện.', code: 'INVALID_PHASE' };
         }
         return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
         
-        const isReviewerAllowedPhase = phase === SemesterPhase.REVIEWING || 
-          (phase === SemesterPhase.WORK && registration && (registration.midterm_status === 'PASS' || registration.midterm_status === 'pass'));
+        const isReviewerAllowedPhase = phase === SemesterPhase.REVIEWING;
           
         if (!isReviewerAllowedPhase) {
           if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
             return { allowed: false, reason: 'Giai đoạn chấm điểm phản biện đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
           }
-          return { allowed: false, reason: 'Chỉ được chấm điểm phản biện sau khi sinh viên đạt đánh giá giữa kỳ (PASS) hoặc trong giai đoạn Phản biện.', code: 'MIDTERM_REQUIRED' };
+          return { allowed: false, reason: 'Chỉ được chấm điểm phản biện trong giai đoạn Phản biện.', code: 'INVALID_PHASE' };
         }
         return { allowed: true, code: 'ALLOWED' };
 

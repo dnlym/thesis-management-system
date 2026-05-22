@@ -211,6 +211,10 @@ export class GradingService {
     const studentId = data.studentId || (data as any).student_id;
 
     if (isPastDeadline && user.role !== UserRole.ADMIN && user.role !== UserRole.HEAD) {
+      if (existingGrades.length === 0) {
+        throw new Error('Không thể yêu cầu sửa điểm do điểm số chưa từng được nhập trước thời hạn khóa.');
+      }
+
       const changedGrades = data.grades.filter(newGrade => {
         const old = existingGrades.find(eg => eg.criterion_id === newGrade.criterionId);
         return !old || old.score !== roundScore(newGrade.score);
@@ -1766,9 +1770,15 @@ export class GradingService {
 
     if (!topic) throw new Error(ERROR_CODES.TOPIC_NOT_FOUND);
 
-    // Get list of students registered for this topic
+    // Get list of students registered for this topic (exclude failed students)
     const registrations = await prisma.topicRegistration.findMany({
-      where: { topic_id: topicId, midterm_status: 'PASS' },
+      where: {
+        topic_id: topicId,
+        NOT: [
+          { midterm_status: 'FAIL' },
+          { status: 'FAILED' }
+        ]
+      },
       select: {
         id: true,
         group_id: true,

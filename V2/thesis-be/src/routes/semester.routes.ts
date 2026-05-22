@@ -91,7 +91,7 @@ router.patch(
 
 router.post(
   '/:semesterId/toggle-registration-override',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.COORDINATOR),
   validate([
     param('semesterId').isUUID().withMessage('Invalid semester ID'),
     body('override').isBoolean().withMessage('Override must be a boolean'),
@@ -102,7 +102,7 @@ router.post(
 
 router.get(
   '/:semesterId/override-logs',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.COORDINATOR),
   validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
   semesterController.getOverrideLogs.bind(semesterController)
 );
@@ -110,14 +110,14 @@ router.get(
 // Department-specific configuration
 router.get(
   '/:semesterId/dept-config',
-  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.LECTURER, UserRole.STUDENT),
+  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.LECTURER, UserRole.STUDENT, UserRole.COORDINATOR),
   validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
   deptSemesterConfigController.getConfig.bind(deptSemesterConfigController)
 );
 
 router.post(
   '/:semesterId/dept-config',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.ADMIN, UserRole.COORDINATOR),
   validate([
     param('semesterId').isUUID().withMessage('Invalid semester ID'),
     body('defense_date').optional().isISO8601().withMessage('Invalid defense date'),

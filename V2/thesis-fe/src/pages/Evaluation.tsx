@@ -165,7 +165,7 @@ const Evaluation = () => {
     if (activeTab === 'advisor') return data.SUPERVISOR || [];
 
     return data.FINAL || data.SUPERVISOR || data.REVIEWER || data.COMMITTEE || Object.values(data)[0] || [];
-  }, [criteriaData]);
+  }, [criteriaData, activeTab]);
 
   const students = useMemo(() => {
     if (!selectedTopic?.registrations) return [];
@@ -191,9 +191,17 @@ const Evaluation = () => {
     }));
   }, [selectedTopic, myGradesData, groupId]);
 
-  const isConfirmed = useMemo(() => {
+  const isSubmitted = useMemo(() => {
     return myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
   }, [myGradesData]);
+
+  const isPendingApproval = useMemo(() => {
+    return myGradesData?.students?.some((s: any) => s.status === 'PENDING_APPROVAL');
+  }, [myGradesData]);
+
+  const isConfirmed = useMemo(() => {
+    return isSubmitted || isPendingApproval;
+  }, [isSubmitted, isPendingApproval]);
 
   // Use permissions from backend
   const permissions = myGradesData?.permissions;
@@ -247,7 +255,7 @@ const Evaluation = () => {
   const isAdminOrHead = user?.role === 'ADMIN' || user?.role === 'HEAD';
 
   // Admin and HOD are NEVER locked unless the topic is completely finalized (even then they might need to edit, but let's keep finalized as a hard lock for now)
-  const isLocked = (isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead) || missingSupervisorGrades || missingReviewerGrades) && !isRequestMode;
+  const isLocked = isPendingApproval || (((isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead) || missingSupervisorGrades || missingReviewerGrades)) && !isRequestMode);
 
   const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead) && !missingSupervisorGrades && !missingReviewerGrades;
 
@@ -277,7 +285,9 @@ const Evaluation = () => {
         if (!gradesUpdate[sData.studentId]) gradesUpdate[sData.studentId] = {};
         sData.grades.forEach((g: any) => {
           gradesUpdate[sData.studentId][g.criterionId] = g.score;
-          notesUpdate[g.criterionId] = g.comment;
+          if (g.comment) {
+            notesUpdate[g.criterionId] = g.comment;
+          }
         });
       });
       form.setFieldsValue({ grades: gradesUpdate, notes: notesUpdate });
@@ -335,10 +345,16 @@ const Evaluation = () => {
           };
         });
 
+      let hasPendingRequest = false;
       for (const sub of submissions) {
-        await submitGradeMutation.mutateAsync(sub);
+        const res = await submitGradeMutation.mutateAsync(sub);
+        if (res && (res as any).status === 'PENDING_APPROVAL') {
+          hasPendingRequest = true;
+        }
       }
-      if (isRequestMode) {
+      if (hasPendingRequest) {
+        notify.info('Yêu cầu sửa điểm đã được gửi tới Trưởng bộ môn phê duyệt.');
+      } else if (isRequestMode) {
         notify.success('Yêu cầu sửa điểm đã được gửi thành công!');
       } else {
         notify.success('Đã lưu điểm thành công!');
@@ -348,6 +364,7 @@ const Evaluation = () => {
       setSubmitReason('');
       setIsRequestMode(false);
       queryClient.invalidateQueries({ queryKey: ['my-grades', topicId] });
+      queryClient.invalidateQueries({ queryKey: ['topic', topicId] });
       refetchHistory();
     } catch (error: any) {
       console.error('Submission failed:', error);
@@ -401,9 +418,14 @@ const Evaluation = () => {
                   Đã chốt kết quả
                 </Tag>
               )}
-              {isConfirmed && !isFinalized && (
+              {isSubmitted && !isFinalized && (
                 <Tag color="processing" icon={<CheckCircleOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
                   Đã lưu điểm - Có thể sửa
+                </Tag>
+              )}
+              {isPendingApproval && !isFinalized && (
+                <Tag color="warning" icon={<HistoryOutlined />} className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm border-none">
+                  Đang chờ duyệt sửa điểm
                 </Tag>
               )}
               {isConfirmed && isFinalized && (
@@ -419,7 +441,7 @@ const Evaluation = () => {
             </Space>
           </div>
 
-          {isConfirmed && !isPastDeadline && (
+          {isSubmitted && !isPastDeadline && (
             <Alert
               message={<span className="font-bold">Đánh giá đã hoàn tất</span>}
               description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn có thể chỉnh sửa nếu cần (vẫn trong thời hạn).`}
@@ -429,7 +451,17 @@ const Evaluation = () => {
             />
           )}
 
-          {isPastDeadline && !isRequestMode && (
+          {isPendingApproval && (
+            <Alert
+              message={<span className="font-bold">Yêu cầu sửa điểm đang chờ phê duyệt</span>}
+              description="Điểm số mới của bạn đã được lưu dưới dạng yêu cầu thay đổi và đang chờ Trưởng bộ môn phê duyệt. Bạn không thể chỉnh sửa trong thời gian này."
+              type="warning"
+              showIcon
+              className="mb-6 rounded-xl border-amber-100 shadow-sm"
+            />
+          )}
+
+          {isPastDeadline && !isRequestMode && !isPendingApproval && (
             <Alert
               message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
               description="Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn."
@@ -675,7 +707,7 @@ const Evaluation = () => {
                 </div>
               )}
 
-              {isPastDeadline && !isRequestMode && !isFinalized && !isAdminOrHead && (
+              {isPastDeadline && isPhaseAllowed && isConfirmed && !isRequestMode && !isFinalized && !isAdminOrHead && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
                   <Button
                     size="large"
@@ -1338,6 +1370,14 @@ const Evaluation = () => {
                           rowKey="id"
                           loading={isLoadingAdvisor}
                           className="sys-table"
+                          locale={{
+                            emptyText: (
+                              <div className="py-8 text-center text-gray-400">
+                                <InfoCircleOutlined className="text-xl mb-2" />
+                                <p>Bạn không có đề tài hướng dẫn nào trong học kỳ này.</p>
+                              </div>
+                            )
+                          }}
                           pagination={{
                             pageSize: pageSize,
                             showSizeChanger: true,
@@ -1360,6 +1400,14 @@ const Evaluation = () => {
                           rowKey="id"
                           loading={isLoadingReviewer}
                           className="sys-table"
+                          locale={{
+                            emptyText: (
+                              <div className="py-8 text-center text-gray-400">
+                                <InfoCircleOutlined className="text-xl mb-2" />
+                                <p>Bạn không được phân công phản biện đề tài nào trong học kỳ này.</p>
+                              </div>
+                            )
+                          }}
                           pagination={{
                             pageSize: pageSize,
                             showSizeChanger: true,
@@ -1382,6 +1430,14 @@ const Evaluation = () => {
                           rowKey="id"
                           loading={isLoadingCouncil}
                           className="sys-table"
+                          locale={{
+                            emptyText: (
+                              <div className="py-8 text-center text-gray-400">
+                                <InfoCircleOutlined className="text-xl mb-2" />
+                                <p>Bạn không được phân công hội đồng đề tài nào trong học kỳ này.</p>
+                              </div>
+                            )
+                          }}
                           pagination={{
                             pageSize: pageSize,
                             showSizeChanger: true,
