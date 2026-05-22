@@ -762,14 +762,15 @@ const styles = StyleSheet.create({
     criterionName: { fontSize: 13, fontWeight: '700', color: '#334155', lineHeight: 18, flexShrink: 1 },
     modifiedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginLeft: 6 },
     criterionDesc: { fontSize: 10, color: '#94a3b8', lineHeight: 14 },
-    scoreInputGroup: { flexDirection: 'row', alignItems: 'center', minWidth: 65, justifyContent: 'flex-end' },
+    scoreInputGroup: { flexDirection: 'row', alignItems: 'center', minWidth: 78, justifyContent: 'flex-end' },
     input: {
-        width: 36, height: 28, backgroundColor: '#f8fafc', borderTopLeftRadius: 6, borderBottomLeftRadius: 6,
-        borderWidth: 1, borderColor: '#e2e8f0', textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#1e293b'
+        width: 44, height: 32, backgroundColor: '#f8fafc', borderTopLeftRadius: 6, borderBottomLeftRadius: 6,
+        borderWidth: 1, borderColor: '#e2e8f0', textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#1e293b',
+        paddingVertical: 0, paddingHorizontal: 0, textAlignVertical: 'center'
     },
     inputFilled: { color: BLUE, borderColor: BLUE, backgroundColor: '#f0f7ff' },
     maxBadge: {
-        height: 28, paddingHorizontal: 4, backgroundColor: '#f1f5f9',
+        height: 32, paddingHorizontal: 6, backgroundColor: '#f1f5f9',
         borderTopRightRadius: 6, borderBottomRightRadius: 6,
         justifyContent: 'center', borderWidth: 1, borderLeftWidth: 0, borderColor: '#e2e8f0'
     },
