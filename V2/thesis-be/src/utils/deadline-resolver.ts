@@ -12,7 +12,7 @@ export class DeadlineResolver {
   static resolveRegistrationDeadline(semester: any): dayjs.Dayjs | null {
     const originalDeadline = semester.topic_registration_end;
     if (!originalDeadline) return null;
-    return dayjs(originalDeadline);
+    return dayjs(originalDeadline).tz('Asia/Ho_Chi_Minh');
   }
 
   /**
@@ -23,13 +23,13 @@ export class DeadlineResolver {
     
     return {
       registrationEnd: registrationDeadline,
-      proposalDeadline: dayjs(semester.proposal_deadline),
-      midtermStart: semester.midterm_start ? dayjs(semester.midterm_start) : null,
-      midtermEnd: semester.midterm_end ? dayjs(semester.midterm_end) : null,
-      thesisDeadline: dayjs(semester.thesis_deadline),
-      defenseStart: semester.defense_start ? dayjs(semester.defense_start) : null,
-      defenseEnd: semester.defense_end ? dayjs(semester.defense_end) : null,
-      semesterEnd: dayjs(semester.end_date)
+      proposalDeadline: semester.proposal_deadline ? dayjs(semester.proposal_deadline).tz('Asia/Ho_Chi_Minh') : null,
+      midtermStart: semester.midterm_start ? dayjs(semester.midterm_start).tz('Asia/Ho_Chi_Minh') : null,
+      midtermEnd: semester.midterm_end ? dayjs(semester.midterm_end).tz('Asia/Ho_Chi_Minh') : null,
+      thesisDeadline: semester.thesis_deadline ? dayjs(semester.thesis_deadline).tz('Asia/Ho_Chi_Minh') : null,
+      defenseStart: semester.defense_start ? dayjs(semester.defense_start).tz('Asia/Ho_Chi_Minh') : null,
+      defenseEnd: semester.defense_end ? dayjs(semester.defense_end).tz('Asia/Ho_Chi_Minh') : null,
+      semesterEnd: semester.end_date ? dayjs(semester.end_date).tz('Asia/Ho_Chi_Minh') : null
     };
   }
 }

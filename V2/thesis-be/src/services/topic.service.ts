@@ -1102,6 +1102,7 @@ export class TopicService {
             max_students: (isRegistrationOver && group.members.length === 1) ? 1 : 2,
             room,
             committee,
+            defense_schedule: topic.defense_schedules?.[0] || null,
           });
         }
 
@@ -1131,6 +1132,7 @@ export class TopicService {
             max_students: 1, // Cá nhân thì sĩ số tối đa là 1
             room,
             committee,
+            defense_schedule: topic.defense_schedules?.[0] || null,
           });
         }
       } else {
@@ -1149,6 +1151,7 @@ export class TopicService {
           students,
           room,
           committee,
+          defense_schedule: topic.defense_schedules?.[0] || null,
         });
       }
     }
@@ -1331,6 +1334,7 @@ export class TopicService {
       ...topic,
       code: displayCode,
       committee: (topic as any).defense_schedules?.[0]?.committee || null,
+      defense_schedule: (topic as any).defense_schedules?.[0] || null,
       registrations: topic.registrations || [],
       students: filteredStudents,
       room,

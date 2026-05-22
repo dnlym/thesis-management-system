@@ -331,44 +331,32 @@ export default function GradeReviewScreen() {
     const [topicGradesData, setTopicGradesData] = React.useState<TopicGradesResponse | null>(null);
     const [isInitialLoading, setIsInitialLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [viewRole, setViewRole] = React.useState<'SUMMARY' | 'SUPERVISOR' | 'REVIEWER' | 'COMMITTEE'>('SUMMARY');
+    // HOD can toggle between views; for regular lecturers this is always their own role
+    const [headViewRole, setHeadViewRole] = React.useState<'SUMMARY' | 'SUPERVISOR' | 'REVIEWER' | 'COMMITTEE'>('SUMMARY');
     const [topicTitleExpanded, setTopicTitleExpanded] = React.useState(false);
 
     const queryClient = useQueryClient();
 
     const isHead = currentUser?.role === 'HEAD';
-    
-    const canGrade = React.useMemo(() => {
-        if (!topic) return false;
-        if (isHead) return false;
-        if (topic.status === 'FINALIZED') return false;
 
-        const currentStudent = topic.students?.find((s: any) => s.id === selectedStudentId);
-        const isMidtermFailed = currentStudent?.midterm_status === 'FAIL' || currentStudent?.midtermStatus === 'FAIL';
-        if (isMidtermFailed) return false;
+    // Compute role for the CURRENT user based on topic assignments - available on first render
+    const myRoleOnTopic = React.useMemo(() => {
+        if (!topic || !currentUser) return null;
+        if (isHead) return 'SUMMARY';
+        if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
+        const assignment = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
+        if (assignment?.assignment_type === 'REVIEWER') return 'REVIEWER';
+        if (assignment?.assignment_type === 'COMMITTEE') return 'COMMITTEE';
+        return null;
+    }, [topic, currentUser, isHead]);
 
-        if (topic.supervisor_id === currentUser?.id) return true;
-        return topic.assignments?.some(a => a.reviewer_id === currentUser?.id);
-    }, [topic, currentUser, isHead, selectedStudentId]);
-
-    React.useEffect(() => {
-        if (isHead) setViewRole('SUMMARY');
-        else {
-            if (topic) {
-                if (topic.supervisor_id === currentUser?.id) setViewRole('SUPERVISOR');
-                else {
-                    const assignment = topic.assignments?.find(a => a.reviewer_id === currentUser?.id);
-                    if (assignment?.assignment_type === 'REVIEWER') setViewRole('REVIEWER');
-                    else if (assignment?.assignment_type === 'COMMITTEE') setViewRole('COMMITTEE');
-                }
-            }
-        }
-    }, [isHead, topic, currentUser?.id]);
+    // For HOD: headViewRole is used. For others: always use their own role
+    const viewRole = isHead ? headViewRole : (myRoleOnTopic as any || 'REVIEWER');
 
     const raterRole = React.useMemo(() => {
         if (!topic || !currentUser) return 'REVIEWER_1';
         if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
-        const myAssignment = topic.assignments?.find(a => a.reviewer_id === currentUser.id);
+        const myAssignment = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
         if (myAssignment) {
             if (myAssignment.assignment_type === 'REVIEWER') {
                 const order = myAssignment.reviewer_order || 1;
@@ -383,6 +371,21 @@ export default function GradeReviewScreen() {
         }
         return 'REVIEWER_1';
     }, [topic, currentUser]);
+
+    const canGrade = React.useMemo(() => {
+        if (!topic) return false;
+        if (isHead) return false;
+        if (topic.status === 'FINALIZED') return false;
+
+        const currentStudent = topic.students?.find((s: any) => s.id === selectedStudentId);
+        const isMidtermFailed = currentStudent?.midterm_status === 'FAIL' || currentStudent?.midtermStatus === 'FAIL';
+        if (isMidtermFailed) return false;
+
+        if (topic.supervisor_id === currentUser?.id) return true;
+        return topic.assignments?.some((a: any) => a.reviewer_id === currentUser?.id);
+    }, [topic, currentUser, isHead, selectedStudentId]);
+
+
 
     const { data: criteriaRes, isLoading: isLoadingCriteria } = useGradingCriteria();
 
@@ -434,6 +437,8 @@ export default function GradeReviewScreen() {
     };
 
     fetchAllData();
+     const interval = setInterval(fetchAllData, 3000);
+     return () => clearInterval(interval);
 }, [topicId, topic]);
 
     const reviewData = React.useMemo(() => {
@@ -480,14 +485,27 @@ export default function GradeReviewScreen() {
         const isSummaryMode = viewRole === 'SUMMARY';
         
         let gradesToDisplay: Grade[] = [];
-        if (isSummaryMode) {
-            gradesToDisplay = (myGrades.length > 0) ? myGrades : studentGrades;
-        } else if (viewRole === 'SUPERVISOR') {
-            gradesToDisplay = flattenedAdvisor;
-        } else if (viewRole === 'REVIEWER') {
-            gradesToDisplay = flattenedReviewer;
-        } else if (viewRole === 'COMMITTEE') {
-            gradesToDisplay = flattenedCouncil;
+        if (isHead) {
+            if (isSummaryMode) {
+                gradesToDisplay = (myGrades.length > 0) ? myGrades : studentGrades;
+            } else if (viewRole === 'SUPERVISOR') {
+                gradesToDisplay = flattenedAdvisor;
+            } else if (viewRole === 'REVIEWER') {
+                gradesToDisplay = flattenedReviewer;
+            } else if (viewRole === 'COMMITTEE') {
+                gradesToDisplay = flattenedCouncil;
+            }
+        } else {
+            // For regular lecturers, filter to strictly show their own grades for their active role
+            if (viewRole === 'SUPERVISOR') {
+                gradesToDisplay = flattenedAdvisor.filter(g => g.grader_id === currentUser?.id);
+            } else if (viewRole === 'REVIEWER') {
+                gradesToDisplay = flattenedReviewer.filter(g => g.grader_id === currentUser?.id);
+            } else if (viewRole === 'COMMITTEE') {
+                gradesToDisplay = flattenedCouncil.filter(g => g.grader_id === currentUser?.id);
+            } else {
+                gradesToDisplay = myGrades;
+            }
         }
 
         const firstGrade = gradesToDisplay[0];
@@ -594,30 +612,31 @@ export default function GradeReviewScreen() {
                         <RoleChip 
                             label="TỔNG KẾT" 
                             active={viewRole === 'SUMMARY'} 
-                            onPress={() => setViewRole('SUMMARY')} 
+                            onPress={() => setHeadViewRole('SUMMARY')} 
                             icon={<Award size={14} color={viewRole === 'SUMMARY' ? '#fff' : BLUE} />}
                         />
                         <RoleChip 
                             label="GVHD" 
                             active={viewRole === 'SUPERVISOR'} 
-                            onPress={() => setViewRole('SUPERVISOR')} 
+                            onPress={() => setHeadViewRole('SUPERVISOR')} 
                             icon={<User size={14} color={viewRole === 'SUPERVISOR' ? '#fff' : '#64748b'} />}
                         />
                         <RoleChip 
                             label="PHẢN BIỆN" 
                             active={viewRole === 'REVIEWER'} 
-                            onPress={() => setViewRole('REVIEWER')} 
+                            onPress={() => setHeadViewRole('REVIEWER')} 
                             icon={<Users size={14} color={viewRole === 'REVIEWER' ? '#fff' : '#64748b'} />}
                         />
                         <RoleChip 
                             label="HỘI ĐỒNG" 
                             active={viewRole === 'COMMITTEE'} 
-                            onPress={() => setViewRole('COMMITTEE')} 
+                            onPress={() => setHeadViewRole('COMMITTEE')} 
                             icon={<GraduationCap size={14} color={viewRole === 'COMMITTEE' ? '#fff' : '#64748b'} />}
                         />
                     </ScrollView>
                 </View>
             )}
+
 
             <View style={styles.switcher}>
                 <View style={styles.tabWrapper}>

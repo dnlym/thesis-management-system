@@ -109,11 +109,10 @@ export class GradingService {
 
     if (!semester) throw new Error('Không tìm thấy thông tin học kỳ.');
     if (!user) throw new Error('Không tìm thấy thông tin người dùng.');
-    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, { topic });
-
-    // Verify student has not failed midterm
+    // Fetch student registration to check midterm status and pass to AcademicPolicy
+    let reg = null;
     if (data.studentId) {
-      const reg = await prisma.topicRegistration.findFirst({
+      reg = await prisma.topicRegistration.findFirst({
         where: {
           student_id: data.studentId,
           semester_id: semester.id,
@@ -123,6 +122,8 @@ export class GradingService {
         throw new Error('Sinh viên này đã rớt đánh giá giữa kỳ và bị khóa toàn bộ quyền thao tác học thuật.');
       }
     }
+
+    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, reg ? { ...reg, topic } : { topic });
 
     // Verify user has permission to grade using helpers
     let hasPermission = false;
@@ -1744,6 +1745,11 @@ export class GradingService {
       orderBy: { criterion: { order_index: 'asc' } },
     });
 
+    // Fetch all grades for this topic to check completion statuses of other roles
+    const allTopicGrades = await prisma.grade.findMany({
+      where: { topic_id: topicId }
+    });
+
     // Get grader info
     const grader = await prisma.user.findUnique({
       where: { id: userId },
@@ -1889,6 +1895,10 @@ export class GradingService {
         }
       }
 
+      const studentGrades = allTopicGrades.filter(g => g.student_id === studentId);
+      const hasSupervisorGraded = studentGrades.some(g => g.rater_role?.startsWith('SUPERVISOR'));
+      const hasReviewerGraded = studentGrades.some(g => g.rater_role?.startsWith('REVIEWER'));
+
       const hasGrades = sGrades.length > 0;
       const status = isPending
         ? ('PENDING_APPROVAL' as const)
@@ -1905,6 +1915,10 @@ export class GradingService {
         raterRole: sGrades[0]?.rater_role || sPending[0]?.rater_role || null,
         generalComment,
         grades: mergedGrades,
+        raterStatuses: {
+          hasSupervisorGraded,
+          hasReviewerGraded
+        }
       };
     });
 
@@ -2223,8 +2237,8 @@ export class GradingService {
 
     switch (role) {
       case RaterRole.SUPERVISOR:
-        // Supervisor can grade during REVIEWING and DEFENSE. Locked in FINAL.
-        return phase === SemesterPhase.FINAL;
+        // Supervisor can grade until the REVIEWING phase ends (locked when DEFENSE or FINAL starts).
+        return phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
 
       case RaterRole.REVIEWER:
       case RaterRole.REVIEWER_1:

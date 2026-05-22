@@ -72,6 +72,7 @@ const {
     isLoading: isLoadingCriteria,
 } = useGradingCriteria({
     raterRole: backendRole,
+    topicId: topicId as string,
 });
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -125,6 +126,7 @@ const {
     const [isRequestMode, setIsRequestMode] = React.useState(false);
     const [requestModalVisible, setRequestModalVisible] = React.useState(false);
     const [requestReason, setRequestReason] = React.useState('');
+    const [myGradesData, setMyGradesData] = React.useState<any>(null);
     const inputRefs = React.useRef<Record<string, TextInput | null>>({});
 
     // Restoration Logic
@@ -136,6 +138,7 @@ const {
             }
             try {
                 const myGrades = await GradingApi.getMyGrades(topicId as string, raterRole);
+                setMyGradesData(myGrades);
                 const restoredScores: Record<string, Record<string, string>> = {};
                 const restoredComments: Record<string, string> = {};
 
@@ -194,6 +197,58 @@ const {
         return scoresChanged || commentChanged;
     }, [allScores, originalScores, allComments, originalComments, idx, eligibleStudents]);
 
+    // Real-time synchronization polling (3 seconds)
+    React.useEffect(() => {
+        if (!user || !topic || eligibleStudents.length === 0 || isRestoring) return;
+
+        const interval = setInterval(async () => {
+            // Only update from server if user has no unsaved changes (not dirty)
+            if (isDirty) return;
+
+            try {
+                const myGrades = await GradingApi.getMyGrades(topicId as string, raterRole);
+                if (myGrades) {
+                    setMyGradesData(myGrades);
+                    setGradeHistory(myGrades.gradeHistory || []);
+
+                    if (myGrades.students && myGrades.students.length > 0) {
+                        const restoredScores: Record<string, Record<string, string>> = {};
+                        const restoredComments: Record<string, string> = {};
+                        const restoredSubmitted: Record<string, boolean> = {};
+
+                        for (const sGrade of myGrades.students) {
+                            if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
+                                restoredSubmitted[sGrade.studentId] = true;
+                                const sScores: Record<string, string> = {};
+                                sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
+                                restoredScores[sGrade.studentId] = sScores;
+                                restoredComments[sGrade.studentId] = sGrade.generalComment || '';
+                                if (sGrade.studentId === studentId) {
+                                    setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
+                                }
+                            }
+                        }
+
+                        // Update states only if we are still not dirty (safety check)
+                        if (!isDirty) {
+                            setAllScores(prev => ({ ...prev, ...restoredScores }));
+                            setOriginalScores(JSON.parse(JSON.stringify(restoredScores)));
+                            setAllComments(prev => ({ ...prev, ...restoredComments }));
+                            setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
+                            setSubmittedStudents(restoredSubmitted);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Polling error:', err);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [user, topic, raterRole, topicId, groupId, studentId, eligibleStudents, isRestoring, isDirty]);
+
+
+
     const roleLabel = React.useMemo(() => {
         if (raterRole === 'SUPERVISOR') return 'GVHD';
         if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch HĐ';
@@ -206,7 +261,29 @@ const {
         return raterRole;
     }, [raterRole]);
 
+    const missingSupervisorGrades = React.useMemo(() => {
+        const currentStudentId = eligibleStudents[idx]?.id;
+        if (!currentStudentId || !myGradesData) return false;
+        const normalizedRole = backendRole; // 'SUPERVISOR', 'REVIEWER', 'COMMITTEE'
+        if (normalizedRole !== 'REVIEWER' && normalizedRole !== 'COMMITTEE') return false;
+
+        const sData = myGradesData.students?.find((ms: any) => ms.studentId === currentStudentId);
+        return sData && !sData.raterStatuses?.hasSupervisorGraded;
+    }, [eligibleStudents, idx, myGradesData, backendRole]);
+
+    const missingReviewerGrades = React.useMemo(() => {
+        const currentStudentId = eligibleStudents[idx]?.id;
+        if (!currentStudentId || !myGradesData) return false;
+        const normalizedRole = backendRole;
+        if (normalizedRole !== 'COMMITTEE') return false;
+
+        const sData = myGradesData.students?.find((ms: any) => ms.studentId === currentStudentId);
+        return sData && !sData.raterStatuses?.hasReviewerGraded;
+    }, [eligibleStudents, idx, myGradesData, backendRole]);
+
     const canGrade = React.useMemo(() => {
+        if (missingSupervisorGrades || missingReviewerGrades) return false;
+
         const actions = (topic as any)?.allowedActions;
         if (!actions) return true; 
 
@@ -215,9 +292,16 @@ const {
         if (raterRole.startsWith('COMMITTEE')) return actions.GRADE_COMMITTEE?.allowed;
         
         return true;
-    }, [topic, raterRole]);
+    }, [topic, raterRole, missingSupervisorGrades, missingReviewerGrades]);
 
     const disableReason = React.useMemo(() => {
+        if (missingSupervisorGrades) {
+            return 'Chưa thể chấm điểm do Giảng viên hướng dẫn chưa hoàn tất nhập điểm cho đề tài/sinh viên này.';
+        }
+        if (missingReviewerGrades) {
+            return 'Chưa thể chấm điểm do Giảng viên phản biện chưa hoàn tất nhập điểm cho đề tài/sinh viên này.';
+        }
+
         const actions = (topic as any)?.allowedActions;
         if (!actions) return null;
 
@@ -227,7 +311,7 @@ const {
         else if (raterRole.startsWith('COMMITTEE')) result = actions.GRADE_COMMITTEE;
 
         return result?.allowed ? null : result?.reason;
-    }, [topic, raterRole]);
+    }, [topic, raterRole, missingSupervisorGrades, missingReviewerGrades]);
 
     if (isLoadingTopic || isLoadingCriteria || isRestoring) {
         return (

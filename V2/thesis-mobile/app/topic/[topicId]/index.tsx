@@ -202,7 +202,11 @@ export default function TopicDetailScreen() {
                                     key={sv.id}
                                     style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                     onPress={() => {
-                                        router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
+                                        if (isHead) {
+                                            router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
+                                        } else {
+                                            router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}` as any);
+                                        }
                                     }}
                                 >
                                     <View style={styles.avatar}>
@@ -257,18 +261,19 @@ export default function TopicDetailScreen() {
             {students.length > 0 && (
                 <View style={styles.footer}>
                     <TouchableOpacity
-                        style={[styles.ctaBtn, (isAnyGraded || isHead) && styles.reviewBtn]}
+                        style={[styles.ctaBtn, isHead && styles.reviewBtn]}
                         onPress={() => {
-                            // HOD or Anyone seeing grades goes to review
-                            if (isHead || isAnyGraded) {
+                            if (isHead) {
+                                // HOD: always goes to full grade review summary
                                 router.push(`/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` as any);
                             } else {
+                                // Regular lecturers: go straight to grading form (whether graded or not)
                                 router.push(`/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}` as any);
                             }
                         }}
                     >
-                        <Text style={[styles.ctaBtnText, (isAnyGraded || isHead) && styles.reviewBtnText]}>
-                            {isHead ? 'Xem bảng điểm' : isAnyGraded ? 'Xem lại điểm' : 'Bắt đầu nhập điểm'}
+                        <Text style={[styles.ctaBtnText, isHead && styles.reviewBtnText]}>
+                            {isHead ? 'Xem bảng điểm' : isAnyGraded ? 'Chỉnh sửa điểm' : 'Bắt đầu nhập điểm'}
                         </Text>
                     </TouchableOpacity>
                 </View>

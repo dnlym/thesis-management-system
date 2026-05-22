@@ -1,5 +1,6 @@
 import { UserRole, SemesterPhase, SemesterStatus } from '@prisma/client';
 import { SemesterGuard, TimelineContext } from './semester-guard';
+import dayjs from '../config/dayjs';
 
 /**
  * AcademicAction — The central registry of all protected operations in the system.
@@ -64,7 +65,7 @@ export class AcademicPolicy {
     return SemesterGuard.calculateCurrentPhase(semester, semester.deptConfig);
   }
 
-  private static isTopicFailed(phase: SemesterPhase | null, registration: any): { failed: boolean; reason?: string; code?: string } {
+  private static isTopicFailed(phase: SemesterPhase | null, registration: any, action?: AcademicAction): { failed: boolean; reason?: string; code?: string } {
     if (!registration || !registration.topic) return { failed: false };
     const topic = registration.topic;
 
@@ -88,9 +89,11 @@ export class AcademicPolicy {
     }
 
     // 4. Grading Completion Check
-    // For Defense phase, we require Supervisor and Reviewer to have finished
+    // Only enforce this for COMMITTEE grading and FINALIZATION actions.
+    // Supervisor and Reviewer grading actions must NOT be blocked by this check.
     const isAtDefensePhaseOrLater = phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL;
-    if (isAtDefensePhaseOrLater) {
+    const isCommitteeOrFinalize = action === AcademicAction.GRADE_COMMITTEE || action === AcademicAction.FINALIZE_SCORE;
+    if (isAtDefensePhaseOrLater && isCommitteeOrFinalize) {
       const grades = topic.grades || [];
       const hasSupervisorGraded = grades.some((g: any) => g.rater_role?.startsWith('SUPERVISOR'));
       const hasReviewerGraded = grades.some((g: any) => g.rater_role?.startsWith('REVIEWER'));
@@ -163,7 +166,7 @@ export class AcademicPolicy {
     ];
 
     if (subsequentActions.includes(action)) {
-      const failStatus = this.isTopicFailed(phase, registration);
+      const failStatus = this.isTopicFailed(phase, registration, action);
       if (failStatus.failed) {
         return { allowed: false, reason: failStatus.reason, code: failStatus.code || 'TOPIC_FAILED' };
       }
@@ -240,19 +243,29 @@ export class AcademicPolicy {
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        // All roles can proceed to the grading logic. 
-        // Direct save vs Request workflow is handled in GradingService.
-        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'Chưa tới giai đoạn chấm điểm.', code: 'INVALID_PHASE' };
+        
+        const isSupervisorAllowedPhase = phase === SemesterPhase.REVIEWING || 
+          (phase === SemesterPhase.WORK && registration && (registration.midterm_status === 'PASS' || registration.midterm_status === 'pass'));
+          
+        if (!isSupervisorAllowedPhase) {
+          if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
+            return { allowed: false, reason: 'Giai đoạn chấm điểm hướng dẫn đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
+          }
+          return { allowed: false, reason: 'Chỉ được chấm điểm hướng dẫn sau khi sinh viên đạt đánh giá giữa kỳ (PASS) hoặc trong giai đoạn Phản biện.', code: 'MIDTERM_REQUIRED' };
         }
         return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        // All roles can proceed to the grading logic. 
-        // Direct save vs Request workflow is handled in GradingService.
-        if (phase !== SemesterPhase.REVIEWING && phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
-          return { allowed: false, reason: 'Chưa tới giai đoạn chấm điểm.', code: 'INVALID_PHASE' };
+        
+        const isReviewerAllowedPhase = phase === SemesterPhase.REVIEWING || 
+          (phase === SemesterPhase.WORK && registration && (registration.midterm_status === 'PASS' || registration.midterm_status === 'pass'));
+          
+        if (!isReviewerAllowedPhase) {
+          if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
+            return { allowed: false, reason: 'Giai đoạn chấm điểm phản biện đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
+          }
+          return { allowed: false, reason: 'Chỉ được chấm điểm phản biện sau khi sinh viên đạt đánh giá giữa kỳ (PASS) hoặc trong giai đoạn Phản biện.', code: 'MIDTERM_REQUIRED' };
         }
         return { allowed: true, code: 'ALLOWED' };
 
@@ -262,6 +275,18 @@ export class AcademicPolicy {
         // Direct save vs Request workflow is handled in GradingService.
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {
           return { allowed: false, reason: 'Chưa tới giai đoạn bảo vệ.', code: 'INVALID_PHASE' };
+        }
+        // Specific Department Defense Date Check:
+        if (semester.deptConfig?.defense_date) {
+          const defenseDate = dayjs(semester.deptConfig.defense_date).startOf('day');
+          const now = dayjs().startOf('day');
+          if (now.isBefore(defenseDate)) {
+            return {
+              allowed: false,
+              reason: `Chưa đến ngày bảo vệ riêng của bộ môn (${defenseDate.format('DD/MM/YYYY')}).`,
+              code: 'BEFORE_DEFENSE_DATE'
+            };
+          }
         }
         return { allowed: true, code: 'ALLOWED' };
 

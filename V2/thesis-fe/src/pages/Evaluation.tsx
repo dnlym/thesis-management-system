@@ -135,6 +135,7 @@ const Evaluation = () => {
       currentAssignment?.committee_role
     ),
     enabled: !!topicId,
+    refetchInterval: 3000,
   });
 
   const { data: criteriaData, isLoading: isLoadingCriteria } = useGradingCriteria({
@@ -152,6 +153,7 @@ const Evaluation = () => {
     queryKey: ['grade-history', selectedTopicForHistory || topicId],
     queryFn: () => GradingApi.getGradeHistoryByTopic((selectedTopicForHistory || topicId)!),
     enabled: !!(selectedTopicForHistory || topicId),
+    refetchInterval: 3000,
   });
 
   const criteria = useMemo(() => {
@@ -205,22 +207,14 @@ const Evaluation = () => {
   };
 
   const { allowed: isPhaseAllowed, reason: phaseError } = getPermissionForActiveTab();
-
-  // NEW LOCKING LOGIC: Lock if finalized OR if phase not allowed OR past deadline.
-  // Exception: Allow input if in Request Mode
   const isPastDeadline = useMemo(() => {
     const phase = activeSemester?.calculated_phase;
     const deptConfig = activeSemester?.deptConfig;
     const now = dayjs();
     const globalDeadline = activeSemester?.thesis_deadline;
-
-    // 1. Phase-based locking (The master logic)
-    // The activeSemester.calculated_phase already accounts for the Semester Ceiling.
-
-    // 2. Role-specific milestone logic
     if (activeTab === 'advisor') {
-      // Giảng viên hướng dẫn được chấm đến khi chốt học kỳ
-      return phase === 'FINAL';
+      // Giảng viên hướng dẫn được chấm đến khi hết giai đoạn phản biện (khóa khi sang Bảo vệ và Chốt điểm)
+      return ['DEFENSE', 'FINAL'].includes(phase || '');
     }
     if (activeTab === 'reviewer') {
       // Phản biện bị khóa khi bắt đầu giai đoạn Bảo vệ
@@ -235,12 +229,27 @@ const Evaluation = () => {
   }, [activeSemester, activeTab]);
 
   const isFinalized = selectedTopic?.status === 'FINALIZED';
+  const missingSupervisorGrades = useMemo(() => {
+    if (activeTab !== 'reviewer' && activeTab !== 'council') return false;
+    return students.some(s => {
+      const sData = myGradesData?.students?.find((ms: any) => ms.studentId === s.id);
+      return sData && !sData.raterStatuses?.hasSupervisorGraded;
+    });
+  }, [students, myGradesData, activeTab]);
+
+  const missingReviewerGrades = useMemo(() => {
+    if (activeTab !== 'council') return false;
+    return students.some(s => {
+      const sData = myGradesData?.students?.find((ms: any) => ms.studentId === s.id);
+      return sData && !sData.raterStatuses?.hasReviewerGraded;
+    });
+  }, [students, myGradesData, activeTab]);
   const isAdminOrHead = user?.role === 'ADMIN' || user?.role === 'HEAD';
 
   // Admin and HOD are NEVER locked unless the topic is completely finalized (even then they might need to edit, but let's keep finalized as a hard lock for now)
-  const isLocked = (isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead)) && !isRequestMode;
+  const isLocked = (isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead) || missingSupervisorGrades || missingReviewerGrades) && !isRequestMode;
 
-  const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead);
+  const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead) && !missingSupervisorGrades && !missingReviewerGrades;
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -427,6 +436,26 @@ const Evaluation = () => {
               type="warning"
               showIcon
               className="mb-6 rounded-xl border-amber-100 shadow-sm"
+            />
+          )}
+
+          {missingSupervisorGrades && (
+            <Alert
+              message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
+              description="Bạn chưa thể thực hiện chấm điểm do Giảng viên hướng dẫn chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
+              type="error"
+              showIcon
+              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
+            />
+          )}
+
+          {missingReviewerGrades && (
+            <Alert
+              message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
+              description="Bạn chưa thể thực hiện chấm điểm do Giảng viên phản biện chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
+              type="error"
+              showIcon
+              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
             />
           )}
 
@@ -889,7 +918,14 @@ const Evaluation = () => {
         }
 
         // [UI IMPROVEMENT] Status should reflect CURRENT user's grading progress in lecturer tabs
-        const hasMyGrades = r.grades?.filter((g: any) => (g.grader_id === user?.id || g.graderId === user?.id)).length > 0;
+        const hasMyGrades = r.grades?.filter((g: any) => {
+          const graderMatches = (g.grader_id === user?.id || g.graderId === user?.id);
+          if (!graderMatches) return false;
+          const role = g.rater_role || g.raterRole || '';
+          if (activeTab === 'reviewer') return role.startsWith('REVIEWER');
+          if (activeTab === 'council') return role.startsWith('COMMITTEE');
+          return role === 'SUPERVISOR';
+        }).length > 0;
 
         if (hasMyGrades) {
           return <Tag color="processing" className="m-0 rounded-full px-3">Đã chấm</Tag>;
@@ -908,7 +944,14 @@ const Evaluation = () => {
         const supervisorGraded = r.gradingStatus?.supervisorGraded;
         const supervisorScore = r.students?.[0]?.finalScore?.supervisor_score;
         const reviewerScore = r.students?.[0]?.finalScore?.reviewer_avg_score;
-        const hasMyGrades = r.grades?.some((g: any) => (g.grader_id === user?.id || g.graderId === user?.id));
+        const hasMyGrades = r.grades?.some((g: any) => {
+          const graderMatches = (g.grader_id === user?.id || g.graderId === user?.id);
+          if (!graderMatches) return false;
+          const role = g.rater_role || g.raterRole || '';
+          if (activeTab === 'reviewer') return role.startsWith('REVIEWER');
+          if (activeTab === 'council') return role.startsWith('COMMITTEE');
+          return role === 'SUPERVISOR';
+        });
 
         return (
           <Space>

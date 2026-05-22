@@ -164,23 +164,9 @@ export class DepartmentSemesterConfigService {
       needsAssignment.push(dept.id);
     }
 
-    // 2. Assign dates to those who need it
+    // 2. Assign dates to those who need it (Allow overlap: Default all to the global defense start date)
     for (const deptId of needsAssignment) {
-      // Find the date with the minimum usage
-      let bestDate = availableDates[0];
-      let minUsage = Infinity;
-      for (const d of availableDates) {
-        const usage = dateUsageMap.get(d) || 0;
-        if (usage < minUsage) {
-          minUsage = usage;
-          bestDate = d;
-        }
-      }
-
-      // Assign to bestDate
-      dateUsageMap.set(bestDate, minUsage + 1);
-      
-      const newDate = dayjs(bestDate).toDate();
+      const newDate = globalStart.toDate();
       
       // Update config using the existing updateConfig method to trigger all side effects
       await this.updateConfig(userId, deptId, semesterId, { defense_date: newDate });

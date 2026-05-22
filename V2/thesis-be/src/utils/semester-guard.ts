@@ -35,14 +35,16 @@ export class SemesterGuard {
     if (semester.status === SemesterStatus.COMPLETED) return SemesterPhase.FINAL;
     if (semester.status !== SemesterStatus.ACTIVE) return null;
 
-    const now = dayjs();
+    const now = dayjs().tz('Asia/Ho_Chi_Minh');
     const timeline = DeadlineResolver.getEffectiveTimeline(semester);
+
+    const parseDate = (d: any) => d ? dayjs(d).tz('Asia/Ho_Chi_Minh') : null;
 
     // [1] PREVIEW: topic_viewing_start → topic_registration_start
     if (
       semester.topic_viewing_start &&
-      now.isSameOrAfter(dayjs(semester.topic_viewing_start)) &&
-      now.isBefore(dayjs(semester.topic_registration_start))
+      now.isSameOrAfter(parseDate(semester.topic_viewing_start)) &&
+      now.isBefore(parseDate(semester.topic_registration_start))
     ) {
       return SemesterPhase.PREVIEW;
     }
@@ -55,7 +57,7 @@ export class SemesterGuard {
     
     if (
       semester.topic_registration_start &&
-      now.isSameOrAfter(dayjs(semester.topic_registration_start)) &&
+      now.isSameOrAfter(parseDate(semester.topic_registration_start)) &&
       (isOverrideActive || (timeline.registrationEnd && now.isBefore(timeline.registrationEnd)))
     ) {
       return SemesterPhase.REGISTRATION;
@@ -66,35 +68,60 @@ export class SemesterGuard {
       timeline.registrationEnd &&
       now.isSameOrAfter(timeline.registrationEnd) &&
       semester.proposal_deadline &&
-      now.isBefore(dayjs(semester.proposal_deadline))
+      now.isBefore(parseDate(semester.proposal_deadline))
     ) {
       return SemesterPhase.WORK;
     }
 
     // [4] REVIEWING: proposal_deadline → defense_start
+    const proposalDeadline = parseDate(semester.proposal_deadline);
+    const thesisDeadline = parseDate(semester.thesis_deadline);
+    const endDate = parseDate(semester.end_date);
+
+    let defenseStart = parseDate(semester.defense_start);
+    let defenseEnd = parseDate(semester.defense_end);
+
+    if (!defenseStart) {
+      if (thesisDeadline) {
+        defenseStart = thesisDeadline;
+      } else if (proposalDeadline) {
+        defenseStart = proposalDeadline.add(7, 'day');
+      } else if (endDate) {
+        defenseStart = endDate.subtract(7, 'day');
+      }
+    }
+
+    if (!defenseEnd) {
+      if (endDate) {
+        defenseEnd = endDate;
+      } else if (defenseStart) {
+        defenseEnd = defenseStart.add(7, 'day');
+      }
+    }
+
     if (
-      semester.proposal_deadline &&
-      now.isSameOrAfter(dayjs(semester.proposal_deadline)) &&
-      semester.defense_start &&
-      now.isBefore(dayjs(semester.defense_start))
+      proposalDeadline &&
+      now.isSameOrAfter(proposalDeadline) &&
+      defenseStart &&
+      now.isBefore(defenseStart)
     ) {
       return SemesterPhase.REVIEWING;
     }
 
     // [5] DEFENSE: defense_start → defense_end
     // Ceiling Logic: Dept dates must be WITHIN the global semester defense window.
-    const globalStart = semester.defense_start;
-    const globalEnd = semester.defense_end;
+    const globalStart = defenseStart ? defenseStart.toDate() : null;
+    const globalEnd = defenseEnd ? defenseEnd.toDate() : null;
     
     let effectiveDefenseStart = globalStart;
     let effectiveDefenseEnd = globalEnd;
 
     if (deptConfig?.defense_date) {
-      const deptDate = dayjs(deptConfig.defense_date);
+      const deptDate = parseDate(deptConfig.defense_date);
       // If dept date is before global start, use global start.
-      effectiveDefenseStart = deptDate.isBefore(dayjs(globalStart)) ? globalStart : deptConfig.defense_date;
+      effectiveDefenseStart = (globalStart && deptDate && deptDate.isBefore(dayjs(globalStart))) ? globalStart : deptConfig.defense_date;
       // If dept date is after global end, use global end (Ceiling).
-      effectiveDefenseEnd = deptDate.isAfter(dayjs(globalEnd)) ? globalEnd : deptConfig.defense_date;
+      effectiveDefenseEnd = (globalEnd && deptDate && deptDate.isAfter(dayjs(globalEnd))) ? globalEnd : deptConfig.defense_date;
     }
 
     if (
@@ -132,7 +159,7 @@ export class SemesterGuard {
   static getTimelineContext(semester: any): TimelineContext {
     const phase = this.calculateCurrentPhase(semester);
     const timeline = DeadlineResolver.getEffectiveTimeline(semester);
-    const now = dayjs();
+    const now = dayjs().tz('Asia/Ho_Chi_Minh');
 
     return {
       phase,

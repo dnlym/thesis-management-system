@@ -17,6 +17,8 @@ export interface CriteriaFilters {
     gradingPhase?: string;
     raterRole?: string;
     isActive?: boolean;
+    topicId?: string;
+    departmentId?: string;
 }
 
 /**
@@ -186,10 +188,14 @@ export const GradingApi = {
      * Get grading criteria
      */
     async getCriteria(filters?: CriteriaFilters) {
+        const params: any = { ...filters };
+        if (filters?.raterRole) {
+            params.criteriaType = filters.raterRole;
+        }
         const res = await api.get<ApiResponse<GradingCriteria[]>>(
             '/grading/criteria',
             {
-                params: filters,
+                params,
             }
         );
 
