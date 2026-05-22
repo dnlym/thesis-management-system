@@ -19,3 +19,12 @@ export const useDashboardCharts = () => {
         enabled: isAuthenticated,
     });
 };
+
+export const useActiveSemester = () => {
+    const { isAuthenticated } = useAuthStore();
+    return useQuery({
+        queryKey: ['active-semester'],
+        queryFn: DashboardApi.getActiveSemester,
+        enabled: isAuthenticated,
+    });
+};

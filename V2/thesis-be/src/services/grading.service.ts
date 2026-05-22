@@ -1058,6 +1058,9 @@ export class GradingService {
       }, {} as Record<string, typeof criteria>);
 
       const firstRoleFound = Object.keys(groupByRole)[0];
+      if (!firstRoleFound && departmentId) {
+        return this.getGradingCriteria(roleFilter, undefined, undefined);
+      }
       return firstRoleFound ? groupByRole[firstRoleFound] : [];
     }
 
@@ -1530,6 +1533,45 @@ export class GradingService {
       orderBy: { graded_at: 'asc' },
     });
 
+    const pendingRequests = await prisma.gradeChangeRequest.findMany({
+      where: {
+        topic_id: topicId,
+        status: 'PENDING',
+      },
+      include: {
+        criterion: true,
+        grader: { select: { id: true, full_name: true, role: true, avatar_url: true } },
+      },
+    });
+
+    const mappedPending = pendingRequests.map(r => ({
+      id: r.id,
+      topic_id: r.topic_id,
+      student_id: r.student_id,
+      grader_id: r.grader_id,
+      criterion_id: r.criterion_id,
+      rater_role: r.rater_role,
+      reviewer_order: r.rater_role?.startsWith('REVIEWER_') ? parseInt(r.rater_role.split('_')[1]) : undefined,
+      score: r.new_score,
+      comments: r.reason,
+      graded_at: r.created_at,
+      updated_at: r.updated_at,
+      criterion: r.criterion,
+      grader: r.grader,
+      isPending: true,
+    }));
+
+    const filteredExisting = allGrades.filter(eg => {
+      const hasPendingOverride = pendingRequests.some(pr =>
+        pr.grader_id === eg.grader_id &&
+        pr.student_id === eg.student_id &&
+        pr.criterion_id === eg.criterion_id
+      );
+      return !hasPendingOverride;
+    });
+
+    const combinedAllGrades = [...filteredExisting, ...mappedPending];
+
     // Helper to group grades by grader and student
     const groupGrades = (grades: any[]) => {
       const grouped = new Map<string, any>();
@@ -1557,6 +1599,7 @@ export class GradingService {
           comment: g.comments,
           createdAt: g.graded_at,
           updatedAt: g.updated_at,
+          isPending: (g as any).isPending || false,
         });
 
         if (new Date(g.graded_at) > new Date(entry.submitted_at)) {
@@ -1567,7 +1610,7 @@ export class GradingService {
       return Array.from(grouped.values());
     };
 
-    const groupedGrades = groupGrades(allGrades);
+    const groupedGrades = groupGrades(combinedAllGrades);
 
     const reviewerGrades = groupedGrades.filter(g => isReviewer(g.rater_role));
     const councilGrades = groupedGrades.filter(g => isCommittee(g.rater_role));
@@ -1745,6 +1788,18 @@ export class GradingService {
       registrations[0] // Context for policy check
     );
 
+    // Fetch pending change requests for this grader and topic
+    const pendingRequests = await prisma.gradeChangeRequest.findMany({
+      where: {
+        topic_id: topicId,
+        grader_id: userId,
+        status: 'PENDING',
+      },
+      include: {
+        criterion: true,
+      },
+    });
+
     // Group grades by student_id
     const studentGradesMap = new Map<string, typeof grades>();
     grades.forEach(g => {
@@ -1776,31 +1831,14 @@ export class GradingService {
       const studentId = reg.student_id;
       const studentInfo = reg.student;
       const sGrades = studentGradesMap.get(studentId) || [];
+      const sPending = pendingRequests.filter(r => r.student_id === studentId);
 
-      // Extract metadata from the first grade comment
-      let generalComment: string | null = null;
-      const firstGrade = sGrades[0];
-      if (firstGrade?.comments) {
-        const metaMatch = firstGrade.comments.match(/\[META_DATA:(.*)\]/);
-        if (metaMatch) {
-          try {
-            const meta = JSON.parse(metaMatch[1]);
-            generalComment = meta.generalComment || null;
-          } catch { }
-        }
-      }
+      const isPending = sPending.length > 0;
+      const combinedGradesMap = new Map<string, any>();
 
-      return {
-        studentId,
-        fullName: studentInfo.full_name,
-        studentCode: studentInfo.student_code,
-        className: studentInfo.class_name,
-        class_name: studentInfo.class_name,
-        status: sGrades.length > 0 ? 'SUBMITTED' as const : 'NOT_GRADED' as const,
-        gradedAt: sGrades[0]?.graded_at || null,
-        raterRole: sGrades[0]?.rater_role || null,
-        generalComment,
-        grades: sGrades.map(g => ({
+      // First populate with existing grades
+      sGrades.forEach(g => {
+        combinedGradesMap.set(g.criterion_id, {
           id: g.id,
           criterionId: g.criterion_id,
           criterionName: g.criterion.name,
@@ -1812,7 +1850,61 @@ export class GradingService {
           comment: g.comments?.replace(/\s*\[META_DATA:.*\]/, '') || null,
           createdAt: g.graded_at,
           updatedAt: g.updated_at,
-        })),
+        });
+      });
+
+      // Override with pending change requests
+      sPending.forEach(r => {
+        combinedGradesMap.set(r.criterion_id, {
+          id: r.id,
+          criterionId: r.criterion_id,
+          criterionName: r.criterion.name,
+          criterionDescription: r.criterion.description,
+          criterionWeight: r.criterion.weight,
+          criterionMaxScore: r.criterion.max_score,
+          criterionMinScore: r.criterion.min_score,
+          score: r.new_score,
+          comment: r.reason,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          isPending: true,
+        });
+      });
+
+      const mergedGrades = Array.from(combinedGradesMap.values());
+
+      // Extract metadata from the first grade comment
+      let generalComment: string | null = null;
+      const firstGrade = sGrades[0] || sPending[0];
+      if (firstGrade) {
+        const comments = (firstGrade as any).comments || (firstGrade as any).reason;
+        if (comments) {
+          const metaMatch = comments.match(/\[META_DATA:(.*)\]/);
+          if (metaMatch) {
+            try {
+              const meta = JSON.parse(metaMatch[1]);
+              generalComment = meta.generalComment || null;
+            } catch { }
+          }
+        }
+      }
+
+      const hasGrades = sGrades.length > 0;
+      const status = isPending
+        ? ('PENDING_APPROVAL' as const)
+        : (hasGrades ? ('SUBMITTED' as const) : ('NOT_GRADED' as const));
+
+      return {
+        studentId,
+        fullName: studentInfo.full_name,
+        studentCode: studentInfo.student_code,
+        className: studentInfo.class_name,
+        class_name: studentInfo.class_name,
+        status,
+        gradedAt: sGrades[0]?.graded_at || sPending[0]?.created_at || null,
+        raterRole: sGrades[0]?.rater_role || sPending[0]?.rater_role || null,
+        generalComment,
+        grades: mergedGrades,
       };
     });
 

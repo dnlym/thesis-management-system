@@ -92,6 +92,8 @@ export interface User {
     student_code?: string;
     joined_at?: string;
     finalScore?: FinalScore;
+    midterm_status?: 'PASS' | 'FAIL' | null;
+    midtermStatus?: 'PASS' | 'FAIL' | null;
 }
 
 export interface Department {
@@ -414,7 +416,7 @@ export interface GradeSubmissionForm {
     topic_id: string;
     group_id?: string;
     student_id?: string;
-    rater_role: RaterRole;
+    rater_role: string; // Chuyển từ RaterRole sang string để nới lỏng
     reviewer_order?: number | null;
     committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
     scores: {
@@ -422,7 +424,10 @@ export interface GradeSubmissionForm {
         score: number;
         comment?: string;
     }[];
+    general_comment?: string; // THÊM TẬN GỐC TẠI ĐÂY
 }
+
+export type GradeSubmissionResult = Grade[] | { message: string; status: 'PENDING_APPROVAL'; requestCount: number };
 
 export interface ExtraPointsForm {
     topic_id: string;

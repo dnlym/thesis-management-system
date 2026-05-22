@@ -497,7 +497,9 @@ class GradingController {
       let { raterRole } = req.query;
 
       // Map generic frontend role names to exact Prisma RaterRole enum values
-      if (raterRole === 'ADVISOR') {
+      if (raterRole === 'HEAD' || raterRole === 'ADMIN') {
+        raterRole = undefined;
+      } else if (raterRole === 'ADVISOR') {
         raterRole = RaterRole.SUPERVISOR;
       } else if (raterRole === 'REVIEWER') {
         const assignment = await prisma.assignment.findFirst({

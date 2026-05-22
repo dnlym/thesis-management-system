@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTopic } from '@/hooks/useTopics';
 import { useAuthStore } from '@/store/auth';
 import { Grade } from '@/types';
+import { GradingApi } from '@/api/grading';
 
 import { ChevronLeft, MapPin, Users } from 'lucide-react-native';
 
@@ -19,6 +20,8 @@ export default function TopicDetailScreen() {
 
     const { user } = useAuthStore();
     const { data: topic, isLoading } = useTopic(topicId as string);
+    const [myGradesData, setMyGradesData] = React.useState<any>(null);
+    const [isLoadingMyGrades, setIsLoadingMyGrades] = React.useState(true);
 
     const students = React.useMemo(() => {
         if (!topic) return [];
@@ -32,6 +35,39 @@ export default function TopicDetailScreen() {
         });
     }, [topic, topicId, groupId]);
 
+    const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN';
+    const isAdvisor = topic?.supervisor_id === user?.id;
+    const reviewerAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
+    const committeeAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
+
+    const raterRole = React.useMemo(() => {
+        if (isHead) return 'HEAD';
+        if (isAdvisor) return 'SUPERVISOR';
+        if (committeeAssignment) {
+            const role = committeeAssignment.committee_role;
+            return `COMMITTEE_${role}`;
+        }
+        if (reviewerAssignment) {
+            return `REVIEWER_${reviewerAssignment.reviewer_order}`;
+        }
+        return 'GVPB';
+    }, [isHead, isAdvisor, committeeAssignment, reviewerAssignment]);
+
+    React.useEffect(() => {
+        const fetchMyGrades = async () => {
+            if (!topicId || !topic) return;
+            try {
+                const data = await GradingApi.getMyGrades(topicId as string, raterRole);
+                setMyGradesData(data);
+            } catch (err) {
+                console.error('Error fetching my grades:', err);
+            } finally {
+                setIsLoadingMyGrades(false);
+            }
+        };
+        fetchMyGrades();
+    }, [topicId, raterRole, topic]);
+
     if (isLoading || !topic) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}>
@@ -40,17 +76,12 @@ export default function TopicDetailScreen() {
         );
     }
 
-    // Determine Role dynamically
-    const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN';
-    const isAdvisor = topic.supervisor_id === user?.id;
-    const reviewerAssignment = topic.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
-    const committeeAssignment = topic.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
-
     let roleCode = 'GVPB';
     let roleLabel = 'Giảng viên phản biện';
+    let specificRole: string | null = null;
 
     if (isHead) {
-        roleCode = 'HOD';
+        roleCode = 'TBM';
         roleLabel = 'Trưởng bộ môn';
     } else if (isAdvisor) {
         roleCode = 'GVHD';
@@ -58,9 +89,27 @@ export default function TopicDetailScreen() {
     } else if (committeeAssignment) {
         roleCode = 'HĐBV';
         const cRole = committeeAssignment.committee_role;
-        if (cRole === 'CHAIR') roleLabel = 'Chủ tịch Hội đồng';
-        else if (cRole === 'SECRETARY') roleLabel = 'Thư ký Hội đồng';
-        else roleLabel = 'Thành viên Hội đồng';
+        roleLabel = 'Thành viên Hội đồng';
+
+        const memberAssignments = topic.assignments?.filter(
+            (a: any) => a.assignment_type === 'COMMITTEE' && a.committee_role?.startsWith('MEMBER')
+        ) || [];
+        const hasMultipleMembers = memberAssignments.length > 1;
+
+        if (cRole === 'CHAIR') {
+            specificRole = 'Chủ tịch';
+        } else if (cRole === 'SECRETARY') {
+            specificRole = 'Thư ký';
+        } else if (cRole?.startsWith('MEMBER')) {
+            if (hasMultipleMembers) {
+                const memberNumber = cRole.split('_')[1];
+                specificRole = memberNumber ? `Ủy viên ${memberNumber}` : 'Ủy viên';
+            } else {
+                specificRole = 'Ủy viên';
+            }
+        } else {
+            specificRole = 'Ủy viên';
+        }
     } else if (reviewerAssignment) {
         roleCode = 'GVPB';
         roleLabel = 'Giảng viên phản biện';
@@ -79,7 +128,7 @@ export default function TopicDetailScreen() {
 
     roomString = topic.room || topic.defense_schedule?.room || topic.defense_schedule?.committee?.room_preference || 'Chưa xếp phòng';
 
-    const isAnyGraded = students.some((sv: any) => (topic.grades || []).some((g: Grade) => g.student_id === sv.id));
+    const isAnyGraded = isHead ? true : (myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED' || s.status === 'PENDING_APPROVAL') || false);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -112,18 +161,41 @@ export default function TopicDetailScreen() {
                 <View style={styles.section}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={styles.sectionTitle}>SINH VIÊN ({students.length})</Text>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{roleCode}</Text>
-                        </View>
                     </View>
                     
                     <View style={styles.listCard}>
                         {students.length === 0 ? (
                             <Text style={{ padding: 20, color: '#94a3b8', textAlign: 'center' }}>Chưa có sinh viên</Text>
                         ) : students.map((sv: any, i: number) => {
-                            const studentGrades = (topic.grades || []).filter((g: Grade) => g.student_id === sv.id);
-                            const isGraded = studentGrades.length > 0;
-                            const avgScore = isGraded ? studentGrades.reduce((sum: number, g: Grade) => sum + g.score, 0) / studentGrades.length : 0;
+                            const isMidtermFailed = sv?.midterm_status === 'FAIL' || sv?.midtermStatus === 'FAIL';
+
+                            let statusText = 'Chưa chấm';
+                            let statusColor = '#ea580c';
+                            let statusBg = '#fff7ed';
+                            let scoreToDisplay: number | null = null;
+
+                            if (isMidtermFailed) {
+                                statusText = 'Rớt GK';
+                                statusColor = '#ef4444';
+                                statusBg = '#fef2f2';
+                            } else if (isHead) {
+                                const hasScore = !!sv.finalScore;
+                                statusText = sv.finalScore?.finalized ? 'Đã chốt' : (hasScore ? 'Đã chấm' : 'Chưa chấm');
+                                statusColor = hasScore ? '#16a34a' : '#ea580c';
+                                statusBg = hasScore ? '#f0fdf4' : '#fff7ed';
+                                if (hasScore) {
+                                    scoreToDisplay = sv.finalScore?.final_score ?? sv.finalScore?.total_score ?? 0;
+                                }
+                            } else {
+                                const myStudentGrade = myGradesData?.students?.find((s: any) => s.studentId === sv.id);
+                                const isGraded = myStudentGrade && (myStudentGrade.status === 'SUBMITTED' || myStudentGrade.status === 'PENDING_APPROVAL');
+                                statusText = isGraded ? 'Đã chấm' : 'Chưa chấm';
+                                statusColor = isGraded ? '#16a34a' : '#ea580c';
+                                statusBg = isGraded ? '#f0fdf4' : '#fff7ed';
+                                if (isGraded && myStudentGrade) {
+                                    scoreToDisplay = myStudentGrade.grades.reduce((sum: number, g: any) => sum + g.score * (g.criterionWeight || 0), 0);
+                                }
+                            }
 
                             return (
                                 <TouchableOpacity
@@ -141,14 +213,14 @@ export default function TopicDetailScreen() {
                                         <Text style={styles.studentId}>{sv.student_code || sv.id}</Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                                        <View style={[styles.statusChip, { backgroundColor: (isGraded || !!sv.finalScore) ? '#f0fdf4' : '#fff7ed' }]}>
-                                            <Text style={[styles.statusChipText, { color: (isGraded || !!sv.finalScore) ? '#16a34a' : '#ea580c' }]}>
-                                                {(isGraded || !!sv.finalScore) ? 'Đã chấm' : 'Chưa chấm'}
+                                        <View style={[styles.statusChip, { backgroundColor: statusBg }]}>
+                                            <Text style={[styles.statusChipText, { color: statusColor }]}>
+                                                {statusText}
                                             </Text>
                                         </View>
-                                        {(isGraded || !!sv.finalScore) && (
-                                            <Text style={styles.scoreText}>
-                                                {(sv.finalScore?.final_score ?? avgScore).toFixed(1)}
+                                        {scoreToDisplay !== null && (
+                                            <Text style={[styles.scoreText, { color: statusColor }]}>
+                                                {scoreToDisplay.toFixed(1)}
                                             </Text>
                                         )}
                                     </View>
@@ -165,9 +237,14 @@ export default function TopicDetailScreen() {
                         <View style={{ padding: 16 }}>
                             <Text style={styles.topicTitleMain}>{topic.title}</Text>
                             <View style={{ height: 1, backgroundColor: '#f1f5f9', marginVertical: 12 }} />
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Users size={16} color="#64748b" />
-                                <Text style={styles.roleLabelText}>{roleLabel}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                                <Users size={16} color="#64748b" style={{ marginTop: 2 }} />
+                                <View>
+                                    <Text style={styles.roleLabelText}>{roleLabel}</Text>
+                                    {specificRole && (
+                                        <Text style={styles.specificRoleText}>{specificRole}</Text>
+                                    )}
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -233,6 +310,7 @@ const styles = StyleSheet.create({
     scoreText: { fontSize: 16, fontWeight: '800', color: '#16a34a' },
     topicTitleMain: { fontSize: 15, color: '#1e293b', fontWeight: '600', lineHeight: 22 },
     roleLabelText: { fontSize: 13, color: '#64748b', fontWeight: '500' },
+    specificRoleText: { fontSize: 11, color: '#94a3b8', marginTop: 2, fontWeight: '600' },
     footer: { backgroundColor: '#fff', padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9', position: 'absolute', bottom: 0, left: 0, right: 0 },
     ctaBtn: { backgroundColor: BLUE, borderRadius: 14, paddingVertical: 16, alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
     ctaBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },

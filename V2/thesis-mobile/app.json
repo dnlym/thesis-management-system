@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "thesis-mobile",
+    "name": "THESIS GRADING",
     "slug": "thesis-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-short.png",
     "scheme": "thesismobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,12 +14,11 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logo-short.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.dly.thesismobile"
     },
     "web": {
       "output": "static",
@@ -44,6 +43,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "72e8d5c3-0723-4a5f-9a26-45b13e9c9110"
+      }
     }
   }
 }

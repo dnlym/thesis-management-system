@@ -48,17 +48,48 @@ export default function GradingScreen() {
     }, [topic, user]);
 
     // Fetch criteria for this ROLE
-    const { data: criteriaRes, isLoading: isLoadingCriteria } = useGradingCriteria({
-        criteriaType: raterRole as any,
-        topicId: (topicId as string) || undefined
-    });
+    const backendRole = React.useMemo(() => {
+    if (raterRole === 'SUPERVISOR') {
+        return 'SUPERVISOR';
+    }
+
+    if (
+        raterRole.startsWith('COMMITTEE') ||
+        raterRole.includes('COUNCIL')
+    ) {
+        return 'COMMITTEE';
+    }
+
+    if (raterRole.startsWith('REVIEWER')) {
+        return 'REVIEWER';
+    }
+
+    return raterRole;
+}, [raterRole]);
+
+const {
+    data: criteriaRes,
+    isLoading: isLoadingCriteria,
+} = useGradingCriteria({
+    raterRole: backendRole,
+});
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    
     const students = React.useMemo(() => {
         const all = topic?.students || [];
         if (!groupId) return all;
         return all.filter((s: any) => s.groupId === groupId);
     }, [topic?.students, groupId]);
+
+    // Helper: Check if student has failed midterm
+    const isStudentMidtermFailed = React.useCallback((student: any) => {
+        return student?.midterm_status === 'FAIL' || student?.midtermStatus === 'FAIL' || student?.status === 'FAILED';
+    }, []);
+
+    const eligibleStudents = React.useMemo(() => {
+        return students.filter((s: any) => !isStudentMidtermFailed(s));
+    }, [students, isStudentMidtermFailed]);
 
     // Extract criteria array safely
     const criteria = React.useMemo(() => {
@@ -71,15 +102,25 @@ export default function GradingScreen() {
         return data[roleKey] || data.FINAL || Object.values(data)[0] || [];
     }, [criteriaRes, raterRole]);
 
-    const initialIdx = students.findIndex((s: any) => s.id === studentId);
-    const [idx, setIdx] = React.useState(initialIdx >= 0 ? initialIdx : 0);
+    // Khởi tạo index thông minh dựa trên danh sách sinh viên đủ điều kiện
+    const startIdx = React.useMemo(() => {
+        const initialIdx = eligibleStudents.findIndex((s: any) => s.id === studentId);
+        return initialIdx >= 0 ? initialIdx : 0;
+    }, [eligibleStudents, studentId]);
+
+    const [idx, setIdx] = React.useState(startIdx); 
+
+    React.useEffect(() => {
+        setIdx(startIdx);
+    }, [startIdx]);
+
     const [allScores, setAllScores] = React.useState<Record<string, Record<string, string>>>({});
     const [allComments, setAllComments] = React.useState<Record<string, string>>({});
     const [originalScores, setOriginalScores] = React.useState<Record<string, Record<string, string>>>({});
     const [originalComments, setOriginalComments] = React.useState<Record<string, string>>({});
     const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
     const [isRestoring, setIsRestoring] = React.useState(true);
-    const [submitted, setSubmitted] = React.useState(false);
+    const [submittedStudents, setSubmittedStudents] = React.useState<Record<string, boolean>>({});
     const [gradeHistory, setGradeHistory] = React.useState<any[]>([]);
     const [isRequestMode, setIsRequestMode] = React.useState(false);
     const [requestModalVisible, setRequestModalVisible] = React.useState(false);
@@ -89,8 +130,8 @@ export default function GradingScreen() {
     // Restoration Logic
     React.useEffect(() => {
         const restoreAndCheck = async () => {
-            if (!user || !topic || students.length === 0) {
-                if (students.length === 0 && !isLoadingTopic) setIsRestoring(false);
+            if (!user || !topic || eligibleStudents.length === 0) {
+                if (eligibleStudents.length === 0 && !isLoadingTopic) setIsRestoring(false);
                 return;
             }
             try {
@@ -101,10 +142,10 @@ export default function GradingScreen() {
                 if (myGrades) {
                     setGradeHistory(myGrades.gradeHistory || []);
                     if (myGrades.students && myGrades.students.length > 0) {
-                        let anySubmitted = false;
+                        const restoredSubmitted: Record<string, boolean> = {};
                         for (const sGrade of myGrades.students) {
-                            if (sGrade.status === 'SUBMITTED') {
-                                anySubmitted = true;
+                            if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
+                                restoredSubmitted[sGrade.studentId] = true;
                                 const sScores: Record<string, string> = {};
                                 sGrade.grades.forEach((g: any) => { sScores[g.criterionId] = g.score.toString(); });
                                 restoredScores[sGrade.studentId] = sScores;
@@ -114,12 +155,12 @@ export default function GradingScreen() {
                                 }
                             }
                         }
-                        if (anySubmitted) {
+                        if (Object.keys(restoredSubmitted).length > 0) {
                             setAllScores(JSON.parse(JSON.stringify(restoredScores)));
                             setOriginalScores(JSON.parse(JSON.stringify(restoredScores)));
                             setAllComments(restoredComments);
                             setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
-                            setSubmitted(true);
+                            setSubmittedStudents(restoredSubmitted);
                             setIsRestoring(false);
                             return;
                         }
@@ -127,7 +168,7 @@ export default function GradingScreen() {
                 }
                 
                 // If not submitted, try local drafts
-                for (const student of students) {
+                for (const student of eligibleStudents) {
                     const draft = await OfflineStorage.getDraft(user.id, topicId as string, groupId as string || null, raterRole, student.id);
                     if (draft) {
                         if (draft.scores) restoredScores[student.id] = draft.scores;
@@ -141,20 +182,20 @@ export default function GradingScreen() {
             } catch (err) { console.error(err); } finally { setIsRestoring(false); }
         };
         if (topic && !isLoadingTopic) restoreAndCheck();
-    }, [topic, isLoadingTopic, raterRole, user, topicId, groupId, studentId, students]);
+    }, [topic, isLoadingTopic, raterRole, user, topicId, groupId, studentId, eligibleStudents]);
 
     const isDirty = React.useMemo(() => {
-        const currentId = students[idx]?.id;
+        const currentId = eligibleStudents[idx]?.id;
         if (!currentId) return false;
         
         const scoresChanged = JSON.stringify(allScores[currentId] || {}) !== JSON.stringify(originalScores[currentId] || {});
         const commentChanged = (allComments[currentId] || '') !== (originalComments[currentId] || '');
         
         return scoresChanged || commentChanged;
-    }, [allScores, originalScores, allComments, originalComments, idx, students]);
+    }, [allScores, originalScores, allComments, originalComments, idx, eligibleStudents]);
 
     const roleLabel = React.useMemo(() => {
-        if (raterRole === 'SUPERVISOR') return 'GV hướng dẫn';
+        if (raterRole === 'SUPERVISOR') return 'GVHD';
         if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch HĐ';
         if (raterRole === 'COMMITTEE_SECRETARY') return 'Thư ký HĐ';
         if (raterRole === 'COMMITTEE_MEMBER') return 'Ủy viên HĐ';
@@ -165,7 +206,6 @@ export default function GradingScreen() {
         return raterRole;
     }, [raterRole]);
 
-    // Determine if grading is allowed based on allowedActions from topic
     const canGrade = React.useMemo(() => {
         const actions = (topic as any)?.allowedActions;
         if (!actions) return true; 
@@ -197,33 +237,54 @@ export default function GradingScreen() {
         );
     }
 
-    const currentStudent = students[idx];
-    const isMidtermFailed = (currentStudent as any)?.midterm_status === 'FAIL' || (currentStudent as any)?.midtermStatus === 'FAIL' || (currentStudent as any)?.status === 'FAILED';
+    if (eligibleStudents.length === 0) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <AlertCircle size={48} color="#dc2626" />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#dc2626', marginTop: 12, marginBottom: 8 }}>Không có sinh viên đủ điều kiện</Text>
+                <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 20 }}>Tất cả sinh viên trong nhóm này đều đã rớt giữa kỳ hoặc không đủ điều kiện chấm bảo vệ cuối kỳ.</Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: BLUE, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Quay lại</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    const currentStudent = eligibleStudents[idx];
+    const submitted = submittedStudents[currentStudent?.id] || false;
+    const isMidtermFailed = isStudentMidtermFailed(currentStudent);
     const canEditStudent = (canGrade || isRequestMode) && !isMidtermFailed;
     const scores = allScores[currentStudent?.id] || {};
     const comment = allComments[currentStudent?.id] || '';
-    const isLast = idx === students.length - 1;
+
+    const isLastEligibleStudent = idx === eligibleStudents.length - 1;
 
     const totalScore = criteria.reduce((acc: number, c: any) =>
         acc + (parseFloat(scores[c.id] || '0') || 0) * (c.weight || 1), 0
     );
 
     const handleScore = (cId: string, val: string, max: number = 10) => {
-        if (!canEditStudent) {
-            console.log('[DEBUG] Grading locked');
-            return;
-        }
+        if (!canEditStudent) return;
         const normalized = val.replace(',', '.').replace(/[^0-9.]/g, '');
         let finalized = normalized;
         const num = parseFloat(normalized);
         if (!isNaN(num) && num > max) finalized = max.toString();
-        setAllScores(prev => ({ ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } }));
+        
+        setAllScores(prev => {
+            const nextScores = { ...prev, [currentStudent.id]: { ...(prev[currentStudent.id] || {}), [cId]: finalized } };
+            if (user && topic) {
+                OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
+                    scores: nextScores[currentStudent.id], comment: allComments[currentStudent.id] || ''
+                }).catch(console.error);
+            }
+            return nextScores;
+        });
     };
 
     const handleNext = async (requesting = false) => {
-        const currentStudentId = students[idx].id;
+        const currentStudentId = eligibleStudents[idx].id;
         const currentScores = allScores[currentStudentId] || {};
-        const incomplete = !isMidtermFailed && criteria.some((c: any) => !currentScores[c.id]);
+        const incomplete = criteria.some((c: any) => !currentScores[c.id]);
         if (incomplete) { Alert.alert('Thiếu điểm', 'Vui lòng nhập đủ điểm trước khi lưu.'); return; }
         
         if (requesting && !requestReason.trim()) {
@@ -233,12 +294,15 @@ export default function GradingScreen() {
 
         setIsSubmitting(true);
         try {
+            const myAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id);
             const submissionData = {
                 topic_id: topicId as string,
                 group_id: groupId as string || undefined,
                 student_id: currentStudentId,
                 rater_role: raterRole,
-                scores: isMidtermFailed ? [] : criteria.map((c: any) => ({
+                reviewer_order: myAssignment?.assignment_type === 'REVIEWER' ? myAssignment.reviewer_order : undefined,
+                committee_role: myAssignment?.assignment_type === 'COMMITTEE' ? myAssignment.committee_role : undefined,
+                scores: criteria.map((c: any) => ({
                     criterion_id: c.id,
                     score: parseFloat(currentScores[c.id] || '0'),
                     comment: ''
@@ -247,26 +311,38 @@ export default function GradingScreen() {
                 reason: requesting ? requestReason : undefined
             };
 
-            await GradingApi.submitGrade(submissionData as any);
-            
-            if (requesting) {
-                Alert.alert('Thành công', 'Đã gửi yêu cầu sửa điểm tới Trưởng bộ môn.');
-                setRequestModalVisible(false);
-                setRequestReason('');
-                setIsRequestMode(false);
+            const response = await GradingApi.submitGrade(submissionData as any);
+            const isPendingApproval = response && !Array.isArray(response) && response.status === 'PENDING_APPROVAL';
+
+            if (requesting || isPendingApproval) {
+                const alertMsg = (response && !Array.isArray(response) && response.message) || 'Đã gửi yêu cầu phê duyệt điểm tới Trưởng bộ môn do quá hạn.';
+                Alert.alert('Thông báo', alertMsg);
+                if (requesting) {
+                    setRequestModalVisible(false);
+                    setRequestReason('');
+                    setIsRequestMode(false);
+                }
                 setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
                 setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
+                setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
+                setSubmittedAt(new Date().toISOString());
+
+                if (isLastEligibleStudent) {
+                    router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}`);
+                } else {
+                    setIdx(i => i + 1);
+                }
                 return;
             }
 
             setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
             setOriginalComments(prev => ({ ...prev, [currentStudentId]: allComments[currentStudentId] || '' }));
-            setSubmitted(true);
+            setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
             setSubmittedAt(new Date().toISOString());
             
-            if (isLast) {
-                Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm.');
-                router.push(`/topic/${topicId}/grade-review/${studentId}?groupId=${groupId || ''}`);
+            if (isLastEligibleStudent) {
+                Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm đủ điều kiện.');
+                router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}`);
             } else {
                 setIdx(i => i + 1);
             }
@@ -367,18 +443,44 @@ export default function GradingScreen() {
 
             <View style={styles.switcher}>
                 <View style={styles.tabWrapper}>
-                    {students.map((sv: any, i: number) => (
-                        <TouchableOpacity
-                            key={sv.id}
-                            onPress={() => setIdx(i)}
-                            style={[styles.tab, i === idx && styles.tabActive]}
-                        >
-                            <User size={16} color={i === idx ? BLUE : '#94a3b8'} />
-                            <Text style={[styles.tabText, i === idx && styles.tabTextActive]} numberOfLines={1}>
-                                {sv.full_name.split(' ').pop()}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    {students.map((sv: any, i: number) => {
+                        const isFailed = isStudentMidtermFailed(sv);
+                        const eligibleIdx = eligibleStudents.findIndex((es: any) => es.id === sv.id);
+                        const isActive = eligibleIdx === idx;
+                        return (
+                            <TouchableOpacity
+                                key={sv.id}
+                                onPress={() => {
+                                    if (eligibleIdx >= 0) {
+                                        setIdx(eligibleIdx);
+                                    }
+                                }}
+                                disabled={isFailed} // KHÓA CLICK ĐỐI VỚI SV RỚT
+                                style={[
+                                    styles.tab, 
+                                    isActive && styles.tabActive,
+                                    isFailed && { opacity: 0.5, backgroundColor: '#f8fafc' } // BÔI XÁM TAB
+                                ]}
+                            >
+                                <User size={16} color={isActive ? BLUE : (isFailed ? '#cbd5e1' : '#94a3b8')} />
+                                <Text 
+                                    style={[
+                                        styles.tabText, 
+                                        isActive && styles.tabTextActive,
+                                        isFailed && { textDecorationLine: 'line-through', color: '#94a3b8' } // GẠCH NGANG TÊN
+                                    ]} 
+                                    numberOfLines={1}
+                                >
+                                    {sv.full_name.split(' ').pop()}
+                                </Text>
+                                {isFailed && (
+                                    <View style={styles.failedBadge}>
+                                        <Text style={styles.failedBadgeText}>Rớt GK</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             </View>
 
@@ -464,7 +566,15 @@ export default function GradingScreen() {
                         value={comment}
                         onChangeText={v => {
                             if (!canEditStudent) return;
-                            setAllComments(prev => ({ ...prev, [currentStudent.id]: v }));
+                            setAllComments(prev => {
+                                const nextComments = { ...prev, [currentStudent.id]: v };
+                                if (user && topic) {
+                                    OfflineStorage.saveDraft(user.id, topicId as string, groupId as string || null, raterRole, currentStudent.id, {
+                                        scores: allScores[currentStudent.id] || {}, comment: v
+                                    }).catch(console.error);
+                                }
+                                return nextComments;
+                            });
                         }}
                         editable={canEditStudent}
                         textAlignVertical="top"
@@ -500,15 +610,6 @@ export default function GradingScreen() {
 
             <View style={styles.footer}>
                 {!isRequestMode ? (
-                    <>
-                        <TouchableOpacity 
-                            style={[styles.draftBtn, !canEditStudent && { opacity: 0.5 }]} 
-                            onPress={handleSaveDraft}
-                            disabled={!canEditStudent}
-                        >
-                            <Save size={18} color={BLUE} />
-                            <Text style={styles.draftBtnText}>Lưu bản nháp</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity 
                             style={[styles.submitBtn, (!canEditStudent || !isDirty || isSubmitting) && styles.disabledSubmitBtn]} 
                             onPress={() => handleNext(false)}
@@ -516,12 +617,12 @@ export default function GradingScreen() {
                         >
                             {isSubmitting ? <ActivityIndicator color="#fff" size="small" /> : (
                                 <>
-                                    <Text style={styles.submitBtnText}>{isLast ? 'Lưu điểm & Kết thúc' : 'Lưu & Tiếp tục'}</Text>
+                                    {/* THAY ĐỔI LABEL THEO TÌNH TRẠNG SINH VIÊN PASS CUỐI CÙNG */}
+                                    <Text style={styles.submitBtnText}>{isLastEligibleStudent ? 'Lưu điểm & Kết thúc' : 'Lưu & Tiếp tục'}</Text>
                                     <ChevronRight size={18} color="#fff" />
                                 </>
                             )}
                         </TouchableOpacity>
-                    </>
                 ) : (
                     <>
                         <TouchableOpacity 
@@ -542,7 +643,6 @@ export default function GradingScreen() {
                 )}
             </View>
 
-            {/* Nếu bị khóa do hết hạn, có thể hiển thị nút xin phép */}
             {!canGrade && !isRequestMode && !isMidtermFailed && (
                 <View style={{ paddingHorizontal: 16, paddingBottom: Platform.OS === 'ios' ? 24 : 16, backgroundColor: '#fff' }}>
                     <TouchableOpacity 
@@ -626,6 +726,10 @@ const styles = StyleSheet.create({
     tabActive: { borderBottomColor: BLUE, backgroundColor: '#f0f7ff' },
     tabText: { fontSize: 12, color: '#94a3b8', fontWeight: '700' },
     tabTextActive: { color: BLUE },
+    
+    // CSS DÀNH CHO LABEL RỚT GIỮA KỲ BÊN TRONG TAB
+    failedBadge: { backgroundColor: '#fee2e2', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, marginLeft: 4 },
+    failedBadgeText: { fontSize: 8, fontWeight: '800', color: '#dc2626' },
 
     statsCard: {
         flexDirection: 'row', margin: 12, padding: 12, backgroundColor: '#fff',
@@ -691,7 +795,7 @@ const styles = StyleSheet.create({
     },
     draftBtnText: { color: BLUE, fontSize: 14, fontWeight: '700' },
     submitBtn: {
-        flex: 1.2, height: 44, borderRadius: 10, backgroundColor: BLUE,
+        flex: 1, height: 44, borderRadius: 10, backgroundColor: BLUE,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6
     },
     disabledSubmitBtn: { backgroundColor: '#e2e8f0' },

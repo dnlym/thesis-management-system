@@ -25,7 +25,7 @@ export function useTopicGrades(topicId: string | undefined) {
             const response = await GradingApi.getTopicGrades(topicId!);
             return response;
         },
-        enabled: isAuthenticated && !!topicId,
+        enabled: false,
     });
 }
 

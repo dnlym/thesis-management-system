@@ -6,11 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth';
-import { useDashboardStats } from '@/hooks/useDashboard';
+import { useDashboardStats, useActiveSemester } from '@/hooks/useDashboard';
 import { useAssignments } from '@/hooks/useAssignments';
 import { useSupervisedTopics } from '@/hooks/useTopics';
 
-import { MapPin, Clock, Users, UserCheck, Award } from 'lucide-react-native';
+import { MapPin, Clock, Users, UserCheck, Award, Calendar } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
@@ -23,16 +23,17 @@ export default function DashboardScreen() {
   const { refetch: refetchStats, isLoading: isStatsLoading } = useDashboardStats();
   const { data: assignments, refetch: refetchAssignments, isLoading: isAssignmentsLoading } = useAssignments();
   const { data: supervisedTopics, refetch: refetchSupervised, isLoading: isSupervisedLoading } = useSupervisedTopics();
+  const { data: activeSemester, refetch: refetchActiveSemester, isLoading: isActiveSemesterLoading } = useActiveSemester();
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetchStats(), refetchAssignments(), refetchSupervised()]);
+    await Promise.all([refetchStats(), refetchAssignments(), refetchSupervised(), refetchActiveSemester()]);
     setRefreshing(false);
-  }, [refetchStats, refetchAssignments, refetchSupervised]);
+  }, [refetchStats, refetchAssignments, refetchSupervised, refetchActiveSemester]);
 
   const d = new Date();
   const TODAY = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading;
+  const isLoading = isStatsLoading || isAssignmentsLoading || isSupervisedLoading || isActiveSemesterLoading;
 
   // Derive stats & counts
   const reviewerCount = (assignments || []).filter(a => a.assignment_type === 'REVIEWER').length;
@@ -102,6 +103,74 @@ export default function DashboardScreen() {
     ? [{ id: 's1', name: 'Lịch chấm hôm nay', topics: todayTopics }]
     : [];
 
+  const semesterPhaseInfo = React.useMemo(() => {
+    if (!activeSemester) return null;
+
+    const phase = activeSemester.calculated_phase;
+    let phaseName = 'Lập kế hoạch';
+    let dateRange = '';
+    let color = '#3b82f6';
+    let bgColor = '#eff6ff';
+
+    const formatDate = (dateString?: string) => {
+      if (!dateString) return '-';
+      const d = new Date(dateString);
+      return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
+    switch (phase) {
+      case 'PREVIEW':
+        phaseName = 'Công báo & Đề xuất đề tài';
+        dateRange = `${formatDate(activeSemester.topic_viewing_start)} - ${formatDate(activeSemester.topic_registration_start)}`;
+        color = '#06b6d4';
+        bgColor = '#ecfeff';
+        break;
+      case 'REGISTRATION':
+        phaseName = 'Sinh viên đăng ký đề tài';
+        dateRange = `${formatDate(activeSemester.topic_registration_start)} - ${formatDate(activeSemester.topic_registration_end)}`;
+        color = '#10b981';
+        bgColor = '#ecfdf5';
+        break;
+      case 'WORK':
+        phaseName = 'Thực hiện khóa luận';
+        dateRange = `${formatDate(activeSemester.topic_registration_end)} - ${formatDate(activeSemester.proposal_deadline)}`;
+        color = '#f59e0b';
+        bgColor = '#fffbeb';
+        break;
+      case 'REVIEWING':
+        phaseName = 'Chấm phản biện';
+        dateRange = `${formatDate(activeSemester.proposal_deadline)} - ${formatDate(activeSemester.defense_start)}`;
+        color = '#8b5cf6';
+        bgColor = '#f5f3ff';
+        break;
+      case 'DEFENSE':
+        phaseName = 'Bảo vệ Hội đồng';
+        dateRange = `${formatDate(activeSemester.defense_start)} - ${formatDate(activeSemester.defense_end)}`;
+        color = '#ef4444';
+        bgColor = '#fef2f2';
+        break;
+      case 'FINAL':
+        phaseName = 'Tổng kết học kỳ';
+        dateRange = `${formatDate(activeSemester.defense_end)} - ${formatDate(activeSemester.end_date)}`;
+        color = '#6366f1';
+        bgColor = '#eef2ff';
+        break;
+      default:
+        phaseName = 'Lập kế hoạch học kỳ';
+        dateRange = `${formatDate(activeSemester.start_date)} - ${formatDate(activeSemester.end_date)}`;
+        color = '#3b82f6';
+        bgColor = '#eff6ff';
+        break;
+    }
+
+    return {
+      phaseName,
+      dateRange,
+      color,
+      bgColor,
+    };
+  }, [activeSemester]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <ScrollView
@@ -163,7 +232,28 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-
+        {semesterPhaseInfo && (
+          <View style={styles.phaseCard}>
+            <View style={styles.phaseHeader}>
+              <View style={[styles.phaseIndicator, { backgroundColor: semesterPhaseInfo.color }]} />
+              <Text style={styles.phaseTitle}>GIAI ĐOẠN HỌC KỲ HIỆN TẠI</Text>
+            </View>
+            <View style={[styles.phaseDetailsBox, { backgroundColor: semesterPhaseInfo.bgColor, borderColor: semesterPhaseInfo.color + '20' }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.phaseLabel, { color: semesterPhaseInfo.color }]}>
+                  {semesterPhaseInfo.phaseName}
+                </Text>
+                <View style={styles.phaseTimeContainer}>
+                  <Calendar size={12} color="#64748b" />
+                  <Text style={styles.phaseDates}>{semesterPhaseInfo.dateRange}</Text>
+                </View>
+              </View>
+              <View style={[styles.phaseStatusBadge, { backgroundColor: semesterPhaseInfo.color }]}>
+                <Text style={styles.phaseStatusText}>Đang diễn ra</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Sessions */}
         <View style={styles.body}>
@@ -278,5 +368,69 @@ const styles = StyleSheet.create({
   roleBadge: { backgroundColor: '#eff6ff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 4 },
   roleBadgeText: { fontSize: 10, fontWeight: '700', color: BLUE },
   statusText: { fontSize: 11, fontWeight: '600' },
+  phaseCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  phaseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  phaseIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 8,
+  },
+  phaseTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  phaseDetailsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  phaseLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  phaseTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  phaseDates: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  phaseStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  phaseStatusText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
 
 });

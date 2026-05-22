@@ -162,7 +162,7 @@ export default function AssignedScreen() {
         groupId: groupId,
         title: t.title || 'Đề tài không có tiêu đề',
         code: t.code || 'N/A',
-        role: item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'QUẢN LÝ') : item.role,
+        role: item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role,
         status: t.status,
         date: t.created_at || new Date().toISOString(),
         schedule: t.defense_schedule,
@@ -269,7 +269,7 @@ export default function AssignedScreen() {
 
             <View style={styles.cardContentCol}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={[styles.roleLabel, { color: item.role === 'GVHD' ? BLUE : item.role === 'GVPB' ? '#3b82f6' : item.role === 'HĐBV' ? '#6366f1' : '#94a3b8' }]}>
+                <Text style={[styles.roleLabel, { color: item.role === 'GVHD' ? BLUE : item.role === 'GVPB' ? '#3b82f6' : item.role === 'HĐBV' ? '#6366f1' : item.role === 'TBM' ? '#0f766e' : '#94a3b8' }]}>
                   {item.role}
                 </Text>
                 <Text style={styles.topicCode}>{item.code}</Text>

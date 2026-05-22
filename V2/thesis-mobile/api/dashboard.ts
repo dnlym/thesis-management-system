@@ -59,4 +59,13 @@ export const DashboardApi = {
         const res = await api.get<ApiResponse<DashboardCharts>>('/dashboard/charts');
         return res.data.data;
     },
+
+    /**
+     * Get active semester details
+     * GET /semesters/active
+     */
+    async getActiveSemester() {
+        const res = await api.get<ApiResponse<any>>('/semesters/active');
+        return res.data.data;
+    },
 };
