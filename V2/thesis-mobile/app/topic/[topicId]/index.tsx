@@ -119,14 +119,14 @@ export default function TopicDetailScreen() {
     let sessionString = 'Chưa sắp lịch bảo vệ';
     let roomString = 'Chưa có phòng';
 
-    if (topic.defense_schedule) {
-        const ds = topic.defense_schedule;
+    const ds = topic.defense_schedule || topic.defense_schedules?.[0];
+    if (ds) {
         const formattedDate = ds.defense_date ? new Date(ds.defense_date).toLocaleDateString('vi-VN') : '';
         const time = ds.defense_time || ds.start_time || '';
         sessionString = `Hội đồng ${ds.committee?.name || ''} – ${time}, ${formattedDate}`;
     }
 
-    roomString = topic.room || topic.defense_schedule?.room || topic.defense_schedule?.committee?.room_preference || 'Chưa xếp phòng';
+    roomString = topic.room || ds?.room || ds?.committee?.room_preference || 'Chưa xếp phòng';
 
     const isAnyGraded = isHead ? true : (myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED' || s.status === 'PENDING_APPROVAL') || false);
 

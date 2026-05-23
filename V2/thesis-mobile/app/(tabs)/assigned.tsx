@@ -165,7 +165,7 @@ export default function AssignedScreen() {
         role: item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role,
         status: t.status,
         date: t.created_at || new Date().toISOString(),
-        schedule: t.defense_schedule,
+        schedule: t.defense_schedule || t.defense_schedules?.[0],
         groupName: groupName,
         department: t.department?.name || 'CNTT',
         isGraded,

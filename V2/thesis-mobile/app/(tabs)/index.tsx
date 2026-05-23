@@ -58,6 +58,9 @@ export default function DashboardScreen() {
           else roleLabel = 'Thành viên HĐ';
         }
 
+        const schedule = a.topic?.defense_schedule || a.topic?.defense_schedules?.[0];
+        const room = a.room || a.topic?.room || schedule?.room;
+
         return {
           id: a.id,
           topicId: a.topic_id,
@@ -67,22 +70,27 @@ export default function DashboardScreen() {
           statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
           statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
           role: roleLabel,
-          schedule: a.topic?.defense_schedule,
-          room: a.room || a.topic?.room
+          schedule,
+          room
         };
       }),
-      ...(supervisedTopics || []).map(t => ({
-        id: t.id,
-        topicId: t.topicId,
-        groupId: t.id,
-        groupName: t.code || t.title || 'Supervised Topic',
-        status: 'ADVISOR',
-        statusLabel: 'Chấm HD',
-        statusColor: BLUE,
-        role: 'GVHD',
-        schedule: t.defense_schedule,
-        room: t.room
-      }))
+      ...(supervisedTopics || []).map(t => {
+        const schedule = t.defense_schedule || t.defense_schedules?.[0];
+        const room = t.room || schedule?.room;
+
+        return {
+          id: t.id,
+          topicId: t.topicId,
+          groupId: t.id,
+          groupName: t.code || t.title || 'Supervised Topic',
+          status: 'ADVISOR',
+          statusLabel: 'Chấm HD',
+          statusColor: BLUE,
+          role: 'GVHD',
+          schedule,
+          room
+        };
+      })
     ];
 
     return list;
@@ -90,11 +98,19 @@ export default function DashboardScreen() {
 
   // Filter topics scheduled for TODAY
   const todayTopics = React.useMemo(() => {
-    const todayStr = new Date().toLocaleDateString('vi-VN');
+    const today = new Date();
+    const todayYear = today.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayDate = today.getDate();
+
     return uniqueCombinedTopics.filter(t => {
       if (!t.schedule?.defense_date) return false;
-      const defDateStr = new Date(t.schedule.defense_date).toLocaleDateString('vi-VN');
-      return defDateStr === todayStr;
+      const defDate = new Date(t.schedule.defense_date);
+      if (isNaN(defDate.getTime())) return false;
+      
+      return defDate.getFullYear() === todayYear &&
+             defDate.getMonth() === todayMonth &&
+             defDate.getDate() === todayDate;
     });
   }, [uniqueCombinedTopics]);
 
@@ -286,7 +302,7 @@ export default function DashboardScreen() {
                 <TouchableOpacity
                   key={`${session.id}-${topic.id}`}
                   style={styles.topicCard}
-                  onPress={() => router.push(`/topic/${topic.id}` as any)}
+                  onPress={() => router.push(`/topic/${topic.topicId}?groupId=${topic.groupId || ''}` as any)}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.topicGroup} numberOfLines={1}>{topic.groupName}</Text>

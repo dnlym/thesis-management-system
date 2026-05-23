@@ -162,6 +162,7 @@ export interface Topic {
     registrations?: any[]; // Using any[] for now to avoid circular dependencies or complex types, can be refined later
     defense_type?: 'ORAL' | 'POSTER';
     defense_schedule?: DefenseSchedule;
+    defense_schedules?: DefenseSchedule[];
     committee?: Committee;
     students?: User[];
     is_interdisciplinary?: boolean;
