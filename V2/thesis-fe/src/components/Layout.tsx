@@ -31,6 +31,12 @@ import NotificationDropdown from './NotificationDropdown';
 
 const { Header, Content } = Layout;
 
+// ===============================================================================
+// GRADING MODE HELPER
+// set to true to enable grading mode, false to disable
+// ===============================================================================
+const GRADING_MODE_ACTIVE = true;
+
 // ─── Menu Config ───────────────────────────────────────────────────────────────
 
 interface MenuItem {
@@ -280,14 +286,14 @@ const SidebarNav = ({ sections, collapsed, activeKey, onNavigate }: SidebarNavPr
                 key={item.key + item.label}
                 onClick={handleClick}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 mb-0.5 group
-                  ${isActive
-                    ? 'bg-blue-50 text-blue-600 font-semibold'
-                    : item.disabled 
-                      ? 'text-gray-300 cursor-not-allowed' 
+                  ${item.disabled 
+                    ? 'text-gray-300 cursor-not-allowed bg-transparent' 
+                    : isActive
+                      ? 'bg-blue-50 text-blue-600 font-semibold'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
               >
-                <span className={`text-base flex-shrink-0 ${isActive ? 'text-blue-600' : item.disabled ? 'text-gray-200' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                <span className={`text-base flex-shrink-0 ${item.disabled ? 'text-gray-200' : isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
                   {item.icon}
                 </span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
@@ -388,12 +394,45 @@ const AppLayout = () => {
   const { data: activeSemester } = useActiveSemester();
   const currentPhase = activeSemester?.calculated_phase;
 
-  const sections = getMenuSections(user?.role || 'STUDENT', currentPhase);
+  let sections = getMenuSections(user?.role || 'STUDENT', currentPhase);
+
+  if (GRADING_MODE_ACTIVE && user && user.role !== 'ADMIN') {
+    sections = sections.map(section => ({
+      ...section,
+      items: section.items.map(item => {
+        const baseKey = item.key.split('?')[0];
+        if (baseKey !== '/evaluation') {
+          return {
+            ...item,
+            disabled: true,
+            disabledReason: 'Hệ thống đang trong chế độ chấm điểm cuối kỳ. Các chức năng khác tạm thời bị khóa.'
+          };
+        }
+        return item;
+      })
+    }));
+  }
+
   const activeKey = location.pathname + location.search;
 
   const handleNavigate = (key: string) => {
     navigate(key);
   };
+
+  useEffect(() => {
+    if (GRADING_MODE_ACTIVE && user && user.role !== 'ADMIN') {
+      const currentPath = location.pathname;
+      if (user.role === 'STUDENT') {
+        if (currentPath !== '/dashboard') {
+          navigate('/dashboard', { replace: true });
+        }
+      } else {
+        if (currentPath !== '/evaluation') {
+          navigate('/evaluation', { replace: true });
+        }
+      }
+    }
+  }, [location.pathname, user, navigate]);
 
   const userMenu = {
     items: [

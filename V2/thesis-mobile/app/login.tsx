@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 24 },
     logoWrap: { alignItems: 'center', marginBottom: 40 },
     logoBox: { width: 72, height: 72, backgroundColor: BLUE, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14, shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6 },
-    appName: { fontSize: 22, fontWeight: '900', color: '#111827', letterSpacing: 1 },
+    appName: { fontSize: 22, fontWeight: '900', color: BLUE, letterSpacing: 1 },
     appSub: { fontSize: 13, color: '#9ca3af', marginTop: 4 },
     form: {},
     fieldLabel: { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 8 },
