@@ -840,11 +840,9 @@ export class AssignmentService {
             midterm_status: 'PASS',
           },
         },
-        // [NEW] Only topics that have been graded by supervisor
-        grades: {
-          some: {
-            rater_role: RaterRole.SUPERVISOR,
-          },
+        // [NEW] Logic mới: chưa bị hủy, chưa finalized
+        status: {
+          notIn: [TopicStatus.REJECTED, TopicStatus.FINALIZED],
         },
       },
       include: topicForCommitteeAssignmentInclude,
