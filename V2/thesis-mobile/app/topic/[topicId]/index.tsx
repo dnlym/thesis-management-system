@@ -143,7 +143,9 @@ export default function TopicDetailScreen() {
                 time = timeStr;
             }
         }
-        sessionString = `Hội đồng ${ds.committee?.name || ''} – ${time}, ${formattedDate}`;
+        const committeeName = ds.committee?.name || '';
+        const prefix = (committeeName.toLowerCase().startsWith('hội đồng') || committeeName.toLowerCase().startsWith('hđ')) ? '' : 'Hội đồng ';
+        sessionString = `${prefix}${committeeName} – ${time}, ${formattedDate}`;
     }
 
     roomString = topic.room || ds?.room || ds?.committee?.room_preference || 'Chưa xếp phòng';
@@ -161,7 +163,7 @@ export default function TopicDetailScreen() {
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>{topic.code || 'Chi tiết đề tài'}</Text>
-                    <Text style={styles.headerSub} numberOfLines={1}>{sessionString}</Text>
+                    <Text style={styles.headerSub}>{sessionString}</Text>
                 </View>
                 <View style={styles.roleBadge}>
                     <Text style={styles.roleBadgeText}>{roleCode}</Text>
