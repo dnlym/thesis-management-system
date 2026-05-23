@@ -124,7 +124,7 @@ const {
     const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
     const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
     const [isRestoring, setIsRestoring] = React.useState(true);
-    const [submittedStudents, setSubmittedStudents] = React.useState<Record<string, boolean>>({});
+    const [submittedStudents, setSubmittedStudents] = React.useState<Record<string, string>>({});
     const [gradeHistory, setGradeHistory] = React.useState<any[]>([]);
     const [isRequestMode, setIsRequestMode] = React.useState(false);
     const [requestModalVisible, setRequestModalVisible] = React.useState(false);
@@ -152,10 +152,10 @@ const {
                 if (myGrades) {
                     setGradeHistory(myGrades.gradeHistory || []);
                     if (myGrades.students && myGrades.students.length > 0) {
-                        const restoredSubmitted: Record<string, boolean> = {};
+                        const restoredSubmitted: Record<string, string> = {};
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
-                                restoredSubmitted[sGrade.studentId] = true;
+                                restoredSubmitted[sGrade.studentId] = sGrade.status;
                                 const sScores: Record<string, string> = {};
                                 const sComments: Record<string, string> = {};
                                 sGrade.grades.forEach((g: any) => {
@@ -227,11 +227,11 @@ const {
                     if (myGrades.students && myGrades.students.length > 0) {
                         const restoredScores: Record<string, Record<string, string>> = {};
                         const restoredComments: Record<string, Record<string, string>> = {};
-                        const restoredSubmitted: Record<string, boolean> = {};
+                        const restoredSubmitted: Record<string, string> = {};
 
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
-                                restoredSubmitted[sGrade.studentId] = true;
+                                restoredSubmitted[sGrade.studentId] = sGrade.status;
                                 const sScores: Record<string, string> = {};
                                 const sComments: Record<string, string> = {};
                                 sGrade.grades.forEach((g: any) => {
@@ -354,7 +354,9 @@ const {
     }
 
     const currentStudent = eligibleStudents[idx];
-    const submitted = submittedStudents[currentStudent?.id] || false;
+    const submittedStatus = submittedStudents[currentStudent?.id];
+    const submitted = !!submittedStatus;
+    const isPendingApproval = submittedStatus === 'PENDING_APPROVAL';
     const isMidtermFailed = isStudentMidtermFailed(currentStudent);
     const canEditStudent = (canGrade || isRequestMode) && !isMidtermFailed;
     const scores = allScores[currentStudent?.id] || {};
@@ -453,7 +455,7 @@ const {
                 }
                 setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
                 setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
-                setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
+                setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: 'PENDING_APPROVAL' }));
                 setSubmittedAt(new Date().toISOString());
 
                 if (isLastEligibleStudent) {
@@ -466,7 +468,7 @@ const {
 
             setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
             setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
-            setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: true }));
+            setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: 'SUBMITTED' }));
             setSubmittedAt(new Date().toISOString());
             
             if (isLastEligibleStudent) {
@@ -526,15 +528,27 @@ const {
             )}
 
             {submitted && (
-                <View style={[styles.phaseWarning, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
-                    <CheckCircle size={16} color="#15803d" />
-                    <View style={{ flex: 1, marginLeft: 8 }}>
-                        <Text style={[styles.phaseWarningTitle, { color: '#15803d' }]}>Đã hoàn thành chấm điểm</Text>
-                        <Text style={[styles.phaseWarningText, { color: '#166534' }]}>
-                            Bảng điểm được lưu lúc {submittedAt ? new Date(submittedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ngày ' + new Date(submittedAt).toLocaleDateString('vi-VN') : '---'}
-                        </Text>
+                isPendingApproval ? (
+                    <View style={[styles.phaseWarning, { backgroundColor: '#fff7ed', borderColor: '#ffedd5' }]}>
+                        <Info size={16} color="#ea580c" />
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={[styles.phaseWarningTitle, { color: '#c2410c' }]}>Yêu cầu sửa điểm đang chờ duyệt</Text>
+                            <Text style={[styles.phaseWarningText, { color: '#9a3412' }]}>
+                                Hệ thống đã ghi nhận yêu cầu sửa điểm của bạn và đang đợi Trưởng bộ môn phê duyệt.
+                            </Text>
+                        </View>
                     </View>
-                </View>
+                ) : (
+                    <View style={[styles.phaseWarning, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                        <CheckCircle size={16} color="#15803d" />
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={[styles.phaseWarningTitle, { color: '#15803d' }]}>Đã hoàn thành chấm điểm</Text>
+                            <Text style={[styles.phaseWarningText, { color: '#166534' }]}>
+                                Bảng điểm được lưu lúc {submittedAt ? new Date(submittedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ngày ' + new Date(submittedAt).toLocaleDateString('vi-VN') : '---'}
+                            </Text>
+                        </View>
+                    </View>
+                )
             )}
 
             <View style={styles.topicCardContainer}>

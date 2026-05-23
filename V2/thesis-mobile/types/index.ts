@@ -431,6 +431,7 @@ export interface GradeSubmissionForm {
         comment?: string;
     }[];
     general_comment?: string; // THÊM TẬN GỐC TẠI ĐÂY
+    reason?: string; // Added for grade change requests justification
 }
 
 export type GradeSubmissionResult = Grade[] | { message: string; status: 'PENDING_APPROVAL'; requestCount: number };

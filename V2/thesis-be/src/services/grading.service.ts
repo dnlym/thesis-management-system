@@ -123,7 +123,19 @@ export class GradingService {
       }
     }
 
-    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, reg ? { ...reg, topic } : { topic });
+    const existingGrades = await prisma.grade.findMany({
+      where: {
+        topic_id: resolvedTopicId,
+        group_id: finalGroupId || null,
+        student_id: data.studentId || null,
+        grader_id: userId,
+        rater_role: raterRole,
+        reviewer_order: data.reviewerOrder || null,
+      },
+    });
+    const isChangeRequest = existingGrades.length > 0;
+
+    AcademicPolicy.enforce(action, { id: userId, role: user.role as UserRole }, semester, reg ? { ...reg, topic, isChangeRequest } : { topic, isChangeRequest });
 
     // Verify user has permission to grade using helpers
     let hasPermission = false;
@@ -186,17 +198,6 @@ export class GradingService {
         throw new Error(`Điểm cho ${criterion.name} phải nằm trong khoảng ${criterion.min_score} - ${criterion.max_score}`);
       }
     }
-
-    const existingGrades = await prisma.grade.findMany({
-      where: {
-        topic_id: resolvedTopicId,
-        group_id: finalGroupId || null,
-        student_id: data.studentId || null,
-        grader_id: userId,
-        rater_role: raterRole,
-        reviewer_order: data.reviewerOrder || null,
-      },
-    });
 
     // --- DEADLINE CHECK & ROUTING (MILESTONE LOGIC) ---
     const phase = AcademicPolicy.getPhase(semester) || SemesterPhase.PLANNING;

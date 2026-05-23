@@ -244,6 +244,10 @@ export class AcademicPolicy {
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
         
+        if (registration?.isChangeRequest) {
+          return { allowed: true, code: 'ALLOWED' };
+        }
+        
         const isSupervisorAllowedPhase = phase === SemesterPhase.REVIEWING;
           
         if (!isSupervisorAllowedPhase) {
@@ -257,6 +261,10 @@ export class AcademicPolicy {
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
         
+        if (registration?.isChangeRequest) {
+          return { allowed: true, code: 'ALLOWED' };
+        }
+        
         const isReviewerAllowedPhase = phase === SemesterPhase.REVIEWING;
           
         if (!isReviewerAllowedPhase) {
@@ -269,6 +277,11 @@ export class AcademicPolicy {
 
       case AcademicAction.GRADE_COMMITTEE:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
+        
+        if (registration?.isChangeRequest) {
+          return { allowed: true, code: 'ALLOWED' };
+        }
+
         // All roles can proceed to the grading logic. 
         // Direct save vs Request workflow is handled in GradingService.
         if (phase !== SemesterPhase.DEFENSE && phase !== SemesterPhase.FINAL) {

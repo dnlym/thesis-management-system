@@ -53,6 +53,8 @@ export const GradingApi = {
             reviewerOrder: data.reviewer_order,
             committeeRole: data.committee_role,
 
+            reason: data.reason,
+
             grades: data.scores.map((s) => ({
                 criterionId: s.criterion_id,
                 score: s.score,
