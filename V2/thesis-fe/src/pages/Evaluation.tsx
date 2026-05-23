@@ -47,7 +47,7 @@ const Evaluation = () => {
   const topicId = searchParams.get('topicId');
   const rawGroupId = searchParams.get('groupId');
   const groupId = (rawGroupId === 'undefined' || rawGroupId === 'null') ? null : rawGroupId;
-  const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' ? 'department' : 'advisor'));
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('type') || (user?.role === 'HEAD' || user?.role === 'COORDINATOR' ? 'department' : 'advisor'));
   const { data: activeSemester } = useActiveSemester();
 
   // HOD Pivot Modal state
@@ -146,7 +146,7 @@ const Evaluation = () => {
   const { data: auditLogs } = useQuery({
     queryKey: ['audit-logs', topicId],
     queryFn: () => TopicsApi.getAuditLogs('Topic', topicId!),
-    enabled: !!topicId && (user?.role === 'HEAD' || user?.role === 'ADMIN'),
+    enabled: !!topicId && (user?.role === 'HEAD' || user?.role === 'ADMIN' || user?.role === 'COORDINATOR'),
   });
 
   const { data: gradeHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery({
@@ -1348,7 +1348,7 @@ const Evaluation = () => {
                   </div>
                 }
                 items={[
-                  ...(user?.role === 'HEAD' ? [{
+                  ...(user?.role === 'HEAD' || user?.role === 'COORDINATOR' ? [{
                     key: 'department',
                     label: 'Quản lý Bộ môn',
                     children: <div className="pt-6 pb-6 pr-6 pl-0 bg-white">{renderDepartmentTab()}</div>

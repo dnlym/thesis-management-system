@@ -9,7 +9,11 @@ export class UserService {
         const where: any = {};
 
         if (filters?.role) {
-            where.role = filters.role;
+            if (filters.role === UserRole.LECTURER) {
+                where.role = { in: [UserRole.LECTURER, UserRole.HEAD, UserRole.COORDINATOR] };
+            } else {
+                where.role = filters.role;
+            }
         }
 
         // Role-based scoping

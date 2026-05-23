@@ -131,9 +131,9 @@ export class AssignmentService {
     // 1. Academic Policy Guard (Phase & Failed Status checking)
     AcademicPolicy.enforce(AcademicAction.ASSIGN_REVIEWER, { id: userId, role: UserRole.HEAD }, activeSemester, { topic });
 
-    // Topics must be REGISTERED to have assignments
-    if (topic.status !== TopicStatus.REGISTERED) {
-      throw new Error('Chỉ có thể gán phản biện cho đề tài đã có sinh viên đăng ký (REGISTERED)');
+    // Topics must not be REJECTED or FINALIZED to have assignments
+    if (topic.status === TopicStatus.REJECTED || topic.status === TopicStatus.FINALIZED) {
+      throw new Error('Chỉ có thể gán phản biện cho đề tài chưa bị hủy và chưa hoàn tất (FINALIZED)');
     }
 
     if (topic.current_students === 0) {
@@ -1097,7 +1097,7 @@ export class AssignmentService {
     const reviewers = await prisma.user.findMany({
       where: {
         departmentId: topic.departmentId,
-        role: { in: [UserRole.LECTURER, UserRole.HEAD] },
+        role: { in: [UserRole.LECTURER, UserRole.HEAD, UserRole.COORDINATOR] },
         id: {
           notIn: [...assignedReviewerIds, topic.supervisor_id], // Exclude GVHD and already assigned
         },
@@ -1126,7 +1126,7 @@ export class AssignmentService {
     const reviewers = await prisma.user.findMany({
       where: {
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
-        role: { in: [UserRole.LECTURER, UserRole.HEAD] },
+        role: { in: [UserRole.LECTURER, UserRole.HEAD, UserRole.COORDINATOR] },
       },
       select: {
         id: true,

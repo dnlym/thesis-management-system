@@ -146,7 +146,7 @@ export class RegistrationService {
       prisma.user.findUnique({ where: { id: studentId } }),
     ]);
 
-    if (!supervisor || supervisor.role !== UserRole.LECTURER) {
+    if (!supervisor || (supervisor.role !== UserRole.LECTURER && supervisor.role !== UserRole.HEAD && supervisor.role !== UserRole.COORDINATOR)) {
       throw new Error('Chỉ giảng viên mới được đăng ký thay sinh viên');
     }
     if (!student || student.role !== 'STUDENT') {

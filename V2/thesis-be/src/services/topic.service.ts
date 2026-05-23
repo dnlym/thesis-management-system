@@ -102,7 +102,7 @@ export class TopicService {
     }
 
     // LECTURER and HEAD can only access topics in their department
-    if (user.role === UserRole.LECTURER || user.role === UserRole.HEAD) {
+    if (user.role === UserRole.LECTURER || user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR) {
       if (topic.departmentId !== user.departmentId) {
         throw new Error('Bạn không có quyền truy cập đề tài của chuyên ngành khác');
       }
@@ -175,7 +175,7 @@ export class TopicService {
     AcademicPolicy.enforce(AcademicAction.CREATE_TOPIC, user, semester);
 
     // Check department access - LECTURER can only create for their department
-    if (user.role === UserRole.LECTURER && user.departmentId !== data.departmentId) {
+    if ((user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) && user.departmentId !== data.departmentId) {
       // Use user's own department for GVHD
     }
 
@@ -224,7 +224,7 @@ export class TopicService {
     //   - isDraft=true → DRAFT
     //   - isDraft=false → APPROVED (tự duyệt)
     let initialStatus: TopicStatus;
-    if (user.role === UserRole.LECTURER) {
+    if (user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) {
       if (data.isDraft) {
         initialStatus = TopicStatus.DRAFT; // Lưu bản nháp
       } else {
@@ -814,7 +814,7 @@ export class TopicService {
           ]
         });
       }
-    } else if (user.role === UserRole.LECTURER) {
+    } else if (user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) {
       // Find committee assignments
       const committeeAssignments = await prisma.assignment.findMany({
         where: { reviewer_id: userId, status: { in: [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED] } },
@@ -891,7 +891,7 @@ export class TopicService {
       } else {
         where.status = { in: allowedStatuses };
       }
-    } else if (user.role === UserRole.LECTURER && userId !== filter.supervisorId) {
+    } else if ((user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) && userId !== filter.supervisorId) {
       // Lecturers only see visible topics of others
       andConditions.push({
         OR: [
@@ -1421,7 +1421,7 @@ export class TopicService {
     }
 
     // Check access - HEAD/ADMIN can view all, LECTURER can view their own
-    if (user.role === UserRole.LECTURER && topic.supervisor_id !== userId) {
+    if ((user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) && topic.supervisor_id !== userId) {
       throw new Error('Bạn không có quyền xem lịch sử đề tài này');
     }
 
@@ -1628,7 +1628,7 @@ export class TopicService {
       };
 
       // Ensure HEAD/ADMIN only count their own drafts
-      if (status === TopicStatus.DRAFT && user.role !== UserRole.LECTURER) {
+      if (status === TopicStatus.DRAFT && user.role !== UserRole.LECTURER && user.role !== UserRole.COORDINATOR) {
         currentWhere.supervisor_id = userId;
       }
 

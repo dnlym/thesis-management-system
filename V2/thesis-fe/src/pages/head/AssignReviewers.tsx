@@ -36,7 +36,7 @@ const HeadAssignReviewers = () => {
         queryKey: ['lecturers-assignment', user?.role, user?.department_id],
         queryFn: () => {
             const filters: any = { role: 'LECTURER' };
-            if (user?.role === 'HEAD') {
+            if (user?.role === 'HEAD' || user?.role === 'COORDINATOR') {
                 filters.departmentId = user?.department_id || (user as any)?.department?.id;
             }
             return UsersApi.getAll(filters);

@@ -39,8 +39,8 @@ const CommitteeManagement = () => {
         queryKey: ['lecturers', user?.role, user?.department_id],
         queryFn: () => {
             const filters: any = { role: 'LECTURER' };
-            if (user?.role === 'HEAD') {
-                // Nếu là HOD, bắt buộc phải lọc theo bộ môn của họ
+            if (user?.role === 'HEAD' || user?.role === 'COORDINATOR') {
+                // Nếu là HOD hoặc COORDINATOR, bắt buộc phải lọc theo bộ môn của họ
                 filters.departmentId = user?.department_id || (user as any)?.department?.id;
             }
             // Nếu là ADMIN, không truyền departmentId để lấy toàn bộ
