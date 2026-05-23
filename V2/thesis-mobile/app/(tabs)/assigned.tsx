@@ -146,7 +146,8 @@ export default function AssignedScreen() {
         studentId && fs.student_id === studentId
       );
 
-      const isFinalized = t.status === 'FINALIZED' || (finalScoreForStudent?.finalized === true);
+      const isFinalPhase = t.semester?.calculated_phase === 'FINAL';
+      const isFinalized = isFinalPhase && (t.status === 'FINALIZED' || (finalScoreForStudent?.finalized === true));
       const isGraded = groupGrades.length > 0 || !!finalScoreForStudent;
       
       const groupName = t.groupName || reg?.group?.name || reg?.student?.full_name || t.students?.[0]?.full_name || 'Đề tài lẻ';

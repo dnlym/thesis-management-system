@@ -269,6 +269,10 @@ export class TopicController {
           }
         });
         (semester as any).deptConfig = deptConfig;
+        if ((topic as any).semester) {
+          (topic as any).semester.deptConfig = deptConfig;
+          (topic as any).semester.calculated_phase = AcademicPolicy.getPhase(semester);
+        }
 
         // Fetch user's assignments for this topic
         const userAssignments = await prisma.assignment.findMany({

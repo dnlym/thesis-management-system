@@ -1054,6 +1054,9 @@ export class TopicService {
     const finalProcessedTopics: any[] = [];
 
     for (const topic of topics as any[]) {
+      if (topic.semester) {
+        (topic.semester as any).calculated_phase = AcademicPolicy.getPhase(topic.semester);
+      }
       if (user.role === UserRole.STUDENT) {
         // Students only see the count, not the actual registrations
         const { registrations, final_scores, assignments, groups, ...cleanTopic } = topic;

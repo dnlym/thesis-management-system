@@ -180,7 +180,8 @@ export default function TopicDetailScreen() {
                                 statusBg = '#fef2f2';
                             } else if (isHead) {
                                 const hasScore = !!sv.finalScore;
-                                statusText = sv.finalScore?.finalized ? 'Đã chốt' : (hasScore ? 'Đã chấm' : 'Chưa chấm');
+                                const isFinalPhase = topic.semester?.calculated_phase === 'FINAL';
+                                statusText = (isFinalPhase && sv.finalScore?.finalized) ? 'Đã chốt' : (hasScore ? 'Đã chấm' : 'Chưa chấm');
                                 statusColor = hasScore ? '#16a34a' : '#ea580c';
                                 statusBg = hasScore ? '#f0fdf4' : '#fff7ed';
                                 if (hasScore) {
