@@ -3,12 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const supervisorName = 'Trần Thị Kim Chi';
-  const topicTitleKeyword = 'Tìm hiểu và ứng dụng công nghệ mới trong xây dựng hệ thống quản lý rạp chiếu phim';
+  const supervisorName = 'Nguyễn Hữu Quang';
+  const topicTitleKeyword = 'Phân tích dữ liệu ứng dụng trong bài toán dự đoán';
 
-  console.log('--- Bắt đầu chuyển đề tài này sang cô Trần Thị Kim Chi ---');
+  console.log('--- Bắt đầu chuyển đề tài này sang Nguyễn Hữu Quang ---');
 
-  // 1. Tìm giảng viên Trần Thị Kim Chi
+  // 1. Tìm giảng viên Nguyễn Hữu Quang
   const supervisor = await prisma.user.findFirst({
     where: {
       full_name: {
@@ -16,7 +16,7 @@ async function main() {
         mode: 'insensitive'
       },
       role: {
-        in: ['LECTURER', 'HEAD']
+        in: ['LECTURER', 'HEAD', 'COORDINATOR']
       }
     }
   });
