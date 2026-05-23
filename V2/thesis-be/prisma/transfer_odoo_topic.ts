@@ -3,12 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const supervisorName = 'Nguyễn Thị Thanh Bình';
-  const topicTitleKeyword = 'Tìm hiểu hệ thống Odoo';
+  const supervisorName = 'Trần Thị Kim Chi';
+  const topicTitleKeyword = 'Tìm hiểu và ứng dụng công nghệ mới trong xây dựng hệ thống quản lý rạp chiếu phim';
 
-  console.log('--- Bắt đầu chuyển đề tài Odoo sang cô Nguyễn Thị Thanh Bình ---');
+  console.log('--- Bắt đầu chuyển đề tài này sang cô Trần Thị Kim Chi ---');
 
-  // 1. Tìm giảng viên Nguyễn Thị Thanh Bình
+  // 1. Tìm giảng viên Trần Thị Kim Chi
   const supervisor = await prisma.user.findFirst({
     where: {
       full_name: {
