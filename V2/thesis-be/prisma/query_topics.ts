@@ -3,45 +3,27 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const targetTopics = [
-    {
-      id: "7af77eda-877f-47fe-bb49-19d544478fc0",
-      title: "Nghiên cứu các kỹ thuật bảo mật web..."
+  const topicId = '765f762d-4283-4451-9eec-b3d803967012';
+  const newSupervisorId = '82f141af-e8e2-4ef4-ab59-43b11d4816d3'; // ThS. Trần Thị Kim Chi
+
+  console.log('=== Chuyển đề tài sang GVHD mới ===');
+  console.log(`Topic ID: ${topicId}`);
+  console.log(`New supervisor ID: ${newSupervisorId} (ThS. Trần Thị Kim Chi)`);
+
+  const updated = await prisma.topic.update({
+    where: { id: topicId },
+    data: {
+      supervisor_id: newSupervisorId,
     },
-    {
-      id: "4b89def6-d1c8-4f3c-a921-adff8af610d8",
-      title: "Xây dựng hệ thống điểm danh sinh viên tự động..."
+    include: {
+      supervisor: { select: { full_name: true, email: true } }
     }
-  ];
+  });
 
-  for (const target of targetTopics) {
-    console.log(`\n=== Resetting topic: "${target.title}" ===`);
-    console.log(`ID: ${target.id}`);
-
-    // 1. Reset topic status & progress stage
-    const updatedTopic = await prisma.topic.update({
-      where: { id: target.id },
-      data: {
-        status: 'REGISTERED',
-        progress_stage: 'REVIEWING',
-      }
-    });
-    console.log(`✅ Topic updated -> status: ${updatedTopic.status}, progress_stage: ${updatedTopic.progress_stage}`);
-
-    // 2. Reset student_progress_status in registrations back to HAS_TOPIC
-    const updatedRegs = await prisma.topicRegistration.updateMany({
-      where: {
-        topic_id: target.id,
-        status: 'CONFIRMED',
-      },
-      data: {
-        student_progress_status: 'HAS_TOPIC',
-      }
-    });
-    console.log(`✅ Updated ${updatedRegs.count} registration(s) -> student_progress_status: HAS_TOPIC`);
-  }
-
-  console.log('\n=== Done! ===');
+  console.log(`\n✅ Done!`);
+  console.log(`  Title: ${updated.title}`);
+  console.log(`  New supervisor: ${updated.supervisor.full_name} (${updated.supervisor.email})`);
+  console.log(`  Status: ${updated.status}`);
 }
 
 main()
