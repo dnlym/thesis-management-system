@@ -131,9 +131,9 @@ export class AssignmentService {
     // 1. Academic Policy Guard (Phase & Failed Status checking)
     AcademicPolicy.enforce(AcademicAction.ASSIGN_REVIEWER, { id: userId, role: UserRole.HEAD }, activeSemester, { topic });
 
-    // Topics must not be REJECTED or FINALIZED to have assignments
-    if (topic.status === TopicStatus.REJECTED || topic.status === TopicStatus.FINALIZED) {
-      throw new Error('Chỉ có thể gán phản biện cho đề tài chưa bị hủy và chưa hoàn tất (FINALIZED)');
+    // Topics must not be REJECTED, COMPLETED, or FINALIZED to have assignments
+    if (topic.status === TopicStatus.REJECTED || topic.status === TopicStatus.FINALIZED || topic.status === TopicStatus.COMPLETED) {
+      throw new Error('Chỉ có thể gán phản biện cho đề tài chưa bị hủy, chưa hoàn tất và chưa kết thúc (COMPLETED)');
     }
 
     if (topic.current_students === 0) {

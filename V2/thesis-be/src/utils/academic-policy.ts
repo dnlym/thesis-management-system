@@ -192,13 +192,13 @@ export class AcademicPolicy {
         if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW && phase !== SemesterPhase.REGISTRATION && phase !== SemesterPhase.WORK) {
           return { allowed: false, reason: 'Chỉ được phép quản lý đề tài trong các giai đoạn cho phép (Chuẩn bị, Đăng ký hoặc Thực hiện).' };
         }
-        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
+        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR };
 
       case AcademicAction.CREATE_TOPIC:
         if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW) {
           return { allowed: false, reason: 'Chỉ được phép tạo đề tài trong giai đoạn Chuẩn bị hoặc Công bố (PREVIEW).' };
         }
-        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD };
+        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR };
 
       case AcademicAction.APPROVE_TOPIC:
         if (!this.isPlanning(semester) && phase !== SemesterPhase.PREVIEW) {
@@ -238,7 +238,7 @@ export class AcademicPolicy {
         if (!timeline.isMidtermActive) {
           return { allowed: false, reason: 'Đã hết thời gian (hoặc chưa tới ngày) đánh giá giữa kỳ.', code: 'OUT_OF_TIME' };
         }
-        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD, code: 'ALLOWED' };
+        return { allowed: user.role === UserRole.LECTURER || user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR, code: 'ALLOWED' };
 
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
