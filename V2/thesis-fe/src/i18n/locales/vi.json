@@ -38,7 +38,8 @@
     "back": "Quay lại",
     "systemTitle": "Hệ thống KLTN",
     "user": "Người dùng",
-    "errorLoadingData": "Không thể tải dữ liệu"
+    "errorLoadingData": "Không thể tải dữ liệu",
+    "current": "Hiện tại"
   },
   "auth": {
     "login": "Đăng nhập",

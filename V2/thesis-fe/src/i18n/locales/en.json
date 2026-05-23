@@ -32,7 +32,8 @@
     "confirmDelete": "Are you sure you want to delete this item?",
     "systemTitle": "Thesis MS",
     "user": "User",
-    "errorLoadingData": "Error loading data"
+    "errorLoadingData": "Error loading data",
+    "current": "Current"
   },
   "auth": {
     "login": "Login",

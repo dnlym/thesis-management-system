@@ -99,6 +99,19 @@ export class SemesterGuard {
       }
     }
 
+    const originalGlobalDefenseStart = defenseStart;
+
+    if (deptConfig?.defense_date) {
+      const deptDate = parseDate(deptConfig.defense_date);
+      const globalStart = originalGlobalDefenseStart ? originalGlobalDefenseStart.toDate() : null;
+      const globalEnd = defenseEnd ? defenseEnd.toDate() : null;
+
+      const effectiveDeptDate = (globalStart && deptDate && deptDate.isBefore(dayjs(globalStart))) ? dayjs(globalStart) : deptDate;
+      if (effectiveDeptDate) {
+        defenseStart = effectiveDeptDate;
+      }
+    }
+
     if (
       proposalDeadline &&
       now.isSameOrAfter(proposalDeadline) &&
@@ -110,7 +123,7 @@ export class SemesterGuard {
 
     // [5] DEFENSE: defense_start → defense_end
     // Ceiling Logic: Dept dates must be WITHIN the global semester defense window.
-    const globalStart = defenseStart ? defenseStart.toDate() : null;
+    const globalStart = originalGlobalDefenseStart ? originalGlobalDefenseStart.toDate() : null;
     const globalEnd = defenseEnd ? defenseEnd.toDate() : null;
     
     let effectiveDefenseStart = globalStart;

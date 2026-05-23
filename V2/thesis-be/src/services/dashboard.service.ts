@@ -23,7 +23,20 @@ export class DashboardService {
             }
         }
 
-        const currentPhase = activeSemester ? SemesterGuard.calculateCurrentPhase(activeSemester) : null;
+        // Fetch department config for this user if they belong to a department
+        let deptConfig = null;
+        if (activeSemester && user.departmentId) {
+            deptConfig = await prisma.departmentSemesterConfig.findUnique({
+                where: {
+                    department_id_semester_id: {
+                        department_id: user.departmentId,
+                        semester_id: activeSemester.id
+                    }
+                }
+            });
+        }
+
+        const currentPhase = activeSemester ? SemesterGuard.calculateCurrentPhase(activeSemester, deptConfig) : null;
         const milestones = this.getMilestones(activeSemester);
         const semesterId = activeSemester?.id;
 

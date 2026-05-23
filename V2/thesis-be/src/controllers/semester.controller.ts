@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import semesterService from '../services/semester.service';
 import { AcademicPolicy } from '../utils/academic-policy';
+import { SemesterGuard } from '../utils/semester-guard';
 import prisma from '../config/database';
 import { UserRole } from '@prisma/client';
 
@@ -197,8 +198,9 @@ export class SemesterController {
         });
       }
 
-      // Attach to semester for AcademicPolicy
+      // Attach to semester for AcademicPolicy and update calculated_phase
       (semester as any).deptConfig = deptConfig;
+      (semester as any).calculated_phase = SemesterGuard.calculateCurrentPhase(semester, deptConfig);
 
       // Resolve student registration if applicable
       let registration = null;
@@ -258,6 +260,31 @@ export class SemesterController {
     try {
       const semesterId = req.params.semesterId as string;
       const semester = await semesterService.getSemesterById(semesterId);
+
+      const user = req.user;
+      let deptConfig = null;
+      if (user) {
+        const userData = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { departmentId: true }
+        });
+        if (userData?.departmentId) {
+          deptConfig = await prisma.departmentSemesterConfig.findUnique({
+            where: {
+              department_id_semester_id: {
+                department_id: userData.departmentId,
+                semester_id: semesterId
+              }
+            }
+          });
+        }
+      }
+
+      if (semester) {
+        (semester as any).deptConfig = deptConfig;
+        (semester as any).calculated_phase = SemesterGuard.calculateCurrentPhase(semester, deptConfig);
+      }
+
       res.json({
         success: true,
         data: semester,

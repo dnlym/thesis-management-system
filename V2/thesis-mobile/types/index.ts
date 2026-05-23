@@ -126,6 +126,10 @@ export interface Semester {
     defense_end: string;
     status: SemesterStatus;
     calculated_phase?: SemesterPhase | null;
+    deptConfig?: {
+        defense_date?: string;
+        is_registration_open?: boolean;
+    } | null;
     created_at: string;
     updated_at: string;
 }

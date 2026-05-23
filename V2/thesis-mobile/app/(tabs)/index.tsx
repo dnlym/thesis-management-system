@@ -49,40 +49,40 @@ export default function DashboardScreen() {
   // Combine all topics the user needs to interact with
   const uniqueCombinedTopics = React.useMemo(() => {
     const list = [
-        ...(assignments || []).map(a => {
-          let roleLabel = 'GVPB';
-          if (a.assignment_type === 'COMMITTEE') {
-            const cRole = a.committee_role;
-            if (cRole === 'CHAIR') roleLabel = 'Chủ tịch HĐ';
-            else if (cRole === 'SECRETARY') roleLabel = 'Thư ký HĐ';
-            else roleLabel = 'Thành viên HĐ';
-          }
-    
-          return {
-            id: a.id,
-            topicId: a.topic_id,
-            groupId: a.group_id,
-            groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
-            status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
-            statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
-            statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
-            role: roleLabel,
-            schedule: a.topic?.defense_schedule,
-            room: a.room || a.topic?.room
-          };
-        }),
-        ...(supervisedTopics || []).map(t => ({
-          id: t.id,
-          topicId: t.topicId,
-          groupId: t.id,
-          groupName: t.code || t.title || 'Supervised Topic',
-          status: 'ADVISOR',
-          statusLabel: 'Chấm HD',
-          statusColor: BLUE,
-          role: 'GVHD',
-          schedule: t.defense_schedule,
-          room: t.room
-        }))
+      ...(assignments || []).map(a => {
+        let roleLabel = 'GVPB';
+        if (a.assignment_type === 'COMMITTEE') {
+          const cRole = a.committee_role;
+          if (cRole === 'CHAIR') roleLabel = 'Chủ tịch HĐ';
+          else if (cRole === 'SECRETARY') roleLabel = 'Thư ký HĐ';
+          else roleLabel = 'Thành viên HĐ';
+        }
+
+        return {
+          id: a.id,
+          topicId: a.topic_id,
+          groupId: a.group_id,
+          groupName: a.topic?.code || a.topic?.title || 'Unknown Topic',
+          status: a.status === 'PENDING' ? 'NOT_STARTED' : a.status,
+          statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
+          statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
+          role: roleLabel,
+          schedule: a.topic?.defense_schedule,
+          room: a.room || a.topic?.room
+        };
+      }),
+      ...(supervisedTopics || []).map(t => ({
+        id: t.id,
+        topicId: t.topicId,
+        groupId: t.id,
+        groupName: t.code || t.title || 'Supervised Topic',
+        status: 'ADVISOR',
+        statusLabel: 'Chấm HD',
+        statusColor: BLUE,
+        role: 'GVHD',
+        schedule: t.defense_schedule,
+        room: t.room
+      }))
     ];
 
     return list;
@@ -118,6 +118,8 @@ export default function DashboardScreen() {
       return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
     };
 
+    const defenseDateStart = activeSemester.deptConfig?.defense_date || activeSemester.defense_start;
+
     switch (phase) {
       case 'PREVIEW':
         phaseName = 'Công báo & Đề xuất đề tài';
@@ -139,13 +141,17 @@ export default function DashboardScreen() {
         break;
       case 'REVIEWING':
         phaseName = 'Chấm phản biện';
-        dateRange = `${formatDate(activeSemester.proposal_deadline)} - ${formatDate(activeSemester.defense_start)}`;
+        dateRange = `${formatDate(activeSemester.proposal_deadline)} - ${formatDate(defenseDateStart)}`;
         color = '#8b5cf6';
         bgColor = '#f5f3ff';
         break;
       case 'DEFENSE':
         phaseName = 'Bảo vệ Hội đồng';
-        dateRange = `${formatDate(activeSemester.defense_start)} - ${formatDate(activeSemester.defense_end)}`;
+        if (activeSemester.deptConfig?.defense_date) {
+          dateRange = formatDate(activeSemester.deptConfig.defense_date);
+        } else {
+          dateRange = `${formatDate(activeSemester.defense_start)} - ${formatDate(activeSemester.defense_end)}`;
+        }
         color = '#ef4444';
         bgColor = '#fef2f2';
         break;
@@ -195,32 +201,32 @@ export default function DashboardScreen() {
 
         {/* Role-based Overview Pillboxes - Clickable */}
         <View style={styles.pillboxContainer}>
-          <TouchableOpacity 
-            style={[styles.pillbox, { borderLeftColor: BLUE, borderLeftWidth: 4 }]} 
+          <TouchableOpacity
+            style={[styles.pillbox, { borderLeftColor: BLUE, borderLeftWidth: 4 }]}
             onPress={() => router.push('/assigned?filter=GVHD' as any)}
             activeOpacity={0.8}
           >
             <View style={styles.pillboxIconRow}>
               <Users size={16} color={BLUE} />
-              <Text style={styles.pillboxLabel}>GV Hướng dẫn</Text>
+              <Text style={styles.pillboxLabel}>Hướng dẫn</Text>
             </View>
             <Text style={[styles.pillboxValue, { color: BLUE }]}>{supervisedCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.pillbox, { borderLeftColor: '#9333ea', borderLeftWidth: 4 }]} 
+          <TouchableOpacity
+            style={[styles.pillbox, { borderLeftColor: '#9333ea', borderLeftWidth: 4 }]}
             onPress={() => router.push('/assigned?filter=GVPB' as any)}
             activeOpacity={0.8}
           >
             <View style={styles.pillboxIconRow}>
               <UserCheck size={16} color="#9333ea" />
-              <Text style={styles.pillboxLabel}>GV Phản biện</Text>
+              <Text style={styles.pillboxLabel}>Phản biện</Text>
             </View>
             <Text style={[styles.pillboxValue, { color: '#9333ea' }]}>{reviewerCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.pillbox, { borderLeftColor: '#ea580c', borderLeftWidth: 4 }]} 
+          <TouchableOpacity
+            style={[styles.pillbox, { borderLeftColor: '#ea580c', borderLeftWidth: 4 }]}
             onPress={() => router.push('/assigned?filter=HĐBV' as any)}
             activeOpacity={0.8}
           >
@@ -257,8 +263,6 @@ export default function DashboardScreen() {
 
         {/* Sessions */}
         <View style={styles.body}>
-          <Text style={styles.sectionTitle}>Ca chấm hôm nay</Text>
-
           {isLoading ? (
             <ActivityIndicator size="large" color={BLUE} style={{ marginTop: 20 }} />
           ) : sessions.length === 0 ? (
@@ -318,21 +322,21 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { 
-    backgroundColor: '#fff', 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  header: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20, 
+    paddingHorizontal: 20,
     paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9'
   },
   greetSmall: { color: '#64748b', fontSize: 13, fontWeight: '500' },
   greetName: { color: '#111827', fontSize: 20, fontWeight: '800', marginTop: 2 },
-  semesterBadge: { 
-    backgroundColor: '#eff6ff', alignSelf: 'flex-start', 
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginTop: 6 
+  semesterBadge: {
+    backgroundColor: '#eff6ff', alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginTop: 6
   },
   semesterText: { fontSize: 11, fontWeight: '700', color: BLUE },
   headerRight: { alignItems: 'flex-end', justifyContent: 'center' },
