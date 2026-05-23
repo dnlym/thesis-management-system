@@ -49,7 +49,7 @@ export default function AssignedScreen() {
     }
   }, [params.filter]);
 
-  const isHOD = user?.role === 'HEAD';
+  const isHOD = user?.role === 'HEAD' || user?.role === 'ADMIN' || user?.role === 'COORDINATOR';
 
   const { data: assignments, isLoading: isAssignmentsLoading, refetch: refetchAssignments, isRefetching: isAssignmentsRefetching } = useAssignments();
   const { data: supervisedTopics, isLoading: isSupervisedLoading, refetch: refetchSupervised, isRefetching: isSupervisedRefetching } = useSupervisedTopics();

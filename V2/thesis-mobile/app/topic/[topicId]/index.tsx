@@ -35,7 +35,7 @@ export default function TopicDetailScreen() {
         });
     }, [topic, topicId, groupId]);
 
-    const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN';
+    const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN' || user?.role === 'COORDINATOR';
     const isAdvisor = topic?.supervisor_id === user?.id;
     const reviewerAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
     const committeeAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');

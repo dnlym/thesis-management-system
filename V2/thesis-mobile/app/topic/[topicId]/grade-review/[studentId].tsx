@@ -337,7 +337,7 @@ export default function GradeReviewScreen() {
 
     const queryClient = useQueryClient();
 
-    const isHead = currentUser?.role === 'HEAD';
+    const isHead = currentUser?.role === 'HEAD' || currentUser?.role === 'ADMIN' || currentUser?.role === 'COORDINATOR';
 
     // Compute role for the CURRENT user based on topic assignments - available on first render
     const myRoleOnTopic = React.useMemo(() => {
