@@ -4,7 +4,8 @@ export type UserRole =
     | 'STUDENT'
     | 'LECTURER'
     | 'HEAD'
-    | 'ADMIN';
+    | 'ADMIN'
+    | 'COORDINATOR';
 
 export type CommitteeType = 'ORAL' | 'POSTER';
 
