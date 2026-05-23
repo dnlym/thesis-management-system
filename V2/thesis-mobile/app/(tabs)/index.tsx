@@ -14,6 +14,28 @@ import { MapPin, Clock, Users, UserCheck, Award, Calendar } from 'lucide-react-n
 
 const BLUE = '#2563eb';
 
+const formatScheduleTime = (schedule: any): string => {
+  if (!schedule) return 'Chưa rõ giờ';
+  
+  const rawTime = schedule.defense_time || schedule.start_time;
+  if (!rawTime) return 'Chưa rõ giờ';
+  
+  const timeStr = String(rawTime);
+  if (timeStr.includes('T') || timeStr.includes('-')) {
+    try {
+      const date = new Date(timeStr);
+      if (!isNaN(date.getTime())) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return timeStr;
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -310,7 +332,7 @@ export default function DashboardScreen() {
                       <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                           <Clock size={10} color="#9ca3af" />
-                          <Text style={styles.topicSession}>{topic.schedule?.defense_time || 'Chưa rõ giờ'}</Text>
+                          <Text style={styles.topicSession}>{formatScheduleTime(topic.schedule)}</Text>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                           <MapPin size={10} color="#9ca3af" />

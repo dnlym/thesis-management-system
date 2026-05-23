@@ -122,7 +122,27 @@ export default function TopicDetailScreen() {
     const ds = topic.defense_schedule || topic.defense_schedules?.[0];
     if (ds) {
         const formattedDate = ds.defense_date ? new Date(ds.defense_date).toLocaleDateString('vi-VN') : '';
-        const time = ds.defense_time || ds.start_time || '';
+        let time = 'Chưa rõ giờ';
+        if (ds.defense_time || ds.start_time) {
+            const rawTime = ds.defense_time || ds.start_time;
+            const timeStr = String(rawTime);
+            if (timeStr.includes('T') || timeStr.includes('-')) {
+                try {
+                    const date = new Date(timeStr);
+                    if (!isNaN(date.getTime())) {
+                        const hours = date.getHours().toString().padStart(2, '0');
+                        const minutes = date.getMinutes().toString().padStart(2, '0');
+                        time = `${hours}:${minutes}`;
+                    } else {
+                        time = timeStr;
+                    }
+                } catch (e) {
+                    time = timeStr;
+                }
+            } else {
+                time = timeStr;
+            }
+        }
         sessionString = `Hội đồng ${ds.committee?.name || ''} – ${time}, ${formattedDate}`;
     }
 
