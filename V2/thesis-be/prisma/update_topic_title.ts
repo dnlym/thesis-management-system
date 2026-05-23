@@ -10,12 +10,12 @@ const prisma = new PrismaClient();
  * Tên đề tài CŨ (dùng để tìm kiếm)
  * Bạn có thể dán nguyên tên đề tài cũ vào đây
  */
-const OLD_TOPIC_TITLE: string = 'Phân tích dữ liệu ứng dụng nâng cao trong bài toán dự báo';
+const OLD_TOPIC_TITLE: string = 'Xây dựng website quản lý sản xuất cho nhà máy';
 
 /** 
  * Tên đề tài MỚI muốn đổi thành
  */
-const NEW_TOPIC_TITLE: string = 'Dự đoán kết quả tốt nghiệp sinh viên theo phân loại đa lớp có xét nguyên nhân';
+const NEW_TOPIC_TITLE: string = 'Xây dựng hệ thống điều hành sản xuất sợi tích hợp WSS, GPS và QR code cho nhà máy Brotex Việt Nam';
 
 // =========================================================================
 
