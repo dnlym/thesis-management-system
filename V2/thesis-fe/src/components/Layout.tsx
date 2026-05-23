@@ -35,7 +35,7 @@ const { Header, Content } = Layout;
 // GRADING MODE HELPER
 // set to true to enable grading mode, false to disable
 // ===============================================================================
-const GRADING_MODE_ACTIVE = true;
+const GRADING_MODE_ACTIVE = false;
 
 // ─── Menu Config ───────────────────────────────────────────────────────────────
 
@@ -125,14 +125,14 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
       {
         title: 'QUẢN LÝ KHOÁ LUẬN',
         items: [
-          { 
-            key: '/reviewer-assignment', 
-            label: 'Phân công phản biện', 
+          {
+            key: '/reviewer-assignment',
+            label: 'Phân công phản biện',
             icon: <SafetyCertificateOutlined />
           },
-          { 
-            key: '/committee-assignment', 
-            label: 'Phân công hội đồng', 
+          {
+            key: '/committee-assignment',
+            label: 'Phân công hội đồng',
             icon: <CrownOutlined />
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
@@ -165,14 +165,14 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { key: '/topics', label: 'Quản lý đề tài', icon: <BookOutlined /> },
           { key: '/supervisor/registrations', label: 'Sinh viên hướng dẫn', icon: <TeamOutlined /> },
           { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
-          { 
-            key: '/reviewer-assignment', 
-            label: 'Phân công phản biện', 
+          {
+            key: '/reviewer-assignment',
+            label: 'Phân công phản biện',
             icon: <SafetyCertificateOutlined />
           },
-          { 
-            key: '/committee-assignment', 
-            label: 'Phân công hội đồng', 
+          {
+            key: '/committee-assignment',
+            label: 'Phân công hội đồng',
             icon: <CrownOutlined />
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
@@ -286,8 +286,8 @@ const SidebarNav = ({ sections, collapsed, activeKey, onNavigate }: SidebarNavPr
                 key={item.key + item.label}
                 onClick={handleClick}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 mb-0.5 group
-                  ${item.disabled 
-                    ? 'text-gray-300 cursor-not-allowed bg-transparent' 
+                  ${item.disabled
+                    ? 'text-gray-300 cursor-not-allowed bg-transparent'
                     : isActive
                       ? 'bg-blue-50 text-blue-600 font-semibold'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
