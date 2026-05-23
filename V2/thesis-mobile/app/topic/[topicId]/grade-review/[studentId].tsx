@@ -688,7 +688,7 @@ export default function GradeReviewScreen() {
                     </View>
                 </View>
 
-                {reviewData?.finalScore && (
+                {reviewData?.finalScore && (currentUser?.role === 'HEAD' || currentUser?.role === 'COORDINATOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'STUDENT') && (
                     <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
                         <View style={[styles.statsCard, { marginHorizontal: 0, marginBottom: 0, backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }]}>
                             <View style={styles.statsCol}>

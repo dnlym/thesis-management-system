@@ -1640,8 +1640,11 @@ export class GradingService {
       topic.registrations[0]
     );
 
+    const isPrivilegedUser = user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR || user.role === UserRole.ADMIN || user.role === UserRole.STUDENT;
+    const finalScoresToReturn = isPrivilegedUser ? finalScores : [];
+
     const students = topic.registrations.map(reg => {
-      const fs = finalScores.find(s => s.student_id === reg.student_id);
+      const fs = isPrivilegedUser ? finalScores.find(s => s.student_id === reg.student_id) : undefined;
       return {
         ...reg.student,
         className: (reg.student as any).class_name,
@@ -1704,7 +1707,7 @@ export class GradingService {
       councilGrades,
       reviewerAssignments,
       councilAssignments,
-      finalScores,
+      finalScores: finalScoresToReturn,
       permissions,
       gradingStatus, // Add this!
       topic: { ...topic, students, gradingStatus }, // Also add to topic object just in case
