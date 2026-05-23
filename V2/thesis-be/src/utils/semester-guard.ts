@@ -103,11 +103,10 @@ export class SemesterGuard {
 
     if (deptConfig?.defense_date) {
       const deptDate = parseDate(deptConfig.defense_date);
-      const globalStart = originalGlobalDefenseStart ? originalGlobalDefenseStart.toDate() : null;
-      const globalEnd = defenseEnd ? defenseEnd.toDate() : null;
-
-      const effectiveDeptDate = (globalStart && deptDate && deptDate.isBefore(dayjs(globalStart))) ? dayjs(globalStart) : deptDate;
-      if (effectiveDeptDate) {
+      if (deptDate) {
+        const effectiveDeptDate = (originalGlobalDefenseStart && deptDate.isBefore(originalGlobalDefenseStart)) 
+          ? originalGlobalDefenseStart 
+          : deptDate;
         defenseStart = effectiveDeptDate;
       }
     }
@@ -123,25 +122,27 @@ export class SemesterGuard {
 
     // [5] DEFENSE: defense_start → defense_end
     // Ceiling Logic: Dept dates must be WITHIN the global semester defense window.
-    const globalStart = originalGlobalDefenseStart ? originalGlobalDefenseStart.toDate() : null;
-    const globalEnd = defenseEnd ? defenseEnd.toDate() : null;
+    const globalStart = originalGlobalDefenseStart;
+    const globalEnd = defenseEnd;
     
     let effectiveDefenseStart = globalStart;
     let effectiveDefenseEnd = globalEnd;
 
     if (deptConfig?.defense_date) {
       const deptDate = parseDate(deptConfig.defense_date);
-      // If dept date is before global start, use global start.
-      effectiveDefenseStart = (globalStart && deptDate && deptDate.isBefore(dayjs(globalStart))) ? globalStart : deptConfig.defense_date;
-      // If dept date is after global end, use global end (Ceiling).
-      effectiveDefenseEnd = (globalEnd && deptDate && deptDate.isAfter(dayjs(globalEnd))) ? globalEnd : deptConfig.defense_date;
+      if (deptDate) {
+        // If dept date is before global start, use global start.
+        effectiveDefenseStart = (globalStart && deptDate.isBefore(globalStart)) ? globalStart : deptDate;
+        // If dept date is after global end, use global end (Ceiling).
+        effectiveDefenseEnd = (globalEnd && deptDate.isAfter(globalEnd)) ? globalEnd : deptDate;
+      }
     }
 
     if (
       effectiveDefenseStart &&
-      now.isSameOrAfter(dayjs(effectiveDefenseStart).startOf('day')) &&
+      now.isSameOrAfter(effectiveDefenseStart.startOf('day')) &&
       effectiveDefenseEnd &&
-      now.isBefore(dayjs(effectiveDefenseEnd).endOf('day'))
+      now.isBefore(effectiveDefenseEnd.endOf('day'))
     ) {
       return SemesterPhase.DEFENSE;
     }
