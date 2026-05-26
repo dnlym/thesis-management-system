@@ -44,9 +44,11 @@ type TopicSummaryPayload = Prisma.TopicGetPayload<{
 
 export class GradingService {
   private static gradeSummaryCache = new Map<string, any>();
+  private static activeSummaryQueries = new Map<string, Promise<any>>();
 
   public static clearGradeSummaryCache() {
     GradingService.gradeSummaryCache.clear();
+    GradingService.activeSummaryQueries.clear();
   }
 
   async submitGrade(userId: string, data: SubmitGradeRequest, raterRole: RaterRole) {
@@ -639,6 +641,24 @@ export class GradingService {
       return GradingService.gradeSummaryCache.get(cacheKey);
     }
 
+    if (GradingService.activeSummaryQueries.has(cacheKey)) {
+      return GradingService.activeSummaryQueries.get(cacheKey);
+    }
+
+    const queryPromise = this.executeGradeSummaryQuery(userId, semesterId);
+    GradingService.activeSummaryQueries.set(cacheKey, queryPromise);
+
+    try {
+      const result = await queryPromise;
+      GradingService.gradeSummaryCache.set(cacheKey, result);
+      return result;
+    } finally {
+      GradingService.activeSummaryQueries.delete(cacheKey);
+    }
+  }
+
+  private async executeGradeSummaryQuery(userId: string, semesterId: string) {
+    console.log("🔥 [DB QUERY] executeGradeSummaryQuery EXECUTED FOR USER:", userId);
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
@@ -830,7 +850,6 @@ export class GradingService {
       finalized: summaryData.filter(d => d.gradingStatus.isFinalized),
     };
 
-    GradingService.gradeSummaryCache.set(cacheKey, result);
     return result;
   }
 
