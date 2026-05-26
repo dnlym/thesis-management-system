@@ -101,12 +101,104 @@ const Topics = () => {
     setFilters((prev: any) => ({ ...prev, semesterId: value, page: 1 }));
   };
 
-  const handleStatusChange = (value: string | undefined) => {
-    setFilters((prev: any) => ({
-      ...prev,
-      status: (value === 'ALL' || !value) ? undefined : value,
-      page: 1
-    }));
+  const handleTabChange = (key: string) => {
+    setFilters((prev: any) => {
+      const newFilters = { ...prev, page: 1 };
+      if (key === 'PERSONAL') {
+        newFilters.personalOnly = true;
+        newFilters.status = undefined;
+      } else if (key === 'ALL') {
+        newFilters.personalOnly = undefined;
+        newFilters.status = undefined;
+      } else {
+        newFilters.personalOnly = undefined;
+        newFilters.status = key;
+      }
+      return newFilters;
+    });
+  };
+
+  const getActiveTabKey = () => {
+    if (filters.personalOnly) return 'PERSONAL';
+    return filters.status || 'ALL';
+  };
+
+  const getTabItems = () => {
+    if (user?.role === 'COORDINATOR') {
+      return [
+        {
+          key: 'ALL',
+          label: (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span>Tất cả</span>
+              {!filters.personalOnly && !filters.status && (
+                <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
+                  {topics?.pagination?.total || 0}
+                </Tag>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'PERSONAL',
+          label: (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span>Cá nhân</span>
+              {filters.personalOnly && (
+                <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
+                  {topics?.pagination?.total || 0}
+                </Tag>
+              )}
+            </div>
+          ),
+        },
+      ];
+    }
+
+    if (user?.role === 'HEAD') {
+      const baseOptions = [
+        { value: 'ALL', label: 'Tất cả' },
+        { value: 'PERSONAL', label: 'Cá nhân' },
+        ...STATUS_OPTIONS.filter(opt => opt.value !== 'ALL'),
+      ];
+
+      return baseOptions.map(opt => {
+        const isActive = opt.value === 'PERSONAL' 
+          ? !!filters.personalOnly 
+          : (opt.value === 'ALL' ? (!filters.personalOnly && !filters.status) : filters.status === opt.value);
+
+        return {
+          key: opt.value,
+          label: (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span>{opt.label === 'Tất cả trạng thái' ? 'Tất cả' : opt.label}</span>
+              {isActive && (
+                <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
+                  {topics?.pagination?.total || 0}
+                </Tag>
+              )}
+            </div>
+          ),
+        };
+      });
+    }
+
+    return STATUS_OPTIONS.map(opt => {
+      const isActive = opt.value === 'ALL' ? !filters.status : filters.status === opt.value;
+      return {
+        key: opt.value,
+        label: (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <span>{opt.label === 'Tất cả trạng thái' ? 'Tất cả' : opt.label}</span>
+            {isActive && (
+              <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
+                {topics?.pagination?.total || 0}
+              </Tag>
+            )}
+          </div>
+        ),
+      };
+    });
   };
 
   const handleClearFilters = () => {
@@ -115,8 +207,8 @@ const Topics = () => {
       ...prev,
       search: undefined,
       status: undefined,
+      personalOnly: undefined,
       page: 1,
-      // semesterId stays locked
     }));
   };
 
@@ -473,66 +565,12 @@ const Topics = () => {
         {/* Filter Bar */}
         <Card className="page-toolbar-card !mb-4">
           <div className="flex flex-col xl:flex-row justify-between items-center gap-4 w-full">
-            {user?.role === 'COORDINATOR' || user?.role === 'HEAD' ? (
-              <Tabs
-                activeKey={filters.personalOnly ? 'PERSONAL' : 'ALL'}
-                onChange={(key) => {
-                  setFilters((prev: any) => ({
-                    ...prev,
-                    personalOnly: key === 'PERSONAL' ? true : undefined,
-                    page: 1,
-                  }));
-                }}
-                className="sys-tabs sys-tabs-capsule !mb-0 w-full xl:w-auto overflow-x-auto"
-                items={[
-                  {
-                    key: 'ALL',
-                    label: (
-                      <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span>Tất cả</span>
-                        {!filters.personalOnly && (
-                          <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
-                            {topics?.pagination?.total || 0}
-                          </Tag>
-                        )}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'PERSONAL',
-                    label: (
-                      <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span>Cá nhân</span>
-                        {filters.personalOnly && (
-                          <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
-                            {topics?.pagination?.total || 0}
-                          </Tag>
-                        )}
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            ) : (
-              <Tabs
-                activeKey={filters.status || 'ALL'}
-                onChange={(key) => handleStatusChange(key === 'ALL' ? undefined : key)}
-                className="sys-tabs sys-tabs-capsule !mb-0 w-full xl:w-auto overflow-x-auto"
-                items={STATUS_OPTIONS.map(opt => ({
-                  key: opt.value,
-                  label: (
-                    <div className="flex items-center gap-2 whitespace-nowrap">
-                      <span>{opt.label === 'Tất cả trạng thái' ? 'Tất cả' : opt.label}</span>
-                      <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
-                        {opt.value === 'ALL'
-                          ? (topics?.pagination?.total || Object.values(stats || {}).reduce((a: any, b: any) => a + b, 0))
-                          : (stats?.[opt.value] || 0)}
-                      </Tag>
-                    </div>
-                  )
-                }))}
-              />
-            )}
+            <Tabs
+              activeKey={getActiveTabKey()}
+              onChange={handleTabChange}
+              className="sys-tabs sys-tabs-capsule !mb-0 w-full xl:w-auto overflow-x-auto"
+              items={getTabItems()}
+            />
 
             <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
               <Select

@@ -19,7 +19,7 @@ const SupervisorManageRegistrations = () => {
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
-    const [activeTab, setActiveTab] = useState('ALL');
+    const activeTab = 'ALL';
     const [searchTerm, setSearchTerm] = useState('');
     const [topicExpanded, setTopicExpanded] = useState(false);
 
@@ -275,9 +275,6 @@ const SupervisorManageRegistrations = () => {
     ];
 
     const totalTopicsCount = allTopicsInSemester.length;
-    const pendingCount = allTopicsInSemester.filter((t: any) => t.status === 'PENDING').length;
-    const confirmedCount = allTopicsInSemester.filter((t: any) => t.status === 'CONFIRMED').length;
-    const rejectedCount = allTopicsInSemester.filter((t: any) => t.status === 'REJECTED').length;
 
     return (
         <div className="page-container">
@@ -296,49 +293,10 @@ const SupervisorManageRegistrations = () => {
                 {/* Filter & Search Toolbar */}
                 <Card className="page-toolbar-card !mb-4">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <Tabs
-                            activeKey={activeTab}
-                            onChange={setActiveTab}
-                            className="sys-tabs sys-tabs-capsule !mb-0"
-                            items={[
-                                {
-                                    key: 'ALL',
-                                    label: (
-                                        <div className="flex items-center gap-2">
-                                            <span>Tất cả</span>
-                                            <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">{totalTopicsCount}</Tag>
-                                        </div>
-                                    )
-                                },
-                                {
-                                    key: 'PENDING',
-                                    label: (
-                                        <div className="flex items-center gap-2">
-                                            <span>Chờ xử lý</span>
-                                            <Tag className="m-0 rounded-full bg-orange-50 text-orange-600 border-none font-bold px-2">{pendingCount}</Tag>
-                                        </div>
-                                    )
-                                },
-                                {
-                                    key: 'CONFIRMED',
-                                    label: (
-                                        <div className="flex items-center gap-2">
-                                            <span>Đã xác nhận</span>
-                                            <Tag className="m-0 rounded-full bg-green-50 text-green-600 border-none font-bold px-2">{confirmedCount}</Tag>
-                                        </div>
-                                    )
-                                },
-                                {
-                                    key: 'REJECTED',
-                                    label: (
-                                        <div className="flex items-center gap-2">
-                                            <span>Đã từ chối</span>
-                                            <Tag className="m-0 rounded-full bg-red-50 text-red-600 border-none font-bold px-2">{rejectedCount}</Tag>
-                                        </div>
-                                    )
-                                },
-                            ]}
-                        />
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-500">Tổng số đăng ký:</span>
+                            <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2.5 py-0.5">{totalTopicsCount}</Tag>
+                        </div>
                         <div className="w-full md:w-auto">
                             <Input
                                 placeholder="Tìm sinh viên, mã số, đề tài..."
