@@ -43,6 +43,12 @@ type TopicSummaryPayload = Prisma.TopicGetPayload<{
 
 
 export class GradingService {
+  private static gradeSummaryCache = new Map<string, any>();
+
+  public static clearGradeSummaryCache() {
+    GradingService.gradeSummaryCache.clear();
+  }
+
   async submitGrade(userId: string, data: SubmitGradeRequest, raterRole: RaterRole) {
     let resolvedTopicId = data.topicId;
 
@@ -422,6 +428,7 @@ export class GradingService {
     // 4. Auto-evaluate eligibility for defense
     await this.autoEvaluateEligibility(data.topicId);
 
+    GradingService.clearGradeSummaryCache();
     return grades;
   }
 
@@ -582,6 +589,7 @@ export class GradingService {
       results.push(resultScore);
     }
 
+    GradingService.clearGradeSummaryCache();
     return results;
   }
 
@@ -626,6 +634,11 @@ export class GradingService {
    * Get Grade Summary list for HEAD — groups ready for finalization or in progress
    */
   async getGradeSummary(userId: string, semesterId: string) {
+    const cacheKey = `${userId}:${semesterId}`;
+    if (GradingService.gradeSummaryCache.has(cacheKey)) {
+      return GradingService.gradeSummaryCache.get(cacheKey);
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) throw new Error(ERROR_CODES.FORBIDDEN);
 
@@ -809,13 +822,16 @@ export class GradingService {
       });
     });
 
-    return {
+    const result = {
       allTopics: summaryData,
       missingSupervisor: summaryData.filter(d => !d.gradingStatus.supervisorGraded && !d.gradingStatus.isFinalized),
       missingReviewer: summaryData.filter(d => d.gradingStatus.supervisorGraded && !d.gradingStatus.isReviewerComplete && !d.gradingStatus.isFinalized),
       ready: summaryData.filter(d => d.gradingStatus.isReadyForDecision && !d.gradingStatus.isFinalized),
       finalized: summaryData.filter(d => d.gradingStatus.isFinalized),
     };
+
+    GradingService.gradeSummaryCache.set(cacheKey, result);
+    return result;
   }
 
   async createGradingCriterion(userId: string, data: CreateGradingCriterionRequest) {
@@ -1376,6 +1392,7 @@ export class GradingService {
       },
     });
 
+    GradingService.clearGradeSummaryCache();
     return updatedRegistration;
   }
 

@@ -4,29 +4,29 @@ const fs = require('fs');
 // const BASE_URL = 'http://localhost:3000/api';
 const BASE_URL = 'https://thesis-management-system-production.up.railway.app/api';
 // Giữ nguyên Token và ID bạn đã lấy
-const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZTBmZWQ5Yi1hZjZhLTQxZTAtOGUzYi01MDM0MTY4MjE5ZWMiLCJlbWFpbCI6ImFkbWluQGl1aC5lZHUudm4iLCJyb2xlIjoiQURNSU4iLCJkZXBhcnRtZW50SWQiOiJjNTVkMjUwMS0zMTEzLTQ0YjYtYTdlOC04NjJhOTgzMWE1NzgiLCJpYXQiOjE3Nzg3MDI5MjUsImV4cCI6MTc3ODcxMDEyNX0.zPgjbQsCShIdltk8gvcsEKHG-3v2YumGuq0vYd2RgIw'; 
-const SAMPLE_TOPIC_ID = '5fbd2694-dec6-46f3-a3c6-40c2222e16e7'; 
+const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZTBmZWQ5Yi1hZjZhLTQxZTAtOGUzYi01MDM0MTY4MjE5ZWMiLCJlbWFpbCI6ImFkbWluQGl1aC5lZHUudm4iLCJyb2xlIjoiQURNSU4iLCJkZXBhcnRtZW50SWQiOiJjNTVkMjUwMS0zMTEzLTQ0YjYtYTdlOC04NjJhOTgzMWE1NzgiLCJpYXQiOjE3Nzk3OTMyNjEsImV4cCI6MTc3OTgwMDQ2MX0._altVMv3M63ctFaETSHgoM1x40_1EnxOKasITG3YUqA';
+const SAMPLE_TOPIC_ID = '5fbd2694-dec6-46f3-a3c6-40c2222e16e7';
 
 const tests = [
   {
-    name: '01_HEALTH_CHECK',
+    name: '01_BASELINE_HEALTH_CHECK',
     // url: `http://localhost:3000/health`,
     url: `https://thesis-management-system-production.up.railway.app/health`,
     method: 'GET'
   },
   {
-    name: '02_TOPIC_REGISTRATION',
+    name: '02_WRITE_INTENSIVE_TOPIC_REGISTRATION',
     url: `${BASE_URL}/registrations/topic/${SAMPLE_TOPIC_ID}`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
   },
   {
-    name: '03_GRADING_SUMMARY_PAGE',
+    name: '03_HEAVY_READ_GRADING_SUMMARY',
     url: `${BASE_URL}/grading/grade-summary`,
     method: 'GET'
   },
   {
-    name: '04_AUTO_COMPUTE_SCORE',
+    name: '04_BUSINESS_LOGIC_AUTO_COMPUTE',
     url: `${BASE_URL}/grading/${SAMPLE_TOPIC_ID}/compute`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -34,7 +34,7 @@ const tests = [
 ];
 
 // Mức tải mới "mượt" hơn cho luận văn
-const loads = [10, 50, 100, 150, 200]; 
+const loads = [10, 50, 100, 150, 200];
 
 let results = [];
 results.push(['Scenario', 'Connections', 'Requests/Sec', 'Avg Latency (ms)', 'P95 Latency (ms)', 'Errors'].join(','));
@@ -68,7 +68,7 @@ async function runTest(test, load) {
 
 (async () => {
   console.log('🚀 BẮT ĐẦU KIỂM THỬ HIỆU NĂNG TMS-V2 (BẢN CHUẨN LUẬN VĂN)...');
-  
+
   for (const test of tests) {
     console.log(`\n▶️ Kịch bản: ${test.name}`);
     for (const load of loads) {
