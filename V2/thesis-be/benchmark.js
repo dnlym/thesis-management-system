@@ -79,7 +79,12 @@ async function runTest(test, load) {
     }
   }
 
-  fs.writeFileSync('benchmark_results.csv', results.join('\n'));
-  console.log('\n✅ HOÀN TẤT! Dữ liệu đã lưu vào benchmark_results.csv');
+  let counter = 1;
+  while (fs.existsSync(`benchmark_results_${counter}.csv`)) {
+    counter++;
+  }
+  const filename = `benchmark_results_${counter}.csv`;
+  fs.writeFileSync(filename, results.join('\n'));
+  console.log(`\n✅ HOÀN TẤT! Dữ liệu đã lưu vào ${filename}`);
   console.log('Bạn hãy dùng dữ liệu này để vẽ biểu đồ và đưa vào báo cáo nhé.');
 })();
