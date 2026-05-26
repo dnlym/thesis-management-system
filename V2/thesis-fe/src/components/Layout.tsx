@@ -35,7 +35,7 @@ const { Header, Content } = Layout;
 // GRADING MODE HELPER
 // set to true to enable grading mode, false to disable
 // ===============================================================================
-const GRADING_MODE_ACTIVE = false;
+const GRADING_MODE_ACTIVE = true;
 
 // ─── Menu Config ───────────────────────────────────────────────────────────────
 
