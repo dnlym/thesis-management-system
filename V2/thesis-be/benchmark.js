@@ -86,5 +86,4 @@ async function runTest(test, load) {
   const filename = `benchmark_results_${counter}.csv`;
   fs.writeFileSync(filename, results.join('\n'));
   console.log(`\n✅ HOÀN TẤT! Dữ liệu đã lưu vào ${filename}`);
-  console.log('Bạn hãy dùng dữ liệu này để vẽ biểu đồ và đưa vào báo cáo nhé.');
 })();
