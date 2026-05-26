@@ -67,7 +67,7 @@ async function runTest(test, load) {
 }
 
 (async () => {
-  console.log('🚀 BẮT ĐẦU KIỂM THỬ HIỆU NĂNG TMS-V2 (BẢN CHUẨN LUẬN VĂN)...');
+  console.log('🚀 BẮT ĐẦU KIỂM THỬ HIỆU NĂNG TMS-V2');
 
   for (const test of tests) {
     console.log(`\n▶️ Kịch bản: ${test.name}`);

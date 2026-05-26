@@ -193,6 +193,7 @@ export class TopicController {
         includeAll,
         midtermStatus: req.query.midtermStatus as 'PASS' | 'FAIL' | undefined,
         hasStudents: req.query.hasStudents === 'true' ? true : undefined,
+        personalOnly: req.query.personalOnly === 'true' ? true : undefined,
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
         limit: req.query.size ? parseInt(req.query.size as string) : undefined,
       };

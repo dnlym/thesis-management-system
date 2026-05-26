@@ -54,4 +54,5 @@ export interface TopicFilter {
   limit?: number;
   midtermStatus?: 'PASS' | 'FAIL'; // Filter by registration midterm status
   hasStudents?: boolean;
+  personalOnly?: boolean;
 }

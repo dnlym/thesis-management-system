@@ -11,6 +11,7 @@ export interface TopicFilters {
     size?: number;
     midtermStatus?: 'PASS' | 'FAIL';
     hasStudents?: boolean;
+    personalOnly?: boolean;
 }
 
 export const TopicsApi = {

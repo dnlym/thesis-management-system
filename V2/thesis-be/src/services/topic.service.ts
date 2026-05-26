@@ -814,7 +814,34 @@ export class TopicService {
           ]
         });
       }
-    } else if (user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) {
+    } else if (user.role === UserRole.COORDINATOR || user.role === UserRole.HEAD) {
+      if (filter.personalOnly) {
+        const userAssignments = await prisma.assignment.findMany({
+          where: { reviewer_id: userId },
+          select: { topic_id: true }
+        });
+        const assignedTopicIds = userAssignments.map(a => a.topic_id);
+        andConditions.push({
+          OR: [
+            { supervisor_id: userId },
+            { co_supervisor_id: userId },
+            { id: { in: assignedTopicIds } }
+          ]
+        });
+      } else {
+        andConditions.push({
+          OR: [
+            { supervisor_id: userId },
+            {
+              AND: [
+                { departmentId: user.departmentId },
+                { status: { notIn: [TopicStatus.DRAFT] } }
+              ]
+            }
+          ]
+        });
+      }
+    } else if (user.role === UserRole.LECTURER) {
       // Find committee assignments
       const committeeAssignments = await prisma.assignment.findMany({
         where: { reviewer_id: userId, status: { in: [AssignmentStatus.ACCEPTED, AssignmentStatus.AUTO_ACCEPTED] } },
@@ -830,19 +857,6 @@ export class TopicService {
             AND: [
               { departmentId: user.departmentId },
               { id: { in: committeeTopicIds } }
-            ]
-          }
-        ]
-      });
-    } else if (user.role === UserRole.HEAD) {
-      // Relaxed logic: Show if (Owner) OR (In Department AND not private draft)
-      andConditions.push({
-        OR: [
-          { supervisor_id: userId },
-          {
-            AND: [
-              { departmentId: user.departmentId },
-              { status: { notIn: [TopicStatus.DRAFT] } }
             ]
           }
         ]
@@ -891,7 +905,7 @@ export class TopicService {
       } else {
         where.status = { in: allowedStatuses };
       }
-    } else if ((user.role === UserRole.LECTURER || user.role === UserRole.COORDINATOR) && userId !== filter.supervisorId) {
+    } else if (user.role === UserRole.LECTURER && userId !== filter.supervisorId) {
       // Lecturers only see visible topics of others
       andConditions.push({
         OR: [
@@ -1283,7 +1297,7 @@ export class TopicService {
 
     // Check department access for LECTURER and HEAD
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD)) {
+    if (user && (user.role === UserRole.LECTURER || user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR)) {
       if (topic.departmentId !== user.departmentId) {
         throw new Error('Bạn không có quyền xem đề tài của chuyên ngành khác');
       }
