@@ -1,7 +1,8 @@
 const autocannon = require('autocannon');
 const fs = require('fs');
 
-const BASE_URL = 'http://localhost:3000/api';
+// const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'https://thesis-management-system-production.up.railway.app/api';
 // Giữ nguyên Token và ID bạn đã lấy
 const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJkZTBmZWQ5Yi1hZjZhLTQxZTAtOGUzYi01MDM0MTY4MjE5ZWMiLCJlbWFpbCI6ImFkbWluQGl1aC5lZHUudm4iLCJyb2xlIjoiQURNSU4iLCJkZXBhcnRtZW50SWQiOiJjNTVkMjUwMS0zMTEzLTQ0YjYtYTdlOC04NjJhOTgzMWE1NzgiLCJpYXQiOjE3Nzg3MDI5MjUsImV4cCI6MTc3ODcxMDEyNX0.zPgjbQsCShIdltk8gvcsEKHG-3v2YumGuq0vYd2RgIw'; 
 const SAMPLE_TOPIC_ID = '5fbd2694-dec6-46f3-a3c6-40c2222e16e7'; 
@@ -9,7 +10,8 @@ const SAMPLE_TOPIC_ID = '5fbd2694-dec6-46f3-a3c6-40c2222e16e7';
 const tests = [
   {
     name: '01_HEALTH_CHECK',
-    url: `http://localhost:3000/health`,
+    // url: `http://localhost:3000/health`,
+    url: `https://thesis-management-system-production.up.railway.app/health`,
     method: 'GET'
   },
   {
