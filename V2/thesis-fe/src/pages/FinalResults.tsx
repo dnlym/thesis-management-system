@@ -64,7 +64,7 @@ const getExportData = (data: Topic[]) => {
                 'Điểm HĐ': isFailedGK ? '0.0' : formatScore(final?.committee_score),
                 'Điểm cộng': isFailedGK ? '0.0' : formatScore(final?.extra_points),
                 'Tổng điểm': isFailedGK ? '0.0' : formatScore(final?.final_score),
-                'Trạng thái': isFailedGK ? 'KHÔNG ĐẠT' : hasScore ? (final.final_score! >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT') : '—',
+                'Trạng thái': isFailedGK ? 'ĐÃ RỚT' : hasScore ? (final.final_score! >= 6 ? 'ĐẠT' : 'KHÔNG ĐẠT') : 'ĐANG TIẾN HÀNH',
                 'Xếp loại': isFailedGK ? 'RỚT (GIỮA KỲ)' : hasScore ? final.grade_classification || '—' : '—',
             });
         });
@@ -142,7 +142,6 @@ const FinalResults = () => {
     const { data: results, isLoading: isTopicsLoading } = useQuery({
         queryKey: ['final-results', activeSemester?.id],
         queryFn: () => TopicsApi.getAll({ 
-            status: ['REGISTERED', 'COMPLETED', 'FINALIZED'],
             semesterId: activeSemester?.id,
             size: 1000 
         }),
@@ -370,14 +369,16 @@ const FinalResults = () => {
                             <div key={s.id} className="h-7 flex items-center justify-center">
                                 {isFailedGK ? (
                                     <Tag color="error" className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
-                                        KHÔNG ĐẠT
+                                        ĐÃ RỚT
                                     </Tag>
                                 ) : hasScore ? (
                                     <Tag color={isPass ? 'success' : 'error'} className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
                                         {isPass ? 'ĐẠT' : 'KHÔNG ĐẠT'}
                                     </Tag>
                                 ) : (
-                                    <span className="text-slate-400 font-bold">—</span>
+                                    <Tag color="processing" className="m-0 font-bold px-2 text-[10px] py-0 leading-none h-5 flex items-center">
+                                        ĐANG TIẾN HÀNH
+                                    </Tag>
                                 )}
                             </div>
                         );
