@@ -92,14 +92,14 @@ router.get(
 // Get registrations for midterm grading (GVHD only)
 router.get(
   '/midterm',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   gradingController.getRegistrationsForMidtermGrading.bind(gradingController)
 );
 
 // Update midterm status (PASS/FAIL) - Only GVHD can grade
 router.put(
   '/midterm/:registrationId',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.GRADE_MIDTERM),
   validate([
     param('registrationId').isUUID().withMessage('Invalid registration ID'),
@@ -111,7 +111,7 @@ router.put(
 
 router.post(
   '/submit',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction((req) => {
     const role = (req.body.raterRole || '').toUpperCase();
     // Committee roles: COUNCIL_MEMBER, COMMITTEE, COMMITTEE_CHAIR, COMMITTEE_SECRETARY, COMMITTEE_MEMBER, COMMITTEE_MEMBER_1, COMMITTEE_MEMBER_2, ORAL_COMMITTEE, POSTER_COMMITTEE

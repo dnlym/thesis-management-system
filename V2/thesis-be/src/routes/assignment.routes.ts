@@ -27,14 +27,14 @@ router.post(
 
 router.post(
   '/:assignmentId/accept',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([param('assignmentId').isUUID().withMessage('Invalid assignment ID')]),
   assignmentController.acceptAssignment.bind(assignmentController)
 );
 
 router.post(
   '/:assignmentId/decline',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('assignmentId').isUUID().withMessage('Invalid assignment ID'),
     body('declineReason').isLength({ min: 30 }).withMessage('Decline reason must be at least 30 characters'),

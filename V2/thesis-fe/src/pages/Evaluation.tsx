@@ -772,50 +772,7 @@ const Evaluation = () => {
                 </div>
               )}
 
-              {/* HOD Finalize Button */}
-              {(user?.role === 'HEAD' || user?.role === 'ADMIN') && !isFinalized && (
-                <div className="flex justify-center mt-8 mb-4 no-print border-t border-dashed border-gray-200 pt-8">
-                  <Card className="bg-blue-50 border-blue-200 shadow-md w-full max-w-2xl text-center">
-                    <Title level={5} className="text-blue-800 mb-4">Xác nhận chốt điểm & Hoàn tất đề tài</Title>
-                    <Text className="block mb-6 text-gray-600">
-                      Hành động này sẽ khóa toàn bộ quyền chỉnh sửa điểm của Giảng viên.
-                      Điểm số sẽ được công bố chính thức cho sinh viên.
-                    </Text>
-                    <Button
-                      size="large"
-                      type="primary"
-                      danger
-                      icon={<CheckCircleOutlined />}
-                      className="px-10 h-12 font-bold shadow-lg"
-                      onClick={() => {
-                        Modal.confirm({
-                          title: groupId ? 'Xác nhận chốt kết quả NHÓM?' : 'Xác nhận chốt kết quả đề tài?',
-                          content: 'Sau khi chốt, Giảng viên không thể thay đổi điểm số cho các sinh viên trong nhóm này. Chỉ Admin mới có quyền điều chỉnh.',
-                          okText: 'Chốt ngay',
-                          cancelText: 'Hủy',
-                          okType: 'danger',
-                          onOk: async () => {
-                            try {
-                              if (groupId) {
-                                await GradingApi.finalizeGroupGrades(groupId);
-                              } else {
-                                await GradingApi.finalizeGrades(topicId!);
-                              }
-                              notify.success('Đã chốt điểm thành công!');
-                              queryClient.invalidateQueries({ queryKey: ['topic', topicId] });
-                              queryClient.invalidateQueries({ queryKey: ['grade-summary'] });
-                            } catch (err: any) {
-                              notify.error(err.message || 'Lỗi khi chốt điểm');
-                            }
-                          }
-                        });
-                      }}
-                    >
-                      CHỐT ĐIỂM NGAY
-                    </Button>
-                  </Card>
-                </div>
-              )}
+
               {/* Audit Log / System Decision History */}
               {(user?.role === 'HEAD' || user?.role === 'ADMIN') && auditLogs && auditLogs.length > 0 && (
                 <div className="mt-12 bg-gray-50 p-8 rounded-2xl border border-gray-200 shadow-sm mb-10">

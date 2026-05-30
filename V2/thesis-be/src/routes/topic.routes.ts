@@ -33,7 +33,7 @@ router.post(
 
 router.put(
   '/:topicId',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.UPDATE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.updateTopic.bind(topicController)
@@ -101,7 +101,7 @@ router.get(
 
 router.put(
   '/:topicId/interdisciplinary-response',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('status').isIn(['APPROVED', 'REJECTED']).withMessage('Invalid status'),
@@ -111,7 +111,7 @@ router.put(
 
 router.delete(
   '/:topicId',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   enforceAcademicAction(AcademicAction.DELETE_TOPIC),
   validate([param('topicId').isUUID().withMessage('Invalid topic ID')]),
   topicController.deleteTopic.bind(topicController)
@@ -128,7 +128,7 @@ router.post(
 // Clone topic (SUPERVISOR)
 router.post(
   '/:topicId/clone',
-  authorize(UserRole.LECTURER, UserRole.COORDINATOR),
+  authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
   validate([
     param('topicId').isUUID().withMessage('Invalid topic ID'),
     body('semesterId').notEmpty().withMessage('Semester ID is required'),
