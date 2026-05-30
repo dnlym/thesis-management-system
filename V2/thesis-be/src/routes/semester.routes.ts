@@ -81,7 +81,7 @@ router.put(
 
 router.patch(
   '/:id/defense-date',
-  authorize(UserRole.HEAD, UserRole.ADMIN),
+  authorize(UserRole.HEAD, UserRole.COORDINATOR, UserRole.ADMIN),
   validate([
     param('id').isUUID().withMessage('Invalid semester ID'),
     body('defense_start').isISO8601().withMessage('Invalid defense start date'),

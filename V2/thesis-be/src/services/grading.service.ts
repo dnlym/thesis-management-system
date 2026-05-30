@@ -2042,8 +2042,8 @@ export class GradingService {
       const allPassed = activeRegs.every(reg => {
         const fs = finalScores.find(f => f.student_id === reg.student_id);
         return fs &&
-               fs.supervisor_score !== null && fs.supervisor_score >= 6 &&
-               fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6;
+          fs.supervisor_score !== null && fs.supervisor_score >= 6 &&
+          fs.reviewer_avg_score !== null && fs.reviewer_avg_score >= 6;
       });
 
       if (allPassed) {

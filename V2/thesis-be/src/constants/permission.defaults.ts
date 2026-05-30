@@ -18,11 +18,11 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   { code: 'TOPIC_REQUEST_REVISION', name: 'Yêu cầu chỉnh sửa', category: 'TOPIC', description: 'Cho phép yêu cầu giảng viên chỉnh sửa đề tài' },
   { code: 'TOPIC_HIDE', name: 'Ẩn đề tài', category: 'TOPIC', description: 'Cho phép ẩn đề tài khỏi danh sách đăng ký' },
   { code: 'TOPIC_CLONE', name: 'Sao chép đề tài', category: 'TOPIC', description: 'Cho phép sao chép đề tài sang học kỳ khác' },
-  
+
   // REGISTRATION Domain
   { code: 'TOPIC_REGISTER', name: 'Đăng ký đề tài', category: 'REGISTRATION', description: 'Cho phép sinh viên đăng ký đề tài' },
   { code: 'GROUP_MANAGE', name: 'Quản lý nhóm', category: 'REGISTRATION', description: 'Cho phép tạo và quản lý nhóm sinh viên' },
-  
+
   // GRADING Domain
   { code: 'GRADE_MIDTERM', name: 'Chấm điểm giữa kỳ', category: 'GRADING', description: 'Cho phép nhập điểm đánh giá giữa kỳ' },
   { code: 'GRADE_SUPERVISOR', name: 'Chấm điểm hướng dẫn', category: 'GRADING', description: 'Cho phép GVHD nhập điểm' },
@@ -30,12 +30,12 @@ export const ALL_PERMISSIONS: PermissionDef[] = [
   { code: 'GRADE_COMMITTEE', name: 'Chấm điểm hội đồng', category: 'GRADING', description: 'Cho phép thành viên hội đồng nhập điểm' },
   { code: 'SCORE_FINALIZE', name: 'Tổng kết điểm', category: 'GRADING', description: 'Cho phép chốt điểm cuối cùng' },
   { code: 'EXTRA_POINTS_MANAGE', name: 'Quản lý điểm cộng', category: 'GRADING', description: 'Cho phép quản lý và duyệt điểm cộng' },
-  
+
   // ASSIGNMENT Domain
   { code: 'ASSIGN_REVIEWER', name: 'Phân công phản biện', category: 'ASSIGNMENT', description: 'Cho phép phân công giảng viên phản biện' },
   { code: 'ASSIGN_COMMITTEE', name: 'Phân công hội đồng', category: 'ASSIGNMENT', description: 'Cho phép phân công hội đồng bảo vệ' },
   { code: 'DEFENSE_MANAGE', name: 'Quản lý bảo vệ', category: 'ASSIGNMENT', description: 'Duyệt điều kiện và hình thức bảo vệ' },
-  
+
   // SYSTEM Domain
   { code: 'SYSTEM_USERS', name: 'Quản lý người dùng', category: 'SYSTEM', description: 'Cho phép quản lý tài khoản người dùng' },
   { code: 'SYSTEM_ROLES', name: 'Quản lý vai trò', category: 'SYSTEM', description: 'Cho phép quản lý quyền hạn của vai trò' },

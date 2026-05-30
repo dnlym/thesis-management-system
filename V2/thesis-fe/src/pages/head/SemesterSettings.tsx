@@ -162,7 +162,8 @@ const SemesterSettings = () => {
     const { user } = useAuthStore();
     const isAdmin = user?.role === 'ADMIN';
     const isHead = user?.role === 'HEAD';
-    const canManage = isAdmin || isHead;
+    const isCoordinator = user?.role === 'COORDINATOR';
+    const canManage = isAdmin || isHead || isCoordinator;
 
     const { data: activeSemester, isLoading } = useActiveSemester();
     const [selectedDeptId, setSelectedDeptId] = useState<string | undefined>(user?.department_id || undefined);

@@ -101,7 +101,7 @@ export class AcademicPolicy {
       if (!hasSupervisorGraded) {
         return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Giảng viên hướng dẫn.' };
       }
-      
+
       if (!hasReviewerGraded) {
         return { failed: true, reason: 'Sinh viên bị loại do thiếu điểm Phản biện.' };
       }
@@ -243,13 +243,13 @@ export class AcademicPolicy {
       // ─── GRADING & DEFENSE ─────────────────────────────────────────────
       case AcademicAction.GRADE_SUPERVISOR:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        
+
         if (registration?.isChangeRequest) {
           return { allowed: true, code: 'ALLOWED' };
         }
-        
+
         const isSupervisorAllowedPhase = phase === SemesterPhase.REVIEWING;
-          
+
         if (!isSupervisorAllowedPhase) {
           if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
             return { allowed: false, reason: 'Giai đoạn chấm điểm hướng dẫn đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
@@ -260,13 +260,13 @@ export class AcademicPolicy {
 
       case AcademicAction.GRADE_REVIEWER:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        
+
         if (registration?.isChangeRequest) {
           return { allowed: true, code: 'ALLOWED' };
         }
-        
+
         const isReviewerAllowedPhase = phase === SemesterPhase.REVIEWING;
-          
+
         if (!isReviewerAllowedPhase) {
           if (phase === SemesterPhase.DEFENSE || phase === SemesterPhase.FINAL) {
             return { allowed: false, reason: 'Giai đoạn chấm điểm phản biện đã kết thúc (Bảo vệ đã bắt đầu).', code: 'INVALID_PHASE' };
@@ -290,7 +290,7 @@ export class AcademicPolicy {
 
       case AcademicAction.GRADE_COMMITTEE:
         if (!semester) return { allowed: false, reason: 'Thiếu thông tin học kỳ.', code: 'NO_SEMESTER' };
-        
+
         if (registration?.isChangeRequest) {
           return { allowed: true, code: 'ALLOWED' };
         }

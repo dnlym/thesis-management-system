@@ -125,6 +125,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
       {
         title: 'QUẢN LÝ KHOÁ LUẬN',
         items: [
+          { key: '/head/approve-topics', label: 'Phê duyệt đề tài', icon: <CheckCircleOutlined /> },
           {
             key: '/reviewer-assignment',
             label: 'Phân công phản biện',
@@ -136,6 +137,8 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
             icon: <CrownOutlined />
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
+          { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <AuditOutlined /> },
+          { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]

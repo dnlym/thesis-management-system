@@ -268,7 +268,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'Duyệt sửa điểm',
       icon: HistoryOutlined,
-      roles: ['HEAD', 'ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
 
