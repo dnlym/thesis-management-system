@@ -526,13 +526,14 @@ const AppLayout = () => {
       <div className={`flex flex-col flex-1 min-h-screen ${isResizing ? '' : 'transition-all duration-200'}`} style={{ marginLeft: SIDEBAR_W }}>
         {/* Header */}
         <header className="bg-white border-b border-gray-100 px-6 h-14 flex items-center justify-between flex-shrink-0 sticky top-0 z-40">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 font-medium hidden md:inline">Học kỳ:</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-slate-500 font-semibold tracking-wide hidden md:inline-flex items-center h-10">
+              Học kỳ:
+            </span>
             <Select
               size="middle"
               placeholder="Chọn học kỳ"
-              className="w-48 md:w-56"
-              style={{ borderRadius: 8 }}
+              className="w-64 md:w-80 select-semester-custom"
               value={selectedSemesterId || undefined}
               onChange={(val) => {
                 setSelectedSemesterId(val);
@@ -540,13 +541,14 @@ const AppLayout = () => {
               }}
               loading={isLoadingActive || isLoadingSemesters}
               allowClear={false}
+              dropdownStyle={{ borderRadius: 12, padding: 4 }}
             >
               {semesters?.map((s) => (
                 <Select.Option key={s.id} value={s.id}>
                   <div className="flex items-center justify-between gap-2 w-full">
-                    <span className="truncate">{s.name}</span>
+                    <span className="truncate font-semibold">{s.name}</span>
                     {s.id === activeSemesterData?.id && (
-                      <Tag color="success" className="m-0 text-[9px] px-1 py-0 border-none font-bold scale-95">
+                      <Tag color="success" className="m-0 text-[9px] px-1.5 py-0.5 border-none font-bold scale-90 bg-green-50 text-green-600 rounded">
                         ACTIVE
                       </Tag>
                     )}
