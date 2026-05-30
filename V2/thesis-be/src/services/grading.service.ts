@@ -810,7 +810,7 @@ export class GradingService {
 
         const reviewerGraderIds = [...new Set(groupGrades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
         const committeeGraderIds = [...new Set(groupGrades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
-        const totalReviewersRequired = topic.reviewer_required_count || 2;
+        const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.filter(as => as.assignment_type === AssignmentType.REVIEWER && as.group_id === actualGroupId).length || 2;
         const totalCommitteeRequired = committeeAssignments.length;
 
         const isGroupFinalized = studentSummaries.every(s => s.finalScore && 'finalized' in s.finalScore && s.finalScore.finalized);
@@ -1721,7 +1721,7 @@ export class GradingService {
     const reviewerGraderIds = [...new Set(allGrades.filter((g: any) => isReviewer(g.rater_role)).map((g: any) => g.grader_id))];
     const committeeGraderIds = [...new Set(allGrades.filter((g: any) => isCommittee(g.rater_role)).map((g: any) => g.grader_id))];
 
-    const totalReviewersRequired = topic.reviewer_required_count || 2;
+    const totalReviewersRequired = topic.reviewer_required_count || reviewerAssignments.length || 2;
     const totalCommitteeRequired = councilAssignments.length;
 
     const isGroupFinalized = finalScores.length > 0 && finalScores.every(fs => fs.finalized);

@@ -32,6 +32,7 @@ const StudentViewGrades = () => {
 
     const advisorGrade = grades.advisorGrades?.[0];
     const reviewerGrades = grades.reviewerGrades;
+    const reviewerAssignments = (grades as any).reviewerAssignments || [];
     const councilGrades = grades.councilGrades;
     const finalScore = grades.finalScores?.[0];
 
@@ -81,7 +82,7 @@ const StudentViewGrades = () => {
                             <div className="font-medium">Giảng viên phản biện</div>
                             {hasReviewerGrades ? (
                                 <div className="text-green-600">
-                                    ✓ Đã chấm {reviewerGrades.length}/{2} phản biện
+                                    ✓ Đã chấm {reviewerGrades.length}/{reviewerAssignments.length || 2} phản biện
                                 </div>
                             ) : (
                                 <div className="text-gray-500">Chưa chấm</div>

@@ -42,6 +42,7 @@ interface Reviewer {
 interface ReviewerSelection {
     reviewer1: string | null;
     reviewer2: string | null;
+    reviewer3: string | null;
     deadline: dayjs.Dayjs;
     defenseFormat: 'ONLINE' | 'OFFLINE';
     onlinePlatform: 'ZOOM' | 'MS_TEAMS';
@@ -158,6 +159,7 @@ const ReviewerAssignment = () => {
         return selections[groupId] || {
             reviewer1: null,
             reviewer2: null,
+            reviewer3: null,
             deadline: defaultDeadline,
             defenseFormat: 'OFFLINE',
             onlinePlatform: 'ZOOM',
@@ -185,7 +187,8 @@ const ReviewerAssignment = () => {
         if (selectedTopic) {
             const pb1 = selectedTopic.assignments.find((a: any) => a.reviewer_order === 1);
             const pb2 = selectedTopic.assignments.find((a: any) => a.reviewer_order === 2);
-            const firstAssignment = selectedTopic.assignments[0] || pb1 || pb2;
+            const pb3 = selectedTopic.assignments.find((a: any) => a.reviewer_order === 3);
+            const firstAssignment = selectedTopic.assignments[0] || pb1 || pb2 || pb3;
             
             let defaultDeadline = dayjs().add(14, 'day');
             if (activeSemester?.thesis_deadline) {
@@ -227,6 +230,7 @@ const ReviewerAssignment = () => {
                 [selectedTopic.groupId]: {
                     reviewer1: pb1?.reviewer_id || selections[selectedTopic.groupId]?.reviewer1 || null,
                     reviewer2: pb2?.reviewer_id || selections[selectedTopic.groupId]?.reviewer2 || null,
+                    reviewer3: pb3?.reviewer_id || selections[selectedTopic.groupId]?.reviewer3 || null,
                     deadline: firstAssignment?.deadline_at ? dayjs(firstAssignment.deadline_at) : (selections[selectedTopic.groupId]?.deadline || defaultDeadline),
                     defenseFormat: defFormat as 'ONLINE' | 'OFFLINE',
                     onlinePlatform: platform,
@@ -250,13 +254,27 @@ const ReviewerAssignment = () => {
         const sel = getSelection(topic.groupId);
         const assignedOrders = getAssignedOrders(topic);
 
-        if (!sel.reviewer1 && !sel.reviewer2 && topic.assignments.length === 0) {
+        if (!sel.reviewer1 && !sel.reviewer2 && !sel.reviewer3 && topic.assignments.length === 0) {
             notify.warning(t('reviewerAssignment.noReviewersSelected'));
             return;
         }
 
-        if (sel.reviewer1 && sel.reviewer2 && sel.reviewer1 === sel.reviewer2) {
-            notify.warning(t('reviewerAssignment.sameReviewerError'));
+        // We require at least 2 reviewers to be selected/assigned.
+        const totalReviewersCount = 
+            (sel.reviewer1 || topic.assignments.some(a => a.reviewer_order === 1) ? 1 : 0) +
+            (sel.reviewer2 || topic.assignments.some(a => a.reviewer_order === 2) ? 1 : 0) +
+            (sel.reviewer3 || topic.assignments.some(a => a.reviewer_order === 3) ? 1 : 0);
+
+        if (totalReviewersCount < 2) {
+            notify.warning('Yêu cầu bắt buộc phải phân công ít nhất 2 giảng viên phản biện');
+            return;
+        }
+
+        // Ensure distinct reviewers
+        const selectedIds = [sel.reviewer1, sel.reviewer2, sel.reviewer3].filter(Boolean);
+        const uniqueSelectedIds = new Set(selectedIds);
+        if (uniqueSelectedIds.size !== selectedIds.length) {
+            notify.warning('Không được chọn trùng giảng viên phản biện cho cùng một đề tài');
             return;
         }
 
@@ -322,6 +340,22 @@ const ReviewerAssignment = () => {
                     groupId: topic.groupId,
                     reviewerId: sel.reviewer2,
                     reviewerOrder: 2,
+                    deadlineAt: sel.deadline.toDate(),
+                    room: finalRoom,
+                    defenseFormat: sel.defenseFormat,
+                    zoomPassword: sel.defenseFormat === 'ONLINE' ? sel.meetingPassword : undefined,
+                    startTime: combinedStart.toDate(),
+                    endTime: combinedEnd.toDate(),
+                });
+            }
+
+            // Assign PB3 if selected and not already assigned
+            if (sel.reviewer3 && !assignedOrders.includes(3)) {
+                await AssignmentsApi.assignReviewer({
+                    topicId: topic.id,
+                    groupId: topic.groupId,
+                    reviewerId: sel.reviewer3,
+                    reviewerOrder: 3,
                     deadlineAt: sel.deadline.toDate(),
                     room: finalRoom,
                     defenseFormat: sel.defenseFormat,
@@ -660,7 +694,7 @@ const ReviewerAssignment = () => {
                                                 }
                                                 const reviewers = getAvailableReviewersForTopic(selectedTopic);
                                                 const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
-                                                const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer2);
+                                                const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer2 && r.id !== sel.reviewer3);
                                                 return (
                                                     <Select
                                                         value={sel.reviewer1}
@@ -721,13 +755,74 @@ const ReviewerAssignment = () => {
                                                 }
                                                 const reviewers = getAvailableReviewersForTopic(selectedTopic);
                                                 const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
-                                                const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer1);
+                                                const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer1 && r.id !== sel.reviewer3);
                                                 return (
                                                     <Select
                                                         value={sel.reviewer2}
                                                         onChange={(val) => updateSelection(selectedTopic.groupId, 'reviewer2', val)}
                                                         style={{ width: '100%' }}
                                                         placeholder="Chọn giảng viên phản biện 2"
+                                                        showSearch
+                                                        allowClear
+                                                        size="small"
+                                                        filterOption={(input, option) =>
+                                                            (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                                                        }
+                                                        options={filteredReviewers.map(r => ({
+                                                            value: r.id,
+                                                            label: r.full_name,
+                                                        }))}
+                                                    />
+                                                );
+                                            })()}
+                                        </div>
+
+                                        {/* Reviewer 3 Select */}
+                                        <div>
+                                            <label className="text-[11px] font-semibold text-slate-600 block mb-1">Giảng viên Phản biện 3 (Không bắt buộc)</label>
+                                            {(() => {
+                                                const assigned = selectedTopic.assignments.find((a: any) => a.reviewer_order === 3);
+                                                if (assigned) {
+                                                    return (
+                                                        <div className="flex items-center justify-between p-2 rounded-lg bg-green-50/40 border border-green-100 text-xs">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <Avatar size="small" icon={<UserOutlined />} className="bg-green-100 text-green-700 flex-shrink-0" />
+                                                                <span className="font-medium text-slate-800 truncate">{assigned.reviewer?.full_name}</span>
+                                                            </div>
+                                                            <Button 
+                                                                type="text" 
+                                                                danger 
+                                                                size="small" 
+                                                                className="text-[10px] h-6 px-1.5 flex-shrink-0"
+                                                                loading={submittingGroupId === selectedTopic.groupId}
+                                                                disabled={!activeSemester || !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')}
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        setSubmittingGroupId(selectedTopic.groupId);
+                                                                        await AssignmentsApi.delete(assigned.id);
+                                                                        notify.success('Đã hủy phân công phản biện 3');
+                                                                        queryClient.invalidateQueries({ queryKey: ['topics-for-reviewer'] });
+                                                                    } catch (err: any) {
+                                                                        notify.error(err?.response?.data?.error || 'Không thể hủy phân công');
+                                                                    } finally {
+                                                                        setSubmittingGroupId(null);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Hủy gán
+                                                            </Button>
+                                                        </div>
+                                                    );
+                                                }
+                                                const reviewers = getAvailableReviewersForTopic(selectedTopic);
+                                                const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
+                                                const filteredReviewers = reviewers.filter(r => r.id !== sel.reviewer1 && r.id !== sel.reviewer2);
+                                                return (
+                                                    <Select
+                                                        value={sel.reviewer3}
+                                                        onChange={(val) => updateSelection(selectedTopic.groupId, 'reviewer3', val)}
+                                                        style={{ width: '100%' }}
+                                                        placeholder="Chọn giảng viên phản biện 3 (tùy chọn)"
                                                         showSearch
                                                         allowClear
                                                         size="small"
@@ -910,7 +1005,7 @@ const ReviewerAssignment = () => {
                                                 disabled={(() => {
                                                     if (!activeSemester || !['REVIEWING', 'DEFENSE', 'FINAL'].includes(activeSemester.calculated_phase || '')) return true;
                                                     const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
-                                                    return !sel.reviewer1 && !sel.reviewer2 && selectedTopic.assignments.length === 0;
+                                                    return !sel.reviewer1 && !sel.reviewer2 && !sel.reviewer3 && selectedTopic.assignments.length === 0;
                                                 })()}
                                             >
                                                 Lưu phân công
