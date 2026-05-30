@@ -273,6 +273,19 @@ export class AcademicPolicy {
           }
           return { allowed: false, reason: 'Chỉ được chấm điểm phản biện trong giai đoạn Phản biện.', code: 'INVALID_PHASE' };
         }
+
+        // Đảm bảo giảng viên hướng dẫn đã nhập điểm trước khi nhập điểm phản biện
+        if (registration?.topic) {
+          const grades = registration.topic.grades || [];
+          const hasSupervisorGraded = grades.some((g: any) => g.rater_role?.startsWith('SUPERVISOR'));
+          if (!hasSupervisorGraded) {
+            return {
+              allowed: false,
+              reason: 'Chưa thể chấm điểm phản biện do Giảng viên hướng dẫn chưa hoàn tất nhập điểm cho đề tài này.',
+              code: 'SUPERVISOR_GRADE_REQUIRED'
+            };
+          }
+        }
         return { allowed: true, code: 'ALLOWED' };
 
       case AcademicAction.GRADE_COMMITTEE:
