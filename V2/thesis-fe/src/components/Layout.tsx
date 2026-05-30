@@ -137,6 +137,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <AuditOutlined /> },
+          { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]

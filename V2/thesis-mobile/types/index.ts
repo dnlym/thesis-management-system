@@ -9,7 +9,7 @@ export type UserRole =
 
 export type CommitteeType = 'ORAL' | 'POSTER';
 
-export type CommitteeRole = 'CHAIR' | 'SECRETARY' | 'MEMBER' | 'MEMBER_1' | 'MEMBER_2';
+export type CommitteeRole = 'CHAIR' | 'SECRETARY' | 'MEMBER' | 'MEMBER_1' | 'MEMBER_2' | 'MEMBER_3' | 'MEMBER_4' | 'MEMBER_5';
 
 // Topic Status - Backend version
 export type TopicStatus =
@@ -70,6 +70,9 @@ export type RaterRole =
     | 'COMMITTEE_MEMBER'
     | 'COMMITTEE_MEMBER_1'
     | 'COMMITTEE_MEMBER_2'
+    | 'COMMITTEE_MEMBER_3'
+    | 'COMMITTEE_MEMBER_4'
+    | 'COMMITTEE_MEMBER_5'
     | 'ORAL_COMMITTEE'
     | 'POSTER_COMMITTEE'
     | 'ADVISOR' // For legacy support

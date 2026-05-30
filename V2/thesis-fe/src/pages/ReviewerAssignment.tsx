@@ -779,7 +779,7 @@ const ReviewerAssignment = () => {
 
                                         {/* Reviewer 3 Select */}
                                         <div>
-                                            <label className="text-[11px] font-semibold text-slate-600 block mb-1">Giảng viên Phản biện 3 (Không bắt buộc)</label>
+                                            <label className="text-[11px] font-semibold text-slate-600 block mb-1">Giảng viên Phản biện 3</label>
                                             {(() => {
                                                 const assigned = selectedTopic.assignments.find((a: any) => a.reviewer_order === 3);
                                                 if (assigned) {

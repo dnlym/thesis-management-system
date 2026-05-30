@@ -102,12 +102,27 @@ class GradingController {
             assignment_type: 'COMMITTEE',
             status: { in: ['AUTO_ACCEPTED', 'ACCEPTED', 'PENDING'] },
           },
+          include: {
+            topic: {
+              select: {
+                defense_type: true
+              }
+            }
+          }
         });
-        if (assignment?.committee_role === 'CHAIR') raterRole = RaterRole.COMMITTEE_CHAIR;
-        else if (assignment?.committee_role === 'SECRETARY') raterRole = RaterRole.COMMITTEE_SECRETARY;
-        else if (assignment?.committee_role === 'MEMBER_1') raterRole = RaterRole.COMMITTEE_MEMBER_1;
-        else if (assignment?.committee_role === 'MEMBER_2') raterRole = RaterRole.COMMITTEE_MEMBER_2;
-        else raterRole = RaterRole.COMMITTEE_MEMBER;
+        if (assignment?.topic?.defense_type === 'POSTER') {
+          raterRole = RaterRole.POSTER_COMMITTEE;
+        } else if (assignment?.committee_role === 'CHAIR') {
+          raterRole = RaterRole.COMMITTEE_CHAIR;
+        } else if (assignment?.committee_role === 'SECRETARY') {
+          raterRole = RaterRole.COMMITTEE_SECRETARY;
+        } else if (assignment?.committee_role === 'MEMBER_1') {
+          raterRole = RaterRole.COMMITTEE_MEMBER_1;
+        } else if (assignment?.committee_role === 'MEMBER_2') {
+          raterRole = RaterRole.COMMITTEE_MEMBER_2;
+        } else {
+          raterRole = RaterRole.COMMITTEE_MEMBER;
+        }
       }
 
       const grades = await gradingService.submitGrade(userId, req.body, raterRole as RaterRole);
@@ -522,12 +537,27 @@ class GradingController {
             assignment_type: 'COMMITTEE',
             status: { in: ['AUTO_ACCEPTED', 'ACCEPTED', 'PENDING'] },
           },
+          include: {
+            topic: {
+              select: {
+                defense_type: true
+              }
+            }
+          }
         });
-        if (assignment?.committee_role === 'CHAIR') raterRole = RaterRole.COMMITTEE_CHAIR;
-        else if (assignment?.committee_role === 'SECRETARY') raterRole = RaterRole.COMMITTEE_SECRETARY;
-        else if (assignment?.committee_role === 'MEMBER_1') raterRole = RaterRole.COMMITTEE_MEMBER_1;
-        else if (assignment?.committee_role === 'MEMBER_2') raterRole = RaterRole.COMMITTEE_MEMBER_2;
-        else raterRole = RaterRole.COMMITTEE_MEMBER;
+        if (assignment?.topic?.defense_type === 'POSTER') {
+          raterRole = RaterRole.POSTER_COMMITTEE;
+        } else if (assignment?.committee_role === 'CHAIR') {
+          raterRole = RaterRole.COMMITTEE_CHAIR;
+        } else if (assignment?.committee_role === 'SECRETARY') {
+          raterRole = RaterRole.COMMITTEE_SECRETARY;
+        } else if (assignment?.committee_role === 'MEMBER_1') {
+          raterRole = RaterRole.COMMITTEE_MEMBER_1;
+        } else if (assignment?.committee_role === 'MEMBER_2') {
+          raterRole = RaterRole.COMMITTEE_MEMBER_2;
+        } else {
+          raterRole = RaterRole.COMMITTEE_MEMBER;
+        }
       }
 
       const result = await gradingService.getMyGrades(userId, topicId, raterRole as RaterRole);

@@ -115,7 +115,7 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
     const councilAssignments = topic?.assignments
         ?.filter((a: any) => a.assignment_type === 'COMMITTEE')
         ?.sort((a: any, b: any) => {
-            const roleOrder: Record<string, number> = { CHAIR: 1, SECRETARY: 2, MEMBER: 3, MEMBER_1: 4, MEMBER_2: 5 };
+            const roleOrder: Record<string, number> = { CHAIR: 1, SECRETARY: 2, MEMBER: 3, MEMBER_1: 4, MEMBER_2: 5, MEMBER_3: 6, MEMBER_4: 7, MEMBER_5: 8 };
             const orderA = roleOrder[a.committee_role || ''] || 99;
             const orderB = roleOrder[b.committee_role || ''] || 99;
             return orderA - orderB;
@@ -135,6 +135,9 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
                     else if (a.committee_role === 'SECRETARY') subRoleLabel = 'THƯ KÝ';
                     else if (a.committee_role === 'MEMBER_1') subRoleLabel = 'ỦY VIÊN 1';
                     else if (a.committee_role === 'MEMBER_2') subRoleLabel = 'ỦY VIÊN 2';
+                    else if (a.committee_role === 'MEMBER_3') subRoleLabel = 'ỦY VIÊN 3';
+                    else if (a.committee_role === 'MEMBER_4') subRoleLabel = 'ỦY VIÊN 4';
+                    else if (a.committee_role === 'MEMBER_5') subRoleLabel = 'ỦY VIÊN 5';
                 }
 
                 return {
@@ -155,6 +158,9 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
             else if (c.rater_role === 'COMMITTEE_SECRETARY') subRoleLabel = 'THƯ KÝ';
             else if (c.rater_role === 'COMMITTEE_MEMBER_1') subRoleLabel = 'ỦY VIÊN 1';
             else if (c.rater_role === 'COMMITTEE_MEMBER_2') subRoleLabel = 'ỦY VIÊN 2';
+            else if (c.rater_role === 'COMMITTEE_MEMBER_3') subRoleLabel = 'ỦY VIÊN 3';
+            else if (c.rater_role === 'COMMITTEE_MEMBER_4') subRoleLabel = 'ỦY VIÊN 4';
+            else if (c.rater_role === 'COMMITTEE_MEMBER_5') subRoleLabel = 'ỦY VIÊN 5';
 
             return {
                 id: c.rater_id || `grade-${idx}`,

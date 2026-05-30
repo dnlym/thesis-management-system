@@ -715,6 +715,9 @@ enum CommitteeRole {
   MEMBER
   MEMBER_1
   MEMBER_2
+  MEMBER_3
+  MEMBER_4
+  MEMBER_5
 }
 
 enum GroupMemberStatus {

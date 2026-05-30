@@ -571,6 +571,9 @@ const MyRegisteredTopic = () => {
                               MEMBER: 'default',
                               MEMBER_1: 'default',
                               MEMBER_2: 'default',
+                              MEMBER_3: 'default',
+                              MEMBER_4: 'default',
+                              MEMBER_5: 'default',
                             };
                             const roleLabelMap: any = {
                               CHAIR: 'Chủ tịch Hội đồng',
@@ -578,6 +581,9 @@ const MyRegisteredTopic = () => {
                               MEMBER: 'Ủy viên',
                               MEMBER_1: 'Ủy viên 1',
                               MEMBER_2: 'Ủy viên 2',
+                              MEMBER_3: 'Ủy viên 3',
+                              MEMBER_4: 'Ủy viên 4',
+                              MEMBER_5: 'Ủy viên 5',
                             };
                             return (
                               <List.Item className="bg-white p-3.5 rounded-xl mb-2.5 border border-slate-100 shadow-2xs last:mb-0">

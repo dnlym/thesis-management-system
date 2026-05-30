@@ -1856,7 +1856,7 @@ export class TopicService {
       }
 
       // Dependency check: All assigned reviewers must have graded
-      const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.length;
+      const totalReviewersRequired = topic.assignments.length || topic.reviewer_required_count || 2;
       const gradedReviewerIds = [...new Set(topic.grades.filter((g) => g.rater_role.startsWith('REVIEWER')).map((g) => g.grader_id))];
 
       if (gradedReviewerIds.length < totalReviewersRequired) {

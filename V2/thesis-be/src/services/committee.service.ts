@@ -37,14 +37,18 @@ export class CommitteeService {
     return await prisma.$transaction(async (tx) => {
       // 1. Validation based on committee type
       if (data.type === 'POSTER') {
-        if (data.members.length !== 2) {
-          throw new Error('Hội đồng Poster phải có đúng 2 giảng viên');
+        if (data.members.length < 2) {
+          throw new Error('Hội đồng Poster phải có ít nhất 2 giảng viên');
         }
-        // Assign specific roles for poster members
-        data.members = [
-          { ...data.members[0], role: 'MEMBER_1' as CommitteeRole },
-          { ...data.members[1], role: 'MEMBER_2' as CommitteeRole },
-        ];
+        // Assign specific roles for poster members dynamically
+        data.members = data.members.map((m: any, idx: number) => {
+          if (idx === 0) return { ...m, role: 'MEMBER_1' as CommitteeRole };
+          if (idx === 1) return { ...m, role: 'MEMBER_2' as CommitteeRole };
+          if (idx === 2) return { ...m, role: 'MEMBER_3' as CommitteeRole };
+          if (idx === 3) return { ...m, role: 'MEMBER_4' as CommitteeRole };
+          if (idx === 4) return { ...m, role: 'MEMBER_5' as CommitteeRole };
+          return { ...m, role: 'MEMBER' as CommitteeRole };
+        });
       } else {
         // ORAL (default)
         if (data.members.length < 3) {
@@ -139,6 +143,31 @@ export class CommitteeService {
 
       // Update members if provided
       if (data.members) {
+        const committeeType = data.type || committee.type;
+        if (committeeType === 'POSTER') {
+          if (data.members.length < 2) {
+            throw new Error('Hội đồng Poster phải có ít nhất 2 giảng viên');
+          }
+          data.members = data.members.map((m: any, idx: number) => {
+            if (idx === 0) return { ...m, role: 'MEMBER_1' as CommitteeRole };
+            if (idx === 1) return { ...m, role: 'MEMBER_2' as CommitteeRole };
+            if (idx === 2) return { ...m, role: 'MEMBER_3' as CommitteeRole };
+            if (idx === 3) return { ...m, role: 'MEMBER_4' as CommitteeRole };
+            if (idx === 4) return { ...m, role: 'MEMBER_5' as CommitteeRole };
+            return { ...m, role: 'MEMBER' as CommitteeRole };
+          });
+        } else {
+          // ORAL
+          if (data.members.length < 3) {
+            throw new Error('Hội đồng Vấn đáp phải có ít nhất 3 giảng viên');
+          }
+          const hasChair = data.members.some((m: any) => m.role === 'CHAIR');
+          const hasSecretary = data.members.some((m: any) => m.role === 'SECRETARY');
+          if (!hasChair || !hasSecretary) {
+            throw new Error('Hội đồng Vấn đáp phải có ít nhất 1 Chủ tịch và 1 Thư ký');
+          }
+        }
+
         // Delete old members
         await tx.committeeMember.deleteMany({
           where: { committee_id: committeeId }

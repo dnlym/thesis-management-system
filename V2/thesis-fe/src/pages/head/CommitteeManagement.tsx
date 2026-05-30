@@ -367,8 +367,8 @@ const CommitteeManagement = () => {
                                         }
                                     }}
                                 >
-                                    <Select.Option value="ORAL"><span className="text-[12px]">ORAL (Vấn đáp)</span></Select.Option>
-                                    <Select.Option value="POSTER"><span className="text-[12px]">POSTER (Triển lãm)</span></Select.Option>
+                                    <Select.Option value="ORAL"><span className="text-[12px]">ORAL</span></Select.Option>
+                                    <Select.Option value="POSTER"><span className="text-[12px]">POSTER</span></Select.Option>
                                 </Select>
                             </Form.Item>
                             <Form.Item 
@@ -393,8 +393,8 @@ const CommitteeManagement = () => {
                                 validator: async (_, members) => {
                                     const type = form.getFieldValue('type');
                                     if (type === 'POSTER') {
-                                        if (!members || members.length !== 2) {
-                                            return Promise.reject(new Error('Hội đồng Poster phải có đúng 2 giảng viên'));
+                                        if (!members || members.length < 2) {
+                                            return Promise.reject(new Error('Hội đồng Poster phải có ít nhất 2 giảng viên'));
                                         }
                                     } else {
                                         if (!members || members.length < 3) {
@@ -499,7 +499,7 @@ const CommitteeManagement = () => {
 
                                 <Form.ErrorList errors={errors} className="mt-2 text-red-500 text-sm" />
 
-                                {form.getFieldValue('type') === 'ORAL' && (
+                                {(form.getFieldValue('type') === 'ORAL' || form.getFieldValue('type') === 'POSTER') && (
                                     <Button
                                         type="dashed"
                                         onClick={() => add({ role: 'MEMBER' })}

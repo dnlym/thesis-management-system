@@ -43,7 +43,7 @@ type TopicSummaryPayload = Prisma.TopicGetPayload<{
 
 
 export class GradingService {
-  private static gradeSummaryCache = new Map<string, any>();
+  private static gradeSummaryCache = new Map<string, { data: any; timestamp: number }>();
   private static activeSummaryQueries = new Map<string, Promise<any>>();
 
   public static clearGradeSummaryCache() {
@@ -52,6 +52,20 @@ export class GradingService {
   }
 
   async submitGrade(userId: string, data: SubmitGradeRequest, raterRole: RaterRole) {
+    // Preprocess scores: if score > 10, divide by 10
+    if (data.grades && Array.isArray(data.grades)) {
+      data.grades = data.grades.map(grade => {
+        const numScore = typeof grade.score === 'string' ? parseFloat(grade.score) : grade.score;
+        if (typeof numScore === 'number' && !isNaN(numScore) && numScore > 10) {
+          return {
+            ...grade,
+            score: numScore / 10
+          };
+        }
+        return grade;
+      });
+    }
+
     let resolvedTopicId = data.topicId;
 
     // [RESOLUTION STRATEGY] Try to resolve the actual Topic ID from various possible input IDs
@@ -261,17 +275,9 @@ export class GradingService {
         const roundedScore = roundScore(grade.score);
 
         // Find existing grade manually to handle nulls in compound unique constraints
-        const existingGradeRecord = await prisma.grade.findFirst({
-          where: {
-            topic_id: resolvedTopicId,
-            student_id: data.studentId || null,
-            grader_id: userId,
-            criterion_id: grade.criterionId,
-            rater_role: raterRole,
-            reviewer_order: data.reviewerOrder || null,
-            group_id: finalGroupId || null,
-          }
-        });
+        const existingGradeRecord = existingGrades.find(
+          (eg: any) => eg.criterion_id === grade.criterionId
+        );
 
         let savedGrade;
         if (existingGradeRecord) {
@@ -641,8 +647,9 @@ export class GradingService {
    */
   async getGradeSummary(userId: string, semesterId: string) {
     const cacheKey = `${userId}:${semesterId}`;
-    if (GradingService.gradeSummaryCache.has(cacheKey)) {
-      return GradingService.gradeSummaryCache.get(cacheKey);
+    const cached = GradingService.gradeSummaryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 5000) {
+      return cached.data;
     }
 
     if (GradingService.activeSummaryQueries.has(cacheKey)) {
@@ -654,7 +661,7 @@ export class GradingService {
 
     try {
       const result = await queryPromise;
-      GradingService.gradeSummaryCache.set(cacheKey, result);
+      GradingService.gradeSummaryCache.set(cacheKey, { data: result, timestamp: Date.now() });
       return result;
     } finally {
       GradingService.activeSummaryQueries.delete(cacheKey);
@@ -814,8 +821,9 @@ export class GradingService {
 
         const reviewerGraderIds = [...new Set(groupGrades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
         const committeeGraderIds = [...new Set(groupGrades.filter(g => isCommittee(g.rater_role)).map(g => g.grader_id))];
-        const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.filter(as => as.assignment_type === AssignmentType.REVIEWER && as.group_id === actualGroupId).length || 2;
-        const totalCommitteeRequired = committeeAssignments.length;
+        const totalReviewersRequired = reviewerAssignments.length || topic.reviewer_required_count || 2;
+        const defaultCommitteeCount = topic.defense_type === 'POSTER' ? 2 : 3;
+        const totalCommitteeRequired = committeeAssignments.length || defaultCommitteeCount;
 
         const isGroupFinalized = studentSummaries.every(s => s.finalScore && 'finalized' in s.finalScore && s.finalScore.finalized);
 
@@ -1725,8 +1733,9 @@ export class GradingService {
     const reviewerGraderIds = [...new Set(allGrades.filter((g: any) => isReviewer(g.rater_role)).map((g: any) => g.grader_id))];
     const committeeGraderIds = [...new Set(allGrades.filter((g: any) => isCommittee(g.rater_role)).map((g: any) => g.grader_id))];
 
-    const totalReviewersRequired = topic.reviewer_required_count || reviewerAssignments.length || 2;
-    const totalCommitteeRequired = councilAssignments.length;
+    const totalReviewersRequired = reviewerAssignments.length || topic.reviewer_required_count || 2;
+    const defaultCommitteeCount = topic.defense_type === 'POSTER' ? 2 : 3;
+    const totalCommitteeRequired = councilAssignments.length || defaultCommitteeCount;
 
     const isGroupFinalized = finalScores.length > 0 && finalScores.every(fs => fs.finalized);
 
@@ -2010,22 +2019,12 @@ export class GradingService {
 
     if (!topic || topic.is_eligible_for_defense !== null) return;
 
-    // 1. Re-compute final scores to get latest averages
-    await this.computeFinalScore(topicId);
-    const updatedTopic = await prisma.topic.findUnique({
-      where: { id: topicId },
-      include: {
-        final_scores: true,
-        registrations: { where: { midterm_status: 'PASS' } },
-      }
-    });
+    // 1. Re-compute final scores to get latest averages and use the returned values directly
+    const finalScores = await this.computeFinalScore(topicId);
 
-    if (!updatedTopic) return;
-
-    const activeRegs = updatedTopic.registrations || [];
+    const activeRegs = topic.registrations || [];
     if (activeRegs.length === 0) return;
 
-    const finalScores = updatedTopic.final_scores || [];
     const hasScoresForAll = activeRegs.every(reg =>
       finalScores.some(fs => fs.student_id === reg.student_id)
     );
@@ -2034,7 +2033,7 @@ export class GradingService {
     // 2. Logic: Automatic Eligibility Assessment
     const supervisorGraded = topic.grades.some(g => g.rater_role === 'SUPERVISOR');
     const reviewerGraderIds = [...new Set(topic.grades.filter(g => isReviewer(g.rater_role)).map(g => g.grader_id))];
-    const totalReviewersRequired = topic.reviewer_required_count || topic.assignments.length || 2;
+    const totalReviewersRequired = topic.assignments.length || topic.reviewer_required_count || 2;
     const isReviewerComplete = reviewerGraderIds.length >= totalReviewersRequired;
 
     // 3. Auto-Pass check: All required grades are in and all are >= 6.0
