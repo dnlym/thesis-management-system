@@ -17,8 +17,8 @@ export class UserService {
         }
 
         // Role-based scoping
-        if (currentUser?.role === UserRole.HEAD || currentUser?.role === UserRole.LECTURER) {
-            // HODs and LECTURERs can only see users from their own department
+        if (currentUser?.role === UserRole.HEAD || currentUser?.role === UserRole.LECTURER || currentUser?.role === UserRole.COORDINATOR) {
+            // HODs, LECTURERs and COORDINATORs can only see users from their own department
             where.departmentId = currentUser.departmentId;
         } else if (filters?.departmentId) {
             // ADMINs or others can filter by departmentId

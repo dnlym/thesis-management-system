@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', authorize('ADMIN', 'HEAD', 'LECTURER'), userController.getUsers);
+router.get('/', authorize('ADMIN', 'HEAD', 'LECTURER', 'COORDINATOR'), userController.getUsers);
 router.get('/roles/summary', authorize('ADMIN'), userController.getRoleSummary);
 router.get('/:id', userController.getUserById);
 router.post('/', authorize('ADMIN'), userController.createUser);
