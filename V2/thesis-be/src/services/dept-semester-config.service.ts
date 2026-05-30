@@ -58,7 +58,7 @@ export class DepartmentSemesterConfigService {
     // Create audit logs and SYNC existing schedules (Rule: Dynamic update)
     if (data.defense_date !== undefined) {
       // 1. Update all existing defense schedules for this department/semester
-      await prisma.defenseSchedule.updateMany({
+      if (false) await prisma.defenseSchedule.updateMany({
         where: {
           semester_id: semesterId,
           topic: {
@@ -71,7 +71,7 @@ export class DepartmentSemesterConfigService {
       });
 
       // 2. Update all committee assignments deadlines for this department/semester
-      await prisma.assignment.updateMany({
+      if (false) await prisma.assignment.updateMany({
         where: {
           assignment_type: 'COMMITTEE',
           topic: {

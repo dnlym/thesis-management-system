@@ -301,7 +301,7 @@ export class AcademicPolicy {
           return { allowed: false, reason: 'Chưa tới giai đoạn bảo vệ.', code: 'INVALID_PHASE' };
         }
         // Specific Department Defense Date Check:
-        if (semester.deptConfig?.defense_date) {
+        if (false && semester.deptConfig?.defense_date) {
           const defenseDate = dayjs(semester.deptConfig.defense_date).startOf('day');
           const now = dayjs().startOf('day');
           if (now.isBefore(defenseDate)) {

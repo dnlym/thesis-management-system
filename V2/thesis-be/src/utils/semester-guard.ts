@@ -101,15 +101,7 @@ export class SemesterGuard {
 
     const originalGlobalDefenseStart = defenseStart;
 
-    if (deptConfig?.defense_date) {
-      const deptDate = parseDate(deptConfig.defense_date);
-      if (deptDate) {
-        const effectiveDeptDate = (originalGlobalDefenseStart && deptDate.isBefore(originalGlobalDefenseStart)) 
-          ? originalGlobalDefenseStart 
-          : deptDate;
-        defenseStart = effectiveDeptDate;
-      }
-    }
+    // Note: Department expected defense date is purely informational and doesn't shift the timeline phase.
 
     if (
       proposalDeadline &&
@@ -128,15 +120,7 @@ export class SemesterGuard {
     let effectiveDefenseStart = globalStart;
     let effectiveDefenseEnd = globalEnd;
 
-    if (deptConfig?.defense_date) {
-      const deptDate = parseDate(deptConfig.defense_date);
-      if (deptDate) {
-        // If dept date is before global start, use global start.
-        effectiveDefenseStart = (globalStart && deptDate.isBefore(globalStart)) ? globalStart : deptDate;
-        // If dept date is after global end, use global end (Ceiling).
-        effectiveDefenseEnd = (globalEnd && deptDate.isAfter(globalEnd)) ? globalEnd : deptDate;
-      }
-    }
+    // Note: Department expected defense date is purely informational.
 
     if (
       effectiveDefenseStart &&
