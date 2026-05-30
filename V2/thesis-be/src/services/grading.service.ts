@@ -155,6 +155,10 @@ export class GradingService {
       hasPermission = await isCommitteeMember(userId, resolvedTopicId);
     }
 
+    if (user.role === UserRole.HEAD || user.role === UserRole.ADMIN) {
+      hasPermission = true;
+    }
+
     if (!hasPermission) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
