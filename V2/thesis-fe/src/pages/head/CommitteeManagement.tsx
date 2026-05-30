@@ -223,10 +223,9 @@ const CommitteeManagement = () => {
                         <Button
                             type="text"
                             size="small"
-                            disabled={isAssigned}
-                            icon={<EditOutlined className={isAssigned ? "text-slate-300" : "text-blue-600"} />}
+                            icon={<EditOutlined className="text-blue-600" />}
                             onClick={() => handleEdit(record)}
-                            className={isAssigned ? "" : "hover:bg-blue-50"}
+                            className="hover:bg-blue-50"
                         />
                         
                         <Popconfirm

@@ -136,8 +136,8 @@ export class CommitteeService {
         where: { committee_id: committeeId }
       });
 
-      if (usage > 0) {
-        throw new Error('Không thể chỉnh sửa hội đồng đã được phân công đề tài');
+      if (usage > 0 && data.type && data.type !== committee.type) {
+        throw new Error('Không thể thay đổi phân loại (Vấn đáp/Poster) của hội đồng đã được phân công đề tài');
       }
 
       // Update basic info
@@ -196,6 +196,42 @@ export class CommitteeService {
             semester_id: committee.semester_id
           }))
         });
+
+        // Sync assignments if there are assigned topics/schedules
+        if (usage > 0) {
+          const schedules = await tx.defenseSchedule.findMany({
+            where: { committee_id: committeeId }
+          });
+          const groupIds = schedules.map(s => s.group_id).filter((id): id is string => id !== null);
+          
+          // Delete old assignments of type COMMITTEE for these groups
+          await tx.assignment.deleteMany({
+            where: {
+              group_id: { in: groupIds },
+              assignment_type: AssignmentType.COMMITTEE
+            }
+          });
+
+          // Create new assignments for each of the new committee members for each schedule
+          for (const schedule of schedules) {
+            for (const member of data.members) {
+              if (schedule.group_id) {
+                await tx.assignment.create({
+                  data: {
+                    topic_id: schedule.topic_id,
+                    group_id: schedule.group_id,
+                    reviewer_id: member.lecturerId,
+                    assignment_type: AssignmentType.COMMITTEE,
+                    committee_role: member.role as CommitteeRole,
+                    assigned_by: userId,
+                    deadline_at: schedule.start_time || new Date(),
+                    status: AssignmentStatus.AUTO_ACCEPTED
+                  }
+                });
+              }
+            }
+          }
+        }
       }
 
       const result = await tx.committee.findUnique({

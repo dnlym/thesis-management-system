@@ -92,9 +92,9 @@ export class CommitteeController {
       if (!semesterId) {
         throw new Error('semesterId is required');
       }
-      // HEAD sees only their department; ADMIN sees all
+      // HEAD/COORDINATOR sees only their department; ADMIN sees all
       let departmentId: string | undefined;
-      if (userRole === 'HEAD') {
+      if (userRole === 'HEAD' || userRole === 'COORDINATOR') {
         departmentId = await getUserDepartmentId(userId);
       }
       const data = await committeeService.getCommitteeSchedules(semesterId, departmentId);
@@ -138,9 +138,9 @@ export class CommitteeController {
       const userId = req.user!.id;
       const userRole = req.user!.role;
       const semesterId = req.query.semesterId as string;
-      // HEAD sees only their department; ADMIN sees all
+      // HEAD/COORDINATOR sees only their department; ADMIN sees all
       let departmentId: string | undefined;
-      if (userRole === 'HEAD') {
+      if (userRole === 'HEAD' || userRole === 'COORDINATOR') {
         departmentId = await getUserDepartmentId(userId);
       }
       const committees = await committeeService.getCommittees(semesterId, departmentId);
