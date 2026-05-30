@@ -191,6 +191,11 @@ const Evaluation = () => {
     }));
   }, [selectedTopic, myGradesData, groupId]);
 
+  const allStudentsFailed = useMemo(() => {
+    if (students.length === 0) return false;
+    return students.every(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED');
+  }, [students]);
+
   const isSubmitted = useMemo(() => {
     return myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED');
   }, [myGradesData]);
@@ -440,6 +445,52 @@ const Evaluation = () => {
               )}
             </Space>
           </div>
+
+          {allStudentsFailed && (
+            <Alert
+              message={<span className="font-bold text-red-800">Không thể chấm điểm - Đề tài/Nhóm đã rớt giữa kỳ</span>}
+              description={
+                <div>
+                  Đề tài này đã bị dừng thực hiện do sinh viên rớt giữa kỳ.
+                  <br />
+                  <strong>Lý do rớt giữa kỳ:</strong>
+                  <ul className="list-disc pl-4 mt-1">
+                    {students.map(s => (
+                      <li key={s.id}>
+                        <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Rớt giữa kỳ (Không có phản hồi).'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              }
+              type="error"
+              showIcon
+              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
+            />
+          )}
+
+          {!allStudentsFailed && students.some(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED') && (
+            <Alert
+              message={<span className="font-bold text-amber-800">Cảnh báo - Có thành viên rớt giữa kỳ</span>}
+              description={
+                <div>
+                  Một số thành viên trong nhóm đã rớt giữa kỳ và không thể chấm điểm. Bạn chỉ có thể chấm điểm cho các thành viên đạt điều kiện.
+                  <br />
+                  <strong>Chi tiết thành viên rớt giữa kỳ:</strong>
+                  <ul className="list-disc pl-4 mt-1">
+                    {students.filter(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED').map(s => (
+                      <li key={s.id}>
+                        <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Không đạt đánh giá giữa kỳ.'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              }
+              type="warning"
+              showIcon
+              className="mb-6 rounded-xl border-l-4 border-l-amber-500 shadow-sm bg-amber-50/50"
+            />
+          )}
 
           {isSubmitted && !isPastDeadline && (
             <Alert
@@ -945,6 +996,22 @@ const Evaluation = () => {
       key: 'status_combined',
       width: 140,
       render: (_: any, r: any) => {
+        const checkIsFailed = () => {
+          if (r.students && Array.isArray(r.students) && r.students.length > 0) {
+            return r.students.every((s: any) => s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED');
+          }
+          const topicObj = r.topic || r;
+          const regs = topicObj.registrations || [];
+          if (regs.length > 0) {
+            return regs.every((reg: any) => reg.midterm_status === 'FAIL' || reg.status === 'FAILED');
+          }
+          return false;
+        };
+
+        if (checkIsFailed()) {
+          return <Tag color="error" className="m-0 rounded-full px-3">Đã rớt</Tag>;
+        }
+
         if (r.status === 'FINALIZED') {
           return <Tag color="error" icon={<LockOutlined />} className="m-0 rounded-full px-3">Đã chốt (Locked)</Tag>;
         }
@@ -985,10 +1052,23 @@ const Evaluation = () => {
           return role === 'SUPERVISOR';
         });
 
+        const checkIsFailed = () => {
+          if (r.students && Array.isArray(r.students) && r.students.length > 0) {
+            return r.students.every((s: any) => s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED');
+          }
+          const topicObj = r.topic || r;
+          const regs = topicObj.registrations || [];
+          if (regs.length > 0) {
+            return regs.every((reg: any) => reg.midterm_status === 'FAIL' || reg.status === 'FAILED');
+          }
+          return false;
+        };
+        const isFailed = checkIsFailed();
+
         return (
           <Space>
             <Button
-              type={r.status === 'FINALIZED' || hasMyGrades ? "default" : "primary"}
+              type={r.status === 'FINALIZED' || hasMyGrades || isFailed ? "default" : "primary"}
               size="small"
               onClick={() => setSearchParams({
                 topicId: r.topicId || r.topic_id || r.id,
@@ -997,7 +1077,7 @@ const Evaluation = () => {
               })}
               className="text-xs rounded-lg"
             >
-              {r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm'}
+              {isFailed ? 'Xem' : (r.status === 'FINALIZED' ? 'Xem chi tiết' : 'Xem & Chấm điểm')}
             </Button>
             <Tooltip title="Xem nhanh lịch sử sửa điểm">
               <Button
