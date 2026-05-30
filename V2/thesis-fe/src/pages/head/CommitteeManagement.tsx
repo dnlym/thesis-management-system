@@ -463,7 +463,7 @@ const CommitteeManagement = () => {
                                                                 value: l.id,
                                                                 label: l.full_name,
                                                                 email: l.email,
-                                                                disabled: isAssigned || isSelectedInOtherRow,
+                                                                disabled: isSelectedInOtherRow,
                                                                 isAssigned,
                                                                 isSelectedInOtherRow,
                                                             };

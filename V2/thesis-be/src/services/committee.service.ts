@@ -71,20 +71,7 @@ export class CommitteeService {
         }
       }
 
-      // 3. Check if any lecturer is already in a committee for this semester
-      const lecturerIds = data.members.map((m: any) => m.lecturerId);
-      const existingMemberships = await tx.committeeMember.findMany({
-        where: {
-          semester_id: data.semesterId,
-          lecturer_id: { in: lecturerIds }
-        },
-        include: { lecturer: true }
-      });
-
-      if (existingMemberships.length > 0) {
-        const names = existingMemberships.map((m: any) => m.lecturer.full_name).join(', ');
-        throw new Error(`Giảng viên đã thuộc hội đồng khác trong học kỳ này: ${names}`);
-      }
+      // 3. (Skipped check to allow lecturers in multiple committees)
 
       // 3. Create Committee
       const committee = await tx.committee.create({
@@ -157,21 +144,7 @@ export class CommitteeService {
           where: { committee_id: committeeId }
         });
 
-        // Check uniqueness for new members
-        const lecturerIds = data.members.map((m: any) => m.lecturerId);
-        const existingMemberships = await tx.committeeMember.findMany({
-          where: {
-            semester_id: committee.semester_id,
-            lecturer_id: { in: lecturerIds },
-            committee_id: { not: committeeId }
-          },
-          include: { lecturer: true }
-        });
-
-        if (existingMemberships.length > 0) {
-          const names = existingMemberships.map((m: any) => m.lecturer.full_name).join(', ');
-          throw new Error(`Giảng viên đã thuộc hội đồng khác: ${names}`);
-        }
+        // (Skipped check to allow lecturers in multiple committees)
 
         // [DEPARTMENT GUARD] All new members must be from same department as committee
         if (committee.departmentId) {
@@ -350,49 +323,57 @@ export class CommitteeService {
         throw new Error(`Giảng viên hướng dẫn (${topic.supervisor.full_name}) không được nằm trong hội đồng chấm đề tài này`);
       }
 
-      // 3. Conflict Validation: No overlapping time slots for the same committee
-      const start = combineDateAndTime(data.defenseDate, data.startTime);
-      const end = combineDateAndTime(data.defenseDate, data.endTime);
+      // 3. Conflict Validation: No overlapping time slots for the same committee (if time is provided)
+      const hasTime = data.startTime && data.endTime;
+      let start: Date | null = null;
+      let end: Date | null = null;
 
-      if (end <= start) {
-        throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu');
-      }
+      if (hasTime) {
+        start = combineDateAndTime(data.defenseDate, data.startTime!);
+        end = combineDateAndTime(data.defenseDate, data.endTime!);
 
-      if (start <= new Date()) {
-        throw new Error('Lịch bảo vệ hội đồng phải bắt đầu vào một mốc thời gian trong tương lai (lớn hơn thời điểm hiện tại)');
-      }
-
-      const overlap = await tx.defenseSchedule.findFirst({
-        where: {
-          committee_id: data.committeeId,
-          defense_date: start,
-          topic_id: { not: data.topicId },
-          OR: [
-            {
-              AND: [
-                { start_time: { lte: start } },
-                { end_time: { gt: start } }
-              ]
-            },
-            {
-              AND: [
-                { start_time: { lt: end } },
-                { end_time: { gte: end } }
-              ]
-            },
-            {
-              AND: [
-                { start_time: { gte: start } },
-                { end_time: { lte: end } }
-              ]
-            }
-          ]
+        if (end <= start) {
+          throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu');
         }
-      });
 
-      if (overlap) {
-        throw new Error('Hội đồng đã có lịch bảo vệ trùng thời gian này');
+        if (start <= new Date()) {
+          throw new Error('Lịch bảo vệ hội đồng phải bắt đầu vào một mốc thời gian trong tương lai (lớn hơn thời điểm hiện tại)');
+        }
+
+        const overlap = await tx.defenseSchedule.findFirst({
+          where: {
+            committee_id: data.committeeId,
+            defense_date: start,
+            topic_id: { not: data.topicId },
+            OR: [
+              {
+                AND: [
+                  { start_time: { lte: start } },
+                  { end_time: { gt: start } }
+                ]
+              },
+              {
+                AND: [
+                  { start_time: { lt: end } },
+                  { end_time: { gte: end } }
+                ]
+              },
+              {
+                AND: [
+                  { start_time: { gte: start } },
+                  { end_time: { lte: end } }
+                ]
+              }
+            ]
+          }
+        });
+
+        if (overlap) {
+          throw new Error('Hội đồng đã có lịch bảo vệ trùng thời gian này');
+        }
       }
+
+      const defenseDateObj = dayjs(data.defenseDate, 'YYYY-MM-DD').toDate();
 
       // 4. Create or Update DefenseSchedule
       const schedule = await tx.defenseSchedule.upsert({
@@ -402,7 +383,7 @@ export class CommitteeService {
           group_id: data.groupId,
           committee_id: data.committeeId,
           semester_id: topic.semester_id,
-          defense_date: start,
+          defense_date: defenseDateObj,
           start_time: start,
           end_time: end,
           room: data.room || committee.room_preference,
@@ -411,7 +392,7 @@ export class CommitteeService {
         },
         update: {
           committee_id: data.committeeId,
-          defense_date: start,
+          defense_date: defenseDateObj,
           start_time: start,
           end_time: end,
           room: data.room || committee.room_preference,
@@ -438,7 +419,7 @@ export class CommitteeService {
             assignment_type: AssignmentType.COMMITTEE,
             committee_role: member.role,
             assigned_by: userId,
-            deadline_at: start,
+            deadline_at: start || dayjs(data.defenseDate).endOf('day').toDate(),
             status: AssignmentStatus.AUTO_ACCEPTED
           }
         });
@@ -471,9 +452,9 @@ export class CommitteeService {
       await notificationService.notifyDefenseScheduled({
         userIds,
         topicId: data.topicId,
-        date: dayjs(start).format('DD/MM/YYYY'),
-        startTime: formatDateTime(start),
-        endTime: formatDateTime(end),
+        date: dayjs(start || defenseDateObj).format('DD/MM/YYYY'),
+        startTime: start ? formatDateTime(start) : 'Chưa thiết lập',
+        endTime: end ? formatDateTime(end) : 'Chưa thiết lập',
         room: data.room || committee.room_preference || ''
       });
 

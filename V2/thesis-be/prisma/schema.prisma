@@ -522,7 +522,7 @@ model CommitteeMember {
   committee    Committee     @relation(fields: [committee_id], references: [id], onDelete: Cascade)
   lecturer     User          @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
 
-  @@unique([lecturer_id, semester_id])
+  @@unique([lecturer_id, committee_id])
   @@index([committee_id])
   @@index([lecturer_id])
   @@index([semester_id])

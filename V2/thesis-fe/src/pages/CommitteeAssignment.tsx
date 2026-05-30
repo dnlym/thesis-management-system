@@ -93,11 +93,9 @@ const CommitteeAssignment = () => {
     const handleAssign = () => {
         const effectiveDefenseDate = deptDefenseDate || activeSemester?.defense_start;
 
-        if (!selectedTopic || !committeeId || !effectiveDefenseDate || !timeRange[0] || !timeRange[1]) {
+        if (!selectedTopic || !committeeId || !effectiveDefenseDate) {
             if (!effectiveDefenseDate) {
                 notify.error(t('committeeAssignment.setDefenseDateFirst', 'Vui lòng thiết lập ngày bảo vệ học kỳ trước'));
-            } else if (!timeRange[0] || !timeRange[1]) {
-                notify.warning(t('committeeAssignment.timeRangeRequired', 'Vui lòng chọn giờ thực hiện'));
             } else {
                 notify.warning(t('committeeAssignment.validationError'));
             }
@@ -109,8 +107,8 @@ const CommitteeAssignment = () => {
             groupId: selectedTopic.registrations[0]?.group_id,
             committeeId,
             defenseDate: dayjs(effectiveDefenseDate).format('YYYY-MM-DD'),
-            startTime: timeRange[0]?.format('HH:mm'),
-            endTime: timeRange[1]?.format('HH:mm'),
+            startTime: timeRange?.[0] ? timeRange[0].format('HH:mm') : undefined,
+            endTime: timeRange?.[1] ? timeRange[1].format('HH:mm') : undefined,
         });
     };
 
