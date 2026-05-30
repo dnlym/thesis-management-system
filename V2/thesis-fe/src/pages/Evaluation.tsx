@@ -7,6 +7,7 @@ import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
 import { useActiveSemester } from '@/hooks/useSemesters';
+import { useSemesterStore } from '@/store/semester';
 import { TopicsApi } from '@/api/topics';
 import { AssignmentsApi } from '@/api/assignments';
 import { GradingApi } from '@/api/grading';
@@ -77,30 +78,32 @@ const Evaluation = () => {
     }
   }, [searchParams]);
 
+  const { selectedSemesterId } = useSemesterStore();
+
   const [averages, setAverages] = useState<Record<string, number>>({});
 
   // 1. Dashboard queries
   const { data: advisorTopics, isLoading: isLoadingAdvisor } = useQuery({
-    queryKey: ['advisor-topics', user?.id],
-    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, hasStudents: true }),
+    queryKey: ['advisor-topics', user?.id, selectedSemesterId],
+    queryFn: () => TopicsApi.getAll({ supervisorId: user?.id, hasStudents: true, semesterId: selectedSemesterId || undefined }),
     enabled: !!user?.id && activeTab === 'advisor' && !topicId,
   });
 
   const { data: reviewerAssignments, isLoading: isLoadingReviewer } = useQuery({
-    queryKey: ['reviewer-assignments', user?.id],
-    queryFn: () => AssignmentsApi.getAll({ assignmentType: 'REVIEWER' }),
+    queryKey: ['reviewer-assignments', user?.id, selectedSemesterId],
+    queryFn: () => AssignmentsApi.getAll({ assignmentType: 'REVIEWER', semesterId: selectedSemesterId || undefined }),
     enabled: !!user?.id && activeTab === 'reviewer' && !topicId,
   });
 
   const { data: councilAssignments, isLoading: isLoadingCouncil } = useQuery({
-    queryKey: ['council-assignments', user?.id],
-    queryFn: () => AssignmentsApi.getAll({ assignmentType: 'COMMITTEE' }),
+    queryKey: ['council-assignments', user?.id, selectedSemesterId],
+    queryFn: () => AssignmentsApi.getAll({ assignmentType: 'COMMITTEE', semesterId: selectedSemesterId || undefined }),
     enabled: !!user?.id && activeTab === 'council' && !topicId,
   });
 
   const { data: summaryData, isLoading: isLoadingSummary, refetch: refetchSummary } = useQuery<any>({
-    queryKey: ['grade-summary', user?.id],
-    queryFn: () => GradingApi.getGradeSummary(),
+    queryKey: ['grade-summary', user?.id, selectedSemesterId],
+    queryFn: () => GradingApi.getGradeSummary(selectedSemesterId || undefined),
     enabled: !!user?.id && activeTab === 'department' && !topicId,
   });
 
@@ -446,111 +449,132 @@ const Evaluation = () => {
             </Space>
           </div>
 
-          {allStudentsFailed && (
-            <Alert
-              message={<span className="font-bold text-red-800">Không thể chấm điểm - Đề tài/Nhóm đã rớt giữa kỳ</span>}
-              description={
-                <div>
-                  Đề tài này đã bị dừng thực hiện do sinh viên rớt giữa kỳ.
-                  <br />
-                  <strong>Lý do rớt giữa kỳ:</strong>
-                  <ul className="list-disc pl-4 mt-1">
-                    {students.map(s => (
-                      <li key={s.id}>
-                        <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Rớt giữa kỳ (Không có phản hồi).'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              }
-              type="error"
-              showIcon
-              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
-            />
-          )}
+          {(() => {
+            if (allStudentsFailed) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-red-800">Không thể chấm điểm - Đề tài/Nhóm đã rớt giữa kỳ</span>}
+                  description={
+                    <div>
+                      Đề tài này đã bị dừng thực hiện do sinh viên rớt giữa kỳ.
+                      <br />
+                      <strong>Lý do rớt giữa kỳ:</strong>
+                      <ul className="list-disc pl-4 mt-1">
+                        {students.map(s => (
+                          <li key={s.id}>
+                            <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Rớt giữa kỳ (Không có phản hồi).'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  }
+                  type="error"
+                  showIcon
+                  className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
+                />
+              );
+            }
 
-          {!allStudentsFailed && students.some(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED') && (
-            <Alert
-              message={<span className="font-bold text-amber-800">Cảnh báo - Có thành viên rớt giữa kỳ</span>}
-              description={
-                <div>
-                  Một số thành viên trong nhóm đã rớt giữa kỳ và không thể chấm điểm. Bạn chỉ có thể chấm điểm cho các thành viên đạt điều kiện.
-                  <br />
-                  <strong>Chi tiết thành viên rớt giữa kỳ:</strong>
-                  <ul className="list-disc pl-4 mt-1">
-                    {students.filter(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED').map(s => (
-                      <li key={s.id}>
-                        <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Không đạt đánh giá giữa kỳ.'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              }
-              type="warning"
-              showIcon
-              className="mb-6 rounded-xl border-l-4 border-l-amber-500 shadow-sm bg-amber-50/50"
-            />
-          )}
+            if (missingSupervisorGrades) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
+                  description="Bạn chưa thể thực hiện chấm điểm do Giảng viên hướng dẫn chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
+                  type="error"
+                  showIcon
+                  className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
+                />
+              );
+            }
 
-          {isSubmitted && !isPastDeadline && (
-            <Alert
-              message={<span className="font-bold">Đánh giá đã hoàn tất</span>}
-              description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn có thể chỉnh sửa nếu cần (vẫn trong thời hạn).`}
-              type="success"
-              showIcon
-              className="mb-6 rounded-xl border-green-100 shadow-sm"
-            />
-          )}
+            if (missingReviewerGrades) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
+                  description="Bạn chưa thể thực hiện chấm điểm do Giảng viên phản biện chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
+                  type="error"
+                  showIcon
+                  className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
+                />
+              );
+            }
 
-          {isPendingApproval && (
-            <Alert
-              message={<span className="font-bold">Yêu cầu sửa điểm đang chờ phê duyệt</span>}
-              description="Điểm số mới của bạn đã được lưu dưới dạng yêu cầu thay đổi và đang chờ Trưởng bộ môn phê duyệt. Bạn không thể chỉnh sửa trong thời gian này."
-              type="warning"
-              showIcon
-              className="mb-6 rounded-xl border-amber-100 shadow-sm"
-            />
-          )}
+            if (isPendingApproval) {
+              return (
+                <Alert
+                  message={<span className="font-bold">Yêu cầu sửa điểm đang chờ phê duyệt</span>}
+                  description="Điểm số mới của bạn đã được lưu dưới dạng yêu cầu thay đổi và đang chờ Trưởng bộ môn phê duyệt. Bạn không thể chỉnh sửa trong thời gian này."
+                  type="warning"
+                  showIcon
+                  className="mb-6 rounded-xl border-amber-100 shadow-sm"
+                />
+              );
+            }
 
-          {isPastDeadline && !isRequestMode && !isPendingApproval && (
-            <Alert
-              message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
-              description="Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn."
-              type="warning"
-              showIcon
-              className="mb-6 rounded-xl border-amber-100 shadow-sm"
-            />
-          )}
+            if (isPastDeadline && !isRequestMode) {
+              return (
+                <Alert
+                  message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
+                  description="Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn."
+                  type="warning"
+                  showIcon
+                  className="mb-6 rounded-xl border-amber-100 shadow-sm"
+                />
+              );
+            }
 
-          {missingSupervisorGrades && (
-            <Alert
-              message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
-              description="Bạn chưa thể thực hiện chấm điểm do Giảng viên hướng dẫn chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
-              type="error"
-              showIcon
-              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
-            />
-          )}
+            if (!isPhaseAllowed && phaseError) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-blue-800">Thông báo về quyền chấm điểm</span>}
+                  description={phaseError}
+                  type="info"
+                  showIcon
+                  className="mb-6 rounded-xl border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50"
+                />
+              );
+            }
 
-          {missingReviewerGrades && (
-            <Alert
-              message={<span className="font-bold text-red-800">Chưa thể chấm điểm</span>}
-              description="Bạn chưa thể thực hiện chấm điểm do Giảng viên phản biện chưa hoàn tất nhập điểm cho đề tài/sinh viên này."
-              type="error"
-              showIcon
-              className="mb-6 rounded-xl border-l-4 border-l-red-500 shadow-sm bg-red-50/50"
-            />
-          )}
+            const hasFailedMembers = students.some(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED');
+            if (hasFailedMembers) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-amber-800">Cảnh báo - Có thành viên rớt giữa kỳ</span>}
+                  description={
+                    <div>
+                      Một số thành viên trong nhóm đã rớt giữa kỳ và không thể chấm điểm. Bạn chỉ có thể chấm điểm cho các thành viên đạt điều kiện.
+                      <br />
+                      <strong>Chi tiết thành viên rớt giữa kỳ:</strong>
+                      <ul className="list-disc pl-4 mt-1">
+                        {students.filter(s => s.midtermStatus === 'FAIL' || s.status === 'FAILED').map(s => (
+                          <li key={s.id}>
+                            <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Không đạt đánh giá giữa kỳ.'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  }
+                  type="warning"
+                  showIcon
+                  className="mb-6 rounded-xl border-l-4 border-l-amber-500 shadow-sm bg-amber-50/50"
+                />
+              );
+            }
 
-          {!isPhaseAllowed && phaseError && (
-            <Alert
-              message={<span className="font-bold text-blue-800">Thông báo về quyền chấm điểm</span>}
-              description={phaseError}
-              type="info"
-              showIcon
-              className="mb-6 rounded-xl border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50"
-            />
-          )}
+            if (isSubmitted) {
+              return (
+                <Alert
+                  message={<span className="font-bold">Đánh giá đã hoàn tất</span>}
+                  description={`Dữ liệu đã được lưu lúc ${dayjs(gradedAt).format('HH:mm DD/MM/YYYY')}. Bạn có thể chỉnh sửa nếu cần (vẫn trong thời hạn).`}
+                  type="success"
+                  showIcon
+                  className="mb-6 rounded-xl border-green-100 shadow-sm"
+                />
+              );
+            }
+
+            return null;
+          })()}
 
           <Card className="page-header-card mb-6 no-print">
             <div className="text-center w-full">
@@ -1183,34 +1207,58 @@ const Evaluation = () => {
         title: 'Tiến độ chấm điểm',
         key: 'progress',
         width: 200,
-        render: (_: any, r: any) => (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2">
-              <Badge status={r.gradingStatus?.supervisorGraded ? "success" : "default"} />
-              <Text className={`text-[11px] ${r.gradingStatus?.supervisorGraded ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
-                Hướng dẫn: {r.gradingStatus?.supervisorGraded ? 'Đã xong' : 'Chưa chấm'}
-              </Text>
+        render: (_: any, r: any) => {
+          const regs = r.registrations || [];
+          const isTopicFailed = regs.length > 0 && regs.every((reg: any) => reg.midterm_status === 'FAIL' || reg.status === 'FAILED');
+
+          if (isTopicFailed) {
+            return (
+              <Tag color="error" className="m-0 rounded-full px-3 font-semibold border-none bg-red-50 text-red-600">
+                Đã rớt
+              </Tag>
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Badge status={r.gradingStatus?.supervisorGraded ? "success" : "default"} />
+                <Text className={`text-[11px] ${r.gradingStatus?.supervisorGraded ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                  Hướng dẫn: {r.gradingStatus?.supervisorGraded ? 'Đã xong' : 'Chưa chấm'}
+                </Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge status={r.gradingStatus?.isReviewerComplete ? "success" : "warning"} />
+                <Text className={`text-[11px] ${r.gradingStatus?.isReviewerComplete ? 'text-green-600 font-medium' : 'text-orange-500'}`}>
+                  Phản biện: {r.gradingStatus?.reviewerGradedCount ?? 0}/{r.gradingStatus?.totalReviewersRequired ?? 2}
+                </Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge status={r.gradingStatus?.isCommitteeComplete ? "success" : "processing"} />
+                <Text className={`text-[11px] ${r.gradingStatus?.isCommitteeComplete ? 'text-green-600 font-medium' : 'text-blue-500'}`}>
+                  Hội đồng: {r.gradingStatus?.committeeGradedCount ?? 0}/{r.gradingStatus?.totalCommitteeRequired ?? 3}
+                </Text>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge status={r.gradingStatus?.isReviewerComplete ? "success" : "warning"} />
-              <Text className={`text-[11px] ${r.gradingStatus?.isReviewerComplete ? 'text-green-600 font-medium' : 'text-orange-500'}`}>
-                Phản biện: {r.gradingStatus?.reviewerGradedCount ?? 0}/{r.gradingStatus?.totalReviewersRequired ?? 2}
-              </Text>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge status={r.gradingStatus?.isCommitteeComplete ? "success" : "processing"} />
-              <Text className={`text-[11px] ${r.gradingStatus?.isCommitteeComplete ? 'text-green-600 font-medium' : 'text-blue-500'}`}>
-                Hội đồng: {r.gradingStatus?.committeeGradedCount ?? 0}/{r.gradingStatus?.totalCommitteeRequired ?? 3}
-              </Text>
-            </div>
-          </div>
-        )
+          );
+        }
       },
       {
         title: 'Trạng thái xét',
         key: 'review_status',
         width: 140,
         render: (_: any, r: any) => {
+          const regs = r.registrations || [];
+          const isTopicFailed = regs.length > 0 && regs.every((reg: any) => reg.midterm_status === 'FAIL' || reg.status === 'FAILED');
+
+          if (isTopicFailed) {
+            return (
+              <Tag color="error" className="m-0 rounded-full px-2 border-none bg-red-50 text-red-600">
+                Không xét
+              </Tag>
+            );
+          }
+
           const currentPhase = activeSemester?.calculated_phase;
 
           // 1. Nếu đã có quyết định chính thức từ HOD (Chỉ hiển thị từ phase DEFENSE)

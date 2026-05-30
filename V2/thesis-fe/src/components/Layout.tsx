@@ -1,5 +1,5 @@
 import { useState, Suspense, useEffect } from 'react';
-import { Button, Avatar, Dropdown, Spin, Layout, Menu, Tooltip, notification } from 'antd';
+import { Button, Avatar, Dropdown, Spin, Layout, Menu, Tooltip, notification, Select, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   MenuFoldOutlined,
@@ -26,7 +26,8 @@ import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { semesterBroadcast } from '@/utils/broadcast';
 import { AuthApi } from '@/api/auth';
-import { useActiveSemester } from '@/hooks/useSemesters';
+import { useActiveSemester, useSemesters } from '@/hooks/useSemesters';
+import { useSemesterStore } from '@/store/semester';
 import NotificationDropdown from './NotificationDropdown';
 
 const { Header, Content } = Layout;
@@ -393,7 +394,17 @@ const AppLayout = () => {
     bootstrap();
   }, []);
 
-  const { data: activeSemester } = useActiveSemester();
+  const { data: activeSemesterData, isLoading: isLoadingActive } = useActiveSemester();
+  const { data: semesters, isLoading: isLoadingSemesters } = useSemesters();
+  const { selectedSemesterId, setSelectedSemesterId } = useSemesterStore();
+
+  useEffect(() => {
+    if (!selectedSemesterId && activeSemesterData?.id) {
+      setSelectedSemesterId(activeSemesterData.id);
+    }
+  }, [activeSemesterData, selectedSemesterId, setSelectedSemesterId]);
+
+  const activeSemester = activeSemesterData;
   const currentPhase = activeSemester?.calculated_phase;
 
   let sections = getMenuSections(user?.role || 'STUDENT', currentPhase);
@@ -515,7 +526,35 @@ const AppLayout = () => {
       <div className={`flex flex-col flex-1 min-h-screen ${isResizing ? '' : 'transition-all duration-200'}`} style={{ marginLeft: SIDEBAR_W }}>
         {/* Header */}
         <header className="bg-white border-b border-gray-100 px-6 h-14 flex items-center justify-between flex-shrink-0 sticky top-0 z-40">
-          <div /> {/* spacer */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 font-medium hidden md:inline">Học kỳ:</span>
+            <Select
+              size="middle"
+              placeholder="Chọn học kỳ"
+              className="w-48 md:w-56"
+              style={{ borderRadius: 8 }}
+              value={selectedSemesterId || undefined}
+              onChange={(val) => {
+                setSelectedSemesterId(val);
+                queryClient.invalidateQueries();
+              }}
+              loading={isLoadingActive || isLoadingSemesters}
+              allowClear={false}
+            >
+              {semesters?.map((s) => (
+                <Select.Option key={s.id} value={s.id}>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="truncate">{s.name}</span>
+                    {s.id === activeSemesterData?.id && (
+                      <Tag color="success" className="m-0 text-[9px] px-1 py-0 border-none font-bold scale-95">
+                        ACTIVE
+                      </Tag>
+                    )}
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
           <div className="flex items-center gap-3">
             <Dropdown menu={languageMenu} placement="bottomRight">
               <Button type="text" size="small" icon={<GlobalOutlined />} className="text-gray-500" />

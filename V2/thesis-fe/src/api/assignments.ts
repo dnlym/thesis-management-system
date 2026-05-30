@@ -6,6 +6,7 @@ export interface AssignmentFilters {
     assignmentType?: AssignmentType;
     teacherId?: string;
     status?: string;
+    semesterId?: string;
 }
 
 export const AssignmentsApi = {
@@ -69,8 +70,10 @@ export const AssignmentsApi = {
      * Get topics eligible for reviewer assignment
      * GET /assignments/topics-for-reviewer
      */
-    async getTopicsForReviewerAssignment() {
-        const res = await api.get<ApiResponse<any[]>>('/assignments/topics-for-reviewer');
+    async getTopicsForReviewerAssignment(semesterId?: string) {
+        const res = await api.get<ApiResponse<any[]>>('/assignments/topics-for-reviewer', {
+            params: { semesterId }
+        });
         return res.data.data;
     },
 
@@ -78,8 +81,10 @@ export const AssignmentsApi = {
      * Get topics eligible for committee assignment
      * GET /assignments/topics-for-committee
      */
-    async getTopicsForCommitteeAssignment() {
-        const res = await api.get<ApiResponse<{ topics: any[], deptDefenseDate: string | null }>>('/assignments/topics-for-committee');
+    async getTopicsForCommitteeAssignment(semesterId?: string) {
+        const res = await api.get<ApiResponse<{ topics: any[], deptDefenseDate: string | null }>>('/assignments/topics-for-committee', {
+            params: { semesterId }
+        });
         return res.data.data;
     },
 

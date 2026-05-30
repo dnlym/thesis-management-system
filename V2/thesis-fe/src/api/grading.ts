@@ -75,14 +75,16 @@ export const GradingApi = {
      * Get grade summary for all topics categorized for HOD dashboard
      * GET /grading/grade-summary
      */
-    async getGradeSummary() {
+    async getGradeSummary(semesterId?: string) {
         const res = await api.get<ApiResponse<{
             allTopics: any[];
             missingSupervisor: any[];
             missingReviewer: any[];
             ready: any[];
             finalized: any[];
-        }>>('/grading/grade-summary');
+        }>>('/grading/grade-summary', {
+            params: { semesterId }
+        });
         return res.data.data;
     },
 

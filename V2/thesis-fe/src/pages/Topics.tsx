@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Table, Button, Tag, Space, Modal, Input, Select, Row, Col, Spin, Avatar, Popconfirm, Tooltip, Badge, Empty, Flex, Tabs } from 'antd';
 import { notify } from '@/utils/notification';
@@ -10,6 +10,7 @@ import { useTopics, useTopicStats, useApproveTopic, useHideTopic, useUnhideTopic
 import { useRegisterTopic } from '@/hooks/useRegistrations';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useSemesters, useActiveSemester } from '@/hooks/useSemesters';
+import { useSemesterStore } from '@/store/semester';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks/useDebounce';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -41,13 +42,15 @@ const Topics = () => {
   const { data: semesters } = useSemesters();
   const { data: activeSemesterData, isLoading: isLoadingActive } = useActiveSemester();
 
+  const { selectedSemesterId } = useSemesterStore();
+
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
 
   const [filters, setFilters] = useState<any>({
     page: 1,
     size: 10,
-    semesterId: undefined,
+    semesterId: selectedSemesterId || undefined,
     status: undefined,
     search: undefined,
     personalOnly: undefined,
@@ -58,13 +61,10 @@ const Topics = () => {
   const [selectedTopic, setSelectedTopic] = useState<any>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  // Sync active semester once on load
-  const [hasInit, setHasInit] = useState(false);
-  if (!hasInit && activeSemesterData?.id) {
-    const savedSemesterId = localStorage.getItem('sys_selected_semester_id') || activeSemesterData.id;
-    setFilters((prev: any) => ({ ...prev, semesterId: savedSemesterId }));
-    setHasInit(true);
-  }
+  // Sync selected semester from store to filters
+  useEffect(() => {
+    setFilters((prev: any) => ({ ...prev, semesterId: selectedSemesterId || undefined, page: 1 }));
+  }, [selectedSemesterId]);
 
   // Handle debounced search sync
   const [prevDebouncedSearch, setPrevDebouncedSearch] = useState('');
@@ -94,11 +94,6 @@ const Topics = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
-  };
-
-  const handleSemesterChange = (value: string) => {
-    localStorage.setItem('sys_selected_semester_id', value);
-    setFilters((prev: any) => ({ ...prev, semesterId: value, page: 1 }));
   };
 
   const handleTabChange = (key: string) => {
@@ -573,26 +568,6 @@ const Topics = () => {
             />
 
             <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
-              <Select
-                size="large"
-                placeholder="Chọn học kỳ"
-                className="w-full md:w-64 flex items-center"
-                style={{ height: 40, borderRadius: 12 }}
-                value={filters.semesterId}
-                onChange={handleSemesterChange}
-                loading={isLoadingActive}
-                allowClear={false}
-              >
-                {semesters?.map(s => (
-                  <Option key={s.id} value={s.id}>
-                    <Space>
-                      {s.id === activeSemesterData?.id && <Badge color="green" />}
-                      {s.name}
-                      {s.id === activeSemesterData?.id && <span className="text-xs text-green-600 font-medium">(ACTIVE)</span>}
-                    </Space>
-                  </Option>
-                ))}
-              </Select>
 
               <Input
                 size="large"

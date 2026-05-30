@@ -9,6 +9,7 @@ import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 
 const { Title, Text } = Typography;
 
@@ -145,14 +146,16 @@ const FinalResults = () => {
     }, [debouncedSearch, councilFilter]);
 
     const { data: activeSemester, isLoading: isSemesterLoading } = useActiveSemester();
+    const { selectedSemesterId } = useSemesterStore();
+    const effectiveSemesterId = selectedSemesterId || activeSemester?.id;
 
     const { data: results, isLoading: isTopicsLoading } = useQuery({
-        queryKey: ['final-results', activeSemester?.id],
+        queryKey: ['final-results', effectiveSemesterId],
         queryFn: () => TopicsApi.getAll({ 
-            semesterId: activeSemester?.id,
+            semesterId: effectiveSemesterId,
             size: 1000 
         }),
-        enabled: !!activeSemester?.id,
+        enabled: !!effectiveSemesterId,
     });
 
     const processedData = useMemo(() => {

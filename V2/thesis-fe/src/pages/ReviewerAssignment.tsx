@@ -15,6 +15,7 @@ import HighlightText from '@/components/HighlightText';
 import { matchKeyword } from '@/utils/search';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 
 interface TopicForReviewer {
     id: string;
@@ -72,10 +73,12 @@ const ReviewerAssignment = () => {
     const [selections, setSelections] = useState<Record<string, ReviewerSelection>>({});
     const [submittingGroupId, setSubmittingGroupId] = useState<string | null>(null);
 
+    const { selectedSemesterId } = useSemesterStore();
+
     // Fetch topics eligible for reviewer assignment
     const { data: topics, isLoading, isError } = useQuery<TopicForReviewer[]>({
-        queryKey: ['topics-for-reviewer'],
-        queryFn: () => AssignmentsApi.getTopicsForReviewerAssignment(),
+        queryKey: ['topics-for-reviewer', selectedSemesterId],
+        queryFn: () => AssignmentsApi.getTopicsForReviewerAssignment(selectedSemesterId || undefined),
     });
 
     const { data: activeSemester } = useActiveSemester();

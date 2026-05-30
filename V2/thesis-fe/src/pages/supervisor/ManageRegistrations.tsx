@@ -8,6 +8,7 @@ import {
     useRejectRegistration
 } from '@/hooks/useRegistrations';
 import { useActiveSemester } from '@/hooks/useSemesters';
+import { useSemesterStore } from '@/store/semester';
 import { useAuthStore } from '@/store/auth';
 import type { Registration } from '@/types';
 
@@ -26,12 +27,10 @@ const SupervisorManageRegistrations = () => {
     // Get all registrations for supervisor's topics (no status filter)
     const { data: registrations, isLoading } = useRegistrations();
     const { data: activeSemesterData } = useActiveSemester();
+    const { selectedSemesterId: storeSemesterId } = useSemesterStore();
+    const selectedSemesterId = storeSemesterId || activeSemesterData?.id;
     const confirmMutation = useConfirmRegistration();
     const rejectMutation = useRejectRegistration();
-
-    // Determine active semester filter from localStorage or fallback to active semester
-    const activeSemId = activeSemesterData?.id;
-    const selectedSemesterId = localStorage.getItem('sys_selected_semester_id') || activeSemId;
 
     // 1. Filter registrations by selected semester first
     const registrationsInSemester = registrations?.filter((reg: any) => {

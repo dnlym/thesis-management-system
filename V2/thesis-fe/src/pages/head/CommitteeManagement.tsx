@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { CommitteeApi, Committee } from '@/api/committee';
 import { UsersApi } from '@/api/users';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 import { useAuthStore } from '@/store/auth';
 
 const { Title, Text } = Typography;
@@ -19,7 +20,8 @@ const CommitteeManagement = () => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
     const { data: activeSemester } = useActiveSemester();
-    const semesterId = activeSemester?.id;
+    const { selectedSemesterId } = useSemesterStore();
+    const semesterId = selectedSemesterId || activeSemester?.id;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCommittee, setEditingCommittee] = useState<Committee | null>(null);

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import assignmentService from '../services/assignment.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { SemesterResolver } from '../utils/semester-resolver';
 
 export class AssignmentController {
     async createReviewerAssignment(req: AuthRequest, res: Response) {
@@ -93,6 +94,7 @@ export class AssignmentController {
                 topicId: req.query.topicId as string,
                 assignmentType: req.query.assignmentType as any,
                 status: req.query.status as any,
+                semesterId: req.query.semesterId as string,
             };
             const assignments = await assignmentService.getAssignments(userId, filters);
             res.json({
@@ -132,7 +134,11 @@ export class AssignmentController {
     async getTopicsForReviewerAssignment(req: AuthRequest, res: Response) {
         try {
             const userId = req.user!.id;
-            const topics = await assignmentService.getTopicsForReviewerAssignment(userId);
+            const semesterId = await SemesterResolver.resolve(
+                req.query.semesterId as string | undefined,
+                { required: true }
+            );
+            const topics = await assignmentService.getTopicsForReviewerAssignment(userId, semesterId!);
             res.json({
                 success: true,
                 data: topics,
@@ -151,7 +157,11 @@ export class AssignmentController {
     async getTopicsForCommitteeAssignment(req: AuthRequest, res: Response) {
         try {
             const userId = req.user!.id;
-            const topics = await assignmentService.getTopicsForCommitteeAssignment(userId);
+            const semesterId = await SemesterResolver.resolve(
+                req.query.semesterId as string | undefined,
+                { required: true }
+            );
+            const topics = await assignmentService.getTopicsForCommitteeAssignment(userId, semesterId!);
             res.json({
                 success: true,
                 data: topics,

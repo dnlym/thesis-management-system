@@ -603,6 +603,7 @@ export class AssignmentService {
     topicId?: string;
     assignmentType?: AssignmentType;
     status?: AssignmentStatus;
+    semesterId?: string;
   }) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -619,10 +620,9 @@ export class AssignmentService {
       current_students: { gt: 0 }
     };
     
-    if (!filters?.topicId) {
-      if (activeSem) {
-        where.topic.semester_id = activeSem.id;
-      }
+    const semId = filters?.semesterId || activeSem?.id;
+    if (!filters?.topicId && semId) {
+      where.topic.semester_id = semId;
     }
 
     // Apply filters
@@ -822,17 +822,20 @@ export class AssignmentService {
    * Topics must have at least one registration with midterm_status = PASS
    * and not yet fully assigned (< 2 reviewers)
    */
-  async getTopicsForReviewerAssignment(userId: string) {
+  async getTopicsForReviewerAssignment(userId: string, inputSemesterId?: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
+    const semesterId = inputSemesterId || (await (await import('./semester.service')).default.getActiveSemester())?.id;
+    if (!semesterId) throw new Error('Không tìm thấy học kỳ');
+
     const topics = await prisma.topic.findMany({
       where: {
         ...(user.role !== UserRole.ADMIN && { departmentId: user.departmentId }),
         // --- SEMESTER ISOLATION ---
-        semester_id: (await (await import('./semester.service')).default.getActiveSemester())?.id,
+        semester_id: semesterId,
         current_students: { gt: 0 },
         // Only topics with PASS midterm registrations
         registrations: {
@@ -900,14 +903,14 @@ export class AssignmentService {
    * Get topics eligible for committee assignment (HEAD only)
    * Topics must have completed reviewer grading
    */
-  async getTopicsForCommitteeAssignment(userId: string): Promise<TopicForCommitteeAssignment[]> {
+  async getTopicsForCommitteeAssignment(userId: string, inputSemesterId?: string): Promise<TopicForCommitteeAssignment[]> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || (user.role !== UserRole.HEAD && user.role !== UserRole.COORDINATOR && user.role !== UserRole.ADMIN)) {
       throw new Error(ERROR_CODES.FORBIDDEN);
     }
 
-    const semesterId = (await (await import('./semester.service')).default.getActiveSemester())?.id;
-    if (!semesterId) throw new Error('Không tìm thấy học kỳ đang hoạt động');
+    const semesterId = inputSemesterId || (await (await import('./semester.service')).default.getActiveSemester())?.id;
+    if (!semesterId) throw new Error('Không tìm thấy học kỳ');
 
     const [deptConfig, topics] = await Promise.all([
       (user.role === UserRole.HEAD || user.role === UserRole.COORDINATOR) ? prisma.departmentSemesterConfig.findUnique({

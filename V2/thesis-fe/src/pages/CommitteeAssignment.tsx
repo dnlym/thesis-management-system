@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { AssignmentsApi } from '@/api/assignments';
 import { CommitteeApi } from '@/api/committee';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 import dayjs from 'dayjs';
 
 interface TopicForCommittee {
@@ -38,7 +39,8 @@ const CommitteeAssignment = () => {
     const queryClient = useQueryClient();
     const [pageSize, setPageSize] = useState(10);
     const { data: activeSemester } = useActiveSemester();
-    const semesterId = activeSemester?.id;
+    const { selectedSemesterId } = useSemesterStore();
+    const semesterId = selectedSemesterId || activeSemester?.id;
 
     // Modal state
     const [selectedTopic, setSelectedTopic] = useState<TopicForCommittee | null>(null);
@@ -49,7 +51,7 @@ const CommitteeAssignment = () => {
     // Fetch topics eligible for committee assignment
     const { data: response, isLoading, isError } = useQuery<{ topics: TopicForCommittee[], deptDefenseDate: string | null }>({
         queryKey: ['topics-for-committee', semesterId],
-        queryFn: () => AssignmentsApi.getTopicsForCommitteeAssignment(),
+        queryFn: () => AssignmentsApi.getTopicsForCommitteeAssignment(semesterId || undefined),
         enabled: !!semesterId,
     });
 

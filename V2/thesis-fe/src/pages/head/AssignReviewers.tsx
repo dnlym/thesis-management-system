@@ -7,6 +7,7 @@ import { UsersApi } from '@/api/users';
 import { AssignmentsApi } from '@/api/assignments';
 import { useAuthStore } from '@/store/auth';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -20,13 +21,14 @@ const HeadAssignReviewers = () => {
 
     const { user } = useAuthStore();
     const { data: activeSemester } = useActiveSemester();
-    const semesterId = activeSemester?.id;
+    const { selectedSemesterId } = useSemesterStore();
+    const semesterId = selectedSemesterId || activeSemester?.id;
     const queryClient = useQueryClient();
 
     // Fetch topics waiting for/assigned to reviewer
     const { data: topicsData, isLoading: topicsLoading } = useQuery({
         queryKey: ['topics-assignment', semesterId],
-        queryFn: () => AssignmentsApi.getTopicsForReviewerAssignment(),
+        queryFn: () => AssignmentsApi.getTopicsForReviewerAssignment(semesterId || undefined),
         enabled: !!semesterId,
     });
     const topics = topicsData || [];

@@ -5,13 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CommitteeApi, MasterSchedule } from '@/api/committee';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
+import { useSemesterStore } from '@/store/semester';
 import dayjs from 'dayjs';
 
 const CommitteeSchedules = () => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
     const { data: activeSemester } = useActiveSemester();
-    const semesterId = activeSemester?.id;
+    const { selectedSemesterId } = useSemesterStore();
+    const semesterId = selectedSemesterId || activeSemester?.id;
 
     // Fetch master schedules
     const { data: masterSchedules, isLoading } = useQuery({

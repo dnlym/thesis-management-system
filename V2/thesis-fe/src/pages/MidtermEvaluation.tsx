@@ -3,6 +3,7 @@ import { Card, Table, Button, Tag, Modal, Input, Space, Avatar, Spin, Alert, Too
 import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ExclamationCircleOutlined, AuditOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
 import { useMidtermRegistrations, useUpdateMidtermStatus } from '@/hooks/useGrading';
 import { useActiveSemester } from '@/hooks/useSemesters';
+import { useSemesterStore } from '@/store/semester';
 import { useAuthStore } from '@/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -25,10 +26,8 @@ const MidtermEvaluation = () => {
         isError 
     } = useMidtermRegistrations();
     const { data: activeSemesterData } = useActiveSemester();
-
-    // Determine active semester filter from localStorage or fallback to active semester
-    const activeSemId = activeSemesterData?.id;
-    const selectedSemesterId = localStorage.getItem('sys_selected_semester_id') || activeSemId;
+    const { selectedSemesterId: storeSemesterId } = useSemesterStore();
+    const selectedSemesterId = storeSemesterId || activeSemesterData?.id;
 
     // Filter registrations by selected semester first
     const registrationsInSemester = useMemo(() => {
