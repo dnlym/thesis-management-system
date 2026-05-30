@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, Card, Tag, Input, Typography, Button, Radio, Avatar, Dropdown, Tabs } from 'antd';
 import { SearchOutlined, UserOutlined, FileTextOutlined, DownOutlined, FileExcelOutlined, FileOutlined } from '@ant-design/icons';
@@ -136,6 +136,13 @@ const FinalResults = () => {
     const [searchText, setSearchText] = useState('');
     const debouncedSearch = useDebounce(searchText, 300);
     const [councilFilter, setCouncilFilter] = useState<'ALL' | 'ORAL' | 'POSTER'>('ALL');
+    const [pageSize, setPageSize] = useState(10);
+    const [current, setCurrent] = useState(1);
+
+    // Reset page to 1 when filters change
+    useEffect(() => {
+        setCurrent(1);
+    }, [debouncedSearch, councilFilter]);
 
     const { data: activeSemester, isLoading: isSemesterLoading } = useActiveSemester();
 
@@ -496,7 +503,12 @@ const FinalResults = () => {
                         loading={isTopicsLoading || isSemesterLoading}
                         size="middle"
                         pagination={{
-                            pageSize: 10,
+                            current: current,
+                            pageSize: pageSize,
+                            onChange: (page, size) => {
+                                setCurrent(page);
+                                setPageSize(size);
+                            },
                             className: 'px-6 py-4 !m-0 border-t border-slate-100',
                             showSizeChanger: true,
                             showQuickJumper: true,
