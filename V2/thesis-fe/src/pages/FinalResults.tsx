@@ -13,10 +13,10 @@ import { useSemesterStore } from '@/store/semester';
 
 const { Title, Text } = Typography;
 
-/** Hiển thị điểm: null/undefined → '—', 0 → '0.0', n → 'n.x' */
+/** Hiển thị điểm: null/undefined → '—', hiển thị tối đa 2 chữ số thập phân không làm tròn */
 const formatScore = (val: number | null | undefined): string => {
     if (val === null || val === undefined) return '—';
-    return val.toFixed(1);
+    return Number(val.toFixed(2)).toString();
 };
 
 /** Quy đổi điểm thành xếp loại chữ theo bảng quy đổi chuẩn */
@@ -333,7 +333,7 @@ const FinalResults = () => {
                         const isFailedGK = s.midtermStatus === 'FAIL' || s.registrationStatus === 'FAILED' || s.midterm_status === 'FAIL' || s.status === 'FAILED';
                         return (
                             <div key={s.id} className="h-7 flex items-center justify-center text-amber-600 text-xs font-bold">
-                                {isFailedGK ? '—' : (s.finalScore?.extra_points !== null && s.finalScore?.extra_points !== undefined && s.finalScore.extra_points > 0) ? `+${s.finalScore.extra_points.toFixed(1)}` : '—'}
+                                {isFailedGK ? '—' : (s.finalScore?.extra_points !== null && s.finalScore?.extra_points !== undefined && s.finalScore.extra_points > 0) ? `+${formatScore(s.finalScore.extra_points)}` : '—'}
                             </div>
                         );
                     })}
@@ -478,9 +478,9 @@ const FinalResults = () => {
                             onChange={(key) => setCouncilFilter(key as any)}
                             className="sys-tabs sys-tabs-capsule !mb-0 w-full md:w-auto"
                             items={[
-                                { key: 'ALL', label: 'Tất cả' },
-                                { key: 'ORAL', label: 'Hội đồng Oral' },
-                                { key: 'POSTER', label: 'Hội đồng Poster' },
+                                { key: 'ALL', label: `Tất cả ${counts.ALL}` },
+                                { key: 'ORAL', label: `Hội đồng Oral ${counts.ORAL}` },
+                                { key: 'POSTER', label: `Hội đồng Poster ${counts.POSTER}` },
                             ]}
                         />
 
