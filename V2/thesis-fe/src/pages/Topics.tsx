@@ -154,7 +154,7 @@ const Topics = () => {
       const baseOptions = [
         { value: 'ALL', label: 'Tất cả' },
         { value: 'PERSONAL', label: 'Cá nhân' },
-        ...STATUS_OPTIONS.filter(opt => opt.value !== 'ALL'),
+        { value: 'DRAFT', label: 'Bản nháp' },
       ];
 
       return baseOptions.map(opt => {
@@ -166,7 +166,7 @@ const Topics = () => {
           key: opt.value,
           label: (
             <div className="flex items-center gap-2 whitespace-nowrap">
-              <span>{opt.label === 'Tất cả trạng thái' ? 'Tất cả' : opt.label}</span>
+              <span>{opt.label}</span>
               {isActive && (
                 <Tag className="m-0 rounded-full bg-slate-100 text-slate-600 border-none font-bold px-2">
                   {topics?.pagination?.total || 0}

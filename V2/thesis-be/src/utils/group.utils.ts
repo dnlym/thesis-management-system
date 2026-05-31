@@ -5,22 +5,54 @@ import prisma from '../config/database';
  * Adheres to Engineering Standards: No Type Casting, Scalability, Data Integrity
  */
 export class GroupUtils {
-  /**
-   * Generates a group code in the format: G[STT]-[Mã Đề Tài]
-   * Example: G1-IS14, G2-IS14
-   * 
-   * @param topicId The ID of the topic
-   * @param topicCode The human-readable code of the topic (e.g., IS14)
-   * @returns A Promise that resolves to the generated group code string
-   */
-  static async generateGroupCode(topicId: string, topicCode: string): Promise<string> {
-    // Count existing groups for this topic to determine STT
-    const groupCount = await prisma.group.count({
-      where: { topic_id: topicId }
+  static async generateGroupCode(topicId: string, topicCode?: string): Promise<string> {
+    // 1. Fetch topic with department and semester
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId },
+      include: {
+        department: true,
+        semester: true,
+      }
     });
 
-    const stt = groupCount + 1;
-    return `G${stt}-${topicCode}`;
+    if (!topic) {
+      throw new Error('Topic not found');
+    }
+
+    const deptCode = topic.department?.code || 'XX';
+    const semCode = topic.semester?.code || '';
+
+    // 2. Parse Year and Semester number from semester code (e.g., HK2_2025_2026)
+    let semNumber = '1';
+    let yearShort = String(new Date().getFullYear()).slice(-2); // Fallback
+
+    const semMatch = semCode.match(/HK(\d+)/i);
+    if (semMatch) {
+      semNumber = semMatch[1];
+    }
+
+    const yearMatch = semCode.match(/_(\d{4})_/);
+    if (yearMatch) {
+      yearShort = yearMatch[1].slice(-2);
+    } else {
+      const anyYearMatch = semCode.match(/\d{4}/);
+      if (anyYearMatch) {
+        yearShort = anyYearMatch[0].slice(-2);
+      }
+    }
+
+    // 3. Count existing groups in this department and semester
+    const groupCount = await prisma.group.count({
+      where: {
+        semester_id: topic.semester_id,
+        topic: {
+          departmentId: topic.departmentId,
+        }
+      }
+    });
+
+    const nextIndex = groupCount + 1;
+    return `${deptCode}.${yearShort}${semNumber}.${nextIndex}`;
   }
 
   /**

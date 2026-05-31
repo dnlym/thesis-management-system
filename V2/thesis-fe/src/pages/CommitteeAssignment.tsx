@@ -184,16 +184,45 @@ const CommitteeAssignment = () => {
                 if (record.currentSchedule) {
                     const startTime = record.currentSchedule.start_time ? dayjs(record.currentSchedule.start_time).format('HH:mm') : '';
                     const endTime = record.currentSchedule.end_time ? dayjs(record.currentSchedule.end_time).format('HH:mm') : '';
+                    const assignedCommittee = committees?.find(c => c.id === record.currentSchedule.committee_id);
 
                     return (
-                        <div className="flex flex-col gap-1">
-                            <Tag color="cyan" className="m-0 flex items-center gap-1 w-fit border-none font-semibold bg-cyan-50 text-cyan-700">
-                                <TeamOutlined /> {record.currentSchedule.committee_name || t('common.unknown', 'Không rõ')}
-                            </Tag>
-                            <div className="text-[10px] text-slate-500 font-medium">
-                                <CalendarOutlined className="mr-1" />
-                                {dayjs(record.currentSchedule.defense_date).format('DD/MM/YYYY')}
-                                <span className="mx-1 text-slate-300">|</span>
+                        <div className="flex flex-col gap-1.5 py-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <Tag color="cyan" className="m-0 flex items-center gap-1 w-fit border-none font-semibold bg-cyan-50 text-cyan-700">
+                                    <TeamOutlined /> {record.currentSchedule.committee_name || t('common.unknown', 'Không rõ')}
+                                </Tag>
+                                {record.currentSchedule.room && (
+                                    <Tag className="m-0 text-[10px] bg-slate-100 border-none text-slate-500 font-mono">
+                                        P. {record.currentSchedule.room}
+                                    </Tag>
+                                )}
+                            </div>
+
+                            {/* Committee Members list */}
+                            {assignedCommittee && assignedCommittee.members && assignedCommittee.members.length > 0 && (
+                                <div className="bg-slate-50/80 p-2 rounded-lg border border-slate-100/80 text-[11px] space-y-1 max-w-[240px] shadow-sm">
+                                    {assignedCommittee.members.map((m: any) => {
+                                        let rolePrefix = 'TV:';
+                                        let roleColor = 'text-slate-400';
+                                        if (m.role === 'CHAIR') { rolePrefix = 'CT:'; roleColor = 'text-red-500 font-bold'; }
+                                        else if (m.role === 'SECRETARY') { rolePrefix = 'TK:'; roleColor = 'text-green-600 font-bold'; }
+                                        return (
+                                            <div key={m.lecturerId} className="flex items-center gap-1 truncate">
+                                                <span className={`${roleColor} text-[10px] scale-90 origin-left`}>{rolePrefix}</span>
+                                                <span className="text-slate-600 font-medium truncate">{m.fullName}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 flex-wrap">
+                                <span>
+                                    <CalendarOutlined className="mr-1" />
+                                    {dayjs(record.currentSchedule.defense_date).format('DD/MM/YYYY')}
+                                </span>
+                                <span className="text-slate-300">|</span>
                                 <span className="text-blue-600 font-mono">
                                     {startTime}{endTime ? ` - ${endTime}` : ''}
                                 </span>
@@ -307,10 +336,7 @@ const CommitteeAssignment = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-5 px-1">
-                                {/* Committee Select */}
+                                                         {/* Committee Select */}
                                 <div>
                                     <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
                                         <TeamOutlined className="text-blue-500" />
@@ -323,20 +349,72 @@ const CommitteeAssignment = () => {
                                         value={committeeId}
                                         onChange={setCommitteeId}
                                         className="sys-select"
-                                        options={committees?.map(c => ({
-                                            value: c.id,
-                                            label: (
-                                                <div className="flex justify-between items-center w-full pr-2">
-                                                    <span className="font-semibold text-slate-700">{c.name}</span>
-                                                    {c.room_preference && (
-                                                        <Tag className="text-[10px] m-0 bg-slate-100 border-none text-slate-400">
-                                                            <EnvironmentOutlined /> {c.room_preference}
+                                        optionLabelProp="label"
+                                        dropdownStyle={{ padding: 4 }}
+                                    >
+                                        {committees?.map((c) => {
+                                            const chair = c.members?.find(m => m.role === 'CHAIR')?.fullName;
+                                            const secretary = c.members?.find(m => m.role === 'SECRETARY')?.fullName;
+                                            const membersList = c.members?.filter(m => m.role === 'MEMBER').map(m => m.fullName).join(', ');
+                                            const memberText = [
+                                                chair ? `CT: ${chair}` : null,
+                                                secretary ? `TK: ${secretary}` : null,
+                                                membersList ? `TV: ${membersList}` : null
+                                            ].filter(Boolean).join(' | ');
+
+                                            return (
+                                                <Select.Option key={c.id} value={c.id} label={c.name}>
+                                                    <div className="flex flex-col py-1.5 w-full border-b border-slate-50 last:border-none">
+                                                        <div className="flex justify-between items-center w-full">
+                                                            <span className="font-bold text-slate-800">{c.name}</span>
+                                                            {c.room_preference && (
+                                                                <Tag className="text-[10px] m-0 bg-blue-50 border-none text-blue-600 font-medium">
+                                                                    <EnvironmentOutlined /> {c.room_preference}
+                                                                </Tag>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[11px] text-slate-400 mt-1 truncate">
+                                                            {memberText || 'Chưa cấu hình thành viên'}
+                                                        </span>
+                                                    </div>
+                                                </Select.Option>
+                                            );
+                                        })}
+                                    </Select>
+
+                                    {/* Selected Committee Details & Members */}
+                                    {committeeId && (() => {
+                                        const selectedComm = committees?.find(c => c.id === committeeId);
+                                        if (!selectedComm) return null;
+                                        return (
+                                            <div className="mt-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60 shadow-sm">
+                                                <div className="text-[11px] font-bold text-slate-400 mb-2.5 uppercase tracking-wider flex justify-between items-center">
+                                                    <span>Thành viên hội đồng</span>
+                                                    {selectedComm.room_preference && (
+                                                        <Tag color="blue" className="m-0 border-none font-bold scale-90">
+                                                            Phòng: {selectedComm.room_preference}
                                                         </Tag>
                                                     )}
                                                 </div>
-                                            )
-                                        }))}
-                                    />
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                                    {selectedComm.members?.map((m: any) => {
+                                                        let roleName = 'Thành viên';
+                                                        let roleColor = 'default';
+                                                        if (m.role === 'CHAIR') { roleName = 'Chủ tịch'; roleColor = 'red'; }
+                                                        else if (m.role === 'SECRETARY') { roleName = 'Thư ký'; roleColor = 'green'; }
+                                                        return (
+                                                            <div key={m.lecturerId} className="flex flex-col bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm">
+                                                                <span className="text-[12px] font-bold text-slate-700 truncate">{m.fullName}</span>
+                                                                <div className="mt-1">
+                                                                    <Tag color={roleColor} className="m-0 text-[9px] px-1.5 py-0.5 border-none uppercase font-extrabold">{roleName}</Tag>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Date & Time Row */}
