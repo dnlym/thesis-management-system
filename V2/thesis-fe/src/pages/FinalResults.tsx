@@ -163,12 +163,8 @@ const FinalResults = () => {
         let filtered = results.topics.filter((item: any) => item.current_students > 0);
         if (councilFilter !== 'ALL') {
             filtered = filtered.filter((item: any) => {
-                // Nếu chưa được xét duyệt bảo vệ (chưa phân loại chính thức) thì không cho vào tab ORAL/POSTER
-                if (item.is_eligible_for_defense !== true && !item.committee) return false;
-                
-                // Ưu tiên lấy type từ Hội đồng thực tế, nếu không có mới dùng defense_type của đề tài
-                const effectiveType = item.committee?.type || item.defense_type;
-                return effectiveType === councilFilter;
+                // Đề tài phải thực sự được phân vào hội đồng tương ứng
+                return item.committee?.type === councilFilter;
             });
         }
         if (debouncedSearch) {
@@ -197,8 +193,8 @@ const FinalResults = () => {
         const validTopics = results.topics.filter((item: any) => item.current_students > 0);
         return {
             ALL: validTopics.length,
-            ORAL: validTopics.filter((item: any) => (item.is_eligible_for_defense === true || item.committee) && (item.committee?.type || item.defense_type) === 'ORAL').length,
-            POSTER: validTopics.filter((item: any) => (item.is_eligible_for_defense === true || item.committee) && (item.committee?.type || item.defense_type) === 'POSTER').length,
+            ORAL: validTopics.filter((item: any) => item.committee?.type === 'ORAL').length,
+            POSTER: validTopics.filter((item: any) => item.committee?.type === 'POSTER').length,
         };
     }, [results]);
 
@@ -482,9 +478,9 @@ const FinalResults = () => {
                             onChange={(key) => setCouncilFilter(key as any)}
                             className="sys-tabs sys-tabs-capsule !mb-0 w-full md:w-auto"
                             items={[
-                                { key: 'ALL', label: `Tất cả (${counts.ALL})` },
-                                { key: 'ORAL', label: `Hội đồng Oral (${counts.ORAL})` },
-                                { key: 'POSTER', label: `Hội đồng Poster (${counts.POSTER})` },
+                                { key: 'ALL', label: 'Tất cả' },
+                                { key: 'ORAL', label: 'Hội đồng Oral' },
+                                { key: 'POSTER', label: 'Hội đồng Poster' },
                             ]}
                         />
 

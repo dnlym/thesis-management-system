@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, Table, Button, Tag, Modal, Select, Space, Avatar, Empty, Spin, Alert, DatePicker, Divider, TimePicker, Input } from 'antd';
 import { notify } from '@/utils/notification';
 import { UserOutlined, TeamOutlined, CrownOutlined, EnvironmentOutlined, CalendarOutlined, AlertOutlined } from '@ant-design/icons';
@@ -64,6 +64,41 @@ const CommitteeAssignment = () => {
         queryFn: () => CommitteeApi.getCommittees(semesterId!),
         enabled: !!semesterId,
     });
+
+    const sortedTopics = useMemo(() => {
+        if (!topics) return [];
+        const items = [...topics];
+
+        const getCommitteeType = (t: TopicForCommittee) => {
+            if (!t.currentSchedule?.committee_id) return null;
+            const committee = committees?.find(c => c.id === t.currentSchedule.committee_id);
+            return committee?.type || null;
+        };
+
+        items.sort((a, b) => {
+            const typeA = getCommitteeType(a);
+            const typeB = getCommitteeType(b);
+
+            if (typeA === 'ORAL' && typeB !== 'ORAL') return -1;
+            if (typeB === 'ORAL' && typeA !== 'ORAL') return 1;
+
+            if (typeA === 'POSTER' && typeB !== 'POSTER') return -1;
+            if (typeB === 'POSTER' && typeA !== 'POSTER') return 1;
+
+            if (typeA && typeB) {
+                const timeA = a.currentSchedule?.start_time ? dayjs(a.currentSchedule.start_time).valueOf() : null;
+                const timeB = b.currentSchedule?.start_time ? dayjs(b.currentSchedule.start_time).valueOf() : null;
+
+                if (timeA !== null && timeB !== null) return timeA - timeB;
+                if (timeA !== null && timeB === null) return -1;
+                if (timeB !== null && timeA === null) return 1;
+            }
+
+            return a.code.localeCompare(b.code);
+        });
+
+        return items;
+    }, [topics, committees]);
 
     // Assign committee mutation
     const assignMutation = useMutation({
@@ -287,7 +322,7 @@ const CommitteeAssignment = () => {
 
                 <Card className="page-card-flush">
                     <Table
-                        dataSource={topics || []}
+                        dataSource={sortedTopics}
                         columns={columns}
                         rowKey="id"
                         size="middle"
