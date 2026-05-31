@@ -478,9 +478,51 @@ const FinalResults = () => {
                             onChange={(key) => setCouncilFilter(key as any)}
                             className="sys-tabs sys-tabs-capsule !mb-0 w-full md:w-auto"
                             items={[
-                                { key: 'ALL', label: `Tất cả ${counts.ALL}` },
-                                { key: 'ORAL', label: `Hội đồng Oral ${counts.ORAL}` },
-                                { key: 'POSTER', label: `Hội đồng Poster ${counts.POSTER}` },
+                                {
+                                    key: 'ALL',
+                                    label: (
+                                        <span className="flex items-center gap-2">
+                                            <span>Tất cả</span>
+                                            <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full transition-colors ${
+                                                councilFilter === 'ALL'
+                                                    ? 'bg-blue-100/70 text-blue-700'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {counts.ALL}
+                                            </span>
+                                        </span>
+                                    )
+                                },
+                                {
+                                    key: 'ORAL',
+                                    label: (
+                                        <span className="flex items-center gap-2">
+                                            <span>Hội đồng Oral</span>
+                                            <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full transition-colors ${
+                                                councilFilter === 'ORAL'
+                                                    ? 'bg-blue-100/70 text-blue-700'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {counts.ORAL}
+                                            </span>
+                                        </span>
+                                    )
+                                },
+                                {
+                                    key: 'POSTER',
+                                    label: (
+                                        <span className="flex items-center gap-2">
+                                            <span>Hội đồng Poster</span>
+                                            <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full transition-colors ${
+                                                councilFilter === 'POSTER'
+                                                    ? 'bg-blue-100/70 text-blue-700'
+                                                    : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                                {counts.POSTER}
+                                            </span>
+                                        </span>
+                                    )
+                                },
                             ]}
                         />
 

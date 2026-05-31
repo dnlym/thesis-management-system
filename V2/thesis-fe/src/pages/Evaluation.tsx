@@ -634,7 +634,7 @@ const Evaluation = () => {
                       );
 
                       return isFailed ? (
-                        <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                        <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${(s.midtermFeedback || 'Không có ý kiến phản hồi.').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}`}>
                           {cardEl}
                         </Tooltip>
                       ) : cardEl;
@@ -660,7 +660,7 @@ const Evaluation = () => {
                               {getFirstName(s.name)}
                             </Text>
                             {isFailed && (
-                              <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                              <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${(s.midtermFeedback || 'Không có ý kiến phản hồi.').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}`}>
                                 <Tag color="error" className="m-0 text-[8px] scale-90">Rớt giữa kỳ</Tag>
                               </Tooltip>
                             )}
@@ -724,7 +724,7 @@ const Evaluation = () => {
                           );
 
                           return isFailed ? (
-                            <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                            <Tooltip title={`Sinh viên rớt giữa kỳ. Lý do: ${(s.midtermFeedback || 'Không có ý kiến phản hồi.').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}`}>
                               {cellEl}
                             </Tooltip>
                           ) : cellEl;
@@ -904,7 +904,7 @@ const Evaluation = () => {
                   </div>
                 );
                 return isFailed ? (
-                  <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || 'Không có ý kiến phản hồi.'}`}>
+                  <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${(s.midtermFeedback || 'Không có ý kiến phản hồi.').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}`}>
                     {el}
                   </Tooltip>
                 ) : el;

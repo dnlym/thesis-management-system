@@ -263,7 +263,7 @@ const TopicDetailStudent = () => {
                                 <div>
                                     <span className="text-gray-500 text-sm">{t('topics.advisorFeedback')}:</span>
                                     <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                                        {midtermFeedback}
+                                        {midtermFeedback.replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}
                                     </div>
                                 </div>
                             )}

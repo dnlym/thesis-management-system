@@ -303,7 +303,7 @@ const Topics = () => {
                   );
 
                   return isFailed ? (
-                    <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${s.midtermFeedback || s.midterm_feedback || 'Không có ý kiến phản hồi.'}`}>
+                    <Tooltip key={s.id} title={`Sinh viên rớt giữa kỳ. Lý do: ${(s.midtermFeedback || s.midterm_feedback || 'Không có ý kiến phản hồi.').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim() || 'Không có ý kiến phản hồi.'}`}>
                       {tagEl}
                     </Tooltip>
                   ) : tagEl;
