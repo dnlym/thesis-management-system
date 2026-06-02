@@ -94,7 +94,9 @@ const CommitteeAssignment = () => {
                 if (timeB !== null && timeA === null) return 1;
             }
 
-            return a.code.localeCompare(b.code);
+            const groupNameA = a.registrations[0]?.group?.name || '';
+            const groupNameB = b.registrations[0]?.group?.name || '';
+            return groupNameA.localeCompare(groupNameB);
         });
 
         return items;
@@ -158,11 +160,13 @@ const CommitteeAssignment = () => {
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
-            title: t('topics.code'),
-            dataIndex: 'code',
-            key: 'code',
-            width: 100,
-            render: (text: string) => <Tag color="blue">{text || 'N/A'}</Tag>,
+            title: t('topics.group', 'Mã nhóm'),
+            key: 'groupName',
+            width: 120,
+            render: (_: any, record: TopicForCommittee) => {
+                const groupName = record.registrations[0]?.group?.name;
+                return <Tag color="blue">{groupName || 'N/A'}</Tag>;
+            },
         },
         {
             title: t('common.name'),

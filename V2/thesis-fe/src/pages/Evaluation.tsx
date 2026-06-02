@@ -844,47 +844,7 @@ const Evaluation = () => {
               )}
 
 
-              {/* Audit Log / System Decision History */}
-              {(user?.role === 'HEAD' || user?.role === 'ADMIN') && auditLogs && auditLogs.length > 0 && (
-                <div className="mt-12 bg-gray-50 p-8 rounded-2xl border border-gray-200 shadow-sm mb-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <HistoryOutlined className="text-blue-600 text-xl" />
-                    </div>
-                    <div>
-                      <Title level={4} className="m-0 text-gray-800">Nhật ký hệ thống & Quyết định tự động</Title>
-                      <Text type="secondary" className="text-xs">Lịch sử xét duyệt và các tác động từ hệ thống</Text>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {auditLogs.map((log: any, index: number) => (
-                      <div key={log.id || index} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:border-blue-200 transition-all">
-                        <div className="flex justify-between items-start mb-2">
-                          <Space>
-                            <Text strong className="text-blue-700 uppercase text-xs tracking-wider">
-                              {log.action === 'AUTO_EVALUATE_ELIGIBILITY' ? 'QUYẾT ĐỊNH TỰ ĐỘNG' : log.action}
-                            </Text>
-                            {log.user && (
-                              <Text type="secondary" className="text-xs">| Thực hiện bởi: {log.user.full_name}</Text>
-                            )}
-                          </Space>
-                          <Text type="secondary" className="text-xs italic">{dayjs(log.created_at || log.createdAt).format('HH:mm - DD/MM/YYYY')}</Text>
-                        </div>
-                        <Paragraph className="m-0 text-gray-700 font-medium">
-                          {log.description || (log.new_value?.reason ? `Lý do: ${log.new_value.reason}` : 'Hệ thống đã thực hiện đánh giá tự động dựa trên quy chế.')}
-                        </Paragraph>
-                        {log.new_value?.isEligible !== undefined && (
-                          <div className="mt-3">
-                            <Tag color={log.new_value.isEligible ? "success" : "error"} className="rounded-full px-4 border-none py-0.5 font-bold uppercase text-[10px]">
-                              {log.new_value.isEligible ? "ĐẠT ĐIỀU KIỆN BẢO VỆ" : "KHÔNG ĐẠT"}
-                            </Tag>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+
             </Form>
           </Card>
         </div>
@@ -1045,71 +1005,7 @@ const Evaluation = () => {
         return <span className="text-gray-300 italic text-[10px]">Chưa có sinh viên</span>;
       }
     },
-    {
-      title: 'Lịch bảo vệ',
-      key: 'defense_schedule',
-      width: 180,
-      render: (_: any, r: any) => {
-        const topicObj = r.topic || r;
-        const scheduleInfo = renderDefenseScheduleInfo(topicObj);
 
-        if (!scheduleInfo) {
-          return <span className="text-slate-400 text-xs italic">Chưa xếp lịch</span>;
-        }
-
-        const { dateStr, timeStr, roomStr, sortedCommittee } = scheduleInfo;
-
-        const popoverContent = (
-          <div className="p-1 space-y-3 max-w-sm">
-            <div className="border-b pb-2">
-              <h4 className="font-bold text-blue-800 text-sm">📅 CHI TIẾT LỊCH BẢO VỆ</h4>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-y-1 text-xs">
-              <span className="text-slate-400 font-medium">Thời gian:</span>
-              <span className="col-span-2 font-semibold text-slate-700">{timeStr} ({dateStr})</span>
-              
-              <span className="text-slate-400 font-medium">Phòng/Link:</span>
-              <span className="col-span-2 font-semibold text-slate-700">{roomStr}</span>
-            </div>
-
-            {sortedCommittee.length > 0 && (
-              <div className="space-y-1.5 pt-2 border-t">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hội đồng đánh giá</div>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {sortedCommittee.map((member: any, idx: number) => {
-                    let roleTagColor = 'blue';
-                    let roleName = 'Ủy viên';
-                    if (member.committee_role === 'CHAIR') {
-                      roleTagColor = 'red';
-                      roleName = 'Chủ tịch';
-                    } else if (member.committee_role === 'SECRETARY') {
-                      roleTagColor = 'orange';
-                      roleName = 'Thư ký';
-                    }
-                    return (
-                      <div key={idx} className="flex items-center justify-between gap-4 text-xs py-0.5">
-                        <span className="font-medium text-slate-700">{member.reviewer?.full_name}</span>
-                        <Tag color={roleTagColor} className="m-0 text-[10px] scale-95 origin-right font-semibold px-1 py-0 h-4 leading-none flex items-center">{roleName}</Tag>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-        return (
-          <Popover content={popoverContent} trigger="hover" placement="topLeft">
-            <Tag color="cyan" className="cursor-pointer font-medium m-0 flex items-center gap-1 py-0.5 border-cyan-200">
-              <CalendarOutlined className="text-cyan-600 animate-pulse" />
-              <span>{roomStr} | {dateStr}</span>
-            </Tag>
-          </Popover>
-        );
-      }
-    },
     {
       title: 'Trạng thái',
       key: 'status_combined',

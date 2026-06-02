@@ -322,12 +322,9 @@ const SemesterSettings = () => {
                             className="page-card h-full"
                             styles={{ header: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9' } }}
                             title={
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
-                                        <h2 className="text-[16px] font-bold text-slate-800 m-0">{t('semesterSettings.semesterTimeline') || 'Lộ trình học kỳ (Timeline)'}</h2>
-                                    </div>
-                                    <Tag color="blue" className="rounded-full px-3 border-none">{t('common.automatic') || 'TỰ ĐỘNG'}</Tag>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-[5px] h-6 bg-[#2563eb] rounded-full" />
+                                    <h2 className="text-[16px] font-bold text-slate-800 m-0">{t('semesterSettings.semesterTimeline') || 'Lộ trình học kỳ (Timeline)'}</h2>
                                 </div>
                             }
                         >
