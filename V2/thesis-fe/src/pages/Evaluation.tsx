@@ -456,13 +456,10 @@ const Evaluation = () => {
                   message={<span className="font-bold text-red-800">Không thể chấm điểm - Đề tài/Nhóm đã rớt giữa kỳ</span>}
                   description={
                     <div>
-                      Đề tài này đã bị dừng thực hiện do sinh viên rớt giữa kỳ.
-                      <br />
-                      <strong>Lý do rớt giữa kỳ:</strong>
                       <ul className="list-disc pl-4 mt-1">
                         {students.map(s => (
                           <li key={s.id}>
-                            <strong>{s.name} ({s.code})</strong>: {s.midtermFeedback || 'Rớt giữa kỳ (Không có phản hồi).'}
+                            <strong>{s.name} ({s.code})</strong>: {(s.midtermFeedback || 'Rớt giữa kỳ (Không có phản hồi).').replace(/\(Hệ thống cập nhật theo yêu cầu\)\.?/gi, '').trim()}
                           </li>
                         ))}
                       </ul>

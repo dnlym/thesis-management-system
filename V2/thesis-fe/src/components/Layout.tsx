@@ -527,9 +527,6 @@ const AppLayout = () => {
         {/* Header */}
         <header className="bg-white border-b border-gray-100 px-6 h-14 flex items-center justify-between flex-shrink-0 sticky top-0 z-40">
           <div className="flex items-center gap-3 ml-6">
-            <span className="text-[13px] text-slate-500 font-semibold tracking-wide hidden md:inline-flex items-center h-10">
-              Học kỳ:
-            </span>
             <Select
               size="middle"
               placeholder="Chọn học kỳ"
