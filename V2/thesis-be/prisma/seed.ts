@@ -113,16 +113,16 @@ async function main() {
         .replace(/đ/g, 'd');
       
       let emailPrefix = cleaned;
-      if (cleaned.startsWith('ths')) {
-        emailPrefix = 'ths.' + cleaned.substring(3);
-      } else if (cleaned.startsWith('ts')) {
-        emailPrefix = 'ts.' + cleaned.substring(2);
-      } else if (cleaned.startsWith('pgsts')) {
-        emailPrefix = 'pgs.ts.' + cleaned.substring(5);
+      if (cleaned.startsWith('pgsts')) {
+        emailPrefix = cleaned.substring(5);
       } else if (cleaned.startsWith('gsts')) {
-        emailPrefix = 'gs.ts.' + cleaned.substring(4);
+        emailPrefix = cleaned.substring(4);
+      } else if (cleaned.startsWith('ths')) {
+        emailPrefix = cleaned.substring(3);
+      } else if (cleaned.startsWith('ts')) {
+        emailPrefix = cleaned.substring(2);
       } else if (cleaned.startsWith('ks')) {
-        emailPrefix = 'ks.' + cleaned.substring(2);
+        emailPrefix = cleaned.substring(2);
       }
       const email = emailPrefix + "@iuh.edu.vn";
       const role = isHod ? UserRole.HEAD : (isCoordinator ? UserRole.COORDINATOR : UserRole.LECTURER);
