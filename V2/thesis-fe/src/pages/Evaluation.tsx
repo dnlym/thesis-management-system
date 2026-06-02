@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, Form, InputNumber, Button, Spin, Alert, Input, Tabs, Table, Tag, Space, Divider, Row, Col, Typography, Avatar, Checkbox, Badge, Select, Tooltip, Pagination, Modal, Popover } from 'antd';
 import { notify } from '@/utils/notification';
-import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined, SwapOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckCircleOutlined, SaveOutlined, UserOutlined, WarningOutlined, FlagOutlined, LockOutlined, HistoryOutlined, InfoCircleOutlined, SearchOutlined, FilterOutlined, CloseCircleOutlined, DownloadOutlined, SwapOutlined, CalendarOutlined } from '@ant-design/icons';
 import { TopicStatusBadge } from '@/components/StatusBadge';
 import { useAuthStore } from '@/store/auth';
 import { useGradingCriteria, useSubmitGrade } from '@/hooks/useGrading';
@@ -595,6 +595,56 @@ const Evaluation = () => {
                   <Title level={5} className="m-0 text-blue-900 leading-relaxed font-semibold italic">
                     "{selectedTopic?.title}"
                   </Title>
+
+                  {(() => {
+                    const scheduleInfo = renderDefenseScheduleInfo(selectedTopic);
+                    if (!scheduleInfo) return null;
+                    const { dateStr, timeStr, roomStr, sortedCommittee } = scheduleInfo;
+
+                    return (
+                      <div className="mt-4 bg-blue-50/40 border border-blue-100/70 rounded-xl p-4 space-y-3 shadow-sm">
+                        <div className="flex items-center gap-2 text-blue-800">
+                          <CalendarOutlined className="text-base text-blue-600 animate-pulse" />
+                          <span className="font-bold text-[11px] uppercase tracking-wider">Thông tin Lịch bảo vệ & Hội đồng</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-1">
+                            <div className="text-slate-400 font-medium text-[10px] uppercase tracking-wider">Thời gian & Địa điểm</div>
+                            <div className="font-semibold text-slate-800 text-[13px]">{timeStr}</div>
+                            <div className="font-medium text-slate-600">Ngày {dateStr}</div>
+                            <div className="pt-1">
+                              <span className="text-slate-400 font-medium">Phòng: </span>
+                              <Tag color="blue" className="m-0 font-bold px-2 py-0.5 rounded-md text-[11px]">{roomStr}</Tag>
+                            </div>
+                          </div>
+                          {sortedCommittee.length > 0 && (
+                            <div className="border-l border-blue-100 pl-4 space-y-2">
+                              <div className="text-slate-400 font-medium text-[10px] uppercase tracking-wider">Thành viên Hội đồng</div>
+                              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                {sortedCommittee.map((member: any, idx: number) => {
+                                  let roleTagColor = 'blue';
+                                  let roleName = 'Ủy viên';
+                                  if (member.committee_role === 'CHAIR') {
+                                    roleTagColor = 'red';
+                                    roleName = 'Chủ tịch';
+                                  } else if (member.committee_role === 'SECRETARY') {
+                                    roleTagColor = 'orange';
+                                    roleName = 'Thư ký';
+                                  }
+                                  return (
+                                    <div key={idx} className="flex items-center justify-between text-[11px] py-0.5 border-b border-dashed border-blue-100/50 last:border-0">
+                                      <span className="font-semibold text-slate-700">{member.reviewer?.full_name}</span>
+                                      <Tag color={roleTagColor} className="m-0 text-[9px] font-bold px-1.5 py-0 h-4 leading-none flex items-center">{roleName}</Tag>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Col>
 
                 <Col span={9} className="border-l-2 border-blue-100/50 pl-6">
@@ -842,6 +892,32 @@ const Evaluation = () => {
     );
   };
 
+  const renderDefenseScheduleInfo = (topicObj: any) => {
+    const schedule = topicObj?.defense_schedules?.[0];
+    if (!schedule) return null;
+
+    const dateStr = schedule.defense_date ? dayjs(schedule.defense_date).format('DD/MM/YYYY') : 'Chưa xếp ngày';
+    const timeStr = schedule.defense_time || 'Chưa xếp giờ';
+    const roomStr = schedule.room || 'Chưa xếp phòng';
+
+    const committeeAssignments = topicObj?.assignments?.filter((a: any) => a.assignment_type === 'COMMITTEE') || [];
+    
+    const sortedCommittee = [...committeeAssignments].sort((a: any, b: any) => {
+      const order = { CHAIR: 1, SECRETARY: 2, MEMBER: 3 };
+      const roleA = order[a.committee_role as keyof typeof order] || 4;
+      const roleB = order[b.committee_role as keyof typeof order] || 4;
+      return roleA - roleB;
+    });
+
+    return {
+      schedule,
+      dateStr,
+      timeStr,
+      roomStr,
+      sortedCommittee
+    };
+  };
+
   // Shared columns for Advisor / Reviewer / Council tabs
   const dashboardColumns = [
     { title: 'STT', key: 'stt', width: 60, align: 'center' as const, render: (_: any, __: any, index: number) => index + 1 },
@@ -967,6 +1043,71 @@ const Evaluation = () => {
         }
 
         return <span className="text-gray-300 italic text-[10px]">Chưa có sinh viên</span>;
+      }
+    },
+    {
+      title: 'Lịch bảo vệ',
+      key: 'defense_schedule',
+      width: 180,
+      render: (_: any, r: any) => {
+        const topicObj = r.topic || r;
+        const scheduleInfo = renderDefenseScheduleInfo(topicObj);
+
+        if (!scheduleInfo) {
+          return <span className="text-slate-400 text-xs italic">Chưa xếp lịch</span>;
+        }
+
+        const { dateStr, timeStr, roomStr, sortedCommittee } = scheduleInfo;
+
+        const popoverContent = (
+          <div className="p-1 space-y-3 max-w-sm">
+            <div className="border-b pb-2">
+              <h4 className="font-bold text-blue-800 text-sm">📅 CHI TIẾT LỊCH BẢO VỆ</h4>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-y-1 text-xs">
+              <span className="text-slate-400 font-medium">Thời gian:</span>
+              <span className="col-span-2 font-semibold text-slate-700">{timeStr} ({dateStr})</span>
+              
+              <span className="text-slate-400 font-medium">Phòng/Link:</span>
+              <span className="col-span-2 font-semibold text-slate-700">{roomStr}</span>
+            </div>
+
+            {sortedCommittee.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hội đồng đánh giá</div>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {sortedCommittee.map((member: any, idx: number) => {
+                    let roleTagColor = 'blue';
+                    let roleName = 'Ủy viên';
+                    if (member.committee_role === 'CHAIR') {
+                      roleTagColor = 'red';
+                      roleName = 'Chủ tịch';
+                    } else if (member.committee_role === 'SECRETARY') {
+                      roleTagColor = 'orange';
+                      roleName = 'Thư ký';
+                    }
+                    return (
+                      <div key={idx} className="flex items-center justify-between gap-4 text-xs py-0.5">
+                        <span className="font-medium text-slate-700">{member.reviewer?.full_name}</span>
+                        <Tag color={roleTagColor} className="m-0 text-[10px] scale-95 origin-right font-semibold px-1 py-0 h-4 leading-none flex items-center">{roleName}</Tag>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+        return (
+          <Popover content={popoverContent} trigger="hover" placement="topLeft">
+            <Tag color="cyan" className="cursor-pointer font-medium m-0 flex items-center gap-1 py-0.5 border-cyan-200">
+              <CalendarOutlined className="text-cyan-600 animate-pulse" />
+              <span>{roomStr} | {dateStr}</span>
+            </Tag>
+          </Popover>
+        );
       }
     },
     {

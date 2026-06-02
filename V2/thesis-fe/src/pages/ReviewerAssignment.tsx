@@ -494,7 +494,7 @@ const ReviewerAssignment = () => {
                             value={search} 
                             onChange={setSearch} 
                             className="w-full md:w-80" 
-                            placeholder="Tìm đề tài, GV, mã ĐT..."
+                            placeholder="Tìm đề tài, Giảng viên..."
                         />
                     </div>
                 </Card>
