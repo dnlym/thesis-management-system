@@ -32,7 +32,7 @@ export class DefenseController {
     async getSchedules(req: AuthRequest, res: Response) {
         try {
             const { semesterId } = req.query;
-            const schedules = await defenseService.getSchedules(semesterId as string);
+            const schedules = await defenseService.getSchedules(req.user!.id, req.user!.role, semesterId as string);
             res.json({
                 success: true,
                 data: schedules,

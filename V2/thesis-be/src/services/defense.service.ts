@@ -4,7 +4,7 @@ import semesterService from './semester.service';
 import dayjs from 'dayjs';
 
 export class DefenseService {
-    async getSchedules(semesterId?: string) {
+    async getSchedules(userId: string, userRole: string, semesterId?: string) {
         let targetSemesterId = semesterId;
 
         if (!targetSemesterId) {
@@ -29,6 +29,7 @@ export class DefenseService {
                         title: true,
                         status: true,
                         defense_type: true,
+                        supervisor_id: true,
                         supervisor: {
                             select: {
                                 full_name: true
@@ -98,6 +99,7 @@ export class DefenseService {
                         id: true,
                         title: true,
                         status: true,
+                        supervisor_id: true,
                         supervisor: {
                             select: {
                                 full_name: true
@@ -157,7 +159,7 @@ export class DefenseService {
             const committee = topic?.assignments
                 ?.filter((a: any) => a.assignment_type === 'COMMITTEE')
                 ?.map((a: any) => ({
-                    id: a.reviewer?.id,
+                    id: a.reviewer_id,
                     fullName: a.reviewer?.full_name,
                     role: a.committee_role,
                     type: a.assignment_type
@@ -168,6 +170,7 @@ export class DefenseService {
                 topicId: s.topic_id,
                 topicTitle: topic?.title || 'N/A',
                 supervisor: topic?.supervisor?.full_name || 'N/A',
+                supervisorId: topic?.supervisor_id,
                 date: s.defense_date,
                 time: s.defense_time || 'Chưa xếp giờ',
                 room: s.room || 'N/A',
@@ -198,7 +201,7 @@ export class DefenseService {
             }
 
             const committee = [{
-                id: a.reviewer?.id,
+                id: a.reviewer_id,
                 fullName: a.reviewer?.full_name || 'N/A',
                 role: 'REVIEWER',
                 type: 'REVIEWER'
@@ -215,6 +218,7 @@ export class DefenseService {
                 topicId: a.topic_id,
                 topicTitle: topic?.title || 'N/A',
                 supervisor: topic?.supervisor?.full_name || 'N/A',
+                supervisorId: topic?.supervisor_id,
                 date: a.start_time,
                 time: timeStr,
                 room: a.room || 'N/A',
@@ -226,12 +230,28 @@ export class DefenseService {
         });
 
         const allEvents = [...councilEvents, ...reviewerEvents];
-        allEvents.sort((x, y) => {
+        
+        let filteredEvents = allEvents;
+
+        if (userRole === 'LECTURER') {
+            filteredEvents = allEvents.filter(e => {
+                const isSupervisor = e.supervisorId === userId;
+                const isCommitteeOrReviewer = e.committee.some((c: any) => c.id === userId);
+                return isSupervisor || isCommitteeOrReviewer;
+            });
+        } else if (userRole === 'STUDENT') {
+            filteredEvents = allEvents.filter(e => {
+                return e.students.some((s: any) => s.id === userId);
+            });
+        }
+
+        filteredEvents.sort((x, y) => {
             const timeX = x.date ? new Date(x.date).getTime() : 0;
             const timeY = y.date ? new Date(y.date).getTime() : 0;
             return timeX - timeY;
         });
-        return allEvents;
+
+        return filteredEvents;
     }
 }
 

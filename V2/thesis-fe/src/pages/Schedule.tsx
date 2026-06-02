@@ -33,42 +33,30 @@ const Schedule = () => {
     const dateCellRender = (value: Dayjs) => {
         const listData = getListData(value);
         return (
-            <div className="space-y-1 overflow-hidden">
+            <div className="flex flex-wrap gap-1 p-1 justify-start">
                 {listData.map((item: DefenseSchedule) => {
-                    let bgColor = 'rgba(59, 130, 246, 0.08)';
-                    let textColor = '#2563eb';
-                    let borderColor = 'rgba(59, 130, 246, 0.2)';
+                    let color = 'blue';
+                    let label = 'BC';
                     if (item.type === 'DEFENSE') {
-                        bgColor = 'rgba(249, 115, 22, 0.08)';
-                        textColor = '#ea580c';
-                        borderColor = 'rgba(249, 115, 22, 0.2)';
+                        color = 'orange';
+                        label = 'PB';
                     } else if (item.type === 'COUNCIL_MEETING') {
-                        bgColor = 'rgba(139, 92, 246, 0.08)';
-                        textColor = '#7c3aed';
-                        borderColor = 'rgba(139, 92, 246, 0.2)';
+                        color = 'purple';
+                        label = 'HĐ';
                     }
                     return (
-                        <div
-                            key={item.id}
-                            style={{
-                                backgroundColor: bgColor,
-                                color: textColor,
-                                border: `1px solid ${borderColor}`,
-                                borderRadius: '4px',
-                                padding: '2px 4px',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                lineHeight: '1.2',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                cursor: 'pointer'
-                            }}
-                            title={item.topicTitle}
+                        <Popover 
+                            key={item.id} 
+                            content={<div className="font-semibold text-xs max-w-xs">{item.topicTitle}</div>} 
+                            trigger="hover"
                         >
-                            {item.type === 'DEFENSE' ? 'PB: ' : item.type === 'COUNCIL_MEETING' ? 'HĐ: ' : 'BC: '}
-                            {item.topicTitle}
-                        </div>
+                            <Tag 
+                                color={color} 
+                                className="cursor-pointer font-bold m-0 px-1 py-0 text-[10px] select-none"
+                            >
+                                {label}
+                            </Tag>
+                        </Popover>
                     );
                 })}
             </div>
