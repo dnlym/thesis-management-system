@@ -11,6 +11,17 @@ export interface DefenseSchedule {
     room: string;
     status: string;
     type: string;
+    students: {
+        id: string;
+        fullName: string;
+        studentCode: string;
+    }[];
+    committee: {
+        id: string;
+        fullName: string;
+        role?: string;
+        type: string;
+    }[];
 }
 
 export const DefenseApi = {

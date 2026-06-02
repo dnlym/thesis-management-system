@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Card, Badge, Modal, Form, Input, DatePicker, TimePicker, Select, Button, List, Spin, Alert } from 'antd';
+import { Calendar, Card, Badge, Modal, Form, Input, DatePicker, TimePicker, Select, Button, List, Spin, Alert, Tag, Popover } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CalendarOutlined, PlusOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
@@ -10,7 +10,7 @@ import { DefenseSchedule } from '@/api/defense';
 const Schedule = () => {
     const { t } = useTranslation();
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+    const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
     const [form] = Form.useForm();
 
     const { data: schedules, isLoading, error } = useDefenseSchedules();
@@ -33,38 +33,57 @@ const Schedule = () => {
     const dateCellRender = (value: Dayjs) => {
         const listData = getListData(value);
         return (
-            <div className="space-y-1">
-                {listData.map((item: DefenseSchedule) => (
-                    <Badge
-                        key={item.id}
-                        status={
-                            item.type === 'TRIAL_REPORT' ? 'processing' :
-                                item.type === 'DEFENSE' ? 'warning' : 'success'
-                        }
-                        text={
-                            <span className="text-xs text-foreground truncate">
-                                {item.topicTitle}
-                            </span>
-                        }
-                    />
-                ))}
+            <div className="space-y-1 overflow-hidden">
+                {listData.map((item: DefenseSchedule) => {
+                    let bgColor = 'rgba(59, 130, 246, 0.08)';
+                    let textColor = '#2563eb';
+                    let borderColor = 'rgba(59, 130, 246, 0.2)';
+                    if (item.type === 'DEFENSE') {
+                        bgColor = 'rgba(249, 115, 22, 0.08)';
+                        textColor = '#ea580c';
+                        borderColor = 'rgba(249, 115, 22, 0.2)';
+                    } else if (item.type === 'COUNCIL_MEETING') {
+                        bgColor = 'rgba(139, 92, 246, 0.08)';
+                        textColor = '#7c3aed';
+                        borderColor = 'rgba(139, 92, 246, 0.2)';
+                    }
+                    return (
+                        <div
+                            key={item.id}
+                            style={{
+                                backgroundColor: bgColor,
+                                color: textColor,
+                                border: `1px solid ${borderColor}`,
+                                borderRadius: '4px',
+                                padding: '2px 4px',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                lineHeight: '1.2',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                cursor: 'pointer'
+                            }}
+                            title={item.topicTitle}
+                        >
+                            {item.type === 'DEFENSE' ? 'PB: ' : item.type === 'COUNCIL_MEETING' ? 'HĐ: ' : 'BC: '}
+                            {item.topicTitle}
+                        </div>
+                    );
+                })}
             </div>
         );
     };
 
     const onDateSelect = (date: Dayjs) => {
         setSelectedDate(date);
-        const dailyEvents = getListData(date);
-        if (dailyEvents.length === 0) {
-            setIsModalVisible(true);
-        }
     };
 
     const getEventTypeColor = (type: string) => {
         switch (type) {
             case 'TRIAL_REPORT': return '#1890ff';
             case 'DEFENSE': return '#fa8c16';
-            case 'COUNCIL_MEETING': return '#52c41a';
+            case 'COUNCIL_MEETING': return '#8b5cf6';
             default: return '#d9d9d9';
         }
     };
@@ -123,72 +142,177 @@ const Schedule = () => {
 
                 {/* Events Sidebar */}
                 <div className="space-y-6">
-                    {/* Today's Events */}
                     <Card
                         title={
-                            <div className="flex items-center space-x-2">
-                                <CalendarOutlined className="text-academic-primary" />
-                                <span>Lịch hôm nay</span>
+                            <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center space-x-2">
+                                    <CalendarOutlined className="text-blue-600" />
+                                    <span>Lịch trình ngày {selectedDate ? selectedDate.format('DD/MM/YYYY') : ''}</span>
+                                </div>
+                                {(() => {
+                                    const count = selectedDate ? getListData(selectedDate).length : 0;
+                                    return count > 0 ? (
+                                        <Badge count={count} overflowCount={9} style={{ backgroundColor: '#2563eb' }} />
+                                    ) : null;
+                                })()}
                             </div>
                         }
                         className="shadow-soft"
                     >
-                        {todayEvents.length > 0 ? (
-                            <List
-                                dataSource={todayEvents}
-                                renderItem={(item: DefenseSchedule) => (
-                                    <List.Item className="border-none px-0">
-                                        <div className="mr-3 bg-blue-50 text-blue-600 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
-                                            {events.indexOf(item) + 1}
-                                        </div>
-                                        <div className="w-full">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="font-medium text-foreground">{item.topicTitle}</span>
-                                                <Badge
-                                                    color={getEventTypeColor(item.type)}
-                                                    text={getEventTypeName(item.type)}
-                                                />
-                                            </div>
-                                            <div className="text-sm text-muted-foreground flex items-center space-x-2">
-                                                <ClockCircleOutlined />
-                                                <span>{item.time}</span>
-                                                {item.room && <span>• {item.room}</span>}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                                GVHD: {item.supervisor}
-                                            </div>
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
-                        ) : (
-                            <div className="text-center text-muted-foreground py-4">
-                                Không có lịch trình nào hôm nay
-                            </div>
-                        )}
+                        {(() => {
+                            const selectedDateEvents = selectedDate ? getListData(selectedDate) : [];
+                            if (selectedDateEvents.length > 0) {
+                                return (
+                                    <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+                                        {selectedDateEvents.map((item: DefenseSchedule) => {
+                                            let typeTagColor = 'blue';
+                                            let typeLabel = 'Báo cáo thử';
+                                            if (item.type === 'DEFENSE') {
+                                                typeTagColor = 'orange';
+                                                typeLabel = 'Phản biện';
+                                            } else if (item.type === 'COUNCIL_MEETING') {
+                                                typeTagColor = 'purple';
+                                                typeLabel = 'Hội đồng';
+                                            }
+
+                                            const committeeMembers = item.committee || [];
+                                            const sortedCommittee = [...committeeMembers].sort((a: any, b: any) => {
+                                                const order = { CHAIR: 1, SECRETARY: 2, MEMBER: 3 };
+                                                const roleA = order[a.role as keyof typeof order] || 4;
+                                                const roleB = order[b.role as keyof typeof order] || 4;
+                                                return roleA - roleB;
+                                            });
+
+                                            return (
+                                                <Card 
+                                                    key={item.id}
+                                                    type="inner"
+                                                    className="border border-slate-100 rounded-xl hover:shadow-md transition-all duration-300"
+                                                    styles={{ body: { padding: '12px' } }}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                                        <Tag color={typeTagColor} className="m-0 text-[10px] font-bold uppercase tracking-wider">{typeLabel}</Tag>
+                                                        <span className="text-xs text-slate-500 font-semibold flex items-center gap-1 shrink-0">
+                                                            <ClockCircleOutlined className="text-slate-400" />
+                                                            {item.time} {item.room && `• Phòng ${item.room}`}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="font-bold text-slate-900 text-[13px] leading-snug mb-2">
+                                                        {item.topicTitle}
+                                                    </div>
+
+                                                    <div className="space-y-2 border-t pt-2 mt-2 text-xs">
+                                                        <div className="flex justify-between items-center text-slate-600">
+                                                            <span className="text-slate-400 font-medium">Giảng viên HD:</span>
+                                                            <span className="font-semibold text-slate-700">{item.supervisor}</span>
+                                                        </div>
+
+                                                        {item.students && item.students.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                <span className="text-slate-400 font-medium block mb-0.5">Sinh viên thực hiện:</span>
+                                                                <div className="bg-slate-50/70 border border-slate-100/50 rounded-lg p-2 space-y-1.5">
+                                                                    {item.students.map((std: any) => (
+                                                                        <div key={std.id} className="flex justify-between font-medium text-slate-700">
+                                                                            <span>{std.fullName}</span>
+                                                                            <span className="font-mono text-slate-400 scale-90">{std.studentCode}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {sortedCommittee.length > 0 && (
+                                                            <div className="space-y-1 pt-1">
+                                                                <span className="text-slate-400 font-medium block mb-0.5">Thành viên Hội đồng:</span>
+                                                                <div className="bg-slate-50/70 border border-slate-100/50 rounded-lg p-2 space-y-1.5">
+                                                                    {sortedCommittee.map((member: any) => {
+                                                                        let roleName = 'Ủy viên';
+                                                                        let roleColor = 'blue';
+                                                                        if (member.role === 'CHAIR') {
+                                                                            roleName = 'Chủ tịch';
+                                                                            roleColor = 'red';
+                                                                        } else if (member.role === 'SECRETARY') {
+                                                                            roleName = 'Thư ký';
+                                                                            roleColor = 'orange';
+                                                                        }
+                                                                        return (
+                                                                            <div key={member.id} className="flex justify-between items-center text-[11px]">
+                                                                                <span className="font-semibold text-slate-700">{member.fullName}</span>
+                                                                                <Tag color={roleColor} className="m-0 text-[8px] scale-90 origin-right font-bold px-1.5 py-0 h-4 leading-none flex items-center">{roleName}</Tag>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Card>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            } else {
+                                return (
+                                    <div className="text-center text-slate-400 py-12 flex flex-col items-center justify-center">
+                                        <CalendarOutlined className="text-3xl mb-2 text-slate-200" />
+                                        <span className="text-xs">Không có lịch trình nào vào ngày này</span>
+                                    </div>
+                                );
+                            }
+                        })()}
                     </Card>
 
                     {/* Upcoming Events */}
                     <Card
-                        title="Lịch sắp tới"
+                        title={
+                            <div className="flex items-center space-x-2">
+                                <ClockCircleOutlined className="text-amber-500" />
+                                <span>Lịch sắp tới</span>
+                            </div>
+                        }
                         className="shadow-soft"
                     >
                         <List
                             dataSource={upcomingEvents}
-                            renderItem={(item: DefenseSchedule) => (
-                                <List.Item className="border-none px-0">
-                                    <div className="mr-3 bg-slate-50 text-slate-400 w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0">
-                                        {events.indexOf(item) + 1}
-                                    </div>
-                                    <div className="w-full">
-                                        <div className="font-medium text-foreground mb-1">{item.topicTitle}</div>
-                                        <div className="text-sm text-muted-foreground space-y-1">
-                                            <div>{dayjs(item.date).format('DD/MM/YYYY')} • {item.time}</div>
-                                            {item.room && <div>{item.room}</div>}
+                            renderItem={(item: DefenseSchedule) => {
+                                let typeTagColor = 'blue';
+                                let typeLabel = 'BC';
+                                if (item.type === 'DEFENSE') {
+                                    typeTagColor = 'orange';
+                                    typeLabel = 'PB';
+                                } else if (item.type === 'COUNCIL_MEETING') {
+                                    typeTagColor = 'purple';
+                                    typeLabel = 'HĐ';
+                                }
+                                return (
+                                    <List.Item className="border-none px-0 py-2.5 last:pb-0 first:pt-0">
+                                        <div className="w-full flex items-start gap-2.5">
+                                            <Tag color={typeTagColor} className="m-0 shrink-0 text-[9px] font-bold w-6 h-5 flex items-center justify-center px-0">{typeLabel}</Tag>
+                                            <div className="flex-grow min-w-0">
+                                                <div 
+                                                    className="font-semibold text-slate-800 text-xs truncate cursor-pointer hover:text-blue-600 transition-colors"
+                                                    onClick={() => setSelectedDate(dayjs(item.date))}
+                                                    title="Click để xem chi tiết ngày này"
+                                                >
+                                                    {item.topicTitle}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 font-medium">
+                                                    <span>{dayjs(item.date).format('DD/MM/YYYY')}</span>
+                                                    <span>•</span>
+                                                    <span>{item.time}</span>
+                                                    {item.room && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>Phòng {item.room}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </List.Item>
-                            )}
+                                    </List.Item>
+                                );
+                            }}
                         />
                     </Card>
                 </div>
