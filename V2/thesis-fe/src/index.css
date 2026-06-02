@@ -183,6 +183,15 @@ input.ant-input {
   height: 40px !important;
 }
 
+.ant-input-affix-wrapper input.ant-input {
+  height: 100% !important;
+}
+
+.ant-input-affix-wrapper .ant-input-prefix {
+  display: inline-flex;
+  align-items: center;
+}
+
 .ant-input-group-wrapper.ant-input-search {
   vertical-align: middle !important;
   display: inline-flex !important;
