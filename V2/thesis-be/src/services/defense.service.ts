@@ -181,53 +181,67 @@ export class DefenseService {
             };
         });
 
-        const reviewerEvents = reviewerAssignments.map(a => {
-            const topic = a.topic;
-            const registrations = topic?.registrations || [];
-            const firstReg = registrations[0];
-            let students: { id: string; fullName: string; studentCode: string; }[] = [];
-            if (firstReg?.group?.members && firstReg.group.members.length > 0) {
-                students = firstReg.group.members.map((m: any) => ({
-                    id: m.user?.id || '',
-                    fullName: m.user?.full_name || '',
-                    studentCode: m.user?.student_code || ''
-                }));
-            } else if (firstReg?.student) {
-                students = [{
-                    id: firstReg.student.id,
-                    fullName: firstReg.student.full_name || '',
-                    studentCode: firstReg.student.student_code || ''
-                }];
-            }
+        const reviewerEventsMap = new Map<string, any>();
 
-            const committee = [{
+        reviewerAssignments.forEach(a => {
+            const key = `${a.topic_id}-${a.start_time ? new Date(a.start_time).getTime() : 'no-time'}-${a.room || 'no-room'}`;
+
+            const member = {
                 id: a.reviewer_id,
                 fullName: a.reviewer?.full_name || 'N/A',
                 role: 'REVIEWER',
                 type: 'REVIEWER'
-            }];
-
-            const timeStr = a.start_time && a.end_time
-                ? `${dayjs(a.start_time).format('HH:mm')} - ${dayjs(a.end_time).format('HH:mm')}`
-                : a.start_time
-                ? dayjs(a.start_time).format('HH:mm')
-                : 'Chưa xếp giờ';
-
-            return {
-                id: a.id,
-                topicId: a.topic_id,
-                topicTitle: topic?.title || 'N/A',
-                supervisor: topic?.supervisor?.full_name || 'N/A',
-                supervisorId: topic?.supervisor_id,
-                date: a.start_time,
-                time: timeStr,
-                room: a.room || 'N/A',
-                status: topic?.status,
-                type: 'DEFENSE',
-                students,
-                committee
             };
+
+            if (reviewerEventsMap.has(key)) {
+                const existing = reviewerEventsMap.get(key);
+                // Avoid duplicates if same reviewer appears twice
+                if (!existing.committee.some((c: any) => c.id === a.reviewer_id)) {
+                    existing.committee.push(member);
+                }
+            } else {
+                const topic = a.topic;
+                const registrations = topic?.registrations || [];
+                const firstReg = registrations[0];
+                let students: { id: string; fullName: string; studentCode: string; }[] = [];
+                if (firstReg?.group?.members && firstReg.group.members.length > 0) {
+                    students = firstReg.group.members.map((m: any) => ({
+                        id: m.user?.id || '',
+                        fullName: m.user?.full_name || '',
+                        studentCode: m.user?.student_code || ''
+                    }));
+                } else if (firstReg?.student) {
+                    students = [{
+                        id: firstReg.student.id,
+                        fullName: firstReg.student.full_name || '',
+                        studentCode: firstReg.student.student_code || ''
+                    }];
+                }
+
+                const timeStr = a.start_time && a.end_time
+                    ? `${dayjs(a.start_time).format('HH:mm')} - ${dayjs(a.end_time).format('HH:mm')}`
+                    : a.start_time
+                    ? dayjs(a.start_time).format('HH:mm')
+                    : 'Chưa xếp giờ';
+
+                reviewerEventsMap.set(key, {
+                    id: a.id,
+                    topicId: a.topic_id,
+                    topicTitle: topic?.title || 'N/A',
+                    supervisor: topic?.supervisor?.full_name || 'N/A',
+                    supervisorId: topic?.supervisor_id,
+                    date: a.start_time,
+                    time: timeStr,
+                    room: a.room || 'N/A',
+                    status: topic?.status,
+                    type: 'DEFENSE',
+                    students,
+                    committee: [member]
+                });
+            }
         });
+
+        const reviewerEvents = Array.from(reviewerEventsMap.values());
 
         const allEvents = [...councilEvents, ...reviewerEvents];
         

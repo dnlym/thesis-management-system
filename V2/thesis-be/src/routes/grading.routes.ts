@@ -46,7 +46,15 @@ router.delete(
   gradingController.deleteGradingCriterion.bind(gradingController)
 );
 
+// Clone global criteria → department (HEAD only)
+router.post(
+  '/criteria/clone-to-department',
+  authorize(UserRole.HEAD, UserRole.ADMIN),
+  gradingController.cloneGlobalCriteria.bind(gradingController)
+);
+
 router.get('/criteria', gradingController.getGradingCriteria.bind(gradingController));
+
 
 // ==========================================
 // Grade Summary for HEAD (Tổng kết điểm)

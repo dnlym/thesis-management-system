@@ -950,12 +950,16 @@ export class GradingService {
       throw new Error('Không có quyền thực hiện');
     }
 
-    // 0.5. Stability Check: Block if grades already exist
-    const hasGrades = await prisma.grade.findFirst({
-      where: { criterion_id: id }
+    // 0.5. Stability Check: Block nếu tiêu chí đã có điểm trong học kỳ ĐANG ACTIVE
+    const activeSemesterForUpdate = await prisma.semester.findFirst({ where: { status: 'ACTIVE' } });
+    const hasGradesInActiveSemester = await prisma.grade.findFirst({
+      where: {
+        criterion_id: id,
+        ...(activeSemesterForUpdate ? { topic: { semester_id: activeSemesterForUpdate.id } } : {}),
+      },
     });
-    if (hasGrades) {
-      throw new Error('Không thể chỉnh sửa tiêu chí đã được sử dụng để chấm điểm. Vui lòng tạo tiêu chí mới nếu muốn thay đổi quy trình.');
+    if (hasGradesInActiveSemester) {
+      throw new Error('Không thể chỉnh sửa tiêu chí đã được sử dụng để chấm điểm trong học kỳ hiện tại. Vui lòng tạo tiêu chí mới nếu muốn thay đổi.');
     }
 
     // 1. If name changes, check uniqueness
@@ -1032,12 +1036,16 @@ export class GradingService {
       throw new Error('Không có quyền thực hiện');
     }
 
-    // 0.5. Stability Check
-    const hasGrades = await prisma.grade.findFirst({
-      where: { criterion_id: id }
+    // 0.5. Stability Check: Block nếu tiêu chí đã có điểm trong học kỳ ĐANG ACTIVE
+    const activeSemesterForDelete = await prisma.semester.findFirst({ where: { status: 'ACTIVE' } });
+    const hasGradesInActiveSemesterForDelete = await prisma.grade.findFirst({
+      where: {
+        criterion_id: id,
+        ...(activeSemesterForDelete ? { topic: { semester_id: activeSemesterForDelete.id } } : {}),
+      },
     });
-    if (hasGrades) {
-      throw new Error('Không thể xóa tiêu chí đã được sử dụng để chấm điểm. Hãy ẩn (deactivate) tiêu chí này thay vì xóa.');
+    if (hasGradesInActiveSemesterForDelete) {
+      throw new Error('Không thể xóa tiêu chí đã được sử dụng để chấm điểm trong học kỳ hiện tại.');
     }
 
     // Soft delete
@@ -1061,6 +1069,74 @@ export class GradingService {
 
     return updatedCriterion;
   }
+
+  /**
+   * Clone all global criteria (departmentId=null) into HOD's department.
+   * Skips criteria that already exist for the department (same name + role).
+   */
+  async cloneGlobalCriteriaToDepartment(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    if (user.role !== UserRole.HEAD && user.role !== UserRole.ADMIN) {
+      throw new Error('Chỉ Trưởng bộ môn hoặc Admin mới có quyền thực hiện');
+    }
+    if (!user.departmentId) {
+      throw new Error('Tài khoản chưa được gán bộ môn');
+    }
+
+    // Fetch all active global criteria
+    const globalCriteria = await prisma.gradingCriterion.findMany({
+      where: { departmentId: null, active: true },
+      orderBy: { order_index: 'asc' },
+    });
+
+    if (globalCriteria.length === 0) {
+      throw new Error('Không có tiêu chí mặc định (global) nào để sao chép');
+    }
+
+    // Fetch existing dept criteria to avoid duplicates
+    const existingDeptCriteria = await prisma.gradingCriterion.findMany({
+      where: { departmentId: user.departmentId, active: true },
+    });
+
+    const cloned: any[] = [];
+    const skipped: string[] = [];
+
+    for (const c of globalCriteria) {
+      const alreadyExists = existingDeptCriteria.some(
+        e => e.name === c.name && e.role === c.role
+      );
+      if (alreadyExists) {
+        skipped.push(c.name);
+        continue;
+      }
+      const created = await prisma.gradingCriterion.create({
+        data: {
+          name: c.name,
+          description: c.description,
+          weight: c.weight,
+          max_score: c.max_score,
+          min_score: c.min_score,
+          role: c.role,
+          order_index: c.order_index,
+          departmentId: user.departmentId,
+        },
+      });
+      cloned.push(created);
+    }
+
+    await AuditLogger.log({
+      userId,
+      action: 'CREATE_CRITERION',
+      entityType: 'GradingCriterion',
+      entityId: user.departmentId,
+      newValue: { cloned: cloned.length, skipped: skipped.length },
+      description: `HOD ${userId} đã sao chép ${cloned.length} tiêu chí global vào bộ môn`,
+    });
+
+    return { cloned: cloned.length, skipped: skipped.length, items: cloned };
+  }
+
 
   async getGradingCriteria(roleFilter?: RaterRole | 'FINAL', topicId?: string, explicitDeptId?: string): Promise<any> {
     let departmentId: string | undefined = explicitDeptId;
@@ -1093,13 +1169,26 @@ export class GradingService {
       }
     }
 
+    // Lấy học kỳ active để scope _count grades
+    const activeSemesterForCount = await prisma.semester.findFirst({ where: { status: 'ACTIVE' } });
+
     const criteria = await prisma.gradingCriterion.findMany({
       where,
       orderBy: [
         { role: 'asc' },
         { order_index: 'asc' },
       ],
+      include: {
+        _count: {
+          select: {
+            grades: activeSemesterForCount
+              ? { where: { topic: { semester_id: activeSemesterForCount.id } } }
+              : true,
+          },
+        },
+      },
     });
+
 
     // 2. Return Logic
     if (roleFilter && roleFilter !== 'FINAL') {

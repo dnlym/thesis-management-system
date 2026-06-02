@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, Tabs, Space, Popconfirm, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, Tabs, Space, Popconfirm, Tag, Tooltip } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notify } from '@/utils/notification';
@@ -76,6 +76,28 @@ const Criteria = () => {
         },
     });
 
+    // Clone mutation
+    const cloneMutation = useMutation({
+        mutationFn: GradingApi.cloneGlobalCriteria,
+        onSuccess: (data) => {
+            notify.success(`Đã sao chép ${data?.cloned ?? 0} tiêu chí vào bộ môn${data?.skipped ? ` (bỏ qua ${data.skipped} đã tồn tại)` : ''}`);
+            queryClient.invalidateQueries({ queryKey: ['gradingCriteria'] });
+        },
+        onError: (error: any) => {
+            notify.error(error.response?.data?.error || error.message || 'Sao chép thất bại');
+        },
+    });
+
+    const handleClone = () => {
+        Modal.confirm({
+            title: 'Khởi tạo tiêu chí bộ môn',
+            content: 'Hệ thống sẽ sao chép toàn bộ tiêu chí mặc định (global) vào bộ môn của bạn. Các tiêu chí đã tồn tại sẽ được bỏ qua. Tiếp tục?',
+            okText: 'Sao chép',
+            cancelText: 'Hủy',
+            onOk: () => cloneMutation.mutate(),
+        });
+    };
+
     const handleAdd = () => {
         setEditingId(null);
         form.resetFields();
@@ -85,9 +107,25 @@ const Criteria = () => {
 
     const handleEdit = (record: GradingCriteria) => {
         setEditingId(record.id);
-        form.setFieldsValue(record);
+        // Map role → roleGroup (canonical group)
+        const roleGroupMap: Record<string, string> = {
+            SUPERVISOR: 'SUPERVISOR',
+            REVIEWER: 'REVIEWER',
+            COMMITTEE: 'COMMITTEE',
+        };
+        const roleGroup = roleGroupMap[(record as any).role] ?? activeTab;
+        form.setFieldsValue({
+            name: record.name,
+            description: record.description,
+            roleGroup,
+            weight: record.weight,
+            maxScore: (record as any).max_score ?? (record as any).maxScore,
+            minScore: (record as any).min_score ?? (record as any).minScore,
+            orderIndex: (record as any).order_index ?? (record as any).orderIndex,
+        });
         setIsModalVisible(true);
     };
+
 
     const handleDelete = (id: string) => {
         deleteMutation.mutate(id);
@@ -139,27 +177,44 @@ const Criteria = () => {
             width: '120px',
             render: (_: any, record: any) => {
                 const isGlobal = !record.departmentId;
-                const canEdit = user?.role === 'ADMIN' || (user?.role === 'HEAD' && !isGlobal);
+                const hasGrades = (record._count?.grades ?? 0) > 0;
+                const canEdit = (user?.role === 'ADMIN' || (user?.role === 'HEAD' && !isGlobal)) && !hasGrades;
+
+                const editBtn = (
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(record)}
+                        disabled={!canEdit}
+                    />
+                );
+                const deleteBtn = (
+                    <Popconfirm
+                        title={t('common.confirmDelete')}
+                        onConfirm={() => handleDelete(record.id)}
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
+                        disabled={!canEdit}
+                    >
+                        <Button type="text" danger icon={<DeleteOutlined />} disabled={!canEdit} />
+                    </Popconfirm>
+                );
 
                 return (
                     <Space>
-                        <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={() => handleEdit(record)}
-                            disabled={!canEdit}
-                        />
-                        <Popconfirm
-                            title={t('common.confirmDelete')}
-                            onConfirm={() => handleDelete(record.id)}
-                            okText={t('common.yes')}
-                            cancelText={t('common.no')}
-                            disabled={!canEdit}
-                        >
-                            <Button type="text" danger icon={<DeleteOutlined />} disabled={!canEdit} />
-                        </Popconfirm>
+                        {hasGrades ? (
+                            <Tooltip title="Tiêu chí đã được dùng để chấm điểm, không thể sửa/xoá">
+                                {editBtn}
+                            </Tooltip>
+                        ) : editBtn}
+                        {hasGrades ? (
+                            <Tooltip title="Tiêu chí đã được dùng để chấm điểm, không thể sửa/xoá">
+                                {deleteBtn}
+                            </Tooltip>
+                        ) : deleteBtn}
                     </Space>
                 );
+
             },
         },
     ];
@@ -182,9 +237,22 @@ const Criteria = () => {
                                 <div className="page-header-subtitle">Quản lý các tiêu chí đánh giá cho từng vai trò (Hướng dẫn, Phản biện, Hội đồng)</div>
                             </div>
                         </div>
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {t('common.add')}
-                        </Button>
+                        <Space>
+                            {user?.role === 'HEAD' && (
+                                <Tooltip title="Sao chép bộ tiêu chí mặc định vào bộ môn để có thể chỉnh sửa">
+                                    <Button
+                                        icon={<CopyOutlined />}
+                                        onClick={handleClone}
+                                        loading={cloneMutation.isPending}
+                                    >
+                                        Khởi tạo tiêu chí bộ môn
+                                    </Button>
+                                </Tooltip>
+                            )}
+                            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                                {t('common.add')}
+                            </Button>
+                        </Space>
                     </div>
                 </Card>
 
@@ -238,7 +306,7 @@ const Criteria = () => {
                             label={t('criteria.type')}
                             rules={[{ required: true, message: t('validation.required') }]}
                         >
-                            <Select disabled={!!editingId}>
+                            <Select>
                                 <Option value="SUPERVISOR">{t('role.advisor')}</Option>
                                 <Option value="REVIEWER">{t('role.reviewer')}</Option>
                                 <Option value="COMMITTEE">{t('role.council')}</Option>

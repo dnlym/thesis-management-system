@@ -200,5 +200,14 @@ export const GradingApi = {
         const res = await api.post<ApiResponse<any>>(`/grading/change-requests/${requestId}/reject`, { reason });
         return res.data.data;
     },
+
+    /**
+     * Clone global criteria (departmentId=null) into HOD's department
+     * POST /grading/criteria/clone-to-department
+     */
+    async cloneGlobalCriteria() {
+        const res = await api.post<ApiResponse<{ cloned: number; skipped: number }>>('/grading/criteria/clone-to-department');
+        return res.data.data;
+    },
 };
 

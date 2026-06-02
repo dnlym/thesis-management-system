@@ -373,6 +373,21 @@ class GradingController {
   }
 
   /**
+   * POST /grading/criteria/clone-to-department
+   * Clone all global criteria into HOD's department
+   */
+  async cloneGlobalCriteria(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.id;
+      const result = await gradingService.cloneGlobalCriteriaToDepartment(userId);
+      res.status(201).json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+
+  /**
    * @swagger
    * /grading/criteria:
    *   get:

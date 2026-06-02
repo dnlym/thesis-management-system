@@ -917,7 +917,7 @@ const Evaluation = () => {
       }
     },
     {
-      title: 'Sinh viên', key: 'students', render: (_: any, r: any) => {
+      title: 'Sinh viên', key: 'students', width: 220, render: (_: any, r: any) => {
         const topicObj = r.topic || r;
 
         // 1. Ưu tiên lấy từ property "students" (TopicService trả về cấu trúc này)

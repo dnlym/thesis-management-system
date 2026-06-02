@@ -98,7 +98,6 @@ const Dashboard = () => {
     if (isLecturer) {
       return [
         { title: 'Chấm điểm', icon: Star, color: 'bg-amber-50 text-amber-600', path: '/evaluation' },
-        { title: 'Duyệt sinh viên', icon: Users, color: 'bg-blue-50 text-blue-600', path: '/supervisor/registrations' },
       ];
     }
     return [

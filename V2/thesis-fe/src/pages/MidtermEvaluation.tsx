@@ -345,18 +345,8 @@ const MidtermEvaluation = () => {
                     </div>
                 </Card>
 
-            {hasAnyRestrictedPhase && (
-                <Alert
-                    message={
-                        <span className="text-[13px] text-blue-800">
-                            <strong>Lưu ý:</strong> Một số nút đánh giá bị khóa do ngoài thời gian quy định hoặc thiếu dữ liệu. Rê chuột vào nút để xem lý do.
-                        </span>
-                    }
-                    type="info"
-                    showIcon
-                    className="mb-4 py-2 px-4 rounded-xl border-blue-100 bg-blue-50/50"
-                />
-            )}
+
+
 
             {/* Filter & Stats Tabs */}
             <Card className="page-toolbar-card !mb-4">
