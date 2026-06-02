@@ -161,8 +161,8 @@ const SupervisorManageRegistrations = () => {
                             const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
                             const cardEl = (
                                 <div key={student.id} className={`flex items-center gap-2.5 p-2 rounded-xl border shadow-sm transition-all ${isFailed
-                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200'
-                                        : 'bg-slate-50 border-slate-100'
+                                    ? 'bg-slate-100 opacity-60 line-through border-slate-200'
+                                    : 'bg-slate-50 border-slate-100'
                                     }`}>
                                     <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-200'} />
                                     <div className="flex flex-col">
@@ -449,8 +449,8 @@ const SupervisorManageRegistrations = () => {
                                             const isFailed = student.midterm_status === 'FAIL' || student.status === 'FAILED';
                                             const cardEl = (
                                                 <div key={student.id} className={`flex items-center justify-between p-2.5 rounded-lg border shadow-sm transition-all ${isFailed
-                                                        ? 'bg-slate-100 opacity-60 line-through border-slate-200'
-                                                        : 'bg-white border-slate-100'
+                                                    ? 'bg-slate-100 opacity-60 line-through border-slate-200'
+                                                    : 'bg-white border-slate-100'
                                                     }`}>
                                                     <div className="flex items-center gap-2.5">
                                                         <Avatar size={28} src={student.avatar_url} icon={<UserOutlined />} className={isFailed ? 'border border-slate-300 opacity-55' : 'border border-slate-100'} />
