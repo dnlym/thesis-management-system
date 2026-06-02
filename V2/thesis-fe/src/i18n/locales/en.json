@@ -33,7 +33,13 @@
     "systemTitle": "Thesis MS",
     "user": "User",
     "errorLoadingData": "Error loading data",
-    "current": "Current"
+    "current": "Current",
+    "close": "Close",
+    "all": "All",
+    "role": "Role",
+    "stt": "No.",
+    "class": "Class",
+    "back": "Back"
   },
   "auth": {
     "login": "Login",
@@ -107,6 +113,9 @@
     "COMMITTEE_SECRETARY": "Committee Secretary",
     "COMMITTEE_MEMBER": "Committee Member",
     "ADMIN": "Administrator",
+    "REVIEWER_1": "Reviewer 1",
+    "REVIEWER_2": "Reviewer 2",
+    "REVIEWER_3": "Reviewer 3",
     "subtitle": "Manage roles and permissions in the system",
     "listTitle": "Roles List",
     "totalUsers": "Total: {{count}} users",
@@ -183,7 +192,8 @@
       "WAITING_FOR_DEFENSE": "Waiting for Defense",
       "DEFENDING": "Defending",
       "COMPLETED": "Completed",
-      "FINALIZED": "Finalized"
+      "FINALIZED": "Finalized",
+      "HIDDEN": "Hidden"
     },
     "semester": {
       "PLANNING": "Planning",
@@ -192,7 +202,9 @@
       "WORK": "Implementation",
       "REVIEWING": "Reviewing",
       "DEFENSE": "Defense",
-      "FINAL": "Finalized"
+      "FINAL": "Finalized",
+      "ACTIVE": "Active",
+      "COMPLETED": "Completed"
     },
     "semester_sublabel": {
       "PREVIEW": "Prop & Approve",
@@ -218,7 +230,8 @@
       "PENDING": "Pending Confirmation",
       "CONFIRMED": "Confirmed",
       "REJECTED": "Rejected",
-      "CANCELLED": "Cancelled"
+      "CANCELLED": "Cancelled",
+      "NO_REGISTRATION": "No guided students"
     },
     "submission": {
       "DRAFT": "Draft",
@@ -230,7 +243,9 @@
     "assignment": {
       "PENDING": "Pending Response",
       "ACCEPTED": "Accepted",
-      "DECLINED": "Declined"
+      "DECLINED": "Declined",
+      "AUTO_ACCEPTED": "Assigned",
+      "AUTO_DECLINED": "Cancelled"
     },
     "extraPoints": {
       "PENDING": "Pending Approval",
@@ -466,6 +481,7 @@
   },
   "reviewerAssignment": {
     "title": "Reviewer Assignment",
+    "subtitle": "Assign reviewers to completed topics",
     "assignBoth": "Assign Both Reviewers",
     "noReviewersSelected": "Please select at least one reviewer!",
     "assignSuccess": "Assignment successful!",
@@ -673,5 +689,46 @@
     "openRegShort": "OPEN REGISTRATION",
     "closeRegShort": "CLOSE REGISTRATION",
     "operator": "Operator"
+  },
+  "extraPointManagement": {
+    "title": "Research Extra Points Approve",
+    "subtitle": "Review and approve extra point requests for students",
+    "pendingTab": "Pending",
+    "processedTab": "Processed"
+  },
+  "gradeSummary": {
+    "title": "Grade Summary",
+    "subtitle": "View and manage all thesis topic grades",
+    "tabs": {
+      "all": "All",
+      "ready": "Ready",
+      "missingSupervisor": "Missing Advisor",
+      "missingReviewer": "Missing Reviewer",
+      "missingCommittee": "Missing Committee",
+      "finalized": "Finalized"
+    }
+  },
+  "finalResults": {
+    "title": "Thesis Evaluation Results Board",
+    "subtitle": "View and export results list by committee",
+    "groupCode": "Group Code",
+    "topicTitle": "Topic Title",
+    "student": "Student",
+    "advisorGrade": "Advisor Grade",
+    "reviewerGrade": "Reviewer Grade",
+    "committeeGrade": "Committee Grade",
+    "extraGrade": "Extra Points",
+    "totalGrade": "Total Score",
+    "status": "Status",
+    "classification": "Classification",
+    "passed": "PASS",
+    "failed": "FAIL",
+    "failedMidterm": "FAILED",
+    "inProgress": "IN PROGRESS",
+    "exportData": "Export Data",
+    "searchPlaceholder": "Search by code, topic title, student...",
+    "oralCommittee": "Oral Committee",
+    "posterCommittee": "Poster Committee",
+    "showTotal": "{{range0}}-{{range1}} of {{total}} topics"
   }
 }
