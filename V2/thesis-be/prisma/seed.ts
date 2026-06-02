@@ -74,7 +74,7 @@ async function main() {
   await prisma.groupMember.deleteMany();
   await prisma.group.deleteMany();
   await prisma.topic.deleteMany();
-  await prisma.user.deleteMany({ where: { role: UserRole.STUDENT } });
+  await prisma.user.deleteMany();
 
   // 1. DEPARTMENTS
   const departments = [{ code: 'SE', name: 'Kỹ thuật phần mềm' }, { code: 'CS', name: 'Khoa học máy tính' }, { code: 'IT', name: 'Công nghệ thông tin' }, { code: 'IS', name: 'Hệ thống thông tin' }, { code: 'DA', name: 'Khoa học dữ liệu' }];
