@@ -47,6 +47,8 @@
     "email": "Email",
     "password": "Password",
     "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Forgot Password",
+    "forgotPasswordInstructions": "Please contact the System Administrator via email admin@iuh.edu.vn or the IT Department to reset your password.",
     "loginSuccess": "Login successful",
     "loginError": "Login failed",
     "invalidCredentials": "Invalid email or password",

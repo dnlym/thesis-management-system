@@ -47,6 +47,8 @@
     "email": "Email",
     "password": "Mật khẩu",
     "forgotPassword": "Quên mật khẩu?",
+    "forgotPasswordTitle": "Quên mật khẩu",
+    "forgotPasswordInstructions": "Vui lòng liên hệ Quản trị viên hệ thống qua email admin@iuh.edu.vn hoặc bộ phận IT để được cấp lại mật khẩu.",
     "loginSuccess": "Đăng nhập thành công",
     "loginError": "Đăng nhập thất bại",
     "invalidCredentials": "Email hoặc mật khẩu không đúng",

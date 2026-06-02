@@ -1,4 +1,4 @@
-import { Form, Input, Button, Typography, Space, Divider, Checkbox } from 'antd';
+import { Form, Input, Button, Typography, Space, Divider, Checkbox, Modal } from 'antd';
 import { notify } from '@/utils/notification';
 import { useTranslation } from 'react-i18next';
 import { UserOutlined, LockOutlined, ArrowRightOutlined, SafetyOutlined } from '@ant-design/icons';
@@ -15,6 +15,23 @@ const Login = () => {
   const navigate = useNavigate();
   const login = useAuthStore(state => state.login);
   const [form] = Form.useForm();
+
+  const handleForgotPassword = (e: React.MouseEvent) => {
+    e.preventDefault();
+    Modal.info({
+      title: t('auth.forgotPasswordTitle'),
+      content: (
+        <div className="py-2">
+          <p className="text-slate-600 leading-relaxed text-sm">
+            {t('auth.forgotPasswordInstructions')}
+          </p>
+        </div>
+      ),
+      okText: t('common.close'),
+      okButtonProps: { className: 'bg-blue-600 hover:bg-blue-700 font-bold rounded-lg' },
+      className: 'sys-modal'
+    });
+  };
 
 
   const onFinish = async (values: LoginForm) => {
@@ -197,7 +214,7 @@ const Login = () => {
                   English
                 </button>
               </div>
-              <a href="#" className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('auth.forgotPassword')}</a>
+              <a href="#" onClick={handleForgotPassword} className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">{t('auth.forgotPassword')}</a>
             </div>
 
             <Form.Item>
