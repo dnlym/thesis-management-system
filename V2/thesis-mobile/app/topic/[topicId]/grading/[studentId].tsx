@@ -618,7 +618,7 @@ const {
                                 </Text>
                                 {isFailed && (
                                     <View style={styles.failedBadge}>
-                                        <Text style={styles.failedBadgeText}>Rớt GK</Text>
+                                        <Text style={styles.failedBadgeText}>Đã rớt</Text>
                                     </View>
                                 )}
                             </TouchableOpacity>

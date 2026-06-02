@@ -261,6 +261,7 @@ export interface Grade {
   topic_id: string;
   rater_id: string;
   rater_role: RaterRole;
+  rater_name?: string;
   reviewer_order?: number | null;
   committee_role?: 'CHAIR' | 'SECRETARY' | 'MEMBER' | null;
   scores: GradeScore[];

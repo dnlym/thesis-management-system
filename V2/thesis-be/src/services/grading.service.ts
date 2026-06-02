@@ -169,7 +169,7 @@ export class GradingService {
       hasPermission = await isCommitteeMember(userId, resolvedTopicId);
     }
 
-    if (user.role === UserRole.HEAD || user.role === UserRole.ADMIN) {
+    if (user.role === UserRole.ADMIN) {
       hasPermission = true;
     }
 
@@ -237,7 +237,7 @@ export class GradingService {
     // Ensure studentId is available for comparison (essential for individual grading within topics)
     const studentId = data.studentId || (data as any).student_id;
 
-    if (isPastDeadline && user.role !== UserRole.ADMIN && user.role !== UserRole.HEAD) {
+    if (isPastDeadline) {
       if (existingGrades.length === 0) {
         throw new Error('Không thể yêu cầu sửa điểm do điểm số chưa từng được nhập trước thời hạn khóa.');
       }
@@ -436,6 +436,9 @@ export class GradingService {
     });
 
     // TODO: Send notification
+
+    // Ensure final score is recalculated on every grade submission to synchronize grades table and final_scores table
+    await this.computeFinalScore(data.topicId);
 
     // 4. Auto-evaluate eligibility for defense
     await this.autoEvaluateEligibility(data.topicId);
@@ -1721,6 +1724,19 @@ export class GradingService {
 
       grades.forEach(g => {
         const key = `${g.grader_id}-${g.student_id || 'topic'}`;
+        
+        let cleanedComment = g.comments?.replace(/\s*\[META_DATA:.*\]/, '') || null;
+        let generalComment: string | null = null;
+        if (g.comments) {
+          const metaMatch = g.comments.match(/\[META_DATA:(.*)\]/);
+          if (metaMatch) {
+            try {
+              const meta = JSON.parse(metaMatch[1]);
+              generalComment = meta.generalComment || null;
+            } catch { }
+          }
+        }
+
         if (!grouped.has(key)) {
           grouped.set(key, {
             id: g.id,
@@ -1732,14 +1748,19 @@ export class GradingService {
             reviewer_order: g.reviewer_order,
             scores: [],
             submitted_at: g.graded_at,
+            comments: generalComment || null,
           });
         }
 
         const entry = grouped.get(key);
+        if (generalComment && !entry.comments) {
+          entry.comments = generalComment;
+        }
+
         entry.scores.push({
           criterion_id: g.criterion_id,
           score: g.score,
-          comment: g.comments,
+          comment: cleanedComment,
           createdAt: g.graded_at,
           updatedAt: g.updated_at,
           isPending: (g as any).isPending || false,

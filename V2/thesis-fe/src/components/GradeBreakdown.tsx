@@ -92,7 +92,9 @@ export function GradeBreakdown({
                                 return (
                                     <div key={index} className="p-3 bg-slate-50 rounded-md">
                                         <div className="flex justify-between mb-2">
-                                            <span className="font-medium text-sm">Phản biện {index + 1}</span>
+                                            <span className="font-medium text-sm">
+                                                Phản biện: {grade.rater_name || `Phản biện ${index + 1}`}
+                                            </span>
                                             <span className="font-bold">{formatScore(avgScore)}/10</span>
                                         </div>
                                         <Progress value={avgScore * 10} className="h-2" />
@@ -127,7 +129,9 @@ export function GradeBreakdown({
                                 return (
                                     <div key={index} className="p-3 bg-slate-50 rounded-md">
                                         <div className="flex justify-between mb-2">
-                                            <span className="font-medium text-sm">{roleLabels[index] || `Thành viên ${index + 1}`}</span>
+                                            <span className="font-medium text-sm">
+                                                {roleLabels[index] || 'Thành viên'}: {grade.rater_name || `Thành viên ${index + 1}`}
+                                            </span>
                                             <span className="font-bold">{formatScore(avgScore)}/10</span>
                                         </div>
                                         <Progress value={avgScore * 10} className="h-2" />

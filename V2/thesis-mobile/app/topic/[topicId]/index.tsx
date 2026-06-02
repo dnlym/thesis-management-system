@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/auth';
 import { Grade } from '@/types';
 import { GradingApi } from '@/api/grading';
 
-import { ChevronLeft, MapPin, Users } from 'lucide-react-native';
+import { ChevronLeft, MapPin, Users, User, BookOpen } from 'lucide-react-native';
 
 const BLUE = '#2563eb';
 
@@ -82,9 +82,15 @@ export default function TopicDetailScreen() {
     let roleLabel = 'Giảng viên phản biện';
     let specificRole: string | null = null;
 
-    if (isHead) {
+    if (user?.role === 'HEAD') {
         roleCode = 'TBM';
         roleLabel = 'Trưởng bộ môn';
+    } else if (user?.role === 'COORDINATOR') {
+        roleCode = 'ĐPV';
+        roleLabel = 'Người phụ trách khóa luận';
+    } else if (user?.role === 'ADMIN') {
+        roleCode = 'ADMIN';
+        roleLabel = 'Quản trị viên';
     } else if (isAdvisor) {
         roleCode = 'GVHD';
         roleLabel = 'Giảng viên hướng dẫn';
@@ -192,29 +198,40 @@ export default function TopicDetailScreen() {
                             <Text style={{ padding: 20, color: '#94a3b8', textAlign: 'center' }}>Chưa có sinh viên</Text>
                         ) : students.map((sv: any, i: number) => {
                             const isMidtermFailed = sv?.midterm_status === 'FAIL' || sv?.midtermStatus === 'FAIL';
+                            const isFinalFailed = sv.finalScore?.finalized && (sv.finalScore?.final_score !== null && sv.finalScore?.final_score < 6.0);
+                            const isFailed = isMidtermFailed || isFinalFailed;
 
-                            let statusText = 'Chưa chấm';
+                            let statusText = 'Chờ chấm';
                             let statusColor = '#ea580c';
                             let statusBg = '#fff7ed';
                             let scoreToDisplay: number | null = null;
 
-                            if (isMidtermFailed) {
-                                statusText = 'Rớt GK';
+                            if (isFailed) {
+                                statusText = 'Đã rớt';
                                 statusColor = '#ef4444';
                                 statusBg = '#fef2f2';
+                                if (sv.finalScore?.final_score !== null && sv.finalScore?.final_score !== undefined) {
+                                    scoreToDisplay = sv.finalScore.final_score;
+                                }
                             } else if (isSpectator) {
-                                const hasScore = !!sv.finalScore;
-                                const isFinalPhase = topic.semester?.calculated_phase === 'FINAL';
-                                statusText = (isFinalPhase && sv.finalScore?.finalized) ? 'Đã chốt' : (hasScore ? 'Đã chấm' : 'Chưa chấm');
-                                statusColor = hasScore ? '#16a34a' : '#ea580c';
-                                statusBg = hasScore ? '#f0fdf4' : '#fff7ed';
+                                const hasScore = !!sv.finalScore && sv.finalScore.final_score !== null;
+                                const isFinalized = sv.finalScore?.finalized === true;
+                                if (isFinalized) {
+                                    statusText = 'Đã chốt';
+                                    statusColor = BLUE;
+                                    statusBg = '#f0f9ff';
+                                } else {
+                                    statusText = 'Đang chấm';
+                                    statusColor = '#ea580c';
+                                    statusBg = '#fff7ed';
+                                }
                                 if (hasScore) {
                                     scoreToDisplay = sv.finalScore?.final_score ?? sv.finalScore?.total_score ?? 0;
                                 }
                             } else {
                                 const myStudentGrade = myGradesData?.students?.find((s: any) => s.studentId === sv.id);
                                 const isGraded = myStudentGrade && (myStudentGrade.status === 'SUBMITTED' || myStudentGrade.status === 'PENDING_APPROVAL');
-                                statusText = isGraded ? 'Đã chấm' : 'Chưa chấm';
+                                statusText = isGraded ? 'Đã chấm' : 'Chờ chấm';
                                 statusColor = isGraded ? '#16a34a' : '#ea580c';
                                 statusBg = isGraded ? '#f0fdf4' : '#fff7ed';
                                 if (isGraded && myStudentGrade) {
@@ -266,13 +283,18 @@ export default function TopicDetailScreen() {
                         <View style={{ padding: 16 }}>
                             <Text style={styles.topicTitleMain}>{topic.title}</Text>
                             <View style={{ height: 1, backgroundColor: '#f1f5f9', marginVertical: 12 }} />
-                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                                <Users size={16} color="#64748b" style={{ marginTop: 2 }} />
-                                <View>
-                                    <Text style={styles.roleLabelText}>{roleLabel}</Text>
-                                    {specificRole && (
-                                        <Text style={styles.specificRoleText}>{specificRole}</Text>
-                                    )}
+                            <View style={{ gap: 10 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <User size={16} color="#64748b" />
+                                    <Text style={styles.roleLabelText}>
+                                        GV Hướng dẫn: <Text style={{ fontWeight: '700', color: '#1e293b' }}>{topic?.supervisor?.full_name || 'N/A'}</Text>
+                                    </Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Users size={16} color="#64748b" />
+                                    <Text style={styles.roleLabelText}>
+                                        Vai trò của bạn: <Text style={{ fontWeight: '700', color: BLUE }}>{roleLabel}{specificRole ? ` (${specificRole})` : ''}</Text>
+                                    </Text>
                                 </View>
                             </View>
                         </View>

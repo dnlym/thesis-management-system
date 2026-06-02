@@ -273,7 +273,7 @@ function TopicMonitoringCard({ topic, onPress }: any) {
                                 </View>
                                 {isMidtermFailed ? (
                                     <View style={[styles.scoreBadge, { backgroundColor: '#fee2e2' }]}>
-                                        <Text style={[styles.scoreValue, { color: '#dc2626', fontSize: 10 }]}>Rớt GK</Text>
+                                        <Text style={[styles.scoreValue, { color: '#dc2626', fontSize: 10 }]}>Đã rớt</Text>
                                     </View>
                                 ) : score != null ? (
                                     <View style={{ alignItems: 'flex-end', gap: 2 }}>

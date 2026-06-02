@@ -262,10 +262,9 @@ const Evaluation = () => {
   }, [students, myGradesData, activeTab]);
   const isAdminOrHead = user?.role === 'ADMIN' || user?.role === 'HEAD';
 
-  // Admin and HOD are NEVER locked unless the topic is completely finalized (even then they might need to edit, but let's keep finalized as a hard lock for now)
-  const isLocked = isPendingApproval || (((isFinalized || (!isPhaseAllowed && !isAdminOrHead) || (isPastDeadline && !isAdminOrHead) || missingSupervisorGrades || missingReviewerGrades)) && !isRequestMode);
+  const isLocked = isPendingApproval || (myGradesData?.grader?.id ? user?.id !== myGradesData.grader.id : false) || (((isFinalized || !isPhaseAllowed || isPastDeadline || missingSupervisorGrades || missingReviewerGrades)) && !isRequestMode);
 
-  const canEditAfterSubmit = !isFinalized && (isPhaseAllowed || isAdminOrHead) && user?.role !== 'STUDENT' && (!isPastDeadline || isAdminOrHead) && !missingSupervisorGrades && !missingReviewerGrades;
+  const canEditAfterSubmit = !isFinalized && isPhaseAllowed && user?.role !== 'STUDENT' && !isPastDeadline && !missingSupervisorGrades && !missingReviewerGrades && (myGradesData?.grader?.id ? user?.id === myGradesData.grader.id : true);
 
   // Handle value changes to calculate averages
   const handleValuesChange = () => {
@@ -829,7 +828,7 @@ const Evaluation = () => {
                 </div>
               )}
 
-              {isPastDeadline && isPhaseAllowed && isConfirmed && !isRequestMode && !isFinalized && !isAdminOrHead && (
+              {isPastDeadline && isPhaseAllowed && isConfirmed && !isRequestMode && !isFinalized && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
                   <Button
                     size="large"

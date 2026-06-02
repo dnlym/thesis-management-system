@@ -1269,7 +1269,18 @@ export class TopicService {
             },
           },
         },
-        assignments: true,
+        assignments: {
+          include: {
+            reviewer: {
+              select: {
+                id: true,
+                full_name: true,
+                role: true,
+                avatar_url: true,
+              }
+            }
+          }
+        },
         groups: {
           select: { id: true, name: true }
         },

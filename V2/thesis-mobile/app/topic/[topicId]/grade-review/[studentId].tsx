@@ -24,6 +24,8 @@ interface TopicGradesResponse {
     finalScores: FinalScore[];
     gradingStatus?: any;
     gradeHistory?: any[];
+    reviewerAssignments?: any[];
+    councilAssignments?: any[];
 }
 
 function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
@@ -46,7 +48,7 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
         }
         return (
             <Text style={[styles.raterScore, { color: defaultColor }]}>
-                {score !== null ? score.toFixed(2) : '-'}
+                {score !== null ? score.toFixed(2) : '--'}
             </Text>
         );
     };
@@ -81,9 +83,9 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
     const advisorScore = advisorGrade ? calculateWeightedAverage(advisorGrade.scores, 'SUPERVISOR') : null;
 
     // 2. Reviewers list (Phản biện)
-    const reviewerAssignments = topic?.assignments
-        ?.filter((a: any) => a.assignment_type === 'REVIEWER')
-        ?.sort((a: any, b: any) => (a.reviewer_order || 0) - (b.reviewer_order || 0)) || [];
+    const reviewerAssignments = (data.reviewerAssignments || topic?.assignments || [])
+        .filter((a: any) => a.assignment_type === 'REVIEWER')
+        .sort((a: any, b: any) => (a.reviewer_order || 0) - (b.reviewer_order || 0));
 
     const reviewerList = React.useMemo(() => {
         if (reviewerAssignments.length > 0) {
@@ -112,14 +114,14 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
     }, [reviewerAssignments, data.reviewerGrades, studentId, criteriaRes]);
 
     // 3. Council list (Hội đồng)
-    const councilAssignments = topic?.assignments
-        ?.filter((a: any) => a.assignment_type === 'COMMITTEE')
-        ?.sort((a: any, b: any) => {
+    const councilAssignments = (data.councilAssignments || topic?.assignments || [])
+        .filter((a: any) => a.assignment_type === 'COMMITTEE')
+        .sort((a: any, b: any) => {
             const roleOrder: Record<string, number> = { CHAIR: 1, SECRETARY: 2, MEMBER: 3, MEMBER_1: 4, MEMBER_2: 5, MEMBER_3: 6, MEMBER_4: 7, MEMBER_5: 8 };
             const orderA = roleOrder[a.committee_role || ''] || 99;
             const orderB = roleOrder[b.committee_role || ''] || 99;
             return orderA - orderB;
-        }) || [];
+        });
 
     const councilList = React.useMemo(() => {
         if (councilAssignments.length > 0) {
@@ -286,7 +288,7 @@ function SummaryBreakdown({ data, studentId, criteriaRes, topic }: any) {
                                 <Award size={18} color="#f59e0b" />
                             </View>
                             <Text style={styles.raterName}>Điểm thưởng thành tích</Text>
-                            <Text style={[styles.raterScore, { color: '#f59e0b' }]}>{(finalScore?.extra_points || 0).toFixed(2)}</Text>
+                            <Text style={[styles.raterScore, { color: '#f59e0b' }]}>{(finalScore?.extra_points !== undefined && finalScore?.extra_points !== null) ? finalScore.extra_points.toFixed(2) : '--'}</Text>
                         </View>
                     </View>
                 )}
@@ -359,6 +361,96 @@ export default function GradeReviewScreen() {
     // For HOD: headViewRole is used. For others: always use their own role
     const viewRole = isHead ? headViewRole : (myRoleOnTopic as any || 'REVIEWER');
 
+    const [selectedGraderId, setSelectedGraderId] = React.useState<string | null>(null);
+
+    const availableGraders = React.useMemo(() => {
+        if (!topicGradesData || !topic) return [];
+        
+        if (viewRole === 'SUPERVISOR') {
+            return [{
+                id: topic?.supervisor_id,
+                name: topic?.supervisor?.full_name || 'GV Hướng dẫn',
+                roleLabel: 'GVHD'
+            }];
+        }
+        
+        if (viewRole === 'REVIEWER') {
+            const assignments = (topicGradesData.reviewerAssignments || topic?.assignments || [])
+                .filter((a: any) => a.assignment_type === 'REVIEWER')
+                .sort((a: any, b: any) => (a.reviewer_order || 0) - (b.reviewer_order || 0));
+            
+            if (assignments.length > 0) {
+                return assignments.map((a: any, idx: number) => ({
+                    id: a.reviewer_id,
+                    name: a.reviewer?.full_name || `Phản biện ${idx + 1}`,
+                    roleLabel: `PB${idx + 1}`
+                }));
+            }
+            const reviewers = topicGradesData.reviewerGrades?.filter((g: any) => g.student_id === selectedStudentId || !g.student_id) || [];
+            return reviewers.map((r: any, idx: number) => ({
+                id: r.rater_id,
+                name: r.rater_name || `Phản biện ${idx + 1}`,
+                roleLabel: `PB${idx + 1}`
+            }));
+        }
+        
+        if (viewRole === 'COMMITTEE') {
+            const assignments = (topicGradesData.councilAssignments || topic?.assignments || [])
+                .filter((a: any) => a.assignment_type === 'COMMITTEE')
+                .sort((a: any, b: any) => {
+                    const roleOrder: Record<string, number> = { CHAIR: 1, SECRETARY: 2, MEMBER: 3, MEMBER_1: 4, MEMBER_2: 5, MEMBER_3: 6, MEMBER_4: 7, MEMBER_5: 8 };
+                    return (roleOrder[a.committee_role || ''] || 99) - (roleOrder[b.committee_role || ''] || 99);
+                });
+            
+            if (assignments.length > 0) {
+                return assignments.map((a: any, idx: number) => {
+                    let subRoleLabel = 'ỦY VIÊN';
+                    if (a.committee_role === 'CHAIR') subRoleLabel = 'CHỦ TỊCH';
+                    else if (a.committee_role === 'SECRETARY') subRoleLabel = 'THƯ KÝ';
+                    else if (a.committee_role === 'MEMBER_1') subRoleLabel = 'ỦY VIÊN 1';
+                    else if (a.committee_role === 'MEMBER_2') subRoleLabel = 'ỦY VIÊN 2';
+                    else if (a.committee_role === 'MEMBER_3') subRoleLabel = 'ỦY VIÊN 3';
+                    else if (a.committee_role === 'MEMBER_4') subRoleLabel = 'ỦY VIÊN 4';
+                    else if (a.committee_role === 'MEMBER_5') subRoleLabel = 'ỦY VIÊN 5';
+                    return {
+                        id: a.reviewer_id,
+                        name: a.reviewer?.full_name || `Thành viên ${idx + 1}`,
+                        roleLabel: subRoleLabel
+                    };
+                });
+            }
+            const council = topicGradesData.councilGrades?.filter((g: any) => g.student_id === selectedStudentId || !g.student_id) || [];
+            return council.map((c: any, idx: number) => {
+                let subRoleLabel = 'ỦY VIÊN';
+                if (c.rater_role === 'COMMITTEE_CHAIR') subRoleLabel = 'CHỦ TỊCH';
+                else if (c.rater_role === 'COMMITTEE_SECRETARY') subRoleLabel = 'THƯ KÝ';
+                else if (c.rater_role === 'COMMITTEE_MEMBER_1') subRoleLabel = 'ỦY VIÊN 1';
+                else if (c.rater_role === 'COMMITTEE_MEMBER_2') subRoleLabel = 'ỦY VIÊN 2';
+                else if (c.rater_role === 'COMMITTEE_MEMBER_3') subRoleLabel = 'ỦY VIÊN 3';
+                else if (c.rater_role === 'COMMITTEE_MEMBER_4') subRoleLabel = 'ỦY VIÊN 4';
+                else if (c.rater_role === 'COMMITTEE_MEMBER_5') subRoleLabel = 'ỦY VIÊN 5';
+                return {
+                    id: c.rater_id,
+                    name: c.rater_name || `Thành viên ${idx + 1}`,
+                    roleLabel: subRoleLabel
+                };
+            });
+        }
+        
+        return [];
+    }, [topic, topicGradesData, viewRole, selectedStudentId]);
+
+    React.useEffect(() => {
+        if (availableGraders.length > 0) {
+            const stillAvailable = availableGraders.some((g: any) => g.id === selectedGraderId);
+            if (!stillAvailable) {
+                setSelectedGraderId(availableGraders[0].id);
+            }
+        } else {
+            setSelectedGraderId(null);
+        }
+    }, [availableGraders, selectedGraderId]);
+
     const raterRole = React.useMemo(() => {
         if (!topic || !currentUser) return 'REVIEWER_1';
         if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
@@ -390,6 +482,12 @@ export default function GradeReviewScreen() {
         return topic.assignments?.some((a: any) => a.reviewer_id === currentUser?.id);
     }, [topic, currentUser, selectedStudentId]);
 
+    const isViewingOwnGrades = React.useMemo(() => {
+        if (!isHead) return true;
+        if (viewRole === 'SUMMARY') return false;
+        return selectedGraderId === currentUser?.id;
+    }, [isHead, viewRole, selectedGraderId, currentUser]);
+
 
 
     const { data: criteriaRes, isLoading: isLoadingCriteria } = useGradingCriteria();
@@ -402,11 +500,11 @@ export default function GradeReviewScreen() {
         
         const data = criteriaRes as any;
         let roleKey = 'REVIEWER';
-        if (raterRole === 'SUPERVISOR' || raterRole === 'ADVISOR') roleKey = 'SUPERVISOR';
-        else if (raterRole.startsWith('COMMITTEE') || raterRole.includes('COUNCIL')) roleKey = 'COMMITTEE';
+        if (viewRole === 'SUPERVISOR' || viewRole === 'ADVISOR') roleKey = 'SUPERVISOR';
+        else if (viewRole === 'COMMITTEE' || viewRole.startsWith('COMMITTEE') || viewRole.includes('COUNCIL')) roleKey = 'COMMITTEE';
         
         return data[roleKey] || data.FINAL || Object.values(data)[0] || [];
-    }, [criteriaRes, raterRole]);
+    }, [criteriaRes, viewRole]);
 
     const students = React.useMemo(() => {
         const all = topic?.students || [];
@@ -493,12 +591,17 @@ export default function GradeReviewScreen() {
         if (isHead) {
             if (isSummaryMode) {
                 gradesToDisplay = (myGrades.length > 0) ? myGrades : studentGrades;
-            } else if (viewRole === 'SUPERVISOR') {
-                gradesToDisplay = flattenedAdvisor;
-            } else if (viewRole === 'REVIEWER') {
-                gradesToDisplay = flattenedReviewer;
-            } else if (viewRole === 'COMMITTEE') {
-                gradesToDisplay = flattenedCouncil;
+            } else {
+                let baseGrades: Grade[] = [];
+                if (viewRole === 'SUPERVISOR') baseGrades = flattenedAdvisor;
+                else if (viewRole === 'REVIEWER') baseGrades = flattenedReviewer;
+                else if (viewRole === 'COMMITTEE') baseGrades = flattenedCouncil;
+                
+                if (selectedGraderId) {
+                    gradesToDisplay = baseGrades.filter(g => g.grader_id === selectedGraderId);
+                } else {
+                    gradesToDisplay = baseGrades;
+                }
             }
         } else {
             // For regular lecturers, filter to strictly show their own grades for their active role
@@ -536,6 +639,8 @@ export default function GradeReviewScreen() {
         const calculatedScore10 = maxPossibleValue > 0 ? (totalScoreValue / maxPossibleValue) * 10 : 0;
         
         const score10 = (isSummaryMode && finalScore?.final_score !== undefined) ? finalScore.final_score : calculatedScore10;
+
+        const hasAnyGrade = gradedItems.some((item: any) => item.isGraded);
         
         return {
             isSummary: isSummaryMode,
@@ -545,22 +650,25 @@ export default function GradeReviewScreen() {
             graded_at: isSummaryMode ? finalScore?.created_at : firstGrade?.graded_at,
             items: gradedItems,
             totalScore: score10,
+            hasAnyGrade,
             finalScore: finalScore as FinalScore | undefined,
             isReadyForDecision: !!topicGradesData.gradingStatus?.isReadyForDecision,
             gradingStatus: topicGradesData.gradingStatus,
             generalComment: isSummaryMode ? '' : (firstGrade?.comments || ''),
             gradeHistory: topicGradesData.gradeHistory || []
         };
-    }, [topicGradesData, criteriaList, selectedStudentId, currentUser, viewRole]);
+    }, [topicGradesData, criteriaList, selectedStudentId, currentUser, viewRole, selectedGraderId]);
 
     const roleDisplay = React.useMemo(() => {
-        if (isHead) return 'TBM';
+        if (currentUser?.role === 'HEAD') return 'TBM';
+        if (currentUser?.role === 'COORDINATOR') return 'ĐPV';
+        if (currentUser?.role === 'ADMIN') return 'ADMIN';
         if (raterRole === 'SUPERVISOR') return 'GVHD';
         if (raterRole === 'COMMITTEE_CHAIR') return 'Chủ tịch HĐ';
         if (raterRole === 'COMMITTEE_SECRETARY') return 'Thư ký HĐ';
         if (raterRole.startsWith('COMMITTEE')) return 'Ủy viên HĐ';
         return 'GVPB';
-    }, [raterRole, isHead]);
+    }, [raterRole, currentUser]);
 
     if (isTopicLoading || isInitialLoading || isLoadingCriteria || !topic) {
         return (
@@ -643,6 +751,29 @@ export default function GradeReviewScreen() {
                 </View>
             )}
 
+            {/* Grader Sub-Selector (HOD/Coordinator Only, when role has multiple graders) */}
+            {isHead && viewRole !== 'SUMMARY' && availableGraders.length > 1 && (
+                <View style={styles.graderSelector}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.graderSelectorScroll}>
+                        {availableGraders.map((g: any) => {
+                            const active = g.id === selectedGraderId;
+                            return (
+                                <TouchableOpacity
+                                    key={g.id}
+                                    style={[styles.graderChip, active && styles.graderChipActive]}
+                                    onPress={() => setSelectedGraderId(g.id)}
+                                >
+                                    <User size={12} color={active ? BLUE : '#64748b'} />
+                                    <Text style={[styles.graderChipText, active && styles.graderChipTextActive]}>
+                                        {g.roleLabel}: {g.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
+
 
             <View style={styles.switcher}>
                 <View style={styles.tabWrapper}>
@@ -676,16 +807,24 @@ export default function GradeReviewScreen() {
                                 </TouchableOpacity>
                                 <View style={styles.topicInfoGrid}>
                                     <View style={styles.topicInfoItem}>
-                                        {reviewData?.isSummary ? <User size={12} color={BLUE} /> : <Clock size={12} color="#94a3b8" />}
+                                        <User size={12} color={reviewData?.isSummary ? BLUE : "#64748b"} />
                                         <Text style={[styles.topicInfoText, reviewData?.isSummary && { color: BLUE, fontWeight: '700' }]}>
                                             {reviewData?.isSummary 
-                                                ? `Người chấm: ${reviewData.rater_name || 'Giảng viên'}` 
-                                                : (reviewData?.graded_at ? new Date(reviewData.graded_at).toLocaleDateString('vi-VN') : 'Đang chấm')}
+                                                ? 'Bảng điểm: Tổng hợp' 
+                                                : `Người chấm: ${reviewData?.rater_name || 'Chưa chấm'}`}
                                         </Text>
                                     </View>
+                                    {reviewData?.graded_at && (
+                                        <View style={styles.topicInfoItem}>
+                                            <Clock size={12} color="#64748b" />
+                                            <Text style={styles.topicInfoText}>
+                                                Ngày chấm: {new Date(reviewData?.graded_at).toLocaleDateString('vi-VN')}
+                                            </Text>
+                                        </View>
+                                    )}
                                     <View style={styles.topicInfoItem}>
-                                        <Users size={12} color="#94a3b8" />
-                                        <Text style={styles.topicInfoText}>{topic?.registrations?.[0]?.group?.name || 'N/A'}</Text>
+                                        <Users size={12} color="#64748b" />
+                                        <Text style={styles.topicInfoText}>Nhóm: {topic?.registrations?.[0]?.group?.name || 'N/A'}</Text>
                                     </View>
                                 </View>
                             </View>
@@ -693,7 +832,7 @@ export default function GradeReviewScreen() {
                     </View>
                 </View>
 
-                {reviewData?.finalScore && (currentUser?.role === 'HEAD' || currentUser?.role === 'COORDINATOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'STUDENT') && (
+                {reviewData?.isSummary && reviewData?.finalScore && (currentUser?.role === 'HEAD' || currentUser?.role === 'COORDINATOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'STUDENT') && (
                     <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
                         <View style={[styles.statsCard, { marginHorizontal: 0, marginBottom: 0, backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }]}>
                             <View style={styles.statsCol}>
@@ -701,13 +840,26 @@ export default function GradeReviewScreen() {
                                     <Award size={14} color={BLUE} />
                                     <Text style={[styles.statsLabel, { color: BLUE }]}>ĐIỂM TỔNG KẾT</Text>
                                 </View>
-                                <Text style={[styles.statsValue, { color: BLUE }]}>
-                                    {Number((reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0).toFixed(2)).toString()}
-                                    <Text style={[styles.statsMax, { color: '#93c5fd' }]}> / 10</Text>
-                                </Text>
-                                <Text style={{ fontSize: 11, color: BLUE, fontWeight: '700', marginTop: 2 }}>
-                                    Thang 4: {getClassification(reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0).point4}
-                                </Text>
+                                {reviewData.finalScore.finalized && typeof reviewData.finalScore.final_score === 'number' ? (
+                                    <>
+                                        <Text style={[styles.statsValue, { color: BLUE }]}>
+                                            {Number(reviewData.finalScore.final_score.toFixed(2)).toString()}
+                                            <Text style={[styles.statsMax, { color: '#93c5fd' }]}> / 10</Text>
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: BLUE, fontWeight: '700', marginTop: 2 }}>
+                                            Thang 4: {getClassification(reviewData.finalScore.final_score).point4}
+                                        </Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text style={[styles.statsValue, { color: BLUE }]}>
+                                            -- <Text style={[styles.statsMax, { color: '#93c5fd' }]}> / 10</Text>
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: BLUE, fontWeight: '700', marginTop: 2 }}>
+                                            Thang 4: --
+                                        </Text>
+                                    </>
+                                )}
                             </View>
                             <View style={[styles.statsDivider, { backgroundColor: '#e0f2fe' }]} />
                             <View style={styles.statsCol}>
@@ -715,24 +867,37 @@ export default function GradeReviewScreen() {
                                     <Info size={14} color="#64748b" />
                                     <Text style={[styles.statsLabel, { color: '#64748b' }]}>XẾP LOẠI</Text>
                                 </View>
-                                {(() => {
-                                    const finalVal = reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0;
-                                    const cls = getClassification(finalVal);
-                                    const letter = reviewData.finalScore.grade_classification || cls.letter;
-                                    const isPass = cls.status === 'Đạt';
-                                    return (
-                                        <View style={{ alignItems: 'center', gap: 4 }}>
-                                            <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
-                                                <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
-                                                    {letter}
+                                {reviewData.finalScore.finalized && typeof reviewData.finalScore.final_score === 'number' ? (
+                                    (() => {
+                                        const finalVal = reviewData.finalScore.final_score;
+                                        const cls = getClassification(finalVal);
+                                        const letter = reviewData.finalScore.grade_classification || cls.letter;
+                                        const isPass = cls.status === 'Đạt';
+                                        return (
+                                            <View style={{ alignItems: 'center', gap: 4 }}>
+                                                <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
+                                                    <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
+                                                        {letter}
+                                                    </Text>
+                                                </View>
+                                                <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
+                                                    {isPass ? 'Đạt' : 'Không đạt'}
                                                 </Text>
                                             </View>
-                                            <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
-                                                {isPass ? 'Đạt' : 'Không đạt'}
+                                        );
+                                    })()
+                                ) : (
+                                    <View style={{ alignItems: 'center', gap: 4 }}>
+                                        <View style={[styles.gradeBadge, { backgroundColor: '#f1f5f9' }]}>
+                                            <Text style={[styles.gradeBadgeText, { color: '#64748b', fontSize: 14, fontWeight: '900' }]}>
+                                                --
                                             </Text>
                                         </View>
-                                    );
-                                })()}
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginTop: 2 }}>
+                                            --
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                     </View>
@@ -752,13 +917,26 @@ export default function GradeReviewScreen() {
                                         <Award size={14} color="#94a3b8" />
                                         <Text style={styles.statsLabel}>ĐIỂM TRUNG BÌNH</Text>
                                     </View>
-                                    <Text style={styles.statsValue}>
-                                        {Number(reviewData.totalScore.toFixed(2)).toString()} 
-                                        <Text style={styles.statsMax}> / 10</Text>
-                                    </Text>
-                                    <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', marginTop: 2 }}>
-                                        Thang 4: {getClassification(reviewData.totalScore).point4}
-                                    </Text>
+                                    {reviewData.hasAnyGrade ? (
+                                        <>
+                                            <Text style={styles.statsValue}>
+                                                {Number(reviewData.totalScore.toFixed(2)).toString()} 
+                                                <Text style={styles.statsMax}> / 10</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', marginTop: 2 }}>
+                                                Thang 4: {getClassification(reviewData.totalScore).point4}
+                                            </Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Text style={styles.statsValue}>
+                                                -- <Text style={styles.statsMax}> / 10</Text>
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', marginTop: 2 }}>
+                                                Thang 4: --
+                                            </Text>
+                                        </>
+                                    )}
                                 </View>
                                 <View style={styles.statsDivider} />
                                 <View style={styles.statsCol}>
@@ -766,22 +944,35 @@ export default function GradeReviewScreen() {
                                         <Info size={14} color="#94a3b8" />
                                         <Text style={styles.statsLabel}>XẾP LOẠI</Text>
                                     </View>
-                                    {(() => {
-                                        const cls = getClassification(reviewData.totalScore);
-                                        const isPass = cls.status === 'Đạt';
-                                        return (
-                                            <View style={{ alignItems: 'center', gap: 4 }}>
-                                                <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
-                                                    <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
-                                                        {cls.letter}
+                                    {reviewData.hasAnyGrade ? (
+                                        (() => {
+                                            const cls = getClassification(reviewData.totalScore);
+                                            const isPass = cls.status === 'Đạt';
+                                            return (
+                                                <View style={{ alignItems: 'center', gap: 4 }}>
+                                                    <View style={[styles.gradeBadge, { backgroundColor: isPass ? '#dcfce7' : '#fee2e2' }]}>
+                                                        <Text style={[styles.gradeBadgeText, { color: isPass ? '#166534' : '#991b1b', fontSize: 14, fontWeight: '900' }]}>
+                                                            {cls.letter}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
+                                                        {isPass ? 'Đạt' : 'Không đạt'}
                                                     </Text>
                                                 </View>
-                                                <Text style={{ fontSize: 10, fontWeight: '800', color: isPass ? '#16a34a' : '#dc2626', marginTop: 2 }}>
-                                                    {isPass ? 'Đạt' : 'Không đạt'}
+                                            );
+                                        })()
+                                    ) : (
+                                        <View style={{ alignItems: 'center', gap: 4 }}>
+                                            <View style={[styles.gradeBadge, { backgroundColor: '#f1f5f9' }]}>
+                                                <Text style={[styles.gradeBadgeText, { color: '#64748b', fontSize: 14, fontWeight: '900' }]}>
+                                                    --
                                                 </Text>
                                             </View>
-                                        );
-                                    })()}
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginTop: 2 }}>
+                                                --
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                             </View>
                         )}
@@ -811,7 +1002,7 @@ export default function GradeReviewScreen() {
                                                     </View>
                                                 </View>
                                                 <View style={styles.scoreContainer}>
-                                                    <Text style={styles.itemScore}>{Number(item.score.toFixed(2)).toString()}</Text>
+                                                    <Text style={styles.itemScore}>{item.isGraded ? Number(item.score.toFixed(2)).toString() : '--'}</Text>
                                                     <Text style={styles.itemMax}>/{item.criterion.max_score}</Text>
                                                 </View>
                                             </View>
@@ -865,11 +1056,15 @@ export default function GradeReviewScreen() {
                 <View style={styles.footer}>
                     {!reviewData?.finalScore?.finalized ? (
                         <TouchableOpacity 
-                            style={styles.editBtn} 
+                            style={[
+                                styles.editBtn, 
+                                !isViewingOwnGrades && { backgroundColor: '#e2e8f0' }
+                            ]} 
+                            disabled={!isViewingOwnGrades}
                             onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}?groupId=${groupId || ''}` as any)}
                         >
-                            <Edit3 size={18} color={BLUE} />
-                            <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+                            <Edit3 size={18} color={isViewingOwnGrades ? BLUE : '#94a3b8'} />
+                            <Text style={[styles.editBtnText, !isViewingOwnGrades && { color: '#94a3b8' }]}>Chỉnh sửa</Text>
                         </TouchableOpacity>
                     ) : (
                         <View style={styles.finalizedBadge}>
@@ -911,7 +1106,7 @@ const styles = StyleSheet.create({
     topicCardBody: { padding: 10, flexDirection: 'row', gap: 10 },
     topicIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: LIGHT_BLUE, alignItems: 'center', justifyContent: 'center' },
     topicCardTitle: { fontSize: 13, fontWeight: '700', color: '#1e293b', lineHeight: 18 },
-    topicInfoGrid: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    topicInfoGrid: { flexDirection: 'row', gap: 16, marginTop: 8, flexWrap: 'wrap' },
     topicInfoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     topicInfoText: { fontSize: 12, color: '#94a3b8', fontWeight: '500' },
 
@@ -1007,6 +1202,17 @@ const styles = StyleSheet.create({
     roleChipActive: { backgroundColor: BLUE, borderColor: BLUE },
     roleChipText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
     roleChipTextActive: { color: '#fff' },
+
+    graderSelector: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingVertical: 8 },
+    graderSelectorScroll: { paddingHorizontal: 16, gap: 8 },
+    graderChip: {
+        flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc',
+        paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, gap: 4,
+        borderWidth: 1, borderColor: '#e2e8f0'
+    },
+    graderChipActive: { backgroundColor: '#eff6ff', borderColor: BLUE },
+    graderChipText: { fontSize: 10, fontWeight: '700', color: '#64748b' },
+    graderChipTextActive: { color: BLUE },
 
     summaryContainer: { padding: 16, gap: 20 },
     summarySection: { gap: 12 },

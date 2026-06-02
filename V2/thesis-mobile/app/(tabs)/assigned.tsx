@@ -74,24 +74,38 @@ export default function AssignedScreen() {
     let rawList: { topic: any, role: string, assignment?: any, groupId?: string | null }[] = [];
 
     // Helper to get personal roles for a topic
-    const getPersonalRole = (topicId: string) => {
-        if (supervised.some(t => t.id === topicId)) return 'GVHD';
-        const reviewer = assignedReviewer.find(a => a.topic_id === topicId);
+    const getPersonalRole = (t: any) => {
+        if (!t) return null;
+        const realTopicId = t.topicId || t.id;
+        const groupId = t.id && !t.id.endsWith('-individual') ? t.id : null;
+
+        if (supervised.some(st => st.id === t.id || st.topicId === realTopicId)) return 'GVHD';
+
+        const reviewer = assignedReviewer.find(a => 
+            a.topic_id === realTopicId && 
+            (!a.group_id || !groupId || a.group_id === groupId)
+        );
         if (reviewer) return 'GVPB';
-        const committee = assignedCommittee.find(a => a.topic_id === topicId);
+
+        const committee = assignedCommittee.find(a => 
+            a.topic_id === realTopicId && 
+            (!a.group_id || !groupId || a.group_id === groupId)
+        );
         if (committee) return 'HĐBV';
+
         return isHOD ? 'XEM' : null;
     };
 
     // select personal assignments first
     const personalSupervised = supervised.flatMap(t => {
+        const gid = t.id && t.id.endsWith('-individual') ? null : t.id;
         if (!t.registrations || t.registrations.length === 0) {
-            return [{ topic: t, role: 'GVHD', groupId: null }];
+            return [{ topic: t, role: 'GVHD', groupId: gid }];
         }
         return t.registrations.map(reg => ({ 
             topic: t, 
             role: 'GVHD', 
-            groupId: reg.group_id 
+            groupId: reg.group_id || gid 
         }));
     });
 
@@ -104,8 +118,9 @@ export default function AssignedScreen() {
       if (isHOD) {
         // HOD sees everything in dept, but we prioritize marking their personal ones
         const deptList = allDept.map(t => {
-            const role = getPersonalRole(t.id) || 'XEM';
-            return { topic: t, role, groupId: null };
+            const role = getPersonalRole(t) || 'XEM';
+            const gid = t.id && t.id.endsWith('-individual') ? null : t.id;
+            return { topic: t, role, groupId: gid };
         });
         
         rawList = [...personalList];
@@ -157,13 +172,50 @@ export default function AssignedScreen() {
       const letterGrade = displayScore != null ? getClassification(displayScore).letter : null;
       const isPassGrade = displayScore != null ? getClassification(displayScore).isPass : null;
 
+      const isMidtermFailed = reg?.midterm_status === 'FAIL' || reg?.midtermStatus === 'FAIL';
+      const isFinalFailed = finalScoreForStudent?.finalized && (displayScore !== null && displayScore < 6.0);
+      const isFailed = isMidtermFailed || isFinalFailed;
+      const finalRole = item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role;
+      const isDirectRole = (finalRole === 'GVHD' || finalRole === 'GVPB' || finalRole === 'HĐBV') && user?.role !== 'STUDENT';
+      const hasPersonalGrade = groupGrades.some((g: any) => g.grader_id === user?.id || g.graderId === user?.id);
+
+      let statusLabel = 'Chờ chấm';
+      let statusColor = '#ea580c';
+      let statusBg = '#fff7ed';
+
+      if (isFailed) {
+        statusLabel = 'Đã rớt';
+        statusColor = '#ef4444';
+        statusBg = '#fef2f2';
+      } else if (isDirectRole) {
+        if (hasPersonalGrade) {
+          statusLabel = 'Đã chấm';
+          statusColor = '#16a34a';
+          statusBg = '#f0fdf4';
+        } else {
+          statusLabel = 'Chờ chấm';
+          statusColor = '#ea580c';
+          statusBg = '#fff7ed';
+        }
+      } else {
+        if (isFinalized) {
+          statusLabel = 'Đã chốt';
+          statusColor = BLUE;
+          statusBg = '#f0f9ff';
+        } else {
+          statusLabel = 'Đang chấm';
+          statusColor = '#ea580c';
+          statusBg = '#fff7ed';
+        }
+      }
+
       return {
         id: item.assignment?.id || `topic-${t.id}-${groupId || 'no-group'}-${item.role}`,
         topicId: t.id,
         groupId: groupId,
         title: t.title || 'Đề tài không có tiêu đề',
         code: t.code || 'N/A',
-        role: item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role,
+        role: finalRole,
         status: t.status,
         date: t.created_at || new Date().toISOString(),
         schedule: t.defense_schedule || t.defense_schedules?.[0],
@@ -174,6 +226,9 @@ export default function AssignedScreen() {
         score: displayScore != null ? Number(displayScore.toFixed(2)).toString() : null,
         letterGrade,
         isPassGrade,
+        statusLabel,
+        statusColor,
+        statusBg,
       };
 
     });
@@ -297,9 +352,9 @@ export default function AssignedScreen() {
             </View>
 
             <View style={styles.cardRightCol}>
-              <View style={[styles.statusBadge, { backgroundColor: item.isFinalized ? '#f0f9ff' : item.isGraded ? '#f0fdf4' : '#fff7ed' }]}>
-                <Text style={[styles.statusBadgeText, { color: item.isFinalized ? BLUE : item.isGraded ? '#16a34a' : '#ea580c' }]}>
-                  {item.isFinalized ? 'Đã chốt' : item.isGraded ? 'Đã nhận' : 'Chưa chấm'}
+              <View style={[styles.statusBadge, { backgroundColor: item.statusBg }]}>
+                <Text style={[styles.statusBadgeText, { color: item.statusColor }]}>
+                  {item.statusLabel}
                 </Text>
               </View>
               {item.score && (
