@@ -106,25 +106,16 @@ async function main() {
       const isHod = rawName.includes('Trưởng bộ môn');
       const isCoordinator = rawName.includes('Nguyễn Hữu Quang');
       const fullName = rawName.replace(/\s*\(.*\)$/, '');
-      let cleaned = fullName.toLowerCase().trim()
+      let nameWithoutTitle = rawName.replace(/^(pgs\.ts\.|pgs\.ts|gs\.ts\.|gs\.ts|ths\.ncs\.|ths\.ncs|ths\.|ths|ts\.|ts|ks\.|ks)\s*/i, '');
+      let cleaned = nameWithoutTitle.replace(/\s*\(.*\)$/, '')
+        .toLowerCase().trim()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, '')
-        .replace(/đ/g, 'd');
+        .replace(/đ/g, 'd')
+        .replace(/\./g, '');
       
-      let emailPrefix = cleaned;
-      if (cleaned.startsWith('pgsts')) {
-        emailPrefix = cleaned.substring(5);
-      } else if (cleaned.startsWith('gsts')) {
-        emailPrefix = cleaned.substring(4);
-      } else if (cleaned.startsWith('ths')) {
-        emailPrefix = cleaned.substring(3);
-      } else if (cleaned.startsWith('ts')) {
-        emailPrefix = cleaned.substring(2);
-      } else if (cleaned.startsWith('ks')) {
-        emailPrefix = cleaned.substring(2);
-      }
-      const email = emailPrefix + "@iuh.edu.vn";
+      const email = cleaned + "@iuh.edu.vn";
       const role = isHod ? UserRole.HEAD : (isCoordinator ? UserRole.COORDINATOR : UserRole.LECTURER);
       const user = await prisma.user.upsert({ where: { email }, update: { full_name: fullName, role, departmentId: deptMap[deptCode].id }, create: { email, full_name: fullName, password_hash: commonPassword, role, departmentId: deptMap[deptCode].id, active: true } });
       if (deptCode === 'IS') isLecturers.push(user);
