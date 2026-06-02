@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, Tabs, Space, Popconfirm, Tag, Tooltip } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notify } from '@/utils/notification';
@@ -76,27 +76,7 @@ const Criteria = () => {
         },
     });
 
-    // Clone mutation
-    const cloneMutation = useMutation({
-        mutationFn: GradingApi.cloneGlobalCriteria,
-        onSuccess: (data) => {
-            notify.success(`Đã sao chép ${data?.cloned ?? 0} tiêu chí vào bộ môn${data?.skipped ? ` (bỏ qua ${data.skipped} đã tồn tại)` : ''}`);
-            queryClient.invalidateQueries({ queryKey: ['gradingCriteria'] });
-        },
-        onError: (error: any) => {
-            notify.error(error.response?.data?.error || error.message || 'Sao chép thất bại');
-        },
-    });
 
-    const handleClone = () => {
-        Modal.confirm({
-            title: 'Khởi tạo tiêu chí bộ môn',
-            content: 'Hệ thống sẽ sao chép toàn bộ tiêu chí mặc định (global) vào bộ môn của bạn. Các tiêu chí đã tồn tại sẽ được bỏ qua. Tiếp tục?',
-            okText: 'Sao chép',
-            cancelText: 'Hủy',
-            onOk: () => cloneMutation.mutate(),
-        });
-    };
 
     const handleAdd = () => {
         setEditingId(null);
@@ -238,17 +218,6 @@ const Criteria = () => {
                             </div>
                         </div>
                         <Space>
-                            {user?.role === 'HEAD' && (
-                                <Tooltip title="Sao chép bộ tiêu chí mặc định vào bộ môn để có thể chỉnh sửa">
-                                    <Button
-                                        icon={<CopyOutlined />}
-                                        onClick={handleClone}
-                                        loading={cloneMutation.isPending}
-                                    >
-                                        Khởi tạo tiêu chí bộ môn
-                                    </Button>
-                                </Tooltip>
-                            )}
                             <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                                 {t('common.add')}
                             </Button>

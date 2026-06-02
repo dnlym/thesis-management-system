@@ -174,7 +174,7 @@ const CommitteeAssignment = () => {
             key: 'title',
             render: (text: string, record: TopicForCommittee) => (
                 <div className="max-w-md">
-                    <div className="text-sm font-semibold text-slate-800 uppercase mb-1">{text}</div>
+                    <div className="text-sm font-semibold text-slate-800 mb-1">{text}</div>
                     <div className="text-xs text-slate-400">
                         {t('topics.supervisor')}: <span className="font-medium text-slate-600">{record.supervisor?.full_name}</span>
                     </div>
@@ -368,7 +368,7 @@ const CommitteeAssignment = () => {
                                     </div>
                                     <div className="flex-1">
                                         <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">{t('common.name', 'Tên đề tài')}</div>
-                                        <div className="text-base font-bold text-slate-800 leading-snug uppercase">{selectedTopic.title}</div>
+                                        <div className="text-base font-bold text-slate-800 leading-snug">{selectedTopic.title}</div>
                                         <div className="mt-2 flex gap-4">
                                             <Tag color="blue" className="m-0 border-none bg-blue-100 text-blue-700 font-mono text-[10px]">{selectedTopic.code}</Tag>
                                             <div className="text-[11px] text-slate-500 italic">GVHD: <span className="font-semibold text-slate-700">{selectedTopic.supervisor?.full_name}</span></div>
