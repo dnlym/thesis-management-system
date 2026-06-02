@@ -1443,12 +1443,6 @@ const Evaluation = () => {
                     label: 'Hướng dẫn',
                     children: (
                       <div className="pt-6 pb-6 pr-6 pl-0 space-y-4 bg-white">
-                        <div className="mt-1">
-                          <Text type="secondary" className="text-[11px] italic">
-                            <InfoCircleOutlined className="mr-1" />
-                            Lưu ý: Dữ liệu sau khi chốt (Locked) sẽ không thể thay đổi trừ khi có yêu cầu phúc khảo từ Quản trị viên.
-                          </Text>
-                        </div>
                         <Table
                           dataSource={filterLecturerData(advisorTopics?.topics || [])}
                           columns={dashboardColumns}

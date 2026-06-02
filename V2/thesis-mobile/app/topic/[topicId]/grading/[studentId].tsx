@@ -634,7 +634,7 @@ const {
                             <Award size={14} color="#94a3b8" />
                             <Text style={styles.statsLabel}>TỔNG ĐIỂM</Text>
                         </View>
-                        <Text style={styles.statsValue}>{totalScore.toFixed(1)} <Text style={styles.statsMax}>/ 10</Text></Text>
+                        <Text style={styles.statsValue}>{Number(totalScore.toFixed(2)).toString()} <Text style={styles.statsMax}>/ 10</Text></Text>
                     </View>
                     <View style={styles.statsDivider} />
                     <View style={styles.statsCol}>

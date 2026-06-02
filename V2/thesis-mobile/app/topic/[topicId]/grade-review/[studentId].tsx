@@ -380,7 +380,6 @@ export default function GradeReviewScreen() {
 
     const canGrade = React.useMemo(() => {
         if (!topic) return false;
-        if (isHead) return false;
         if (topic.status === 'FINALIZED') return false;
 
         const currentStudent = topic.students?.find((s: any) => s.id === selectedStudentId);
@@ -389,7 +388,7 @@ export default function GradeReviewScreen() {
 
         if (topic.supervisor_id === currentUser?.id) return true;
         return topic.assignments?.some((a: any) => a.reviewer_id === currentUser?.id);
-    }, [topic, currentUser, isHead, selectedStudentId]);
+    }, [topic, currentUser, selectedStudentId]);
 
 
 
@@ -703,7 +702,7 @@ export default function GradeReviewScreen() {
                                     <Text style={[styles.statsLabel, { color: BLUE }]}>ĐIỂM TỔNG KẾT</Text>
                                 </View>
                                 <Text style={[styles.statsValue, { color: BLUE }]}>
-                                    {(reviewData.finalScore.final_score ?? reviewData.finalScore.total_score)?.toFixed(1) || '0.0'}
+                                    {Number((reviewData.finalScore.final_score ?? reviewData.finalScore.total_score ?? 0).toFixed(2)).toString()}
                                     <Text style={[styles.statsMax, { color: '#93c5fd' }]}> / 10</Text>
                                 </Text>
                                 <Text style={{ fontSize: 11, color: BLUE, fontWeight: '700', marginTop: 2 }}>
@@ -754,7 +753,7 @@ export default function GradeReviewScreen() {
                                         <Text style={styles.statsLabel}>ĐIỂM TRUNG BÌNH</Text>
                                     </View>
                                     <Text style={styles.statsValue}>
-                                        {reviewData.totalScore.toFixed(1)} 
+                                        {Number(reviewData.totalScore.toFixed(2)).toString()} 
                                         <Text style={styles.statsMax}> / 10</Text>
                                     </Text>
                                     <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', marginTop: 2 }}>
@@ -812,7 +811,7 @@ export default function GradeReviewScreen() {
                                                     </View>
                                                 </View>
                                                 <View style={styles.scoreContainer}>
-                                                    <Text style={styles.itemScore}>{item.score.toFixed(1)}</Text>
+                                                    <Text style={styles.itemScore}>{Number(item.score.toFixed(2)).toString()}</Text>
                                                     <Text style={styles.itemMax}>/{item.criterion.max_score}</Text>
                                                 </View>
                                             </View>

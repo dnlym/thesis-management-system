@@ -171,7 +171,7 @@ export default function AssignedScreen() {
         department: t.department?.name || 'CNTT',
         isGraded,
         isFinalized,
-        score: displayScore != null ? displayScore.toFixed(1) : null,
+        score: displayScore != null ? Number(displayScore.toFixed(2)).toString() : null,
         letterGrade,
         isPassGrade,
       };

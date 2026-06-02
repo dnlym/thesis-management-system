@@ -277,7 +277,7 @@ function TopicMonitoringCard({ topic, onPress }: any) {
                                     </View>
                                 ) : score != null ? (
                                     <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                                        <Text style={styles.scoreValue}>{score.toFixed(1)}</Text>
+                                        <Text style={styles.scoreValue}>{Number(score.toFixed(2)).toString()}</Text>
                                         <View style={[
                                             styles.scoreBadge,
                                             { backgroundColor: cls?.isPass ? '#dcfce7' : '#fee2e2', paddingHorizontal: 6, paddingVertical: 1 }

@@ -39,9 +39,11 @@ export default function TopicDetailScreen() {
     const isAdvisor = topic?.supervisor_id === user?.id;
     const reviewerAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
     const committeeAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
+    const isAssigned = isAdvisor || !!reviewerAssignment || !!committeeAssignment;
+    const isSpectator = isHead && !isAssigned;
 
     const raterRole = React.useMemo(() => {
-        if (isHead) return 'HEAD';
+        if (isSpectator) return 'HEAD';
         if (isAdvisor) return 'SUPERVISOR';
         if (committeeAssignment) {
             const role = committeeAssignment.committee_role;
@@ -51,7 +53,7 @@ export default function TopicDetailScreen() {
             return `REVIEWER_${reviewerAssignment.reviewer_order}`;
         }
         return 'GVPB';
-    }, [isHead, isAdvisor, committeeAssignment, reviewerAssignment]);
+    }, [isSpectator, isAdvisor, committeeAssignment, reviewerAssignment]);
 
     React.useEffect(() => {
         const fetchMyGrades = async () => {
@@ -200,7 +202,7 @@ export default function TopicDetailScreen() {
                                 statusText = 'Rớt GK';
                                 statusColor = '#ef4444';
                                 statusBg = '#fef2f2';
-                            } else if (isHead) {
+                            } else if (isSpectator) {
                                 const hasScore = !!sv.finalScore;
                                 const isFinalPhase = topic.semester?.calculated_phase === 'FINAL';
                                 statusText = (isFinalPhase && sv.finalScore?.finalized) ? 'Đã chốt' : (hasScore ? 'Đã chấm' : 'Chưa chấm');
@@ -247,7 +249,7 @@ export default function TopicDetailScreen() {
                                         </View>
                                         {scoreToDisplay !== null && (
                                             <Text style={[styles.scoreText, { color: statusColor }]}>
-                                                {scoreToDisplay.toFixed(1)}
+                                                {Number(scoreToDisplay.toFixed(2)).toString()}
                                             </Text>
                                         )}
                                     </View>
