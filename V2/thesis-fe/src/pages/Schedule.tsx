@@ -224,7 +224,9 @@ const Schedule = () => {
 
                                                         {sortedCommittee.length > 0 && (
                                                             <div className="space-y-1 pt-1">
-                                                                <span className="text-slate-400 font-medium block mb-0.5">Thành viên Hội đồng:</span>
+                                                                <span className="text-slate-400 font-medium block mb-0.5">
+                                                                    {item.type === 'DEFENSE' ? 'Giảng viên phản biện:' : 'Thành viên Hội đồng:'}
+                                                                </span>
                                                                 <div className="bg-slate-50/70 border border-slate-100/50 rounded-lg p-2 space-y-1.5">
                                                                     {sortedCommittee.map((member: any) => {
                                                                         let roleName = 'Ủy viên';
@@ -235,6 +237,9 @@ const Schedule = () => {
                                                                         } else if (member.role === 'SECRETARY') {
                                                                             roleName = 'Thư ký';
                                                                             roleColor = 'orange';
+                                                                        } else if (member.role === 'REVIEWER') {
+                                                                            roleName = 'Phản biện';
+                                                                            roleColor = 'green';
                                                                         }
                                                                         return (
                                                                             <div key={member.id} className="flex justify-between items-center text-[11px]">

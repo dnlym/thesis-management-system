@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { SemesterPhase } from '@prisma/client';
 import semesterService from './semester.service';
+import dayjs from 'dayjs';
 
 export class DefenseService {
     async getSchedules(semesterId?: string) {
@@ -72,13 +73,69 @@ export class DefenseService {
                         }
                     }
                 }
-            },
-            orderBy: {
-                defense_date: 'asc'
             }
         });
 
-        return schedules.map(s => {
+        const reviewerAssignments = await prisma.assignment.findMany({
+            where: {
+                assignment_type: 'REVIEWER',
+                start_time: {
+                    not: null
+                },
+                topic: {
+                    semester_id: targetSemesterId
+                }
+            },
+            include: {
+                reviewer: {
+                    select: {
+                        id: true,
+                        full_name: true
+                    }
+                },
+                topic: {
+                    select: {
+                        id: true,
+                        title: true,
+                        status: true,
+                        supervisor: {
+                            select: {
+                                full_name: true
+                            }
+                        },
+                        registrations: {
+                            include: {
+                                student: {
+                                    select: {
+                                        id: true,
+                                        full_name: true,
+                                        student_code: true
+                                    }
+                                },
+                                group: {
+                                    include: {
+                                        members: {
+                                            where: { status: 'ACCEPTED' },
+                                            include: {
+                                                user: {
+                                                    select: {
+                                                        id: true,
+                                                        full_name: true,
+                                                        student_code: true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const councilEvents = schedules.map(s => {
             const topic = s.topic;
             const registrations = topic?.registrations || [];
             const firstReg = registrations[0];
@@ -97,12 +154,14 @@ export class DefenseService {
                 }];
             }
 
-            const committee = topic?.assignments?.map((a: any) => ({
-                id: a.reviewer?.id,
-                fullName: a.reviewer?.full_name,
-                role: a.committee_role,
-                type: a.assignment_type
-            })) || [];
+            const committee = topic?.assignments
+                ?.filter((a: any) => a.assignment_type === 'COMMITTEE')
+                ?.map((a: any) => ({
+                    id: a.reviewer?.id,
+                    fullName: a.reviewer?.full_name,
+                    role: a.committee_role,
+                    type: a.assignment_type
+                })) || [];
 
             return {
                 id: s.id,
@@ -110,14 +169,69 @@ export class DefenseService {
                 topicTitle: topic?.title || 'N/A',
                 supervisor: topic?.supervisor?.full_name || 'N/A',
                 date: s.defense_date,
-                time: s.defense_time,
-                room: s.room,
+                time: s.defense_time || 'Chưa xếp giờ',
+                room: s.room || 'N/A',
                 status: topic?.status,
-                type: topic?.defense_type || 'DEFENSE',
+                type: 'COUNCIL_MEETING',
                 students,
                 committee
             };
         });
+
+        const reviewerEvents = reviewerAssignments.map(a => {
+            const topic = a.topic;
+            const registrations = topic?.registrations || [];
+            const firstReg = registrations[0];
+            let students: { id: string; fullName: string; studentCode: string; }[] = [];
+            if (firstReg?.group?.members && firstReg.group.members.length > 0) {
+                students = firstReg.group.members.map((m: any) => ({
+                    id: m.user?.id || '',
+                    fullName: m.user?.full_name || '',
+                    studentCode: m.user?.student_code || ''
+                }));
+            } else if (firstReg?.student) {
+                students = [{
+                    id: firstReg.student.id,
+                    fullName: firstReg.student.full_name || '',
+                    studentCode: firstReg.student.student_code || ''
+                }];
+            }
+
+            const committee = [{
+                id: a.reviewer?.id,
+                fullName: a.reviewer?.full_name || 'N/A',
+                role: 'REVIEWER',
+                type: 'REVIEWER'
+            }];
+
+            const timeStr = a.start_time && a.end_time
+                ? `${dayjs(a.start_time).format('HH:mm')} - ${dayjs(a.end_time).format('HH:mm')}`
+                : a.start_time
+                ? dayjs(a.start_time).format('HH:mm')
+                : 'Chưa xếp giờ';
+
+            return {
+                id: a.id,
+                topicId: a.topic_id,
+                topicTitle: topic?.title || 'N/A',
+                supervisor: topic?.supervisor?.full_name || 'N/A',
+                date: a.start_time,
+                time: timeStr,
+                room: a.room || 'N/A',
+                status: topic?.status,
+                type: 'DEFENSE',
+                students,
+                committee
+            };
+        });
+
+        const allEvents = [...councilEvents, ...reviewerEvents];
+        allEvents.sort((x, y) => {
+            const timeX = x.date ? new Date(x.date).getTime() : 0;
+            const timeY = y.date ? new Date(y.date).getTime() : 0;
+            return timeX - timeY;
+        });
+        return allEvents;
     }
 }
 
