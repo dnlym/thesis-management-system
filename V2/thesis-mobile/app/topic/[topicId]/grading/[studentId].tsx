@@ -2,7 +2,7 @@ import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     TextInput, StyleSheet, Alert, ActivityIndicator,
-    Platform, StatusBar, Pressable, Modal
+    Platform, StatusBar, Pressable, Modal, KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -122,7 +122,7 @@ const {
     const [originalScores, setOriginalScores] = React.useState<Record<string, Record<string, string>>>({});
     const [originalComments, setOriginalComments] = React.useState<Record<string, Record<string, string>>>({});
     const [expandedComments, setExpandedComments] = React.useState<Record<string, boolean>>({});
-    const [submittedAt, setSubmittedAt] = React.useState<string | null>(null);
+    const [submittedAt, setSubmittedAt] = React.useState<Record<string, string>>({});
     const [isRestoring, setIsRestoring] = React.useState(true);
     const [submittedStudents, setSubmittedStudents] = React.useState<Record<string, string>>({});
     const [gradeHistory, setGradeHistory] = React.useState<any[]>([]);
@@ -153,6 +153,7 @@ const {
                     setGradeHistory(myGrades.gradeHistory || []);
                     if (myGrades.students && myGrades.students.length > 0) {
                         const restoredSubmitted: Record<string, string> = {};
+                        const restoredSubmittedAt: Record<string, string> = {};
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
                                 restoredSubmitted[sGrade.studentId] = sGrade.status;
@@ -166,8 +167,8 @@ const {
                                 });
                                 restoredScores[sGrade.studentId] = sScores;
                                 restoredComments[sGrade.studentId] = sComments;
-                                if (sGrade.studentId === studentId) {
-                                    setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
+                                if (sGrade.updatedAt || sGrade.createdAt) {
+                                    restoredSubmittedAt[sGrade.studentId] = sGrade.updatedAt || sGrade.createdAt;
                                 }
                             }
                         }
@@ -177,6 +178,7 @@ const {
                             setAllComments(restoredComments);
                             setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
                             setSubmittedStudents(restoredSubmitted);
+                            setSubmittedAt(restoredSubmittedAt);
                             setIsRestoring(false);
                             return;
                         }
@@ -228,6 +230,7 @@ const {
                         const restoredScores: Record<string, Record<string, string>> = {};
                         const restoredComments: Record<string, Record<string, string>> = {};
                         const restoredSubmitted: Record<string, string> = {};
+                        const restoredSubmittedAt: Record<string, string> = {};
 
                         for (const sGrade of myGrades.students) {
                             if (sGrade.status === 'SUBMITTED' || sGrade.status === 'PENDING_APPROVAL') {
@@ -242,8 +245,8 @@ const {
                                 });
                                 restoredScores[sGrade.studentId] = sScores;
                                 restoredComments[sGrade.studentId] = sComments;
-                                if (sGrade.studentId === studentId) {
-                                    setSubmittedAt(sGrade.updatedAt || sGrade.createdAt);
+                                if (sGrade.updatedAt || sGrade.createdAt) {
+                                    restoredSubmittedAt[sGrade.studentId] = sGrade.updatedAt || sGrade.createdAt;
                                 }
                             }
                         }
@@ -255,6 +258,7 @@ const {
                             setAllComments(prev => ({ ...prev, ...restoredComments }));
                             setOriginalComments(JSON.parse(JSON.stringify(restoredComments)));
                             setSubmittedStudents(restoredSubmitted);
+                            setSubmittedAt(restoredSubmittedAt);
                         }
                     }
                 }
@@ -456,7 +460,7 @@ const {
                 setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
                 setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
                 setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: 'PENDING_APPROVAL' }));
-                setSubmittedAt(new Date().toISOString());
+                setSubmittedAt(prev => ({ ...prev, [currentStudentId]: new Date().toISOString() }));
 
                 if (isLastEligibleStudent) {
                     router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}`);
@@ -469,7 +473,7 @@ const {
             setOriginalScores(prev => ({ ...prev, [currentStudentId]: { ...currentScores } }));
             setOriginalComments(prev => ({ ...prev, [currentStudentId]: { ...(allComments[currentStudentId] || {}) } }));
             setSubmittedStudents(prev => ({ ...prev, [currentStudentId]: 'SUBMITTED' }));
-            setSubmittedAt(new Date().toISOString());
+            setSubmittedAt(prev => ({ ...prev, [currentStudentId]: new Date().toISOString() }));
             
             if (isLastEligibleStudent) {
                 Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm đủ điều kiện.');
@@ -496,6 +500,10 @@ const {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
             <StatusBar barStyle="dark-content" />
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <ChevronLeft size={24} color="#374151" />
@@ -544,7 +552,7 @@ const {
                         <View style={{ flex: 1, marginLeft: 8 }}>
                             <Text style={[styles.phaseWarningTitle, { color: '#15803d' }]}>Đã hoàn thành chấm điểm</Text>
                             <Text style={[styles.phaseWarningText, { color: '#166534' }]}>
-                                Bảng điểm được lưu lúc {submittedAt ? new Date(submittedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ngày ' + new Date(submittedAt).toLocaleDateString('vi-VN') : '---'}
+                                Bảng điểm được lưu lúc {submittedAt[currentStudent?.id] ? new Date(submittedAt[currentStudent.id]).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ngày ' + new Date(submittedAt[currentStudent.id]).toLocaleDateString('vi-VN') : '---'}
                             </Text>
                         </View>
                     </View>
@@ -627,7 +635,11 @@ const {
                 </View>
             </View>
 
-            <ScrollView style={{ flex: 1, backgroundColor: '#f8fafc' }} keyboardShouldPersistTaps="handled">
+            <ScrollView 
+                style={{ flex: 1, backgroundColor: '#f8fafc' }} 
+                contentContainerStyle={{ paddingBottom: 240 }}
+                keyboardShouldPersistTaps="handled"
+            >
                 <View style={styles.statsCard}>
                     <View style={styles.statsCol}>
                         <View style={styles.statsLabelRow}>
@@ -837,6 +849,7 @@ const {
                     </View>
                 </View>
             </Modal>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
