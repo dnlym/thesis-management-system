@@ -2,7 +2,7 @@ import React from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
     TextInput, StyleSheet, Alert, ActivityIndicator,
-    Platform, StatusBar, Pressable, Modal, KeyboardAvoidingView
+    Platform, StatusBar, Pressable, Modal, KeyboardAvoidingView, Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -409,6 +409,7 @@ const {
     };
 
     const handleNext = async (requesting = false) => {
+        Keyboard.dismiss();
         const currentStudentId = eligibleStudents[idx].id;
         const currentScores = allScores[currentStudentId] || {};
         const incomplete = criteria.some((c: any) => !currentScores[c.id]);
