@@ -346,7 +346,7 @@ export class GradingService {
       userId,
       action: 'SUBMIT_GRADE',
       entityType: 'Grade',
-      entityId: data.topicId,
+      entityId: resolvedTopicId,
       newValue: {
         studentId: data.studentId,
         role: raterRole,
@@ -372,7 +372,7 @@ export class GradingService {
         });
       } else if (isReviewer(raterRole)) {
         // Check if all reviewers have graded
-        const allReviewersGraded = await this.checkAllReviewersGraded(data.topicId);
+        const allReviewersGraded = await this.checkAllReviewersGraded(resolvedTopicId);
         if (allReviewersGraded) {
           await prisma.topicRegistration.update({
             where: { id: registration.id },
@@ -384,13 +384,13 @@ export class GradingService {
           // [PRODUCTION GUARD] Idempotent status transition to READY_FOR_DEFENSE stage
           if (topic.progress_stage !== ProgressStage.READY_FOR_DEFENSE) {
             await prisma.topic.update({
-              where: { id: data.topicId },
+              where: { id: resolvedTopicId },
               data: {
                 progress_stage: ProgressStage.READY_FOR_DEFENSE,
               },
             });
             logger.info('TOPIC_PROGRESS_TRANSITION', {
-              topicId: data.topicId,
+              topicId: resolvedTopicId,
               to: ProgressStage.READY_FOR_DEFENSE,
               trigger: 'ALL_REVIEWERS_GRADED'
             });
@@ -398,7 +398,7 @@ export class GradingService {
         }
       } else if (isCommittee(raterRole)) {
         // Check if all committee members have graded
-        const allCommitteeGraded = await this.checkAllCommitteeGraded(data.topicId);
+        const allCommitteeGraded = await this.checkAllCommitteeGraded(resolvedTopicId);
         if (allCommitteeGraded) {
           await prisma.topicRegistration.update({
             where: { id: registration.id },
@@ -410,7 +410,7 @@ export class GradingService {
           // [PRODUCTION GUARD] Idempotent status transition to COMPLETED
           if (topic.status !== TopicStatus.COMPLETED) {
             await prisma.topic.update({
-              where: { id: data.topicId },
+              where: { id: resolvedTopicId },
               data: {
                 status: TopicStatus.COMPLETED,
                 progress_stage: ProgressStage.DONE,
@@ -419,7 +419,7 @@ export class GradingService {
           }
 
           // Auto-compute final score
-          await this.computeFinalScore(data.topicId);
+          await this.computeFinalScore(resolvedTopicId);
         }
       }
     }
@@ -430,7 +430,7 @@ export class GradingService {
         user_id: userId,
         action: 'SUBMIT_GRADE',
         entity_type: 'Grade',
-        entity_id: data.topicId,
+        entity_id: resolvedTopicId,
         new_value: { rater_role: raterRole, grades: grades.length },
       },
     });
@@ -438,10 +438,10 @@ export class GradingService {
     // TODO: Send notification
 
     // Ensure final score is recalculated on every grade submission to synchronize grades table and final_scores table
-    await this.computeFinalScore(data.topicId);
+    await this.computeFinalScore(resolvedTopicId);
 
     // 4. Auto-evaluate eligibility for defense
-    await this.autoEvaluateEligibility(data.topicId);
+    await this.autoEvaluateEligibility(resolvedTopicId);
 
     GradingService.clearGradeSummaryCache();
     return grades;
