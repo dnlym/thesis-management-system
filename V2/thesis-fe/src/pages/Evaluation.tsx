@@ -375,7 +375,7 @@ const Evaluation = () => {
       refetchHistory();
     } catch (error: any) {
       console.error('Submission failed:', error);
-      const errMsg = error.response?.data?.message || error.message || 'Vui lòng kiểm tra lại đầy đủ các cột điểm';
+      const errMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Vui lòng kiểm tra lại đầy đủ các cột điểm';
       notify.error(errMsg);
     }
   };
