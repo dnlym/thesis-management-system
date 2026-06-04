@@ -251,8 +251,8 @@ export class GradingService {
         return await this.requestGradeChange(userId, data, raterRole, existingGrades, resolvedTopicId, studentId);
       }
 
-      // If nothing changed, just return existing (idempotent)
-      return existingGrades;
+      // If nothing changed, throw an error to notify that no changes were made
+      throw new Error('Không có điểm số nào thay đổi so với điểm cũ để gửi yêu cầu chỉnh sửa.');
     }
 
     // We will use upsert instead of delete-create to preserve graded_at for yellow dot detection
