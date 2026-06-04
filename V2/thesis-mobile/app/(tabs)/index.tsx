@@ -73,11 +73,13 @@ export default function DashboardScreen() {
     const list = [
       ...(assignments || []).map(a => {
         let roleLabel = 'GVPB';
+        let roleKey = 'GVPB'; // key for navigation
         if (a.assignment_type === 'COMMITTEE') {
           const cRole = a.committee_role;
           if (cRole === 'CHAIR') roleLabel = 'Chủ tịch HĐ';
           else if (cRole === 'SECRETARY') roleLabel = 'Thư ký HĐ';
           else roleLabel = 'Thành viên HĐ';
+          roleKey = 'HĐBV';
         }
 
         const schedule = a.topic?.defense_schedule || a.topic?.defense_schedules?.[0];
@@ -92,6 +94,7 @@ export default function DashboardScreen() {
           statusLabel: a.status === 'PENDING' ? 'Chưa chấm' : (a.status === 'ACCEPTED' || a.status === 'AUTO_ACCEPTED' ? 'Đã nhận' : 'Đã chấm'),
           statusColor: a.status === 'PENDING' ? '#ea580c' : '#16a34a',
           role: roleLabel,
+          roleKey,
           schedule,
           room
         };
@@ -109,6 +112,7 @@ export default function DashboardScreen() {
           statusLabel: 'Chấm HD',
           statusColor: BLUE,
           role: 'GVHD',
+          roleKey: 'GVHD',
           schedule,
           room
         };
@@ -324,7 +328,7 @@ export default function DashboardScreen() {
                 <TouchableOpacity
                   key={`${session.id}-${topic.id}`}
                   style={styles.topicCard}
-                  onPress={() => router.push(`/topic/${topic.topicId}?groupId=${topic.groupId || ''}` as any)}
+                  onPress={() => router.push(`/topic/${topic.topicId}?groupId=${topic.groupId || ''}&viewMode=grading&role=${(topic as any).roleKey || topic.role}` as any)}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.topicGroup} numberOfLines={1}>{topic.groupName}</Text>

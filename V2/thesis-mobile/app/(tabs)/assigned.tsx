@@ -177,7 +177,20 @@ export default function AssignedScreen() {
       const isFailed = isMidtermFailed || isFinalFailed;
       const finalRole = item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role;
       const isDirectRole = (finalRole === 'GVHD' || finalRole === 'GVPB' || finalRole === 'HĐBV') && user?.role !== 'STUDENT';
-      const hasPersonalGrade = groupGrades.some((g: any) => g.grader_id === user?.id || g.graderId === user?.id);
+      
+      // Filter grades by role to avoid cross-role contamination (e.g. GV vừa PB vừa HĐ)
+      const roleGradeType =
+        finalRole === 'GVHD' ? 'SUPERVISOR' :
+        finalRole === 'GVPB' ? 'REVIEWER' :
+        finalRole === 'HĐBV' ? 'COMMITTEE' : null;
+      
+      const hasPersonalGrade = groupGrades.some((g: any) => {
+        const isMyGrade = g.grader_id === user?.id || g.graderId === user?.id;
+        if (!isMyGrade) return false;
+        if (!roleGradeType) return true; // không lọc nếu không xác định được role
+        const raterRole: string = g.rater_role || g.raterRole || '';
+        return raterRole.startsWith(roleGradeType);
+      });
 
       let statusLabel = 'Chờ chấm';
       let statusColor = '#ea580c';

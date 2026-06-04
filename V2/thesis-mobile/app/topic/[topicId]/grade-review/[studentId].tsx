@@ -1095,7 +1095,7 @@ export default function GradeReviewScreen() {
                                 !isViewingOwnGrades && { backgroundColor: '#e2e8f0' }
                             ]} 
                             disabled={!isViewingOwnGrades}
-                            onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}?groupId=${groupId || ''}` as any)}
+                            onPress={() => router.push(`/topic/${topicId}/grading/${selectedStudentId}?groupId=${groupId || ''}&role=${roleParam || ''}` as any)}
                         >
                             <Edit3 size={18} color={isViewingOwnGrades ? BLUE : '#94a3b8'} />
                             <Text style={[styles.editBtnText, !isViewingOwnGrades && { color: '#94a3b8' }]}>Chỉnh sửa</Text>
