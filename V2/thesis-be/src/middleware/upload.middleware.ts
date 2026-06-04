@@ -53,7 +53,7 @@ export const uploadExtraPointEvidence = multer({
   storage: storage,
   fileFilter: extraPointFileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: FILE_UPLOAD.MAX_SIZE.EXTRA_POINT_EVIDENCE, // Resolves to 10MB from constants
   },
 });
 
@@ -86,7 +86,7 @@ export const uploadAvatar = multer({
   storage: avatarStorage,
   fileFilter: avatarFileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB limit
+    fileSize: FILE_UPLOAD.MAX_SIZE.AVATAR, // Resolves to 5MB from constants
   },
 });
 

@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/auth';
 import { useTopic } from '@/hooks/useTopics';
 import { useGradingCriteria } from '@/hooks/useGrading';
 import { GradingApi } from '@/api/grading';
+import { GradeCache } from '@/store/gradeCache';
 
 const BLUE = '#2563eb';
 const LIGHT_BLUE = '#eff6ff';
@@ -152,9 +153,12 @@ const {
     const [requestReason, setRequestReason] = React.useState('');
     const [myGradesData, setMyGradesData] = React.useState<any>(null);
     const inputRefs = React.useRef<Record<string, TextInput | null>>({});
+    const scrollViewRef = React.useRef<any>(null);
 
     React.useEffect(() => {
         setExpandedComments({});
+        // Scroll về đầu phiếu chấm khi chuyển sang sinh viên mới
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     }, [idx]);
 
     // Restoration Logic
@@ -443,7 +447,12 @@ const {
 
         setIsSubmitting(true);
         try {
-            const myAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id);
+            const myAssignment = topic?.assignments?.find(a => 
+                a.reviewer_id === user?.id &&
+                (!roleParam || 
+                 (roleParam === 'GVPB' && a.assignment_type === 'REVIEWER') || 
+                 (roleParam === 'HĐBV' && a.assignment_type === 'COMMITTEE'))
+            ) || topic?.assignments?.find(a => a.reviewer_id === user?.id);
             const submissionData = {
                 topic_id: topicId as string,
                 group_id: groupId as string || undefined,
@@ -498,6 +507,11 @@ const {
             setSubmittedAt(prev => ({ ...prev, [currentStudentId]: new Date().toISOString() }));
             
             if (isLastEligibleStudent) {
+                // Fetch fresh data và lưu vào cache trước khi navigate
+                try {
+                    const freshGrades = await GradingApi.getTopicGrades(topicId as string);
+                    GradeCache.set(topicId as string, freshGrades);
+                } catch (_) {}
                 Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm đủ điều kiện.');
                 router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}&role=${roleParam || ''}`);
             } else {
@@ -658,6 +672,7 @@ const {
             </View>
 
             <ScrollView 
+                ref={scrollViewRef}
                 style={{ flex: 1, backgroundColor: '#f8fafc' }} 
                 contentContainerStyle={{ paddingBottom: 240 }}
                 keyboardShouldPersistTaps="handled"

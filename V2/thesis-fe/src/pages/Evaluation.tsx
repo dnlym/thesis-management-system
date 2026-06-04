@@ -1008,17 +1008,31 @@ const Evaluation = () => {
         }
 
         // [UI IMPROVEMENT] Status should reflect CURRENT user's grading progress in lecturer tabs
-        const hasMyGrades = r.grades?.filter((g: any) => {
+        const regs = r.registrations || [];
+        const eligibleRegs = regs.filter((reg: any) => reg.midterm_status !== 'FAIL' && reg.status !== 'FAILED');
+        
+        if (eligibleRegs.length === 0) {
+          return <Tag color="default" className="m-0 rounded-full px-3">Chờ chấm</Tag>;
+        }
+
+        const myGrades = r.grades?.filter((g: any) => {
           const graderMatches = (g.grader_id === user?.id || g.graderId === user?.id);
           if (!graderMatches) return false;
           const role = g.rater_role || g.raterRole || '';
           if (activeTab === 'reviewer') return role.startsWith('REVIEWER');
           if (activeTab === 'council') return role.startsWith('COMMITTEE');
           return role === 'SUPERVISOR';
-        }).length > 0;
+        }) || [];
 
-        if (hasMyGrades) {
-          return <Tag color="processing" className="m-0 rounded-full px-3">Đã chấm</Tag>;
+        const gradedStudentsCount = eligibleRegs.filter((reg: any) => {
+          const studentId = reg.studentId || reg.student_id;
+          return myGrades.some((g: any) => (g.student_id === studentId || g.studentId === studentId));
+        }).length;
+
+        if (gradedStudentsCount === eligibleRegs.length && eligibleRegs.length > 0) {
+          return <Tag color="success" className="m-0 rounded-full px-3">Đã chấm</Tag>;
+        } else if (gradedStudentsCount > 0) {
+          return <Tag color="warning" className="m-0 rounded-full px-3">Đang chấm</Tag>;
         }
 
         return <Tag color="default" className="m-0 rounded-full px-3">Chờ chấm</Tag>;

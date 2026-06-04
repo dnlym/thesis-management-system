@@ -167,13 +167,9 @@ export default function AssignedScreen() {
       
       const groupName = t.groupName || reg?.group?.name || reg?.student?.full_name || t.students?.[0]?.full_name || 'Đề tài lẻ';
 
-      // Chỉ hiển thị điểm cá nhân từ finalScore, không dùng average nhóm
-      const displayScore = finalScoreForStudent?.final_score ?? null;
-      const letterGrade = displayScore != null ? getClassification(displayScore).letter : null;
-      const isPassGrade = displayScore != null ? getClassification(displayScore).isPass : null;
-
       const isMidtermFailed = reg?.midterm_status === 'FAIL' || reg?.midtermStatus === 'FAIL';
-      const isFinalFailed = finalScoreForStudent?.finalized && (displayScore !== null && displayScore < 6.0);
+      const isFinalFailed = finalScoreForStudent?.finalized && (finalScoreForStudent?.final_score !== null && (finalScoreForStudent?.final_score ?? 10) < 6.0);
+
       const isFailed = isMidtermFailed || isFinalFailed;
       const finalRole = item.role === 'XEM' ? (t.supervisor_id === user?.id ? 'GVHD' : 'TBM') : item.role;
       const isDirectRole = (finalRole === 'GVHD' || finalRole === 'GVPB' || finalRole === 'HĐBV') && user?.role !== 'STUDENT';
@@ -187,10 +183,35 @@ export default function AssignedScreen() {
       const hasPersonalGrade = groupGrades.some((g: any) => {
         const isMyGrade = g.grader_id === user?.id || g.graderId === user?.id;
         if (!isMyGrade) return false;
-        if (!roleGradeType) return true; // không lọc nếu không xác định được role
+        const isForThisStudent = (g.student_id === studentId || g.studentId === studentId);
+        if (!isForThisStudent) return false;
+        if (!roleGradeType) return true;
         const raterRole: string = g.rater_role || g.raterRole || '';
         return raterRole.startsWith(roleGradeType);
       });
+
+      // Chỉ hiển thị điểm khi:
+      // - Đã chốt điểm (finalScore.finalized) → xem finalScore tổng hợp
+      // - Hoặc GV đó đã thực sự chấm với role này → tính từ personal grade
+      const showFinalScore = isFinalized; // đã chốt → hiển thị finalScore
+      const personalGradeScore = hasPersonalGrade
+        ? groupGrades
+            .filter((g: any) => {
+              const isMyGrade = g.grader_id === user?.id || g.graderId === user?.id;
+              const raterRole: string = g.rater_role || g.raterRole || '';
+              const isForThisStudent = (g.student_id === studentId || g.studentId === studentId);
+              return isMyGrade && isForThisStudent && (!roleGradeType || raterRole.startsWith(roleGradeType));
+            })
+            .reduce((sum: number, g: any) => sum + (g.score || 0) * (g.criterion_weight || g.criterionWeight || 0.1), 0)
+        : null;
+
+      const rawDisplayScore = showFinalScore
+        ? (finalScoreForStudent?.final_score ?? null)
+        : personalGradeScore;
+
+      const displayScore2 = rawDisplayScore != null ? Number(rawDisplayScore.toFixed(2)) : null;
+      const letterGrade = displayScore2 != null ? getClassification(displayScore2).letter : null;
+      const isPassGrade = displayScore2 != null ? getClassification(displayScore2).isPass : null;
 
       let statusLabel = 'Chờ chấm';
       let statusColor = '#ea580c';
@@ -236,7 +257,7 @@ export default function AssignedScreen() {
         department: t.department?.name || 'CNTT',
         isGraded,
         isFinalized,
-        score: displayScore != null ? Number(displayScore.toFixed(2)).toString() : null,
+        score: displayScore2 != null ? displayScore2.toString() : null,
         letterGrade,
         isPassGrade,
         statusLabel,

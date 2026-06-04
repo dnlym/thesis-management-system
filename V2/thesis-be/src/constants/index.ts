@@ -13,6 +13,7 @@ export const FILE_UPLOAD = {
     SOURCE_CODE: 100 * 1024 * 1024, // 100MB
     PRESENTATION: 20 * 1024 * 1024, // 20MB
     EXTRA_POINT_EVIDENCE: 10 * 1024 * 1024, // 10MB
+    AVATAR: 5 * 1024 * 1024, // 5MB
   },
   ALLOWED_TYPES: {
     PROPOSAL: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],

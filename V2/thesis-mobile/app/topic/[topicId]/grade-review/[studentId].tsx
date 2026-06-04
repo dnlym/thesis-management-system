@@ -16,6 +16,7 @@ import { useGradingCriteria } from '@/hooks/useGrading';
 import { GradingApi } from '@/api/grading';
 import { Grade, FinalScore } from '@/types';
 import { useQueryClient } from '@tanstack/react-query';
+import { GradeCache } from '@/store/gradeCache';
 
 interface TopicGradesResponse {
     advisorGrades: any[];
@@ -336,8 +337,10 @@ export default function GradeReviewScreen() {
     const { data: topic, isLoading: isTopicLoading } = useTopic(topicId as string);
     const [selectedStudentId, setSelectedStudentId] = React.useState(initialStudentId as string);
     
-    const [topicGradesData, setTopicGradesData] = React.useState<TopicGradesResponse | null>(null);
-    const [isInitialLoading, setIsInitialLoading] = React.useState(true);
+    // Pre-populate từ cache nếu vừa navigate từ grading screen (tránh hiển thị --)
+    const cachedData = GradeCache.get(topicId as string);
+    const [topicGradesData, setTopicGradesData] = React.useState<TopicGradesResponse | null>(cachedData ?? null);
+    const [isInitialLoading, setIsInitialLoading] = React.useState(!cachedData);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     // HOD can toggle between views; for regular lecturers this is always their own role
     const [headViewRole, setHeadViewRole] = React.useState<'SUMMARY' | 'SUPERVISOR' | 'REVIEWER' | 'COMMITTEE'>('SUMMARY');
@@ -559,12 +562,6 @@ export default function GradeReviewScreen() {
             const data = await GradingApi.getTopicGrades(
                 topicId as string
             );
-
-            // console.log(
-            //     'GRADE DATA:',
-            //     JSON.stringify(data, null, 2)
-            // );
-
             setTopicGradesData(data);
         } catch (error) {
             console.error('Error fetching grades:', error);
@@ -573,9 +570,19 @@ export default function GradeReviewScreen() {
         }
     };
 
+    // Fetch ngay khi mount
     fetchAllData();
-     const interval = setInterval(fetchAllData, 3000);
-     return () => clearInterval(interval);
+
+    // Fetch lại sau 1.5 giây để tránh race condition (vừa lưu điểm xong rồi navigate sang)
+    const delayedFetch = setTimeout(fetchAllData, 1500);
+
+    // Polling mỗi 3 giây
+    const interval = setInterval(fetchAllData, 3000);
+
+    return () => {
+        clearTimeout(delayedFetch);
+        clearInterval(interval);
+    };
 }, [topicId, topic]);
 
     const reviewData = React.useMemo(() => {
@@ -680,7 +687,12 @@ export default function GradeReviewScreen() {
             isSummary: isSummaryMode,
             view_role: viewRole,
             rater_role: isSummaryMode ? 'SUMMARY' : (firstGrade?.rater_role || viewRole),
-            rater_name: isSummaryMode ? 'Tổng hợp kết quả' : (firstGrade?.grader?.full_name || `Dữ liệu ${viewRole}`),
+            rater_name: isSummaryMode ? 'Tổng hợp kết quả' : (firstGrade?.grader?.full_name || (() => {
+                if (viewRole === 'SUPERVISOR') return 'Giảng viên hướng dẫn';
+                if (viewRole === 'REVIEWER') return 'Giảng viên phản biện';
+                if (viewRole === 'COMMITTEE') return 'Thành viên Hội đồng';
+                return 'Giảng viên chấm điểm';
+            })()),
             graded_at: isSummaryMode ? finalScore?.created_at : firstGrade?.graded_at,
             items: gradedItems,
             totalScore: score10,
@@ -770,13 +782,13 @@ export default function GradeReviewScreen() {
                             icon={<User size={14} color={viewRole === 'SUPERVISOR' ? '#fff' : '#64748b'} />}
                         />
                         <RoleChip 
-                            label="PHẢN BIỆN" 
+                            label="GVPB" 
                             active={viewRole === 'REVIEWER'} 
                             onPress={() => setHeadViewRole('REVIEWER')} 
                             icon={<Users size={14} color={viewRole === 'REVIEWER' ? '#fff' : '#64748b'} />}
                         />
                         <RoleChip 
-                            label="HỘI ĐỒNG" 
+                            label="HĐBV" 
                             active={viewRole === 'COMMITTEE'} 
                             onPress={() => setHeadViewRole('COMMITTEE')} 
                             icon={<GraduationCap size={14} color={viewRole === 'COMMITTEE' ? '#fff' : '#64748b'} />}
