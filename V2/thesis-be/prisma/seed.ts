@@ -186,7 +186,18 @@ async function main() {
   }
 
   // 5. CRITERIA
-  const loNames = ["Phân tích vấn đề và mô hình hóa được yêu cầu của đề tài.", "Áp dụng các nguyên tắc, phương pháp chuyên môn để xác định được giải pháp cho đề tài.", "Thiết kế được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.", "Hiện thực được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.", "Đánh giá được một hệ thống, quy trình đáp ứng yêu cầu của đề tài.", "Thuyết trình hiệu quả trong các lĩnh vực chuyên môn của đề tài.", "Phỏng vấn theo những lĩnh vực khác nhau để thu thập yêu cầu của khách hàng.", "Viết được báo cáo khóa luận tốt nghiệp", "Chứng tỏ được khả năng làm việc hiệu quả với các thành viên trong nhóm", "Khả năng hỗ trợ triển khai và vận hành hệ thống thông tin"];
+  const loNames = [
+    "Phân tích vấn đề và mô hình hóa được yêu cầu của đề tài.",
+    "Áp dụng các nguyên tắc, phương pháp chuyên môn để xác định được giải pháp cho đề tài.",
+    "Thiết kế được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.",
+    "Hiện thực được một hệ thống hoặc quy trình đáp ứng được yêu cầu của đề tài.",
+    "Đánh giá được một hệ thống, quy trình đáp ứng yêu cầu của đề tài.",
+    "Thuyết trình hiệu quả trong các lĩnh vực chuyên môn của đề tài.",
+    "Thu thập yêu cầu từ các bên liên quan bằng các kỹ thuật phù hợp",
+    "Viết được báo cáo khóa luận tốt nghiệp",
+    "Chứng tỏ được khả năng làm việc hiệu quả với các thành viên trong nhóm và phối hợp với các bên liên quan",
+    "Khả năng hỗ trợ triển khai và vận hành hệ thống thông tin"
+  ];
   const raterRoles = [RaterRole.SUPERVISOR, RaterRole.REVIEWER, RaterRole.COMMITTEE];
   for (const role of raterRoles) {
     for (let i = 0; i < loNames.length; i++) {

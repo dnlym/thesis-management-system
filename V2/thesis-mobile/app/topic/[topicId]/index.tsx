@@ -15,7 +15,7 @@ import { ChevronLeft, MapPin, Users, User, BookOpen } from 'lucide-react-native'
 const BLUE = '#2563eb';
 
 export default function TopicDetailScreen() {
-    const { topicId, groupId, viewMode } = useLocalSearchParams();
+    const { topicId, groupId, viewMode, role: roleParam } = useLocalSearchParams();
     const router = useRouter();
 
     const { user } = useAuthStore();
@@ -36,9 +36,18 @@ export default function TopicDetailScreen() {
     }, [topic, topicId, groupId]);
 
     const isHead = user?.role === 'HEAD' || user?.role === 'ADMIN' || user?.role === 'COORDINATOR';
-    const isAdvisor = topic?.supervisor_id === user?.id;
-    const reviewerAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
-    const committeeAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
+    
+    // Filter assignments based on roleParam if specified to resolve conflicts
+    const isAdvisor = topic?.supervisor_id === user?.id && (!roleParam || roleParam === 'GVHD');
+    
+    const reviewerAssignment = (!roleParam || roleParam === 'GVPB')
+        ? topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER')
+        : undefined;
+        
+    const committeeAssignment = (!roleParam || roleParam === 'HĐBV')
+        ? topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE')
+        : undefined;
+
     const isAssigned = isAdvisor || !!reviewerAssignment || !!committeeAssignment;
     const isSpectator = isHead && (viewMode === 'review' || !isAssigned);
 
@@ -247,9 +256,9 @@ export default function TopicDetailScreen() {
                                     style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                     onPress={() => {
                                         if (isSpectator) {
-                                            router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
+                                            router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}&role=${roleParam || ''}` as any);
                                         } else {
-                                            router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}` as any);
+                                            router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}&role=${roleParam || ''}` as any);
                                         }
                                     }}
                                 >
@@ -314,10 +323,10 @@ export default function TopicDetailScreen() {
                         onPress={() => {
                             if (isSpectator) {
                                 // HOD spectator: always goes to full grade review summary
-                                router.push(`/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` as any);
+                                router.push(`/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}&role=${roleParam || ''}` as any);
                             } else {
                                 // Regular lecturers or HOD grader: go straight to grading form (whether graded or not)
-                                router.push(`/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}` as any);
+                                router.push(`/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}&role=${roleParam || ''}` as any);
                             }
                         }}
                     >

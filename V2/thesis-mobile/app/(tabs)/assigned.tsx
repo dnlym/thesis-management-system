@@ -313,7 +313,7 @@ export default function AssignedScreen() {
             style={styles.card}
             onPress={() => {
               const viewMode = activeFilter === 'ALL' ? 'review' : 'grading';
-              router.push(`/topic/${item.topicId}?groupId=${item.groupId || ''}&viewMode=${viewMode}` as any);
+              router.push(`/topic/${item.topicId}?groupId=${item.groupId || ''}&viewMode=${viewMode}&role=${item.role}` as any);
             }}
           >
             <View style={styles.cardStatusCol}>

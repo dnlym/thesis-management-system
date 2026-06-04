@@ -21,7 +21,7 @@ const BLUE = '#2563eb';
 const LIGHT_BLUE = '#eff6ff';
 
 export default function GradingScreen() {
-    const { topicId, studentId, groupId } = useLocalSearchParams();
+    const { topicId, studentId, groupId, role: roleParam } = useLocalSearchParams();
     const router = useRouter();
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
@@ -29,11 +29,17 @@ export default function GradingScreen() {
     // Topic Data
     const { data: topic, isLoading: isLoadingTopic } = useTopic(topicId as string);
 
-    // Determine Role dynamically based on Backend assignments
+    // Determine Role dynamically based on Backend assignments and active tab role
     const raterRole = React.useMemo(() => {
         if (!topic || !user) return 'REVIEWER_1';
-        if (topic.supervisor_id === user.id) return 'SUPERVISOR';
-        const myAssignment = topic.assignments?.find(a => a.reviewer_id === user.id);
+        if (topic.supervisor_id === user.id && (!roleParam || roleParam === 'GVHD')) return 'SUPERVISOR';
+        
+        const myAssignment = topic.assignments?.find(a => 
+            a.reviewer_id === user.id && 
+            (!roleParam || 
+             (roleParam === 'GVPB' && a.assignment_type === 'REVIEWER') || 
+             (roleParam === 'HĐBV' && a.assignment_type === 'COMMITTEE'))
+        );
         if (myAssignment) {
             if (myAssignment.assignment_type === 'REVIEWER') {
                 const order = myAssignment.reviewer_order || 1;
@@ -46,8 +52,23 @@ export default function GradingScreen() {
                 return 'COMMITTEE_MEMBER';
             }
         }
+        
+        // Fallback
+        const fallback = topic.assignments?.find(a => a.reviewer_id === user.id);
+        if (fallback) {
+            if (fallback.assignment_type === 'REVIEWER') {
+                const order = fallback.reviewer_order || 1;
+                return `REVIEWER_${order}` as any;
+            }
+            if (fallback.assignment_type === 'COMMITTEE') {
+                const cRole = fallback.committee_role;
+                if (cRole === 'CHAIR') return 'COMMITTEE_CHAIR';
+                if (cRole === 'SECRETARY') return 'COMMITTEE_SECRETARY';
+                return 'COMMITTEE_MEMBER';
+            }
+        }
         return 'REVIEWER_1';
-    }, [topic, user]);
+    }, [topic, user, roleParam]);
 
     // Fetch criteria for this ROLE
     const backendRole = React.useMemo(() => {
@@ -464,7 +485,7 @@ const {
                 setSubmittedAt(prev => ({ ...prev, [currentStudentId]: new Date().toISOString() }));
 
                 if (isLastEligibleStudent) {
-                    router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}`);
+                    router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}&role=${roleParam || ''}`);
                 } else {
                     setIdx(i => i + 1);
                 }
@@ -478,7 +499,7 @@ const {
             
             if (isLastEligibleStudent) {
                 Alert.alert('Thành công', 'Đã lưu điểm cho toàn bộ nhóm đủ điều kiện.');
-                router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}`);
+                router.push(`/topic/${topicId}/grade-review/${currentStudentId}?groupId=${groupId || ''}&role=${roleParam || ''}`);
             } else {
                 setIdx(i => i + 1);
             }

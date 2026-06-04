@@ -329,7 +329,7 @@ const getClassification = (score: number) => {
 };
 
 export default function GradeReviewScreen() {
-    const { topicId, studentId: initialStudentId, groupId } = useLocalSearchParams();
+    const { topicId, studentId: initialStudentId, groupId, role: roleParam } = useLocalSearchParams();
     const router = useRouter();
     const { user: currentUser } = useAuthStore();
     
@@ -350,13 +350,26 @@ export default function GradeReviewScreen() {
     // Compute role for the CURRENT user based on topic assignments - available on first render
     const myRoleOnTopic = React.useMemo(() => {
         if (!topic || !currentUser) return null;
-        if (isHead) return 'SUMMARY';
-        if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
-        const assignment = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
+        if (isHead && (!roleParam || roleParam === 'TBM')) return 'SUMMARY';
+        if (topic.supervisor_id === currentUser.id && (!roleParam || roleParam === 'GVHD')) return 'SUPERVISOR';
+        
+        const assignment = topic.assignments?.find((a: any) => 
+            a.reviewer_id === currentUser.id && 
+            (!roleParam || 
+             (roleParam === 'GVPB' && a.assignment_type === 'REVIEWER') || 
+             (roleParam === 'HĐBV' && a.assignment_type === 'COMMITTEE'))
+        );
         if (assignment?.assignment_type === 'REVIEWER') return 'REVIEWER';
         if (assignment?.assignment_type === 'COMMITTEE') return 'COMMITTEE';
+        
+        // Fallback
+        const fallback = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
+        if (fallback?.assignment_type === 'REVIEWER') return 'REVIEWER';
+        if (fallback?.assignment_type === 'COMMITTEE') return 'COMMITTEE';
+        if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
+        
         return null;
-    }, [topic, currentUser, isHead]);
+    }, [topic, currentUser, isHead, roleParam]);
 
     // For HOD: headViewRole is used. For others: always use their own role
     const viewRole = isHead ? headViewRole : (myRoleOnTopic as any || 'REVIEWER');
@@ -453,8 +466,14 @@ export default function GradeReviewScreen() {
 
     const raterRole = React.useMemo(() => {
         if (!topic || !currentUser) return 'REVIEWER_1';
-        if (topic.supervisor_id === currentUser.id) return 'SUPERVISOR';
-        const myAssignment = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
+        if (topic.supervisor_id === currentUser.id && (!roleParam || roleParam === 'GVHD')) return 'SUPERVISOR';
+        
+        const myAssignment = topic.assignments?.find((a: any) => 
+            a.reviewer_id === currentUser.id && 
+            (!roleParam || 
+             (roleParam === 'GVPB' && a.assignment_type === 'REVIEWER') || 
+             (roleParam === 'HĐBV' && a.assignment_type === 'COMMITTEE'))
+        );
         if (myAssignment) {
             if (myAssignment.assignment_type === 'REVIEWER') {
                 const order = myAssignment.reviewer_order || 1;
@@ -467,8 +486,23 @@ export default function GradeReviewScreen() {
                 return 'COMMITTEE_MEMBER';
             }
         }
+        
+        // Fallback
+        const fallback = topic.assignments?.find((a: any) => a.reviewer_id === currentUser.id);
+        if (fallback) {
+            if (fallback.assignment_type === 'REVIEWER') {
+                const order = fallback.reviewer_order || 1;
+                return `REVIEWER_${order}` as any;
+            }
+            if (fallback.assignment_type === 'COMMITTEE') {
+                const cRole = fallback.committee_role;
+                if (cRole === 'CHAIR') return 'COMMITTEE_CHAIR';
+                if (cRole === 'SECRETARY') return 'COMMITTEE_SECRETARY';
+                return 'COMMITTEE_MEMBER';
+            }
+        }
         return 'REVIEWER_1';
-    }, [topic, currentUser]);
+    }, [topic, currentUser, roleParam]);
 
     const canGrade = React.useMemo(() => {
         if (!topic) return false;
