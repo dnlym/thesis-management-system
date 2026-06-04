@@ -120,22 +120,6 @@ router.put(
 router.post(
   '/submit',
   authorize(UserRole.LECTURER, UserRole.COORDINATOR, UserRole.HEAD, UserRole.ADMIN),
-  enforceAcademicAction((req) => {
-    const role = (req.body.raterRole || '').toUpperCase();
-    // Committee roles: COUNCIL_MEMBER, COMMITTEE, COMMITTEE_CHAIR, COMMITTEE_SECRETARY, COMMITTEE_MEMBER, COMMITTEE_MEMBER_1, COMMITTEE_MEMBER_2, ORAL_COMMITTEE, POSTER_COMMITTEE
-    if (role === 'COUNCIL_MEMBER' || role.startsWith('COMMITTEE') || role.includes('COUNCIL') || role === 'ORAL_COMMITTEE' || role === 'POSTER_COMMITTEE') {
-      return AcademicAction.GRADE_COMMITTEE;
-    }
-    // Reviewer roles: REVIEWER, REVIEWER_1, REVIEWER_2, REVIEWER_3
-    if (role === 'REVIEWER' || role.startsWith('REVIEWER_')) {
-      return AcademicAction.GRADE_REVIEWER;
-    }
-    // Supervisor
-    if (role === 'SUPERVISOR' || role === 'ADVISOR') {
-      return AcademicAction.GRADE_SUPERVISOR;
-    }
-    return AcademicAction.GRADE_REVIEWER; // safe fallback
-  }),
   validate([
     body('topicId').isUUID().withMessage('Invalid topic ID'),
     body('raterRole').notEmpty().withMessage('Rater role is required'),
