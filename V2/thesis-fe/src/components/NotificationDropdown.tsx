@@ -194,7 +194,11 @@ const NotificationDropdown = () => {
             if (item.type.includes('TOPIC') || item.type.includes('REGISTRATION')) {
                 navigate(`/topics/${relatedId}`);
             } else if (item.type.includes('GRADE_CHANGE')) {
-                navigate(user?.role === 'HEAD' ? '/head/grade-changes' : `/topics/${relatedId}`);
+                if (user?.role === 'HEAD' || user?.role === 'ADMIN') {
+                    navigate(`/head/grade-change-approvals?topicId=${relatedId}`);
+                } else {
+                    navigate(`/evaluation?topicId=${relatedId}`);
+                }
             } else if (item.type.includes('EXTRA_POINT')) {
                 navigate(user?.role === 'HEAD' ? '/head/extra-points' : '/extra-points');
             } else if (item.type.includes('ASSIGNMENT') || item.type.includes('SCORE') || item.type.includes('EVALUATION')) {

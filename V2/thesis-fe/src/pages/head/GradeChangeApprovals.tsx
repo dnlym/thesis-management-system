@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { GradingApi } from '@/api/grading';
 import { SemestersApi } from '@/api/semesters';
 import dayjs from 'dayjs';
@@ -25,6 +26,8 @@ const { Option } = Select;
 
 export default function GradeChangeApprovals() {
     const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const topicIdParam = searchParams.get('topicId');
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [detailsModalVisible, setDetailsModalVisible] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
@@ -100,9 +103,10 @@ export default function GradeChangeApprovals() {
                 r.grader?.full_name
             );
             const matchSemester = selectedSemester ? r.topic?.semester?.id === selectedSemester : true;
-            return matchSearch && matchSemester;
+            const matchTopic = topicIdParam ? (r.topic_id === topicIdParam || r.topic?.id === topicIdParam) : true;
+            return matchSearch && matchSemester && matchTopic;
         });
-    }, [requests, debouncedSearch, selectedSemester]);
+    }, [requests, debouncedSearch, selectedSemester, topicIdParam]);
 
     const columns = [
         {
@@ -251,6 +255,24 @@ export default function GradeChangeApprovals() {
 
                 {/* Table Section */}
                 <Card className="page-card-flush">
+                    {topicIdParam && filteredRequests.length > 0 && (
+                        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                            <Text className="text-blue-700 font-medium">
+                                Đang lọc các yêu cầu sửa điểm theo đề tài: <span className="font-bold">"{filteredRequests[0]?.topic?.title}"</span>
+                            </Text>
+                            <Button 
+                                type="link" 
+                                size="small" 
+                                onClick={() => {
+                                    searchParams.delete('topicId');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="font-semibold text-blue-600 hover:text-blue-700"
+                            >
+                                Xóa bộ lọc đề tài
+                            </Button>
+                        </div>
+                    )}
                     <Table
                         dataSource={filteredRequests}
                         columns={columns as any}
