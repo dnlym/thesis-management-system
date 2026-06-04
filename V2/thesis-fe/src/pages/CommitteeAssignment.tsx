@@ -394,7 +394,7 @@ const CommitteeAssignment = () => {
                                         {committees?.map((c) => {
                                             const chair = c.members?.find(m => m.role === 'CHAIR')?.fullName;
                                             const secretary = c.members?.find(m => m.role === 'SECRETARY')?.fullName;
-                                            const membersList = c.members?.filter(m => m.role === 'MEMBER').map(m => m.fullName).join(', ');
+                                            const membersList = c.members?.filter(m => m.role?.startsWith('MEMBER')).map(m => m.fullName).join(', ');
                                             const memberText = [
                                                 chair ? `CT: ${chair}` : null,
                                                 secretary ? `TK: ${secretary}` : null,

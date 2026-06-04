@@ -786,12 +786,12 @@ const Evaluation = () => {
                     setIsRequestMode(false);
                   }} disabled={submitGradeMutation.isPending}>Hủy</Button>
                   <Button size="large" type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
-                    {isRequestMode ? (isConfirmed ? 'Gửi yêu cầu sửa điểm' : 'Gửi yêu cầu nhập điểm') : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
+                    {isRequestMode ? 'Gửi yêu cầu sửa điểm' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
                   </Button>
                 </div>
               )}
 
-              {isPastDeadline && isPhaseAllowed && !isRequestMode && !isFinalized && (
+              {isPastDeadline && isConfirmed && !isRequestMode && !isFinalized && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
                   <Button
                     size="large"
@@ -800,7 +800,7 @@ const Evaluation = () => {
                     icon={<LockOutlined />}
                     onClick={() => setIsRequestMode(true)}
                   >
-                    {isConfirmed ? 'Yêu cầu sửa điểm' : 'Yêu cầu nhập điểm'}
+                    Yêu cầu sửa điểm
                   </Button>
                 </div>
               )}
