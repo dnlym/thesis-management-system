@@ -782,7 +782,35 @@ const Evaluation = () => {
                           <Text strong className="text-blue-600 text-lg">{(averages[s.id] || 0).toFixed(2)}</Text>
                         </Table.Summary.Cell>
                       ))}
-                      <Table.Summary.Cell index={3} />
+                      <Table.Summary.Cell index={3} rowSpan={2} className="text-center align-middle bg-white border-l border-b border-r" style={{ verticalAlign: 'middle' }}>
+                        <div className="flex flex-col gap-2 justify-center items-center py-2 px-4 no-print">
+                          {!isLocked && (
+                            <div className="flex flex-col gap-2 w-full">
+                              <Button block onClick={() => {
+                                form.resetFields();
+                                setIsRequestMode(false);
+                              }} disabled={submitGradeMutation.isPending}>
+                                Hủy
+                              </Button>
+                              <Button block type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
+                                {isRequestMode ? 'Gửi yêu cầu' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
+                              </Button>
+                            </div>
+                          )}
+
+                          {isPastDeadline && isConfirmed && !isRequestMode && !isFinalized && (
+                            <Button
+                              block
+                              type="primary"
+                              ghost
+                              icon={<LockOutlined />}
+                              onClick={() => setIsRequestMode(true)}
+                            >
+                              Yêu cầu sửa điểm
+                            </Button>
+                          )}
+                        </div>
+                      </Table.Summary.Cell>
                     </Table.Summary.Row>
                     <Table.Summary.Row className="bg-white font-bold h-24">
                       <Table.Summary.Cell index={0} colSpan={2} className="text-right">XẾP LOẠI</Table.Summary.Cell>
@@ -797,37 +825,7 @@ const Evaluation = () => {
                           </Table.Summary.Cell>
                         );
                       })}
-                      <Table.Summary.Cell index={3} />
                     </Table.Summary.Row>
-                  </>
-                )}
-              />
-
-              {!isLocked && (
-                <div className="flex justify-end gap-3 mt-10 no-print pb-4 px-6">
-                  <Button size="large" onClick={() => {
-                    form.resetFields();
-                    setIsRequestMode(false);
-                  }} disabled={submitGradeMutation.isPending}>Hủy</Button>
-                  <Button size="large" type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
-                    {isRequestMode ? 'Gửi yêu cầu sửa điểm' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
-                  </Button>
-                </div>
-              )}
-
-              {isPastDeadline && isConfirmed && !isRequestMode && !isFinalized && (
-                <div className="flex justify-end mt-10 no-print pb-4 px-6">
-                  <Button
-                    size="large"
-                    type="primary"
-                    ghost
-                    icon={<LockOutlined />}
-                    onClick={() => setIsRequestMode(true)}
-                  >
-                    Yêu cầu sửa điểm
-                  </Button>
-                </div>
-              )}
 
 
 
