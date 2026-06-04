@@ -311,7 +311,10 @@ export default function AssignedScreen() {
           <TouchableOpacity
             key={item.id}
             style={styles.card}
-            onPress={() => router.push(`/topic/${item.topicId}?groupId=${item.groupId || ''}` as any)}
+            onPress={() => {
+              const viewMode = activeFilter === 'ALL' ? 'review' : 'grading';
+              router.push(`/topic/${item.topicId}?groupId=${item.groupId || ''}&viewMode=${viewMode}` as any);
+            }}
           >
             <View style={styles.cardStatusCol}>
               <View style={[styles.statusIconContainer, { backgroundColor: item.isGraded ? '#f0fdf4' : '#eff6ff' }]}>

@@ -15,7 +15,7 @@ import { ChevronLeft, MapPin, Users, User, BookOpen } from 'lucide-react-native'
 const BLUE = '#2563eb';
 
 export default function TopicDetailScreen() {
-    const { topicId, groupId } = useLocalSearchParams();
+    const { topicId, groupId, viewMode } = useLocalSearchParams();
     const router = useRouter();
 
     const { user } = useAuthStore();
@@ -40,7 +40,7 @@ export default function TopicDetailScreen() {
     const reviewerAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'REVIEWER');
     const committeeAssignment = topic?.assignments?.find(a => a.reviewer_id === user?.id && a.assignment_type === 'COMMITTEE');
     const isAssigned = isAdvisor || !!reviewerAssignment || !!committeeAssignment;
-    const isSpectator = isHead && !isAssigned;
+    const isSpectator = isHead && (viewMode === 'review' || !isAssigned);
 
     const raterRole = React.useMemo(() => {
         if (isSpectator) return 'HEAD';
@@ -82,15 +82,17 @@ export default function TopicDetailScreen() {
     let roleLabel = 'Giảng viên phản biện';
     let specificRole: string | null = null;
 
-    if (user?.role === 'HEAD') {
-        roleCode = 'TBM';
-        roleLabel = 'Trưởng bộ môn';
-    } else if (user?.role === 'COORDINATOR') {
-        roleCode = 'ĐPV';
-        roleLabel = 'Người phụ trách khóa luận';
-    } else if (user?.role === 'ADMIN') {
-        roleCode = 'ADMIN';
-        roleLabel = 'Quản trị viên';
+    if (isSpectator) {
+        if (user?.role === 'HEAD') {
+            roleCode = 'TBM';
+            roleLabel = 'Trưởng bộ môn';
+        } else if (user?.role === 'COORDINATOR') {
+            roleCode = 'ĐPV';
+            roleLabel = 'Người phụ trách khóa luận';
+        } else if (user?.role === 'ADMIN') {
+            roleCode = 'ADMIN';
+            roleLabel = 'Quản trị viên';
+        }
     } else if (isAdvisor) {
         roleCode = 'GVHD';
         roleLabel = 'Giảng viên hướng dẫn';
@@ -158,7 +160,7 @@ export default function TopicDetailScreen() {
 
     roomString = topic.room || ds?.room || ds?.committee?.room_preference || 'Chưa xếp phòng';
 
-    const isAnyGraded = isHead ? true : (myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED' || s.status === 'PENDING_APPROVAL') || false);
+    const isAnyGraded = isSpectator ? true : (myGradesData?.students?.some((s: any) => s.status === 'SUBMITTED' || s.status === 'PENDING_APPROVAL') || false);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -244,7 +246,7 @@ export default function TopicDetailScreen() {
                                     key={sv.id}
                                     style={[styles.studentRow, i < students.length - 1 && styles.rowBorder]}
                                     onPress={() => {
-                                        if (isHead) {
+                                        if (isSpectator) {
                                             router.push(`/topic/${topicId}/grade-review/${sv.id}?groupId=${groupId || ''}` as any);
                                         } else {
                                             router.push(`/topic/${topicId}/grading/${sv.id}?groupId=${groupId || ''}` as any);
@@ -308,19 +310,19 @@ export default function TopicDetailScreen() {
             {students.length > 0 && (
                 <View style={styles.footer}>
                     <TouchableOpacity
-                        style={[styles.ctaBtn, isHead && styles.reviewBtn]}
+                        style={[styles.ctaBtn, isSpectator && styles.reviewBtn]}
                         onPress={() => {
-                            if (isHead) {
-                                // HOD: always goes to full grade review summary
+                            if (isSpectator) {
+                                // HOD spectator: always goes to full grade review summary
                                 router.push(`/topic/${topicId}/grade-review/${students[0].id}?groupId=${groupId || ''}` as any);
                             } else {
-                                // Regular lecturers: go straight to grading form (whether graded or not)
+                                // Regular lecturers or HOD grader: go straight to grading form (whether graded or not)
                                 router.push(`/topic/${topicId}/grading/${students[0].id}?groupId=${groupId || ''}` as any);
                             }
                         }}
                     >
-                        <Text style={[styles.ctaBtnText, isHead && styles.reviewBtnText]}>
-                            {isHead ? 'Xem bảng điểm' : isAnyGraded ? 'Chỉnh sửa điểm' : 'Bắt đầu nhập điểm'}
+                        <Text style={[styles.ctaBtnText, isSpectator && styles.reviewBtnText]}>
+                            {isSpectator ? 'Xem bảng điểm' : isAnyGraded ? 'Chỉnh sửa điểm' : 'Bắt đầu nhập điểm'}
                         </Text>
                     </TouchableOpacity>
                 </View>
