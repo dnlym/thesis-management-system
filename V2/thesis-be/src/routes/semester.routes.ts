@@ -16,7 +16,7 @@ router.get('/active', semesterController.getActiveSemester.bind(semesterControll
 
 router.post(
   '/',
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.HEAD, UserRole.COORDINATOR),
   validate([
     body('name').notEmpty().withMessage('Semester name is required'),
     body('code').notEmpty().withMessage('Semester code is required'),
@@ -38,7 +38,7 @@ router.post(
 
 router.put(
   '/:semesterId',
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.HEAD, UserRole.COORDINATOR),
   validate([
     param('semesterId').isUUID().withMessage('Invalid semester ID'),
     body('name').optional().notEmpty().withMessage('Semester name cannot be empty'),
@@ -67,14 +67,14 @@ router.get(
 
 router.put(
   '/:semesterId/activate',
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.HEAD, UserRole.COORDINATOR),
   validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
   semesterController.setActiveSemester.bind(semesterController)
 );
 
 router.put(
   '/:semesterId/finalize',
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.HEAD, UserRole.COORDINATOR),
   validate([param('semesterId').isUUID().withMessage('Invalid semester ID')]),
   semesterController.finalizeSemester.bind(semesterController)
 );

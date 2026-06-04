@@ -604,8 +604,8 @@
     "printSignHead": "HEAD OF DEPARTMENT"
   },
   "settings": {
-    "title": "System Settings",
-    "subtitle": "Manage semesters, departments, and general configuration",
+    "title": "Semester Management",
+    "subtitle": "Initialize semesters, set schedules and allocate phase timelines",
     "semesters": "Semesters",
     "departments": "Departments",
     "addSemester": "Add Semester",

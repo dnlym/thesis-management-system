@@ -1,7 +1,7 @@
 # 📅 QUY TRÌNH 7 GIAI ĐOẠN VÒNG ĐỜI HỌC KỲ (SEMESTER LIFECYCLE)
 ## HỆ THỐNG QUẢN LÝ KHÓA LUẬN TỐT NGHIỆP (TMS)
 
-Tài liệu này chi tiết hóa các mốc thời gian, điều kiện chuyển đổi giai đoạn, cùng các luồng chức năng chính (Đầu vào, Đầu ra, Xử lý) xuyên suốt 7 giai đoạn trong học kỳ của hệ thống.
+Tài liệu này chi tiết hóa các mốc thời gian, điều kiện chuyển đổi giai đoạn, cùng các luồng chức năng chính (Đầu vào, Đầu ra, Xử lý ở cấp độ code và file cụ thể) xuyên suốt 7 giai đoạn trong học kỳ của hệ thống.
 
 ---
 
@@ -17,144 +17,130 @@ graph LR
 
 ---
 
-## GIAI ĐOẠN 1: PLANNING (Lập kế hoạch & Chuẩn bị)
+## 🔐 CƠ CHẾ BẢO MẬT & MÃ HÓA CỐT LÕI (JWT & BCRYPTJS)
+
+Trước khi đi vào các giai đoạn, hệ thống sử dụng hai thư viện bảo mật nền tảng chạy xuyên suốt toàn bộ API:
+
+### A. Cơ chế Xác Thực JsonWebToken (JWT)
+Hệ thống sử dụng JWT để quản lý phiên làm việc không trạng thái (stateless session).
+*   **File cấu hình & Tiện ích:** [src/utils/jwt.ts](file:///d:/thesis/V2/thesis-be/src/utils/jwt.ts)
+*   **Cách thức hoạt động:**
+    1.  **Cấp phát Token (Đăng nhập):** Khi người dùng gửi tài khoản/mật khẩu hợp lệ, `AuthService.login()` gọi hàm `generateAccessToken()` và `generateRefreshToken()` từ tệp `jwt.ts` để tạo ra hai chuỗi token được ký bằng khóa bí mật `JWT_SECRET`.
+    2.  **Đính kèm Request:** Client lưu Access Token và tự động đính kèm vào Header `Authorization: Bearer <Access_Token>` khi thực hiện các cuộc gọi API.
+    3.  **Xác thực & Giải mã (Middleware):** Tệp [auth.middleware.ts](file:///d:/thesis/V2/thesis-be/src/middleware/auth.middleware.ts) sẽ chặn các request yêu cầu đăng nhập, gọi hàm `verifyAccessToken(token)` để xác minh tính hợp lệ và thời hạn. Nếu thành công, middleware trích xuất payload (`userId`, `email`, `role`, `departmentId`) và gán vào đối tượng `req.user` phục vụ kiểm tra quyền hạn (RBAC) ở các router tiếp theo.
+
+### B. Cơ chế Mã Hóa Mật Khẩu (BcryptJS)
+Hệ thống sử dụng BcryptJS để băm mật khẩu một chiều, ngăn ngừa lộ mật khẩu ngay cả khi cơ sở dữ liệu bị rò rỉ.
+*   **File tiện ích:** [src/utils/hash.ts](file:///d:/thesis/V2/thesis-be/src/utils/hash.ts) (Định nghĩa hàm băm `hashPassword` và đối chiếu `comparePassword`).
+*   **Cách thức hoạt động:**
+    1.  **Khi tạo/import tài khoản:** Trong [user.service.ts](file:///d:/thesis/V2/thesis-be/src/services/user.service.ts) (`importUsers()`), hệ thống tự động băm mật khẩu mặc định (ví dụ: `123456`) bằng dòng code `await bcrypt.hash(password, SALT_ROUNDS)`. Chuỗi kết quả băm phức tạp sẽ được lưu trữ vào trường `password_hash` của bảng `users` trong cơ sở dữ liệu.
+    2.  **Khi đăng nhập:** Trong [auth.service.ts](file:///d:/thesis/V2/thesis-be/src/services/auth.service.ts) (`login()`), hệ thống lấy mật khẩu thô khách hàng nhập gửi lên và so sánh với chuỗi băm lưu sẵn trong database bằng hàm: `await bcrypt.compare(plainPassword, user.password_hash)`.
+
+---
+
+## 📂 CHI TIẾT 7 GIAI ĐOẠN HOẠT ĐỘNG
+
+### GIAI ĐOẠN 1: PLANNING (Lập kế hoạch & Chuẩn bị)
 Giai đoạn khởi tạo học kỳ mới, cấu hình hệ thống và chuẩn bị dữ liệu người dùng.
 
 *   **Chức năng chính:** Khởi tạo học kỳ; Thiết lập cấu hình mốc thời gian toàn cục; Nhập danh sách Giảng viên và Sinh viên vào đợt làm khóa luận.
-*   **Người thực hiện:** `ADMIN` (Quản trị viên) và `HEAD`/`COORDINATOR` (Trưởng bộ môn/Điều phối viên).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Tên học kỳ, mã học kỳ (ví dụ: `HK261`).
-        *   Các mốc ngày bắt đầu/kết thúc dự kiến cho từng giai đoạn tiếp theo.
-        *   File danh sách người dùng (họ tên, email, mã sinh viên, bộ môn, lớp).
-    *   **Xử lý (Processing):**
-        *   `SemesterService.createSemester()` lưu thông tin học kỳ mới vào database với trạng thái `status = PLANNING`.
-        *   `UserService.importUsers()` băm mật khẩu bằng `BcryptJS`, tạo tài khoản và gán vai trò (`UserRole`).
-        *   **Academic Guard:** `AcademicPolicy` chặn tất cả các vai trò khác (`LECTURER`, `STUDENT`) truy cập hay nhìn thấy học kỳ này.
-    *   **Đầu ra (Output):**
-        *   Học kỳ được khởi tạo thành công trong bảng `semesters`.
-        *   Tài khoản giảng viên, sinh viên được cấp quyền truy cập sẵn sàng.
+*   **Người thực hiện:** `ADMIN` và `HEAD`/`COORDINATOR`.
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Tên học kỳ, mã học kỳ (ví dụ: `HK261`), các mốc thời gian giai đoạn và File danh sách người dùng.
+    *   **Xử lý trong Code:**
+        *   Tạo học kỳ: Hàm `createSemester()` trong [src/services/semester.service.ts](file:///d:/thesis/V2/thesis-be/src/services/semester.service.ts) thực hiện thêm bản ghi mới vào cơ sở dữ liệu qua Prisma Client (`prisma.semester.create`) với trạng thái mặc định `status = PLANNING`.
+        *   Tạo tài khoản: Hàm `importUsers()` trong [src/services/user.service.ts](file:///d:/thesis/V2/thesis-be/src/services/user.service.ts) duyệt qua danh sách, gọi `await bcrypt.hash(data.password || '123456', 10)` để mã hóa mật khẩu trước khi lưu bằng `prisma.user.create`.
+        *   Phân quyền: Middleware [src/middleware/academic.middleware.ts](file:///d:/thesis/V2/thesis-be/src/middleware/academic.middleware.ts) chặn các vai trò không phải `ADMIN`/`HEAD` thực hiện các thao tác quản trị giai đoạn này.
+    *   **Đầu ra (Output):** Học kỳ mới trong bảng `semesters` và tài khoản người dùng được lưu trữ trong bảng `users` kèm `password_hash`.
 
 ---
 
-## GIAI ĐOẠN 2: PREVIEW (Đề xuất & Công bố đề tài)
-Giai đoạn giảng viên đề đề xuất đề tài mới và bộ môn duyệt để công bố cho sinh viên xem trước.
+### GIAI ĐOẠN 2: PREVIEW (Đề xuất & Công bộ đề tài)
+Giảng viên đề xuất đề tài mới và bộ môn duyệt để công bố cho sinh viên xem trước.
 
 *   **Chức năng chính:** Đề xuất đề tài; Phê duyệt/Từ chối đề tài đề xuất; Mở cổng xem trước đề tài cho sinh viên.
 *   **Người thực hiện:** `LECTURER` (Đề xuất), `HEAD` (Phê duyệt) và `STUDENT` (Xem trước).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Giảng viên đề xuất: Tên đề tài, mục tiêu, yêu cầu kỹ thuật, số sinh viên tối đa (`max_students`), đồng hướng dẫn (nếu có).
-        *   Trưởng bộ môn phê duyệt: ID đề tài, quyết định duyệt (`APPROVED` hoặc `REJECTED` kèm lý do).
-    *   **Xử lý (Processing):**
-        *   `TopicService.createTopic()` tạo đề tài ở trạng thái `status = DRAFT` hoặc `PENDING_APPROVAL`.
-        *   `TopicService.approveTopic()` kiểm tra quyền `HEAD`, chuyển trạng thái đề tài thành `APPROVED` (hoặc `REJECTED`).
-        *   **Academic Guard:** `AcademicPolicy` chỉ cho phép tạo và duyệt đề tài trong giai đoạn `PLANNING` hoặc `PREVIEW`.
-    *   **Đầu ra (Output):**
-        *   Đề tài chuyển sang trạng thái `APPROVED`, sẵn sàng hiển thị trên sàn đề tài của sinh viên.
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Đề xuất từ giảng viên (tên đề tài, yêu cầu, số sinh viên) và quyết định duyệt của HOD (`APPROVED`/`REJECTED`).
+    *   **Xử lý trong Code:**
+        *   Đề xuất đề tài: Hàm `createTopic()` trong [src/services/topic.service.ts](file:///d:/thesis/V2/thesis-be/src/services/topic.service.ts) ghi nhận đề tài mới với `status = PENDING_APPROVAL`.
+        *   Duyệt đề tài: Hàm `approveTopic()` trong [src/services/topic.service.ts](file:///d:/thesis/V2/thesis-be/src/services/topic.service.ts) kiểm tra vai trò người gọi có phải `HEAD` hay không, cập nhật `status = APPROVED`.
+        *   **Academic Guard:** Hàm `calculateCurrentPhase()` trong [src/utils/semester-guard.ts](file:///d:/thesis/V2/thesis-be/src/utils/semester-guard.ts) xác định phase hiện tại để `AcademicPolicy` cho phép hoặc từ chối hành vi đề xuất/duyệt.
+    *   **Đầu ra (Output):** Đề tài chuyển sang trạng thái `APPROVED` và hiển thị trên sàn đề tài cho sinh viên thông qua API `getTopics`.
 
 ---
 
-## GIAI ĐOẠN 3: REGISTRATION (Đăng ký đề tài)
-Giai đoạn sinh viên thực hiện ghép nhóm và đăng ký đề tài mong muốn thực hiện.
+### GIAI ĐOẠN 3: REGISTRATION (Đăng ký đề tài)
+Sinh viên thực hiện ghép nhóm và đăng ký đề tài mong muốn thực hiện.
 
 *   **Chức năng chính:** Ghép nhóm tự quản lý; Đăng ký đề tài; Giảng viên duyệt nhóm đăng ký.
-*   **Người thực hiện:** `STUDENT` (Ghép nhóm & đăng ký), `LECTURER` (Duyệt nhận nhóm).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Sinh viên: Gửi lời mời tham gia nhóm (`GroupInvite`) qua mã sinh viên.
-        *   Trưởng nhóm: Chọn ID đề tài (`APPROVED`) và gửi yêu cầu đăng ký nhóm.
-        *   Giảng viên hướng dẫn: ID đăng ký (`TopicRegistration`), quyết định nhận (`CONFIRMED`) hoặc từ chối (`REJECTED`).
-    *   **Xử lý (Processing):**
-        *   `GroupService.createGroup()` ghép nhóm sinh viên và kiểm tra giới hạn sĩ số nhóm bộ môn (`min_group_size`, `max_group_size`).
-        *   `RegistrationService.registerTopic()` tạo bản ghi `TopicRegistration` ở trạng thái `PENDING`.
-        *   `RegistrationService.confirmRegistration()` kiểm tra nếu được xác nhận, chuyển trạng thái đăng ký thành `CONFIRMED`, tự động cập nhật sĩ số đề tài (`current_students`).
-        *   **Academic Guard:** Chỉ cho phép đăng ký khi học kỳ ở giai đoạn `REGISTRATION` (hoặc bật cờ ghi đè `is_registration_override` của bộ môn).
-    *   **Đầu ra (Output):**
-        *   Bản ghi `TopicRegistration` chuyển thành `CONFIRMED` (nhóm đăng ký thành công).
-        *   Đề tài tự động chuyển sang trạng thái `REGISTERED` trong DB.
+*   **Người thực hiện:** `STUDENT` và `LECTURER`.
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Lời mời nhóm (`GroupInvite`), yêu cầu đăng ký đề tài từ trưởng nhóm, và quyết định nhận nhóm của GVHD.
+    *   **Xử lý trong Code:**
+        *   Ghép nhóm: Hàm `createGroup()` và `sendInvite()` trong [src/services/group.service.ts](file:///d:/thesis/V2/thesis-be/src/services/group.service.ts) xử lý logic ghép nhóm và ràng buộc số thành viên.
+        *   Đăng ký đề tài: Hàm `registerTopic()` trong [src/services/registration.service.ts](file:///d:/thesis/V2/thesis-be/src/services/registration.service.ts) kiểm tra sĩ số đề tài và tạo một bản ghi `TopicRegistration` mới ở trạng thái `status = PENDING`.
+        *   Duyệt nhận nhóm: Hàm `confirmRegistration()` trong [src/services/registration.service.ts](file:///d:/thesis/V2/thesis-be/src/services/registration.service.ts) chuyển trạng thái của `TopicRegistration` thành `CONFIRMED` và tăng sĩ số `current_students` của đề tài đó.
+        *   **Academic Guard:** `AcademicPolicy.canPerform('REGISTER_TOPIC')` trong [src/utils/academic-policy.ts](file:///d:/thesis/V2/thesis-be/src/utils/academic-policy.ts) kiểm tra phase đăng ký.
+    *   **Đầu ra (Output):** Bản ghi `TopicRegistration` chuyển thành `CONFIRMED`, nhóm sinh viên chính thức thuộc về đề tài khóa luận đó.
 
 ---
 
-## GIAI ĐOẠN 4: WORK (Thực hiện đề tài & Đánh giá giữa kỳ)
-Sinh viên tiến hành làm đề tài dưới sự hướng dẫn của giảng viên và trải qua kỳ đánh giá giữa kỳ để lọc các nhóm không đạt.
+### GIAI ĐOẠN 4: WORK (Thực hiện đề tài & Đánh giá giữa kỳ)
+Sinh viên làm đề tài và trải qua kỳ đánh giá giữa kỳ để lọc các nhóm không đạt.
 
 *   **Chức năng chính:** Nộp báo cáo tiến độ định kỳ; Đánh giá & chấm điểm giữa kỳ.
 *   **Người thực hiện:** `STUDENT` (Nộp báo cáo), `LECTURER` (Chấm điểm giữa kỳ - GVHD).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Sinh viên: Tải báo cáo tiến độ hoặc link tài liệu lên cổng nộp bài.
-        *   Giảng viên hướng dẫn: Kết quả đánh giá giữa kỳ của từng sinh viên (`PASS` hoặc `FAIL`) kèm ý kiến nhận xét chi tiết.
-    *   **Xử lý (Processing):**
-        *   `GradingService.updateMidtermStatus()` cập nhật trạng thái giữa kỳ của sinh viên trong bảng `TopicRegistration`.
-        *   **Cơ chế Midterm Failure Lockout (Bẫy khóa học thuật):** Nếu sinh viên bị chấm `FAIL` ở giữa kỳ, hệ thống sẽ chuyển trạng thái đăng ký của họ sang `FAILED`.
-        *   **Academic Guard:** `AcademicPolicy` sẽ quét qua trạng thái này và lập tức chặn toàn bộ quyền thao tác học thuật tiếp theo (nộp bài cuối kỳ, phân công phản biện, chấm điểm cuối kỳ).
-    *   **Đầu ra (Output):**
-        *   Bản ghi đăng ký cập nhật `midterm_status = PASS` hoặc `FAIL`.
-        *   Xác định danh sách các đề tài đủ điều kiện đi tiếp vào giai đoạn phản biện.
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Báo cáo của sinh viên, quyết định chấm đạt/rớt giữa kỳ (`PASS`/`FAIL`) của GVHD.
+    *   **Xử lý trong Code:**
+        *   Chấm điểm giữa kỳ: Hàm `updateMidtermStatus()` trong [src/services/grading.service.ts](file:///d:/thesis/V2/thesis-be/src/services/grading.service.ts) cập nhật thuộc tính `midterm_status` của sinh viên trong bảng `TopicRegistration` thành `PASS` hoặc `FAIL`.
+        *   **Bẫy khóa học thuật (Midterm Failure Lockout):** Nếu giảng viên chấm `FAIL`, hàm này lập tức chuyển trạng thái đăng ký của sinh viên sang `FAILED`. Khi đó, hàm `isTopicFailed()` trong [src/utils/academic-policy.ts](file:///d:/thesis/V2/thesis-be/src/utils/academic-policy.ts) sẽ trả về `true`. Kéo theo tất cả API sau đó (nộp bài, phân phản biện, chấm cuối kỳ) sẽ bị `AcademicPolicy` chặn đứng hoàn toàn đối với sinh viên này.
+    *   **Đầu ra (Output):** Thuộc tính `midterm_status` được lưu trữ. Danh sách sinh viên đủ điều kiện đi tiếp sang giai đoạn phản biện được định hình.
 
 ---
 
-## GIAI ĐOẠN 5: REVIEWING (Phản biện)
-Phân công giảng viên phản biện và tiến hành chấm điểm chuyên môn từ GV hướng dẫn và GV phản biện.
+### GIAI ĐOẠN 5: REVIEWING (Phản biện)
+Phân công giảng viên phản biện (GVPB) và tiến hành chấm điểm chuyên môn từ GVHD và GVPB.
 
-*   **Chức năng chính:** Phân công giảng viên phản biện (GVPB); Nộp báo cáo khóa luận cuối kỳ; Chấm điểm Hướng dẫn & Phản biện.
-*   **Người thực hiện:** `HEAD`/`COORDINATOR` (Phân công), `STUDENT` (Nộp báo cáo cuối kỳ), `LECTURER` (Chấm điểm).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Phân công: ID đề tài, ID giảng viên phản biện, thời hạn chấm điểm.
-        *   Chấm điểm: Điểm số chi tiết cho từng tiêu chí (`criterionId`) của rubric hướng dẫn/phản biện, kèm nhận xét.
-    *   **Xử lý (Processing):**
-        *   `AssignmentService.assignReviewer()` tạo bản ghi phân công phản biện trong bảng `assignments` với kiểu `REVIEWER`.
-        *   `GradingService.gradeTopic()` lưu điểm chấm của GVHD (`rater_role = SUPERVISOR`) và GVPB (`rater_role = REVIEWER`).
-        *   **Academic Guard:**
-            *   Hệ thống yêu cầu điểm của GVHD phải được nhập trước khi GVPB có thể nhập điểm.
-            *   Hệ thống kiểm tra tổng trọng số các tiêu chí phải đảm bảo bằng `1.0` (100%).
-    *   **Đầu ra (Output):**
-        *   Điểm thành phần được ghi nhận vào bảng `grades` liên kết với từng sinh viên và tiêu chí chấm.
+*   **Chức năng chính:** Phân công giảng viên phản biện; Nộp báo cáo khóa luận cuối kỳ; Chấm điểm Hướng dẫn & Phản biện.
+*   **Người thực hiện:** `HEAD`/`COORDINATOR` (Phân công), `STUDENT` (Nộp báo cáo), `LECTURER` (Chấm điểm).
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Phân công GVPB, file báo cáo cuối kỳ, điểm số chi tiết từ GVHD và GVPB theo tiêu chí.
+    *   **Xử lý trong Code:**
+        *   Phân công phản biện: Hàm `assignReviewer()` trong [src/services/assignment.service.ts](file:///d:/thesis/V2/thesis-be/src/services/assignment.service.ts) ghi nhận phân công vào bảng `assignments` với vai trò chấm là `REVIEWER`.
+        *   Chấm điểm cuối kỳ: Hàm `gradeTopic()` trong [src/services/grading.service.ts](file:///d:/thesis/V2/thesis-be/src/services/grading.service.ts) kiểm tra tổng trọng số rubric phải bằng `1.0`, sau đó thêm điểm vào bảng `grades` với vai trò chấm là `SUPERVISOR` hoặc `REVIEWER`.
+        *   **Academic Guard:** `AcademicPolicy.canPerform('GRADE_TOPIC')` kiểm tra tuần tự: GVHD bắt buộc phải hoàn tất chấm điểm thì GVPB mới được phép nhập điểm vào hệ thống.
+    *   **Đầu ra (Output):** Điểm số chi tiết của từng sinh viên được ghi nhận đầy đủ vào bảng `grades`.
 
 ---
 
-## GIAI ĐOẠN 6: DEFENSE (Bảo vệ cuối kỳ)
+### GIAI ĐOẠN 6: DEFENSE (Bảo vệ cuối kỳ)
 Tổ chức hội đồng bảo vệ khóa luận và thực hiện chấm điểm hội đồng trực tiếp.
 
-*   **Chức năng chính:** Thành lập hội đồng bảo vệ; Sắp xếp lịch bảo vệ (phòng, giờ, Link Zoom); Chấm điểm hội đồng.
-*   **Người thực hiện:** `HEAD`/`COORDINATOR` (Cơ cấu hội đồng & lịch), `LECTURER` (Chấm điểm hội đồng - Chủ tịch, Thư ký, Ủy viên).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Hội đồng: Tên hội đồng, danh sách thành viên và chức danh tương ứng (`CHAIR`, `SECRETARY`, `MEMBER`).
-        *   Lịch bảo vệ: ID đề tài/nhóm, ID hội đồng, phòng bảo vệ, thời gian, hình thức (`OFFLINE` hoặc `ONLINE` kèm link).
-        *   Điểm số: Điểm chấm từ các thành viên hội đồng cho sinh viên theo rubric hội đồng.
-    *   **Xử lý (Processing):**
-        *   `CommitteeService.createCommittee()` thành lập hội đồng.
-        *   `DefenseService.createSchedule()` tạo lịch bảo vệ và lưu vào `defense_schedules`.
-        *   `GradingService.gradeTopic()` ghi nhận điểm chấm của hội đồng (`rater_role = COMMITTEE`).
-        *   **Academic Guard:** Đề tài bắt buộc phải có cờ `is_eligible_for_defense = true` (đủ điều kiện bảo vệ) mới được phép nhập điểm hội đồng.
-    *   **Đầu ra (Output):**
-        *   Lịch bảo vệ hoàn tất và hiển thị trên dashboard.
-        *   Bảng điểm `grades` được cập nhật đầy đủ điểm thành viên hội đồng.
+*   **Chức năng chính:** Thành lập hội đồng bảo vệ; Sắp xếp lịch bảo vệ; Chấm điểm hội đồng.
+*   **Người thực hiện:** `HEAD`/`COORDINATOR` (Cơ cấu hội đồng & lịch), `LECTURER` (Thành viên hội đồng chấm điểm).
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Danh sách thành viên hội đồng, lịch biểu phòng/giờ, điểm số chấm từ Chủ tịch, Thư ký, Ủy viên.
+    *   **Xử lý trong Code:**
+        *   Tạo hội đồng: Hàm `createCommittee()` trong [src/services/committee.service.ts](file:///d:/thesis/V2/thesis-be/src/services/committee.service.ts).
+        *   Sắp xếp lịch: Hàm `createSchedule()` trong [src/services/defense.service.ts](file:///d:/thesis/V2/thesis-be/src/services/defense.service.ts) lưu thông tin lịch phòng vào bảng `defense_schedules`.
+        *   Chấm điểm hội đồng: Giảng viên hội đồng chấm qua hàm `gradeTopic()` trong [src/services/grading.service.ts](file:///d:/thesis/V2/thesis-be/src/services/grading.service.ts) với vai trò chấm là `COMMITTEE`.
+        *   **Academic Guard:** Hệ thống kiểm tra cờ `is_eligible_for_defense = true` trên đề tài trước khi cho phép lưu điểm hội đồng.
+    *   **Đầu ra (Output):** Lịch bảo vệ hoàn chỉnh hiển thị trên hệ thống. Điểm số hội đồng được lưu thành công vào bảng `grades`.
 
 ---
 
-## GIAI ĐOẠN 7: FINAL (Tổng hợp & Chốt điểm)
-Giai đoạn cuối cùng của học kỳ để duyệt điểm cộng, tổng hợp điểm số theo trọng số và đóng học kỳ.
+### GIAI ĐOẠN 7: FINAL (Tổng hợp & Chốt điểm)
+Duyệt điểm cộng, tự động tính điểm tổng kết và đóng học kỳ.
 
-*   **Chức năng chính:** Duyệt điểm cộng NCKH; Tự động tính điểm tổng kết & xếp loại; Chốt điểm công bố; Đóng/Lưu trữ học kỳ.
-*   **Người thực hiện:** `STUDENT` (Nộp minh chứng điểm cộng), `HEAD` (Duyệt điểm cộng & Chốt điểm), `ADMIN` (Đóng học kỳ).
-*   **Chi tiết luồng xử lý:**
-    *   **Đầu vào (Input):**
-        *   Yêu cầu điểm cộng: Mô tả, link minh chứng nghiên cứu khoa học, số điểm đề xuất.
-        *   Duyệt điểm cộng: Đồng ý/Từ chối duyệt từ Trưởng bộ môn.
-        *   Lệnh chốt điểm: Yêu cầu chốt điểm của học kỳ hiện tại từ HEAD.
-    *   **Xử lý (Processing):**
-        *   `ExtraPointsService.approveRequest()` cập nhật điểm thưởng (`extra_points`) vào bảng `FinalScore`.
-        *   `GradingService.computeFinalScore()` tính điểm tổng kết theo công thức trọng số:
-            $$\text{Điểm Tổng Kết} = (\text{Điểm GVHD} \times W_{HD}) + (\text{Điểm TB GVPB} \times W_{PB}) + (\text{Điểm TB Hội Đồng} \times W_{HDBV}) + \text{Điểm Thưởng NCKH}$$
-        *   Quy đổi điểm tổng kết sang thang 4 và thang điểm chữ (A+, A, B+, B, C+, C, D+, D, F).
-        *   `GradingService.finalizeScores()` khóa toàn bộ các bảng điểm (`finalized = true`).
-        *   **Academic Guard:**
-            *   Một khi điểm đã `finalized`, mọi hành vi chỉnh sửa điểm trực tiếp từ API đều bị chặn.
-            *   Chuyển trạng thái học kỳ thành `COMPLETED` để lưu trữ dữ liệu vĩnh viễn.
-    *   **Đầu ra (Output):**
-        *   Bảng điểm tổng hợp cuối cùng hoàn chỉnh của toàn bộ sinh viên trong học kỳ.
-        *   Học kỳ lưu trữ thành công, toàn bộ hệ thống đóng cổng tương tác dữ liệu cho học kỳ đó.
+*   **Chức năng chính:** Duyệt điểm cộng NCKH; Tính điểm tổng kết & xếp loại học lực; Chốt điểm công bố; Đóng học kỳ.
+*   **Người thực hiện:** `STUDENT` (Gửi minh chứng), `HEAD` (Duyệt điểm cộng & Chốt điểm), `ADMIN` (Lưu trữ học kỳ).
+*   **Chi tiết luồng xử lý trong mã nguồn:**
+    *   **Đầu vào (Input):** Yêu cầu cộng điểm thưởng, quyết định duyệt của HOD, lệnh chốt điểm học kỳ từ HOD.
+    *   **Xử lý trong Code:**
+        *   Duyệt điểm cộng: Hàm `approveRequest()` trong [src/services/extra-points.service.ts](file:///d:/thesis/V2/thesis-be/src/services/extra-points.service.ts) cập nhật thuộc tính `extra_points` vào thực thể `FinalScore`.
+        *   Tính điểm tổng kết: Hàm `computeFinalScore()` trong [src/services/grading.service.ts](file:///d:/thesis/V2/thesis-be/src/services/grading.service.ts) lấy điểm trung bình của GVHD, GVPB, Hội đồng, nhân trọng số tương ứng và cộng điểm thưởng để tạo thành điểm tổng kết cuối cùng. Sau đó tự động quy đổi xếp loại chữ (A+, A, B+...) và lưu vào bảng `final_scores`.
+        *   Chốt điểm: Hàm `finalizeScores()` trong [src/services/grading.service.ts](file:///d:/thesis/V2/thesis-be/src/services/grading.service.ts) chuyển cột `finalized` của tất cả sinh viên sang `true`.
+        *   **Academic Guard:** Khi `finalized = true`, `AcademicPolicy` chặn đứng hoàn toàn mọi API chỉnh sửa điểm.
+    *   **Đầu ra (Output):** Bảng điểm tổng kết hoàn chỉnh của toàn khóa và trạng thái học kỳ chuyển sang `COMPLETED` để lưu trữ dữ liệu vĩnh viễn.

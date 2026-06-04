@@ -8,6 +8,7 @@ import { useSemesters, useCreateSemester, useUpdateSemester, useDeleteSemester, 
 import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from '@/hooks/useDepartments';
 import type { Semester, Department, SemesterStatus, SemesterPhase } from '@/types';
 import { StatusBadge } from '@/components/StatusBadge';
+import { useAuthStore } from '@/store/auth';
 
 const { TabPane } = Tabs;
 
@@ -148,6 +149,7 @@ const mapPhasesToDto = (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AdminSettings = () => {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('semesters');
   const [semesterModalVisible, setSemesterModalVisible] = useState(false);
   const [deptModalVisible, setDeptModalVisible] = useState(false);
@@ -467,11 +469,12 @@ const AdminSettings = () => {
                         tabBarStyle={{ paddingLeft: '24px', paddingTop: '8px' }}
                         tabBarExtraContent={
                             <div className="px-6">
-                                {activeTab === 'semesters' ? (
+                                {activeTab === 'semesters' && (
                                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateSemester}>
                                         {t('settings.addSemester')}
                                     </Button>
-                                ) : (
+                                )}
+                                {activeTab === 'departments' && user?.role === 'ADMIN' && (
                                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateDept}>
                                         {t('settings.addDept')}
                                     </Button>
@@ -491,18 +494,20 @@ const AdminSettings = () => {
                                 />
                             </Spin>
                         </TabPane>
-                        <TabPane tab={t('settings.departments')} key="departments">
-                            <Spin spinning={loadingDepts}>
-                                <Table
-                                    columns={deptColumns}
-                                    dataSource={departments || []}
-                                    rowKey="id"
-                                    className="sys-table"
-                                    pagination={{ pageSize: 10, className: 'px-6 py-4' }}
-                                    locale={{ emptyText: t('settings.noDepts') }}
-                                />
-                            </Spin>
-                        </TabPane>
+                        {user?.role === 'ADMIN' && (
+                            <TabPane tab={t('settings.departments')} key="departments">
+                                <Spin spinning={loadingDepts}>
+                                    <Table
+                                        columns={deptColumns}
+                                        dataSource={departments || []}
+                                        rowKey="id"
+                                        className="sys-table"
+                                        pagination={{ pageSize: 10, className: 'px-6 py-4' }}
+                                        locale={{ emptyText: t('settings.noDepts') }}
+                                    />
+                                </Spin>
+                            </TabPane>
+                        )}
                     </Tabs>
                 </Card>
 

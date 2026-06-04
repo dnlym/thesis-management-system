@@ -604,8 +604,8 @@
     "printSignHead": "TRƯỜNG BỘ MÔN"
   },
   "settings": {
-    "title": "Cài đặt hệ thống",
-    "subtitle": "Quản lý học kỳ, bộ môn và cấu hình chung",
+    "title": "Quản lý học kỳ",
+    "subtitle": "Khởi tạo học kỳ, thiết lập khung thời gian và phân bổ giai đoạn",
     "semesters": "Học kỳ",
     "departments": "Bộ môn",
     "addSemester": "Thêm học kỳ",

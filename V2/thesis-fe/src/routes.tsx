@@ -306,7 +306,7 @@ export const routes: RouteConfig[] = [
     meta: {
       title: 'navigation.settings',
       icon: SettingOutlined,
-      roles: ['ADMIN'],
+      roles: ['HEAD', 'COORDINATOR', 'ADMIN'],
     },
   },
   {
