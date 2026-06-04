@@ -138,7 +138,6 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           },
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <AuditOutlined /> },
-          { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
         ]
@@ -181,7 +180,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
           { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
           { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
           { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
-          { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
+          { key: '/evaluation', label: 'Đánh giá cuối kỳ', icon: <CheckCircleOutlined /> },
           { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
           { key: '/schedule', label: 'Lịch trình', icon: <CalendarOutlined /> },
           { key: '/admin/criteria', label: 'Tiêu chí', icon: <SafetyCertificateOutlined /> },
@@ -213,7 +212,7 @@ const getMenuSections = (role: string, currentPhase?: string): MenuSection[] => 
         { key: '/head/committees', label: 'Quản lý hội đồng', icon: <TeamOutlined /> },
         { key: '/head/extra-points', label: 'Duyệt điểm cộng', icon: <SafetyCertificateOutlined /> },
         { key: '/head/grade-change-approvals', label: 'Duyệt sửa điểm', icon: <HistoryOutlined /> },
-        { key: '/evaluation', label: 'Đánh giá', icon: <CheckCircleOutlined /> },
+        { key: '/evaluation', label: 'Đánh giá cuối kỳ', icon: <CheckCircleOutlined /> },
         { key: '/final-results', label: 'Kết quả khóa luận', icon: <BarChartOutlined /> },
       ]
     },
