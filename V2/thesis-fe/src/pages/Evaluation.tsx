@@ -782,7 +782,7 @@ const Evaluation = () => {
                           <Text strong className="text-blue-600 text-lg">{(averages[s.id] || 0).toFixed(2)}</Text>
                         </Table.Summary.Cell>
                       ))}
-                      <Table.Summary.Cell index={3} rowSpan={2} className="text-center align-middle bg-white border-l border-b border-r" style={{ verticalAlign: 'middle' }}>
+                      <Table.Summary.Cell index={3} rowSpan={2} className="text-center align-middle bg-white border-l border-b border-r">
                         <div className="flex flex-col gap-2 justify-center items-center py-2 px-4 no-print">
                           {!isLocked && (
                             <div className="flex flex-col gap-2 w-full">
@@ -826,9 +826,9 @@ const Evaluation = () => {
                         );
                       })}
                     </Table.Summary.Row>
-
-
-
+                  </>
+                )}
+              />
             </Form>
           </Card>
         </div>
