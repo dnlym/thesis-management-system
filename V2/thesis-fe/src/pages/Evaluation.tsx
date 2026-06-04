@@ -352,8 +352,25 @@ const Evaluation = () => {
           };
         });
 
+      // Filter out submissions that have no changes when we are editing/requesting changes (past deadline)
+      const filteredSubmissions = submissions.filter(sub => {
+        const studentGrades = myGradesData?.students?.find((sData: any) => sData.studentId === sub.student_id)?.grades || [];
+        if (studentGrades.length === 0) return true;
+        const hasChanges = sub.scores.some(newGrade => {
+          const old = studentGrades.find((eg: any) => eg.criterionId === newGrade.criterion_id);
+          return !old || old.score !== newGrade.score;
+        });
+        return hasChanges;
+      });
+
+      if ((isPastDeadline || isRequestMode) && filteredSubmissions.length === 0) {
+        throw new Error('Không có điểm số nào thay đổi so với điểm cũ để gửi yêu cầu chỉnh sửa.');
+      }
+
+      const submissionsToSend = (isPastDeadline || isRequestMode) ? filteredSubmissions : submissions;
+
       let hasPendingRequest = false;
-      for (const sub of submissions) {
+      for (const sub of submissionsToSend) {
         const res = await submitGradeMutation.mutateAsync(sub);
         if (res && (res as any).status === 'PENDING_APPROVAL') {
           hasPendingRequest = true;
