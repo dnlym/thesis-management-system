@@ -1724,7 +1724,7 @@ export class GradingService {
 
       grades.forEach(g => {
         const key = `${g.grader_id}-${g.student_id || 'topic'}`;
-        
+
         let cleanedComment = g.comments?.replace(/\s*\[META_DATA:.*\]/, '') || null;
         let generalComment: string | null = null;
         if (g.comments) {
@@ -2326,6 +2326,26 @@ export class GradingService {
       }
     });
 
+    // Write to central Audit Log
+    await AuditLogger.log({
+      userId: hodId,
+      action: 'APPROVE_GRADE_CHANGE',
+      entityType: 'GRADE',
+      entityId: request.topic_id,
+      oldValue: {
+        score: request.old_score,
+        grader_id: request.grader_id,
+        student_id: request.student_id,
+        criterion_id: request.criterion_id,
+      },
+      newValue: {
+        score: request.new_score,
+        approved_by: hodId,
+      },
+      reason: request.reason,
+      description: `Phê duyệt yêu cầu sửa điểm của GV (ID: ${request.grader_id}) cho SV (ID: ${request.student_id}) đối với tiêu chí (ID: ${request.criterion_id}). Điểm cũ: ${request.old_score ?? 'Chưa có'}, Điểm mới: ${request.new_score}. Lý do: ${request.reason}`,
+    });
+
     // 3. Update Request status
     const updatedRequest = await prisma.gradeChangeRequest.update({
       where: { id: requestId },
@@ -2421,6 +2441,7 @@ export class GradingService {
         // Council is locked when the Defense phase ends (moves to FINAL).
         return phase === SemesterPhase.FINAL;
 
+
       default:
         return false;
     }
@@ -2428,3 +2449,6 @@ export class GradingService {
 }
 
 export default new GradingService();
+
+
+

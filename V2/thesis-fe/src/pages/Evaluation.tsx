@@ -511,7 +511,7 @@ const Evaluation = () => {
               return (
                 <Alert
                   message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
-                  description={isConfirmed ? "Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn." : "Thời hạn nhập điểm đã kết thúc. Nếu bạn cần nhập điểm, vui lòng nhấn nút 'Yêu cầu nhập điểm' để gửi giải trình tới Trưởng bộ môn."}
+                  description={isConfirmed ? "Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn." : "Thời hạn nhập điểm đã kết thúc. Vui lòng liên hệ Trưởng bộ môn để được hỗ trợ."}
                   type="warning"
                   showIcon
                   className="mb-6 rounded-xl border-amber-100 shadow-sm"
@@ -527,6 +527,30 @@ const Evaluation = () => {
                   type="info"
                   showIcon
                   className="mb-6 rounded-xl border-blue-100 shadow-sm"
+                />
+              );
+            }
+
+            if (missingSupervisorGrades) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-amber-800">Chưa thể chấm điểm</span>}
+                  description="Bạn chưa thể chấm điểm do Giảng viên hướng dẫn chưa hoàn thành nhập điểm cho sinh viên thuộc đề tài này."
+                  type="warning"
+                  showIcon
+                  className="mb-6 rounded-xl border-amber-100 shadow-sm"
+                />
+              );
+            }
+
+            if (missingReviewerGrades) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-amber-800">Chưa thể chấm điểm</span>}
+                  description="Bạn chưa thể chấm điểm do Giảng viên phản biện chưa hoàn thành nhập điểm cho sinh viên thuộc đề tài này."
+                  type="warning"
+                  showIcon
+                  className="mb-6 rounded-xl border-amber-100 shadow-sm"
                 />
               );
             }
