@@ -511,10 +511,22 @@ const Evaluation = () => {
               return (
                 <Alert
                   message={<span className="font-bold">Hệ thống đã khóa nhập điểm</span>}
-                  description="Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn."
+                  description={isConfirmed ? "Thời hạn nhập điểm đã kết thúc. Nếu bạn cần thay đổi điểm, vui lòng nhấn nút 'Yêu cầu sửa điểm' để gửi giải trình tới Trưởng bộ môn." : "Thời hạn nhập điểm đã kết thúc. Nếu bạn cần nhập điểm, vui lòng nhấn nút 'Yêu cầu nhập điểm' để gửi giải trình tới Trưởng bộ môn."}
                   type="warning"
                   showIcon
                   className="mb-6 rounded-xl border-amber-100 shadow-sm"
+                />
+              );
+            }
+
+            if (isPastDeadline && isRequestMode) {
+              return (
+                <Alert
+                  message={<span className="font-bold text-blue-800">Chế độ yêu cầu nhập/sửa điểm</span>}
+                  description="Bạn đang ở chế độ chỉnh sửa điểm quá hạn. Vui lòng nhập điểm mới và nhấn nút bên dưới để gửi giải trình tới Trưởng bộ môn."
+                  type="info"
+                  showIcon
+                  className="mb-6 rounded-xl border-blue-100 shadow-sm"
                 />
               );
             }
@@ -774,12 +786,12 @@ const Evaluation = () => {
                     setIsRequestMode(false);
                   }} disabled={submitGradeMutation.isPending}>Hủy</Button>
                   <Button size="large" type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
-                    {isRequestMode ? 'Gửi yêu cầu sửa điểm' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
+                    {isRequestMode ? (isConfirmed ? 'Gửi yêu cầu sửa điểm' : 'Gửi yêu cầu nhập điểm') : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
                   </Button>
                 </div>
               )}
 
-              {isPastDeadline && isPhaseAllowed && isConfirmed && !isRequestMode && !isFinalized && (
+              {isPastDeadline && isPhaseAllowed && !isRequestMode && !isFinalized && (
                 <div className="flex justify-end mt-10 no-print pb-4 px-6">
                   <Button
                     size="large"
@@ -788,7 +800,7 @@ const Evaluation = () => {
                     icon={<LockOutlined />}
                     onClick={() => setIsRequestMode(true)}
                   >
-                    Yêu cầu sửa điểm
+                    {isConfirmed ? 'Yêu cầu sửa điểm' : 'Yêu cầu nhập điểm'}
                   </Button>
                 </div>
               )}
