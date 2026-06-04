@@ -283,15 +283,15 @@ const ReviewerAssignment = () => {
 
         // Validate schedule
         if (!sel.defenseDate) {
-            notify.warning('Vui lòng chọn ngày bảo vệ');
+            notify.warning('Vui lòng chọn ngày phản biện');
             return;
         }
         if (!sel.startTime) {
-            notify.warning('Vui lòng chọn giờ bắt đầu bảo vệ');
+            notify.warning('Vui lòng chọn giờ bắt đầu phản biện');
             return;
         }
         if (!sel.endTime) {
-            notify.warning('Vui lòng chọn giờ kết thúc bảo vệ');
+            notify.warning('Vui lòng chọn giờ kết thúc phản biện');
             return;
         }
         if (sel.startTime.isAfter(sel.endTime) || sel.startTime.isSame(sel.endTime)) {
@@ -308,7 +308,7 @@ const ReviewerAssignment = () => {
             finalRoom = `${sel.onlinePlatform}|${sel.meetingCode}`;
         } else {
             if (!sel.room) {
-                notify.warning('Vui lòng nhập phòng bảo vệ');
+                notify.warning('Vui lòng nhập phòng phản biện');
                 return;
             }
             finalRoom = sel.room;
@@ -843,7 +843,7 @@ const ReviewerAssignment = () => {
 
                                         {/* Defense Format */}
                                         <div>
-                                            <label className="text-[11px] font-semibold text-slate-600 block mb-1">Hình thức bảo vệ</label>
+                                            <label className="text-[11px] font-semibold text-slate-600 block mb-1">Hình thức phản biện</label>
                                             {(() => {
                                                 const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
                                                 return (
@@ -904,9 +904,9 @@ const ReviewerAssignment = () => {
                                             } else {
                                                 return (
                                                     <div>
-                                                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">Phòng bảo vệ</label>
+                                                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">Phòng phản biện</label>
                                                         <Input
-                                                            placeholder="Nhập tên phòng (ví dụ: A101)"
+                                                            placeholder="Nhập tên phòng phản biện (ví dụ: A101)"
                                                             value={sel.room}
                                                             onChange={(e) => updateSelection(selectedTopic.groupId, 'room', e.target.value)}
                                                             size="small"
@@ -918,10 +918,10 @@ const ReviewerAssignment = () => {
 
                                         {/* Defense Time (Date and Start/End Hours) */}
                                         <div className="p-2.5 rounded-lg bg-blue-50/20 border border-blue-100/40 space-y-2">
-                                            <span className="text-[10px] font-bold text-blue-600 block uppercase tracking-wider">Thời gian bảo vệ</span>
+                                            <span className="text-[10px] font-bold text-blue-600 block uppercase tracking-wider">Thời gian phản biện</span>
                                             <Row gutter={8}>
                                                 <Col span={24}>
-                                                    <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Ngày bảo vệ</label>
+                                                    <label className="text-[10px] font-semibold text-slate-500 block mb-0.5">Ngày phản biện</label>
                                                     {(() => {
                                                         const sel = getSelection(selectedTopic.groupId, selectedTopic.room);
                                                         return (
@@ -931,7 +931,7 @@ const ReviewerAssignment = () => {
                                                                 format="DD/MM/YYYY"
                                                                 size="small"
                                                                 style={{ width: '100%' }}
-                                                                placeholder="Chọn ngày bảo vệ"
+                                                                placeholder="Chọn ngày phản biện"
                                                                 disabledDate={(current) => current && current < dayjs().startOf('day')}
                                                             />
                                                         );
