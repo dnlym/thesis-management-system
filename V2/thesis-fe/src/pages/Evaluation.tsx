@@ -783,24 +783,23 @@ const Evaluation = () => {
                         </Table.Summary.Cell>
                       ))}
                       <Table.Summary.Cell index={3} rowSpan={2} className="text-center align-middle bg-white border-l border-b border-r">
-                        <div className="flex flex-col gap-2 justify-center items-center py-2 px-4 no-print">
+                        <div className="flex gap-2 justify-center items-center py-2 px-4 no-print">
                           {!isLocked && (
-                            <div className="flex flex-col gap-2 w-full">
-                              <Button block onClick={() => {
+                            <>
+                              <Button onClick={() => {
                                 form.resetFields();
                                 setIsRequestMode(false);
                               }} disabled={submitGradeMutation.isPending}>
                                 Hủy
                               </Button>
-                              <Button block type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
+                              <Button type="primary" icon={<SaveOutlined />} onClick={() => handleSubmit()} loading={submitGradeMutation.isPending}>
                                 {isRequestMode ? 'Gửi yêu cầu' : (isConfirmed ? 'Lưu thay đổi' : 'Lưu điểm')}
                               </Button>
-                            </div>
+                            </>
                           )}
 
                           {isPastDeadline && isConfirmed && !isRequestMode && !isFinalized && (
                             <Button
-                              block
                               type="primary"
                               ghost
                               icon={<LockOutlined />}
