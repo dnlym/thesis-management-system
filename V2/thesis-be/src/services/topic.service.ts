@@ -881,6 +881,9 @@ export class TopicService {
             { registrations: { some: { midterm_status: 'FAIL' } } }
           ]
         });
+      } else if (statuses.includes(TopicStatus.APPROVED)) {
+        // Include REGISTERED topics as they are also approved topics
+        where.status = { in: [...statuses, TopicStatus.REGISTERED] };
       } else {
         where.status = { in: statuses };
       }
@@ -1655,6 +1658,11 @@ export class TopicService {
       // Ensure HEAD/ADMIN only count their own drafts
       if (status === TopicStatus.DRAFT && user.role !== UserRole.LECTURER && user.role !== UserRole.COORDINATOR) {
         currentWhere.supervisor_id = userId;
+      }
+
+      // Include REGISTERED topics in APPROVED stats
+      if (status === TopicStatus.APPROVED) {
+        currentWhere.status = { in: [TopicStatus.APPROVED, TopicStatus.REGISTERED] };
       }
 
       const count = await prisma.topic.count({
